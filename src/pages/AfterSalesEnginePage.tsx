@@ -250,11 +250,16 @@ export default function AfterSalesEnginePage() {
             {isEs ? 'De centro de costes reactivo a motor de ingresos escalable y predecible' : 'From reactive cost center to scalable, predictable revenue engine'}
           </p>
         </div>
-        <Button onClick={runDiagnostic} disabled={analyzing}>
-          {analyzing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Brain className="h-4 w-4 mr-2" />}
-          {isEs ? 'Diagnóstico IA Completo' : 'Full AI Diagnostic'}
-        </Button>
-      </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate('/service-contract-builder')}>
+            <Shield className="h-4 w-4 mr-2" />
+            {isEs ? 'Constructor de Contratos' : 'Contract Builder'}
+          </Button>
+          <Button onClick={runDiagnostic} disabled={analyzing}>
+            {analyzing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Brain className="h-4 w-4 mr-2" />}
+            {isEs ? 'Diagnóstico IA Completo' : 'Full AI Diagnostic'}
+          </Button>
+        </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-6">
