@@ -974,6 +974,90 @@ export type Database = {
           },
         ]
       }
+      spare_parts: {
+        Row: {
+          asset_type: string | null
+          category: string
+          company_id: string
+          created_at: string
+          criticality: string | null
+          demand_trend: string | null
+          description: string | null
+          dynamic_price: number | null
+          id: string
+          is_active: boolean
+          last_ordered_at: string | null
+          lead_time_days: number | null
+          margin_pct: number | null
+          min_stock_level: number
+          part_name: string
+          part_number: string
+          predicted_demand_monthly: number | null
+          reorder_point: number
+          reorder_quantity: number
+          selling_price: number
+          stock_quantity: number
+          supplier: string | null
+          total_units_sold: number | null
+          unit_cost: number
+          updated_at: string
+        }
+        Insert: {
+          asset_type?: string | null
+          category?: string
+          company_id: string
+          created_at?: string
+          criticality?: string | null
+          demand_trend?: string | null
+          description?: string | null
+          dynamic_price?: number | null
+          id?: string
+          is_active?: boolean
+          last_ordered_at?: string | null
+          lead_time_days?: number | null
+          margin_pct?: number | null
+          min_stock_level?: number
+          part_name?: string
+          part_number?: string
+          predicted_demand_monthly?: number | null
+          reorder_point?: number
+          reorder_quantity?: number
+          selling_price?: number
+          stock_quantity?: number
+          supplier?: string | null
+          total_units_sold?: number | null
+          unit_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          asset_type?: string | null
+          category?: string
+          company_id?: string
+          created_at?: string
+          criticality?: string | null
+          demand_trend?: string | null
+          description?: string | null
+          dynamic_price?: number | null
+          id?: string
+          is_active?: boolean
+          last_ordered_at?: string | null
+          lead_time_days?: number | null
+          margin_pct?: number | null
+          min_stock_level?: number
+          part_name?: string
+          part_number?: string
+          predicted_demand_monthly?: number | null
+          reorder_point?: number
+          reorder_quantity?: number
+          selling_price?: number
+          stock_quantity?: number
+          supplier?: string | null
+          total_units_sold?: number | null
+          unit_cost?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       strategy: {
         Row: {
           company_id: string

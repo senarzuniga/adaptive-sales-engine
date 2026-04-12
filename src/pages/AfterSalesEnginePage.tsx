@@ -18,7 +18,8 @@ import { Switch } from '@/components/ui/switch';
 import {
   Wrench, Plus, Trash2, Brain, TrendingUp, AlertTriangle, Shield, Settings,
   DollarSign, BarChart3, Lightbulb, Save, Loader2, Radio, Cpu, Package,
-  Calendar, Users, Activity, Target, Zap, Eye, ArrowUpRight, RefreshCw
+  Calendar, Users, Activity, Target, Zap, Eye, ArrowUpRight, RefreshCw,
+  ShoppingCart, TrendingDown, AlertCircle, RotateCcw, Box, Tag
 } from 'lucide-react';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
@@ -30,6 +31,9 @@ const VALUE_SEGMENTS = ['premium', 'standard', 'basic'];
 const RISK_LEVELS = ['high', 'medium', 'low'];
 const CONTRACT_TYPES = ['basic', 'advanced', 'premium', 'full-care', 'pay-per-use'];
 const INTERVENTION_TYPES = ['reactive', 'preventive', 'predictive', 'remote', 'ar-assisted'];
+const PART_CATEGORIES = ['component', 'consumable', 'wear-part', 'sensor', 'electronics', 'mechanical', 'hydraulic', 'pneumatic', 'electrical', 'software-license'];
+const CRITICALITY_LEVELS = ['critical', 'high', 'normal', 'low'];
+const DEMAND_TRENDS = ['increasing', 'stable', 'decreasing', 'seasonal'];
 
 export default function AfterSalesEnginePage() {
   const { language } = useLanguage();
@@ -41,32 +45,44 @@ export default function AfterSalesEnginePage() {
   const [contracts, setContracts] = useState<any[]>([]);
   const [interventions, setInterventions] = useState<any[]>([]);
   const [opportunities, setOpportunities] = useState<any[]>([]);
+  const [spareParts, setSpareParts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [diagnosis, setDiagnosis] = useState<any>(null);
   const [showAssetForm, setShowAssetForm] = useState(false);
   const [showContractForm, setShowContractForm] = useState(false);
   const [showInterventionForm, setShowInterventionForm] = useState(false);
+  const [showPartForm, setShowPartForm] = useState(false);
+  const [partFilter, setPartFilter] = useState('all');
 
   // Form states
   const [assetForm, setAssetForm] = useState({ serial_number: '', asset_name: '', asset_type: 'machine', customer_name: '', location: '', country: '', region: '', lifecycle_stage: 'active', connection_status: 'registered', usage_intensity: 'normal', customer_value_segment: 'standard', risk_level: 'medium', notes: '' });
   const [contractForm, setContractForm] = useState({ contract_type: 'basic', contract_name: '', customer_name: '', annual_value: 0, recurring_revenue_type: 'subscription', status: 'active', sla_response_hours: 24, includes_parts: false, includes_remote: false, includes_predictive: false, notes: '', asset_id: '' });
   const [interventionForm, setInterventionForm] = useState({ intervention_type: 'reactive', description: '', technician: '', duration_hours: 0, cost: 0, resolution: '', was_remote: false, notes: '', asset_id: '' });
+  const [partForm, setPartForm] = useState({
+    part_number: '', part_name: '', description: '', category: 'component', asset_type: '',
+    unit_cost: 0, selling_price: 0, margin_pct: 0,
+    stock_quantity: 0, min_stock_level: 5, reorder_point: 10, reorder_quantity: 25,
+    lead_time_days: 14, supplier: '',
+    predicted_demand_monthly: 0, demand_trend: 'stable', criticality: 'normal',
+  });
 
   const loadData = useCallback(async () => {
     if (!activeCompanyId) return;
     setLoading(true);
     try {
-      const [a, c, i, o] = await Promise.all([
+      const [a, c, i, o, sp] = await Promise.all([
         supabase.from('installed_base_assets').select('*').eq('company_id', activeCompanyId).order('created_at', { ascending: false }),
         supabase.from('service_contracts').select('*').eq('company_id', activeCompanyId).order('created_at', { ascending: false }),
         supabase.from('service_interventions').select('*').eq('company_id', activeCompanyId).order('created_at', { ascending: false }),
         supabase.from('after_sales_opportunities').select('*').eq('company_id', activeCompanyId).order('created_at', { ascending: false }),
+        supabase.from('spare_parts').select('*').eq('company_id', activeCompanyId).order('created_at', { ascending: false }),
       ]);
       if (a.data) setAssets(a.data);
       if (c.data) setContracts(c.data);
       if (i.data) setInterventions(i.data);
       if (o.data) setOpportunities(o.data);
+      if (sp.data) setSpareParts(sp.data);
     } finally {
       setLoading(false);
     }
@@ -74,6 +90,7 @@ export default function AfterSalesEnginePage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // --- Existing save functions ---
   const saveAsset = async () => {
     if (!activeCompanyId) return;
     const { error } = await supabase.from('installed_base_assets').insert({ ...assetForm, company_id: activeCompanyId });
@@ -111,16 +128,62 @@ export default function AfterSalesEnginePage() {
     loadData();
   };
 
+  // --- Spare Parts functions ---
+  const savePart = async () => {
+    if (!activeCompanyId) return;
+    const margin = partForm.selling_price > 0 ? ((partForm.selling_price - partForm.unit_cost) / partForm.selling_price) * 100 : 0;
+    const { error } = await supabase.from('spare_parts').insert({
+      ...partForm,
+      margin_pct: margin,
+      dynamic_price: partForm.selling_price,
+      company_id: activeCompanyId,
+    });
+    if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); return; }
+    toast({ title: isEs ? 'Repuesto guardado' : 'Spare part saved' });
+    setShowPartForm(false);
+    setPartForm({ part_number: '', part_name: '', description: '', category: 'component', asset_type: '', unit_cost: 0, selling_price: 0, margin_pct: 0, stock_quantity: 0, min_stock_level: 5, reorder_point: 10, reorder_quantity: 25, lead_time_days: 14, supplier: '', predicted_demand_monthly: 0, demand_trend: 'stable', criticality: 'normal' });
+    loadData();
+  };
+
+  const deletePart = async (id: string) => {
+    await supabase.from('spare_parts').delete().eq('id', id);
+    loadData();
+  };
+
+  const applyDynamicPricing = async (part: any) => {
+    // Simple urgency-based dynamic pricing: low stock + high criticality = premium
+    const stockRatio = part.min_stock_level > 0 ? part.stock_quantity / part.min_stock_level : 1;
+    let multiplier = 1;
+    if (stockRatio < 0.5 && part.criticality === 'critical') multiplier = 1.35;
+    else if (stockRatio < 0.5) multiplier = 1.2;
+    else if (part.demand_trend === 'increasing') multiplier = 1.1;
+    else if (stockRatio > 3) multiplier = 0.9;
+
+    const newPrice = Math.round(part.selling_price * multiplier * 100) / 100;
+    const margin = newPrice > 0 ? ((newPrice - part.unit_cost) / newPrice) * 100 : 0;
+    await supabase.from('spare_parts').update({ dynamic_price: newPrice, margin_pct: margin }).eq('id', part.id);
+    toast({ title: isEs ? 'Precio dinámico aplicado' : 'Dynamic price applied', description: `${fmt(part.selling_price)} → ${fmt(newPrice)} (x${multiplier})` });
+    loadData();
+  };
+
+  const triggerReorder = async (part: any) => {
+    await supabase.from('spare_parts').update({
+      stock_quantity: part.stock_quantity + part.reorder_quantity,
+      last_ordered_at: new Date().toISOString(),
+    }).eq('id', part.id);
+    toast({ title: isEs ? 'Pedido lanzado' : 'Reorder triggered', description: `+${part.reorder_quantity} ${part.part_name}` });
+    loadData();
+  };
+
   const runDiagnostic = async () => {
     setAnalyzing(true);
     try {
       const { data, error } = await supabase.functions.invoke('after-sales-intelligence', {
-        body: { assets, contracts, interventions, analysisType: 'full_diagnostic' },
+        body: { assets, contracts, interventions, spareParts, analysisType: 'full_diagnostic' },
       });
       if (error) throw error;
       if (data?.analysis) {
         setDiagnosis(data.analysis);
-        // Save AI-generated opportunities
         if (data.analysis.revenueOpportunities?.length > 0 && activeCompanyId) {
           const opps = data.analysis.revenueOpportunities.slice(0, 10).map((o: any) => ({
             company_id: activeCompanyId,
@@ -163,6 +226,16 @@ export default function AfterSalesEnginePage() {
   const lifecycleCounts = LIFECYCLE_STAGES.map(s => ({ stage: s, count: assets.filter(a => a.lifecycle_stage === s).length }));
   const riskCounts = RISK_LEVELS.map(r => ({ level: r, count: assets.filter(a => a.risk_level === r).length }));
 
+  // Spare parts metrics
+  const totalPartsValue = spareParts.reduce((s, p) => s + (p.stock_quantity * p.unit_cost), 0);
+  const lowStockParts = spareParts.filter(p => p.stock_quantity <= p.reorder_point && p.is_active);
+  const criticalParts = spareParts.filter(p => p.criticality === 'critical' && p.stock_quantity <= p.min_stock_level);
+  const avgMargin = spareParts.length > 0 ? spareParts.reduce((s, p) => s + (p.margin_pct || 0), 0) / spareParts.length : 0;
+  const filteredParts = partFilter === 'all' ? spareParts
+    : partFilter === 'low-stock' ? lowStockParts
+    : partFilter === 'critical' ? criticalParts
+    : spareParts.filter(p => p.category === partFilter);
+
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -182,18 +255,21 @@ export default function AfterSalesEnginePage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="installed-base">{isEs ? 'Base Instalada' : 'Installed Base'}</TabsTrigger>
           <TabsTrigger value="contracts">{isEs ? 'Contratos' : 'Contracts'}</TabsTrigger>
           <TabsTrigger value="service">{isEs ? 'Servicio' : 'Service'}</TabsTrigger>
+          <TabsTrigger value="spare-parts" className="flex items-center gap-1">
+            <ShoppingCart className="h-3 w-3" />
+            {isEs ? 'Repuestos' : 'Spare Parts'}
+          </TabsTrigger>
           <TabsTrigger value="intelligence">{isEs ? 'Inteligencia' : 'Intelligence'}</TabsTrigger>
         </TabsList>
 
         {/* DASHBOARD */}
         <TabsContent value="dashboard" className="space-y-4">
-          {/* KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <Card>
               <CardContent className="pt-6 text-center">
                 <Radio className="h-8 w-8 text-primary mx-auto mb-2" />
@@ -224,6 +300,14 @@ export default function AfterSalesEnginePage() {
                 <p className="text-2xl font-bold text-foreground">{fmt(totalOppValue)}</p>
                 <p className="text-xs text-muted-foreground">{isEs ? 'Pipeline Oportunidades' : 'Opportunity Pipeline'}</p>
                 <p className="text-xs text-primary mt-1">{opportunities.length} {isEs ? 'oportunidades' : 'opportunities'}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6 text-center">
+                <Package className="h-8 w-8 text-primary mx-auto mb-2" />
+                <p className="text-2xl font-bold text-foreground">{fmt(totalPartsValue)}</p>
+                <p className="text-xs text-muted-foreground">{isEs ? 'Valor Stock Repuestos' : 'Parts Inventory Value'}</p>
+                <p className="text-xs text-primary mt-1">{lowStockParts.length} {isEs ? 'stock bajo' : 'low stock'}</p>
               </CardContent>
             </Card>
           </div>
@@ -345,7 +429,6 @@ export default function AfterSalesEnginePage() {
             </Dialog>
           </div>
 
-          {/* Risk segmentation summary */}
           {assets.length > 0 && (
             <div className="grid grid-cols-3 gap-3">
               {riskCounts.map(({ level, count }) => (
@@ -452,7 +535,6 @@ export default function AfterSalesEnginePage() {
             </Dialog>
           </div>
 
-          {/* Contract tier summary */}
           {contracts.length > 0 && (
             <div className="grid grid-cols-5 gap-3">
               {CONTRACT_TYPES.map(type => {
@@ -587,6 +669,234 @@ export default function AfterSalesEnginePage() {
           </Card>
         </TabsContent>
 
+        {/* ==================== SPARE PARTS E-COMMERCE ==================== */}
+        <TabsContent value="spare-parts" className="space-y-4">
+          {/* Header */}
+          <div className="flex justify-between items-center flex-wrap gap-3">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-primary" />
+              {isEs ? 'Repuestos — Catálogo & Demanda Predictiva' : 'Spare Parts — Catalog & Predictive Demand'}
+            </h3>
+            <Dialog open={showPartForm} onOpenChange={setShowPartForm}>
+              <DialogTrigger asChild>
+                <Button><Plus className="h-4 w-4 mr-2" />{isEs ? 'Nuevo Repuesto' : 'New Part'}</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader><DialogTitle>{isEs ? 'Nuevo Repuesto' : 'New Spare Part'}</DialogTitle></DialogHeader>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="text-xs font-medium">{isEs ? 'Nº Pieza' : 'Part #'}</label><Input value={partForm.part_number} onChange={e => setPartForm(p => ({ ...p, part_number: e.target.value }))} /></div>
+                  <div><label className="text-xs font-medium">{isEs ? 'Nombre' : 'Name'}</label><Input value={partForm.part_name} onChange={e => setPartForm(p => ({ ...p, part_name: e.target.value }))} /></div>
+                  <div>
+                    <label className="text-xs font-medium">{isEs ? 'Categoría' : 'Category'}</label>
+                    <Select value={partForm.category} onValueChange={v => setPartForm(p => ({ ...p, category: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{PART_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium">{isEs ? 'Criticidad' : 'Criticality'}</label>
+                    <Select value={partForm.criticality} onValueChange={v => setPartForm(p => ({ ...p, criticality: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{CRITICALITY_LEVELS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div><label className="text-xs font-medium">{isEs ? 'Tipo Máquina' : 'Asset Type'}</label><Input value={partForm.asset_type} onChange={e => setPartForm(p => ({ ...p, asset_type: e.target.value }))} placeholder={isEs ? 'e.g. Prensa hidráulica' : 'e.g. Hydraulic press'} /></div>
+                  <div><label className="text-xs font-medium">{isEs ? 'Proveedor' : 'Supplier'}</label><Input value={partForm.supplier} onChange={e => setPartForm(p => ({ ...p, supplier: e.target.value }))} /></div>
+
+                  <Separator className="col-span-2 my-1" />
+                  <p className="col-span-2 text-xs font-semibold text-muted-foreground">{isEs ? 'PRECIOS' : 'PRICING'}</p>
+                  <div><label className="text-xs font-medium">{isEs ? 'Coste Unitario (€)' : 'Unit Cost (€)'}</label><Input type="number" value={partForm.unit_cost} onChange={e => setPartForm(p => ({ ...p, unit_cost: Number(e.target.value) }))} /></div>
+                  <div><label className="text-xs font-medium">{isEs ? 'Precio Venta (€)' : 'Selling Price (€)'}</label><Input type="number" value={partForm.selling_price} onChange={e => setPartForm(p => ({ ...p, selling_price: Number(e.target.value) }))} /></div>
+
+                  <Separator className="col-span-2 my-1" />
+                  <p className="col-span-2 text-xs font-semibold text-muted-foreground">{isEs ? 'INVENTARIO & REAPROVISIONAMIENTO' : 'INVENTORY & REPLENISHMENT'}</p>
+                  <div><label className="text-xs font-medium">{isEs ? 'Stock Actual' : 'Current Stock'}</label><Input type="number" value={partForm.stock_quantity} onChange={e => setPartForm(p => ({ ...p, stock_quantity: Number(e.target.value) }))} /></div>
+                  <div><label className="text-xs font-medium">{isEs ? 'Stock Mínimo' : 'Min Stock'}</label><Input type="number" value={partForm.min_stock_level} onChange={e => setPartForm(p => ({ ...p, min_stock_level: Number(e.target.value) }))} /></div>
+                  <div><label className="text-xs font-medium">{isEs ? 'Punto de Pedido' : 'Reorder Point'}</label><Input type="number" value={partForm.reorder_point} onChange={e => setPartForm(p => ({ ...p, reorder_point: Number(e.target.value) }))} /></div>
+                  <div><label className="text-xs font-medium">{isEs ? 'Cantidad Pedido' : 'Reorder Qty'}</label><Input type="number" value={partForm.reorder_quantity} onChange={e => setPartForm(p => ({ ...p, reorder_quantity: Number(e.target.value) }))} /></div>
+                  <div><label className="text-xs font-medium">{isEs ? 'Lead Time (días)' : 'Lead Time (days)'}</label><Input type="number" value={partForm.lead_time_days} onChange={e => setPartForm(p => ({ ...p, lead_time_days: Number(e.target.value) }))} /></div>
+                  <div>
+                    <label className="text-xs font-medium">{isEs ? 'Tendencia Demanda' : 'Demand Trend'}</label>
+                    <Select value={partForm.demand_trend} onValueChange={v => setPartForm(p => ({ ...p, demand_trend: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{DEMAND_TRENDS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div><label className="text-xs font-medium">{isEs ? 'Demanda Mensual Est.' : 'Est. Monthly Demand'}</label><Input type="number" value={partForm.predicted_demand_monthly} onChange={e => setPartForm(p => ({ ...p, predicted_demand_monthly: Number(e.target.value) }))} /></div>
+
+                  <div className="col-span-2"><label className="text-xs font-medium">{isEs ? 'Descripción' : 'Description'}</label><Textarea value={partForm.description} onChange={e => setPartForm(p => ({ ...p, description: e.target.value }))} rows={2} /></div>
+                </div>
+                <Button onClick={savePart} className="w-full mt-3"><Save className="h-4 w-4 mr-2" />{isEs ? 'Guardar' : 'Save'}</Button>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {/* KPI Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="pt-5 text-center">
+                <Box className="h-7 w-7 text-primary mx-auto mb-1" />
+                <p className="text-xl font-bold">{spareParts.length}</p>
+                <p className="text-xs text-muted-foreground">{isEs ? 'Piezas en Catálogo' : 'Parts in Catalog'}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-5 text-center">
+                <DollarSign className="h-7 w-7 text-primary mx-auto mb-1" />
+                <p className="text-xl font-bold">{fmt(totalPartsValue)}</p>
+                <p className="text-xs text-muted-foreground">{isEs ? 'Valor Inventario' : 'Inventory Value'}</p>
+              </CardContent>
+            </Card>
+            <Card className={criticalParts.length > 0 ? 'border-destructive/50' : ''}>
+              <CardContent className="pt-5 text-center">
+                <AlertCircle className="h-7 w-7 mx-auto mb-1" style={{ color: criticalParts.length > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))' }} />
+                <p className="text-xl font-bold">{criticalParts.length}</p>
+                <p className="text-xs text-muted-foreground">{isEs ? 'Críticos sin Stock' : 'Critical Low Stock'}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-5 text-center">
+                <Tag className="h-7 w-7 text-primary mx-auto mb-1" />
+                <p className="text-xl font-bold">{fmtPct(avgMargin)}</p>
+                <p className="text-xs text-muted-foreground">{isEs ? 'Margen Promedio' : 'Avg Margin'}</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Replenishment Alerts */}
+          {lowStockParts.length > 0 && (
+            <Card className="border-yellow-500/50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                  {isEs ? 'Alertas de Reaprovisionamiento' : 'Replenishment Alerts'}
+                  <Badge variant="secondary" className="ml-2">{lowStockParts.length}</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {lowStockParts.map(p => {
+                    const daysUntilStockout = p.predicted_demand_monthly > 0 ? Math.round((p.stock_quantity / (p.predicted_demand_monthly / 30))) : null;
+                    return (
+                      <div key={p.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                        <div className="flex items-center gap-3">
+                          <Badge variant={p.criticality === 'critical' ? 'destructive' : 'outline'} className="text-xs">{p.criticality}</Badge>
+                          <div>
+                            <p className="text-sm font-medium">{p.part_name} <span className="text-muted-foreground font-mono">({p.part_number})</span></p>
+                            <p className="text-xs text-muted-foreground">
+                              {isEs ? 'Stock' : 'Stock'}: {p.stock_quantity} / {isEs ? 'Mín' : 'Min'}: {p.min_stock_level}
+                              {daysUntilStockout !== null && <span className="text-destructive ml-2">≈ {daysUntilStockout} {isEs ? 'días hasta rotura' : 'days to stockout'}</span>}
+                            </p>
+                          </div>
+                        </div>
+                        <Button size="sm" variant="outline" onClick={() => triggerReorder(p)}>
+                          <RotateCcw className="h-3 w-3 mr-1" />
+                          {isEs ? 'Pedir' : 'Reorder'} +{p.reorder_quantity}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Filter */}
+          <div className="flex gap-2 flex-wrap">
+            {[
+              { key: 'all', label: isEs ? 'Todos' : 'All' },
+              { key: 'low-stock', label: isEs ? 'Stock Bajo' : 'Low Stock' },
+              { key: 'critical', label: isEs ? 'Críticos' : 'Critical' },
+              ...PART_CATEGORIES.slice(0, 5).map(c => ({ key: c, label: c })),
+            ].map(f => (
+              <Button key={f.key} variant={partFilter === f.key ? 'default' : 'outline'} size="sm" onClick={() => setPartFilter(f.key)} className="capitalize text-xs">
+                {f.label}
+              </Button>
+            ))}
+          </div>
+
+          {/* Parts Table */}
+          <Card>
+            <CardContent className="pt-4">
+              {spareParts.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">{isEs ? 'Sin repuestos en catálogo. Añade piezas para activar la demanda predictiva.' : 'No parts in catalog. Add parts to activate predictive demand.'}</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{isEs ? 'Nº Pieza' : 'Part #'}</TableHead>
+                        <TableHead>{isEs ? 'Nombre' : 'Name'}</TableHead>
+                        <TableHead>{isEs ? 'Categoría' : 'Category'}</TableHead>
+                        <TableHead>{isEs ? 'Criticidad' : 'Criticality'}</TableHead>
+                        <TableHead>{isEs ? 'Stock' : 'Stock'}</TableHead>
+                        <TableHead>{isEs ? 'Coste' : 'Cost'}</TableHead>
+                        <TableHead>{isEs ? 'Precio' : 'Price'}</TableHead>
+                        <TableHead>{isEs ? 'P. Dinámico' : 'Dyn. Price'}</TableHead>
+                        <TableHead>{isEs ? 'Margen' : 'Margin'}</TableHead>
+                        <TableHead>{isEs ? 'Tendencia' : 'Trend'}</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredParts.map(p => {
+                        const isLow = p.stock_quantity <= p.reorder_point;
+                        const isCriticalLow = p.stock_quantity <= p.min_stock_level && p.criticality === 'critical';
+                        return (
+                          <TableRow key={p.id} className={isCriticalLow ? 'bg-destructive/5' : isLow ? 'bg-yellow-500/5' : ''}>
+                            <TableCell className="font-mono text-xs">{p.part_number}</TableCell>
+                            <TableCell className="font-medium text-sm">{p.part_name}</TableCell>
+                            <TableCell><Badge variant="outline" className="capitalize text-xs">{p.category}</Badge></TableCell>
+                            <TableCell>
+                              <Badge variant={p.criticality === 'critical' ? 'destructive' : p.criticality === 'high' ? 'secondary' : 'outline'} className="text-xs capitalize">{p.criticality}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <span className={`font-medium ${isCriticalLow ? 'text-destructive' : isLow ? 'text-yellow-600' : ''}`}>{p.stock_quantity}</span>
+                              <span className="text-muted-foreground text-xs"> /{p.min_stock_level}</span>
+                            </TableCell>
+                            <TableCell className="text-xs">{fmt(p.unit_cost)}</TableCell>
+                            <TableCell className="text-xs">{fmt(p.selling_price)}</TableCell>
+                            <TableCell className="text-xs font-medium">
+                              {p.dynamic_price !== p.selling_price ? (
+                                <span className={p.dynamic_price > p.selling_price ? 'text-green-600' : 'text-destructive'}>{fmt(p.dynamic_price)}</span>
+                              ) : fmt(p.dynamic_price)}
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <Badge variant={p.margin_pct > 25 ? 'default' : p.margin_pct > 15 ? 'secondary' : 'destructive'} className="text-xs">{fmtPct(p.margin_pct)}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-xs capitalize flex items-center gap-1 w-fit">
+                                {p.demand_trend === 'increasing' && <TrendingUp className="h-3 w-3 text-green-500" />}
+                                {p.demand_trend === 'decreasing' && <TrendingDown className="h-3 w-3 text-destructive" />}
+                                {p.demand_trend}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                <Button variant="ghost" size="sm" title={isEs ? 'Precio dinámico' : 'Dynamic pricing'} onClick={() => applyDynamicPricing(p)}>
+                                  <Tag className="h-3 w-3 text-primary" />
+                                </Button>
+                                {isLow && (
+                                  <Button variant="ghost" size="sm" title={isEs ? 'Reponer' : 'Reorder'} onClick={() => triggerReorder(p)}>
+                                    <RotateCcw className="h-3 w-3 text-yellow-600" />
+                                  </Button>
+                                )}
+                                <Button variant="ghost" size="sm" onClick={() => deletePart(p.id)}>
+                                  <Trash2 className="h-3 w-3 text-destructive" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* AI INTELLIGENCE */}
         <TabsContent value="intelligence" className="space-y-4">
           {!diagnosis ? (
@@ -602,7 +912,6 @@ export default function AfterSalesEnginePage() {
             </Card>
           ) : (
             <>
-              {/* Executive Summary */}
               {diagnosis.executiveSummary && (
                 <Card className="border-primary/50">
                   <CardHeader><CardTitle className="flex items-center gap-2"><Eye className="h-5 w-5 text-primary" />{isEs ? 'Resumen Ejecutivo' : 'Executive Summary'}</CardTitle></CardHeader>
@@ -610,7 +919,6 @@ export default function AfterSalesEnginePage() {
                 </Card>
               )}
 
-              {/* Installed Base Health */}
               {diagnosis.installedBaseHealth && (
                 <Card>
                   <CardHeader><CardTitle className="flex items-center gap-2"><Radio className="h-5 w-5 text-primary" />{isEs ? 'Salud Base Instalada' : 'Installed Base Health'}</CardTitle></CardHeader>
@@ -632,7 +940,6 @@ export default function AfterSalesEnginePage() {
                 </Card>
               )}
 
-              {/* Service Maturity AI */}
               {diagnosis.serviceMaturity && (
                 <Card>
                   <CardHeader><CardTitle className="flex items-center gap-2"><Zap className="h-5 w-5 text-primary" />{isEs ? 'Madurez del Servicio' : 'Service Maturity'}</CardTitle></CardHeader>
@@ -650,7 +957,6 @@ export default function AfterSalesEnginePage() {
                 </Card>
               )}
 
-              {/* Revenue Opportunities */}
               {diagnosis.revenueOpportunities?.length > 0 && (
                 <Card>
                   <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" />{isEs ? 'Oportunidades de Ingreso' : 'Revenue Opportunities'}</CardTitle></CardHeader>
@@ -672,7 +978,6 @@ export default function AfterSalesEnginePage() {
                 </Card>
               )}
 
-              {/* Productization Advice */}
               {diagnosis.productizationAdvice?.length > 0 && (
                 <Card>
                   <CardHeader><CardTitle className="flex items-center gap-2"><Package className="h-5 w-5 text-primary" />{isEs ? 'Servicios Productizados' : 'Productized Services'}</CardTitle></CardHeader>
@@ -698,7 +1003,6 @@ export default function AfterSalesEnginePage() {
                 </Card>
               )}
 
-              {/* Recurring Revenue */}
               {diagnosis.recurringRevenueAnalysis && (
                 <Card>
                   <CardHeader><CardTitle className="flex items-center gap-2"><DollarSign className="h-5 w-5 text-primary" />{isEs ? 'Modelo de Ingresos Recurrentes' : 'Recurring Revenue Model'}</CardTitle></CardHeader>
@@ -720,7 +1024,6 @@ export default function AfterSalesEnginePage() {
                 </Card>
               )}
 
-              {/* AI Agent Recommendations */}
               {diagnosis.aiAgentRecommendations?.length > 0 && (
                 <Card>
                   <CardHeader><CardTitle className="flex items-center gap-2"><Cpu className="h-5 w-5 text-primary" />{isEs ? 'Recomendaciones de Agentes IA' : 'AI Agent Recommendations'}</CardTitle></CardHeader>
