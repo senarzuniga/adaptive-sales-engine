@@ -29,6 +29,7 @@ import {
   Contact,
   Bot,
   Share2,
+  PieChart,
 } from 'lucide-react';
 
 export function AppSidebar() {
@@ -42,6 +43,7 @@ export function AppSidebar() {
     { title: t.nav.dataUpload, url: '/upload', icon: Upload },
     { title: t.nav.companyInfo, url: '/company-info', icon: Info },
     { title: t.nav.analysis360, url: '/360-analysis', icon: BarChart3 },
+    { title: t.nav.portfolioAnalysis, url: '/portfolio-analysis', icon: PieChart },
     { title: t.nav.salesArchitecture, url: '/sales-architecture', icon: Building2 },
     { title: t.nav.kam, url: '/kam', icon: Users },
     { title: t.nav.afterSales, url: '/after-sales', icon: Wrench },

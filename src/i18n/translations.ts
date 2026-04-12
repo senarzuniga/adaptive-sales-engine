@@ -7,6 +7,7 @@ export const translations = {
     nav: {
       dashboard: 'Dashboard',
       analysis360: '360º Analysis',
+      portfolioAnalysis: 'Portfolio Analysis',
       salesArchitecture: 'Sales Architecture',
       kam: 'Key Account Management',
       afterSales: 'After-Sales Engine',
@@ -97,6 +98,7 @@ export const translations = {
     nav: {
       dashboard: 'Panel Principal',
       analysis360: 'Análisis 360º',
+      portfolioAnalysis: 'Análisis de Portafolio',
       salesArchitecture: 'Arquitectura de Ventas',
       kam: 'Gestión de Cuentas Clave',
       afterSales: 'Motor Post-Venta',
