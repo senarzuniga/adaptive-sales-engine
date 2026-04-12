@@ -11,6 +11,7 @@ import DataUploadPage from "./pages/DataUploadPage";
 import CompanyInfoPage from "./pages/CompanyInfoPage";
 import Analysis360Page from "./pages/Analysis360Page";
 import PillarPage from "./pages/PillarPage";
+import AfterSalesEnginePage from "./pages/AfterSalesEnginePage";
 import MonitoringPage from "./pages/MonitoringPage";
 import WeeklyPlannerPage from "./pages/WeeklyPlannerPage";
 import CompanyContactsPage from "./pages/CompanyContactsPage";
@@ -39,7 +40,7 @@ const App = () => (
                 <Route path="/360-analysis" element={<Analysis360Page />} />
                 <Route path="/sales-architecture" element={<PillarPage pillarKey="p1" pillarNumber={1} />} />
                 <Route path="/kam" element={<PillarPage pillarKey="p2" pillarNumber={2} />} />
-                <Route path="/after-sales" element={<PillarPage pillarKey="p3" pillarNumber={3} />} />
+                <Route path="/after-sales" element={<AfterSalesEnginePage />} />
                 <Route path="/ai-sales" element={<PillarPage pillarKey="p4" pillarNumber={4} />} />
                 <Route path="/behavioral" element={<PillarPage pillarKey="p5" pillarNumber={5} />} />
                 <Route path="/product-strategy" element={<PillarPage pillarKey="p6" pillarNumber={6} />} />
