@@ -127,6 +127,65 @@ export type Database = {
           },
         ]
       }
+      cost_breakdowns: {
+        Row: {
+          category: string
+          created_at: string
+          days: number | null
+          hourly_rate: number | null
+          hours: number | null
+          id: string
+          line_item: string
+          notes: string | null
+          offer_item_id: string
+          quantity: number
+          resources: number | null
+          surcharge_pct: number | null
+          total_cost: number
+          unit_cost: number
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          days?: number | null
+          hourly_rate?: number | null
+          hours?: number | null
+          id?: string
+          line_item?: string
+          notes?: string | null
+          offer_item_id: string
+          quantity?: number
+          resources?: number | null
+          surcharge_pct?: number | null
+          total_cost?: number
+          unit_cost?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          days?: number | null
+          hourly_rate?: number | null
+          hours?: number | null
+          id?: string
+          line_item?: string
+          notes?: string | null
+          offer_item_id?: string
+          quantity?: number
+          resources?: number | null
+          surcharge_pct?: number | null
+          total_cost?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_breakdowns_offer_item_id_fkey"
+            columns: ["offer_item_id"]
+            isOneToOne: false
+            referencedRelation: "offer_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketing_content: {
         Row: {
           alternative_versions: Json | null
@@ -188,6 +247,194 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "marketing_content_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offer_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          item_name: string
+          item_type: string
+          offer_id: string
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          item_name?: string
+          item_type?: string
+          offer_id: string
+          quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          item_name?: string
+          item_type?: string
+          offer_id?: string
+          quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_items_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offer_scenarios: {
+        Row: {
+          ai_analysis: Json | null
+          created_at: string
+          id: string
+          margin_amount: number
+          margin_pct: number
+          offer_id: string
+          risk_level: string | null
+          scenario_type: string
+          selling_price: number
+          total_cost: number
+          updated_at: string
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          created_at?: string
+          id?: string
+          margin_amount?: number
+          margin_pct?: number
+          offer_id: string
+          risk_level?: string | null
+          scenario_type?: string
+          selling_price?: number
+          total_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          ai_analysis?: Json | null
+          created_at?: string
+          id?: string
+          margin_amount?: number
+          margin_pct?: number
+          offer_id?: string
+          risk_level?: string | null
+          scenario_type?: string
+          selling_price?: number
+          total_cost?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_scenarios_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offer_scores: {
+        Row: {
+          ai_explanation: string | null
+          created_at: string
+          global_score: number | null
+          id: string
+          margin_score: string | null
+          offer_id: string
+          recommendations: Json | null
+          risk_factors: Json | null
+          risk_score: string | null
+          updated_at: string
+        }
+        Insert: {
+          ai_explanation?: string | null
+          created_at?: string
+          global_score?: number | null
+          id?: string
+          margin_score?: string | null
+          offer_id: string
+          recommendations?: Json | null
+          risk_factors?: Json | null
+          risk_score?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ai_explanation?: string | null
+          created_at?: string
+          global_score?: number | null
+          id?: string
+          margin_score?: string | null
+          offer_id?: string
+          recommendations?: Json | null
+          risk_factors?: Json | null
+          risk_score?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_scores_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offers: {
+        Row: {
+          company_id: string
+          created_at: string
+          currency: string
+          customer_name: string
+          id: string
+          notes: string | null
+          offer_number: string
+          project_description: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          currency?: string
+          customer_name?: string
+          id?: string
+          notes?: string | null
+          offer_number?: string
+          project_description?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          currency?: string
+          customer_name?: string
+          id?: string
+          notes?: string | null
+          offer_number?: string
+          project_description?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offers_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"

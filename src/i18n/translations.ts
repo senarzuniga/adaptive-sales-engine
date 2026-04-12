@@ -21,6 +21,7 @@ export const translations = {
       teamDirectory: 'Team Directory',
       emailCobot: 'Email Cobot',
       marketingContent: 'Marketing Content',
+      offerPricing: 'Offer & Pricing',
       socialMedia: 'Social Media',
     },
     dashboard: {
@@ -113,6 +114,7 @@ export const translations = {
       teamDirectory: 'Directorio de Equipo',
       emailCobot: 'Cobot de Email',
       marketingContent: 'Contenido de Marketing',
+      offerPricing: 'Costes y Pricing',
       socialMedia: 'Redes Sociales',
     },
     dashboard: {
