@@ -88,6 +88,21 @@ export type TaskStatus = 'todo' | 'in_progress' | 'done';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
 export type TaskCategory = 'analysis' | 'follow_up' | 'loyalty' | 'cross_sell' | 'strategy' | 'data' | 'meeting' | 'report';
 
+export interface ActionContent {
+  goal: string;
+  callScript: string;
+  emailTemplate: string;
+  presentationNotes: string;
+}
+
+export interface ActionResult {
+  outcome: string;
+  timestamp: string;
+  aiAnalysis: string;
+  alignmentScore: number; // 0-100
+  recommendations: string[];
+}
+
 export interface MonitoringTask {
   id: string;
   title: string;
@@ -101,6 +116,8 @@ export interface MonitoringTask {
   createdAt: string;
   completedAt?: string;
   notes: string[];
+  actionContent: ActionContent;
+  actionResult?: ActionResult;
 }
 
 interface DataState {
