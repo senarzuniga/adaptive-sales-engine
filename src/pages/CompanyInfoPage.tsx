@@ -3,7 +3,7 @@ import { useData } from '@/store/DataStore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { VoiceTextInput } from '@/components/VoiceTextInput';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Save } from 'lucide-react';
@@ -65,7 +65,7 @@ const CompanyInfoPage = () => {
                 {field.type === 'input' ? (
                   <Input id={field.key} value={profile[field.key] || ''} onChange={(e) => update(field.key, e.target.value)} className="bg-background" />
                 ) : (
-                  <Textarea id={field.key} value={profile[field.key] || ''} onChange={(e) => update(field.key, e.target.value)} rows={3} className="bg-background" />
+                  <VoiceTextInput value={profile[field.key] || ''} onChange={(v) => update(field.key, v)} rows={3} />
                 )}
               </div>
             ))}
