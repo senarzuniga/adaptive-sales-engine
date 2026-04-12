@@ -127,6 +127,74 @@ export type Database = {
           },
         ]
       }
+      marketing_content: {
+        Row: {
+          alternative_versions: Json | null
+          body: string
+          call_to_action: string | null
+          company_id: string
+          content_type: string
+          created_at: string
+          hashtags: string[] | null
+          id: string
+          intelligence_sources: Json | null
+          platform: string
+          published_at: string | null
+          scheduled_at: string | null
+          status: string
+          suggested_image_description: string | null
+          summary: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          alternative_versions?: Json | null
+          body?: string
+          call_to_action?: string | null
+          company_id: string
+          content_type?: string
+          created_at?: string
+          hashtags?: string[] | null
+          id?: string
+          intelligence_sources?: Json | null
+          platform?: string
+          published_at?: string | null
+          scheduled_at?: string | null
+          status?: string
+          suggested_image_description?: string | null
+          summary?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          alternative_versions?: Json | null
+          body?: string
+          call_to_action?: string | null
+          company_id?: string
+          content_type?: string
+          created_at?: string
+          hashtags?: string[] | null
+          id?: string
+          intelligence_sources?: Json | null
+          platform?: string
+          published_at?: string | null
+          scheduled_at?: string | null
+          status?: string
+          suggested_image_description?: string | null
+          summary?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_content_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       opportunities: {
         Row: {
           company_id: string
