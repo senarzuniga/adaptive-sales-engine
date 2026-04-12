@@ -25,6 +25,7 @@ import {
   Info,
   LayoutDashboard,
   Activity,
+  CalendarDays,
 } from 'lucide-react';
 
 export function AppSidebar() {
@@ -45,6 +46,7 @@ export function AppSidebar() {
     { title: t.nav.behavioral, url: '/behavioral', icon: Heart },
     { title: t.nav.productStrategy, url: '/product-strategy', icon: Package },
     { title: t.nav.monitoring, url: '/monitoring', icon: Activity },
+    { title: t.nav.weeklyPlanner, url: '/weekly-planner', icon: CalendarDays },
   ];
 
   return (

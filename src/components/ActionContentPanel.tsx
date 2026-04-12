@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import type { MonitoringTask, ActionContent, ActionResult, TaskPillar } from '@/store/DataStore';
 import { useData } from '@/store/DataStore';
+import { VoiceTextInput } from '@/components/VoiceTextInput';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -201,11 +201,11 @@ export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack
               <p className="text-xs text-muted-foreground">
                 Define the specific objective of this action. What outcome do you need? What metrics define success?
               </p>
-              <Textarea
+              <VoiceTextInput
                 rows={5}
                 placeholder="Example: Schedule a product demo with the procurement team at Acme Corp. Goal is to present our new pricing model and get a verbal commitment for a pilot program by end of Q2."
                 value={content.goal}
-                onChange={e => updateField('goal', e.target.value)}
+                onChange={v => updateField('goal', v)}
               />
             </CardContent>
           </Card>
@@ -223,11 +223,11 @@ export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack
               <p className="text-xs text-muted-foreground">
                 Structured script for calls or meetings. Include opening, key talking points, objection handling, and closing.
               </p>
-              <Textarea
+              <VoiceTextInput
                 rows={12}
                 placeholder="Opening, key talking points, objection handling, closing..."
                 value={content.callScript}
-                onChange={e => updateField('callScript', e.target.value)}
+                onChange={v => updateField('callScript', v)}
               />
             </CardContent>
           </Card>
@@ -245,11 +245,11 @@ export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack
               <p className="text-xs text-muted-foreground">
                 Draft the email including subject line, body, and call-to-action personalized for the target audience.
               </p>
-              <Textarea
+              <VoiceTextInput
                 rows={12}
                 placeholder="Subject line, body, call-to-action..."
                 value={content.emailTemplate}
-                onChange={e => updateField('emailTemplate', e.target.value)}
+                onChange={v => updateField('emailTemplate', v)}
               />
             </CardContent>
           </Card>
@@ -267,11 +267,11 @@ export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack
               <p className="text-xs text-muted-foreground">
                 Key slides, demo flow, meeting agenda, data points, and handout materials.
               </p>
-              <Textarea
+              <VoiceTextInput
                 rows={12}
                 placeholder="Meeting agenda, key slides, materials..."
                 value={content.presentationNotes}
-                onChange={e => updateField('presentationNotes', e.target.value)}
+                onChange={v => updateField('presentationNotes', v)}
               />
             </CardContent>
           </Card>
@@ -288,12 +288,11 @@ export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack
             <CardContent className="space-y-4">
               <div>
                 <Label className="text-xs font-medium">What was the outcome of this action?</Label>
-                <Textarea
+                <VoiceTextInput
                   rows={5}
-                  className="mt-1"
                   placeholder="Describe the result: what happened during the call/meeting/email? What did the customer say? What was agreed?"
                   value={resultText}
-                  onChange={e => setResultText(e.target.value)}
+                  onChange={v => setResultText(v)}
                 />
                 <Button
                   className="mt-3 gap-2"
