@@ -30,6 +30,7 @@ import {
   Bot,
   Share2,
   PieChart,
+  Megaphone,
 } from 'lucide-react';
 
 export function AppSidebar() {
@@ -54,6 +55,7 @@ export function AppSidebar() {
     { title: t.nav.weeklyPlanner, url: '/weekly-planner', icon: CalendarDays },
     { title: t.nav.teamDirectory, url: '/team-directory', icon: Contact },
     { title: t.nav.emailCobot, url: '/email-cobot', icon: Bot },
+    { title: t.nav.marketingContent, url: '/marketing-content', icon: Megaphone },
     { title: t.nav.socialMedia, url: '/social-media', icon: Share2 },
   ];
 

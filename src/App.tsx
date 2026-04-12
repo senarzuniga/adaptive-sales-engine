@@ -17,6 +17,7 @@ import CompanyContactsPage from "./pages/CompanyContactsPage";
 import EmailCobotPage from "./pages/EmailCobotPage";
 import SocialMediaSettingsPage from "./pages/SocialMediaSettingsPage";
 import PortfolioAnalysisPage from "./pages/PortfolioAnalysisPage";
+import MarketingContentPage from "./pages/MarketingContentPage";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ const App = () => (
                 <Route path="/email-cobot" element={<EmailCobotPage />} />
                 <Route path="/social-media" element={<SocialMediaSettingsPage />} />
                 <Route path="/portfolio-analysis" element={<PortfolioAnalysisPage />} />
+                <Route path="/marketing-content" element={<MarketingContentPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AppLayout>
