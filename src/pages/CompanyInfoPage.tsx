@@ -11,7 +11,7 @@ import type { CompanyProfile } from '@/store/DataStore';
 
 const CompanyInfoPage = () => {
   const { t } = useLanguage();
-  const { data, setCompanyProfile } = useData();
+  const { data, setCompanyProfile, activeCompanyId } = useData();
   const profile = data.companyProfile;
 
   const update = (field: keyof CompanyProfile, value: string) => {
@@ -22,23 +22,32 @@ const CompanyInfoPage = () => {
     toast({ title: t.companyInfo.saved });
   };
 
+  if (!activeCompanyId) {
+    return (
+      <div className="p-6 lg:p-8 max-w-4xl mx-auto text-center py-20">
+        <h2 className="text-xl font-semibold text-foreground mb-2">No company selected</h2>
+        <p className="text-muted-foreground">Select or create a company from the top bar to manage its profile.</p>
+      </div>
+    );
+  }
+
   const fields: { key: keyof CompanyProfile; label: string; type: 'input' | 'textarea' }[] = [
-    { key: 'companyName', label: t.companyInfo.companyName, type: 'input' },
+    { key: 'company_name', label: t.companyInfo.companyName, type: 'input' },
     { key: 'industry', label: t.companyInfo.industry, type: 'input' },
-    { key: 'subSector', label: t.companyInfo.subSector, type: 'input' },
+    { key: 'sub_sector', label: t.companyInfo.subSector, type: 'input' },
     { key: 'headquarters', label: t.companyInfo.headquarters, type: 'input' },
-    { key: 'operatingRegions', label: t.companyInfo.operatingRegions, type: 'input' },
-    { key: 'employeeCount', label: t.companyInfo.employeeCount, type: 'input' },
-    { key: 'annualRevenue', label: t.companyInfo.annualRevenue, type: 'input' },
-    { key: 'mainProducts', label: t.companyInfo.mainProducts, type: 'textarea' },
-    { key: 'mainCustomerSegments', label: t.companyInfo.mainCustomerSegments, type: 'textarea' },
-    { key: 'mainCompetitors', label: t.companyInfo.mainCompetitors, type: 'textarea' },
-    { key: 'salesTeamSize', label: t.companyInfo.salesTeamSize, type: 'input' },
-    { key: 'kamCount', label: t.companyInfo.kamCount, type: 'input' },
-    { key: 'salesChannels', label: t.companyInfo.salesChannels, type: 'input' },
-    { key: 'currentChallenges', label: t.companyInfo.currentChallenges, type: 'textarea' },
-    { key: 'strategicGoals', label: t.companyInfo.strategicGoals, type: 'textarea' },
-    { key: 'additionalNotes', label: t.companyInfo.additionalNotes, type: 'textarea' },
+    { key: 'operating_regions', label: t.companyInfo.operatingRegions, type: 'input' },
+    { key: 'employee_count', label: t.companyInfo.employeeCount, type: 'input' },
+    { key: 'annual_revenue', label: t.companyInfo.annualRevenue, type: 'input' },
+    { key: 'main_products', label: t.companyInfo.mainProducts, type: 'textarea' },
+    { key: 'main_customer_segments', label: t.companyInfo.mainCustomerSegments, type: 'textarea' },
+    { key: 'main_competitors', label: t.companyInfo.mainCompetitors, type: 'textarea' },
+    { key: 'sales_team_size', label: t.companyInfo.salesTeamSize, type: 'input' },
+    { key: 'kam_count', label: t.companyInfo.kamCount, type: 'input' },
+    { key: 'sales_channels', label: t.companyInfo.salesChannels, type: 'input' },
+    { key: 'current_challenges', label: t.companyInfo.currentChallenges, type: 'textarea' },
+    { key: 'strategic_goals', label: t.companyInfo.strategicGoals, type: 'textarea' },
+    { key: 'additional_notes', label: t.companyInfo.additionalNotes, type: 'textarea' },
   ];
 
   return (
@@ -54,9 +63,9 @@ const CompanyInfoPage = () => {
               <div key={field.key} className={field.type === 'textarea' ? 'md:col-span-2' : ''}>
                 <Label htmlFor={field.key} className="text-sm font-medium text-foreground mb-1.5 block">{field.label}</Label>
                 {field.type === 'input' ? (
-                  <Input id={field.key} value={profile[field.key]} onChange={(e) => update(field.key, e.target.value)} className="bg-background" />
+                  <Input id={field.key} value={profile[field.key] || ''} onChange={(e) => update(field.key, e.target.value)} className="bg-background" />
                 ) : (
-                  <Textarea id={field.key} value={profile[field.key]} onChange={(e) => update(field.key, e.target.value)} rows={3} className="bg-background" />
+                  <Textarea id={field.key} value={profile[field.key] || ''} onChange={(e) => update(field.key, e.target.value)} rows={3} className="bg-background" />
                 )}
               </div>
             ))}

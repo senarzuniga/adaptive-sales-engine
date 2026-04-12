@@ -86,7 +86,7 @@ const MonitoringPage = () => {
     { label: 'Opportunities data', ok: data.opportunities.length > 0, count: data.opportunities.length },
     { label: 'Products data', ok: data.products.length > 0, count: data.products.length },
     { label: 'Strategy data', ok: data.strategy.length > 0, count: data.strategy.length },
-    { label: 'Company profile', ok: !!data.companyProfile.companyName, count: data.companyProfile.companyName ? 1 : 0 },
+    { label: 'Company profile', ok: !!data.companyProfile.company_name, count: data.companyProfile.company_name ? 1 : 0 },
   ];
 
   const handleSaveTask = () => {

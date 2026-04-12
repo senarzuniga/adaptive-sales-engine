@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { MonitoringTask, ActionContent, ActionResult, TaskPillar } from '@/store/DataStore';
+import { useData } from '@/store/DataStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,8 +11,10 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import {
   Target, Phone, Mail, Presentation, FileText, Save, Sparkles,
-  CheckCircle, AlertTriangle, ArrowLeft, ClipboardList
+  CheckCircle, AlertTriangle, ArrowLeft, ClipboardList, Loader2, Wand2
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 const PILLAR_LABELS: Record<TaskPillar, string> = {
   general: 'General', p0: '360º Analysis', p1: 'Sales Architecture', p2: 'KAM',
@@ -28,9 +31,11 @@ interface ActionContentPanelProps {
 const emptyContent: ActionContent = { goal: '', callScript: '', emailTemplate: '', presentationNotes: '' };
 
 export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack }: ActionContentPanelProps) {
+  const { data } = useData();
   const [content, setContent] = useState<ActionContent>(task.actionContent || emptyContent);
   const [resultText, setResultText] = useState(task.actionResult?.outcome || '');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [dirty, setDirty] = useState(false);
 
   const updateField = (field: keyof ActionContent, value: string) => {
@@ -43,65 +48,91 @@ export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack
     setDirty(false);
   };
 
-  const handleAnalyzeResult = () => {
+  // ─── AI: Generate action content ───
+  const handleGenerateContent = async () => {
+    setIsGenerating(true);
+    try {
+      // Build context data from loaded company data
+      const contextData: any = {};
+      if (data.orders.length > 0) {
+        const customerRevenue: Record<string, number> = {};
+        const productRevenue: Record<string, number> = {};
+        data.orders.forEach(o => {
+          customerRevenue[o.customerName] = (customerRevenue[o.customerName] || 0) + o.sellingPrice;
+          productRevenue[o.productFamily] = (productRevenue[o.productFamily] || 0) + o.sellingPrice;
+        });
+        contextData.topCustomers = Object.entries(customerRevenue).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([n, v]) => `${n} (€${v.toLocaleString()})`).join(', ');
+        contextData.topProducts = Object.entries(productRevenue).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([n, v]) => `${n} (€${v.toLocaleString()})`).join(', ');
+      }
+      if (data.opportunities.length > 0) {
+        const totalPipeline = data.opportunities.filter(o => o.status !== 'Won' && o.status !== 'Lost').reduce((s, o) => s + o.estRevenue, 0);
+        contextData.pipelineValue = `€${totalPipeline.toLocaleString()}`;
+      }
+      if (data.strategy.length > 0) {
+        const totalTarget = data.strategy.reduce((s, st) => s + st.estRevenue, 0);
+        contextData.strategyTargets = `Total target: €${totalTarget.toLocaleString()}`;
+      }
+
+      const { data: result, error } = await supabase.functions.invoke('generate-action-content', {
+        body: {
+          type: 'generate',
+          task: { title: task.title, description: task.description, category: task.category, pillar: task.pillar, priority: task.priority, assignee: task.assignee },
+          companyProfile: data.companyProfile,
+          contextData,
+        },
+      });
+
+      if (error) throw error;
+      if (result?.error) throw new Error(result.error);
+
+      const generated: ActionContent = {
+        goal: result.goal || content.goal,
+        callScript: result.callScript || content.callScript,
+        emailTemplate: result.emailTemplate || content.emailTemplate,
+        presentationNotes: result.presentationNotes || content.presentationNotes,
+      };
+      setContent(generated);
+      setDirty(true);
+      toast({ title: 'AI content generated', description: 'Review and customize the generated content before saving.' });
+    } catch (e: any) {
+      console.error('AI generation error:', e);
+      toast({ title: 'AI generation failed', description: e.message || 'Please try again.', variant: 'destructive' });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // ─── AI: Analyze result ───
+  const handleAnalyzeResult = async () => {
     if (!resultText.trim()) return;
     setIsAnalyzing(true);
-    // Local AI simulation — will be replaced with real AI agent when cloud is enabled
-    setTimeout(() => {
-      const hasGoal = !!content.goal;
-      const resultLower = resultText.toLowerCase();
-      const recommendations: string[] = [];
-      let alignmentScore = 50;
+    try {
+      const { data: result, error } = await supabase.functions.invoke('generate-action-content', {
+        body: {
+          type: 'analyze',
+          task: { ...task, resultText, actionContent: content },
+          companyProfile: data.companyProfile,
+        },
+      });
 
-      if (hasGoal) {
-        const goalWords = content.goal.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-        const matchCount = goalWords.filter(w => resultLower.includes(w)).length;
-        alignmentScore = Math.min(100, Math.round((matchCount / Math.max(goalWords.length, 1)) * 100 + 30));
-      }
+      if (error) throw error;
+      if (result?.error) throw new Error(result.error);
 
-      if (resultLower.includes('no answer') || resultLower.includes('not available') || resultLower.includes('no response')) {
-        recommendations.push('Schedule a follow-up within 48 hours using a different channel (email if call failed, or vice versa).');
-        alignmentScore = Math.max(20, alignmentScore - 20);
-      }
-      if (resultLower.includes('interested') || resultLower.includes('positive')) {
-        recommendations.push('Prepare a tailored proposal emphasizing the value proposition discussed.');
-        recommendations.push('Schedule a formal meeting within the next 5 business days to capitalize on momentum.');
-        alignmentScore = Math.min(100, alignmentScore + 15);
-      }
-      if (resultLower.includes('objection') || resultLower.includes('concern') || resultLower.includes('price')) {
-        recommendations.push('Prepare a competitive analysis document addressing the specific objections raised.');
-        recommendations.push('Consider offering a pilot program or adjusted payment terms to mitigate risk perception.');
-      }
-      if (resultLower.includes('meeting') || resultLower.includes('scheduled') || resultLower.includes('next step')) {
-        recommendations.push('Prepare presentation materials aligned with the customer\'s specific pain points.');
-        alignmentScore = Math.min(100, alignmentScore + 10);
-      }
-      if (resultLower.includes('lost') || resultLower.includes('rejected') || resultLower.includes('competitor')) {
-        recommendations.push('Document lessons learned and share with the team for strategy refinement.');
-        recommendations.push('Analyze competitor positioning and update the value proposition for similar accounts.');
-        alignmentScore = Math.max(10, alignmentScore - 25);
-      }
-      if (recommendations.length === 0) {
-        recommendations.push('Document specific outcomes and next steps for this action.');
-        recommendations.push('Review if the action goal was fully addressed and plan any follow-up needed.');
-      }
-
-      const analysis = alignmentScore >= 70
-        ? `Strong alignment with strategy. The outcome indicates progress toward the defined goal. ${task.pillar !== 'general' ? `This action contributes positively to the ${PILLAR_LABELS[task.pillar]} pillar objectives.` : ''}`
-        : alignmentScore >= 40
-        ? `Partial alignment. The result shows some progress but additional actions may be needed to fully meet the strategic objective. Consider adjusting the approach based on the recommendations below.`
-        : `Low alignment with strategy. The outcome suggests significant deviation from the planned goal. Immediate review and corrective actions are recommended to realign with the commercial strategy.`;
-
-      const result: ActionResult = {
+      const analysisResult: ActionResult = {
         outcome: resultText,
         timestamp: new Date().toISOString(),
-        aiAnalysis: analysis,
-        alignmentScore,
-        recommendations,
+        aiAnalysis: result.aiAnalysis || 'Analysis completed.',
+        alignmentScore: result.alignmentScore ?? 50,
+        recommendations: result.recommendations || [],
       };
-      onSaveResult(result);
+      onSaveResult(analysisResult);
+      toast({ title: 'Result analyzed and saved' });
+    } catch (e: any) {
+      console.error('AI analysis error:', e);
+      toast({ title: 'AI analysis failed', description: e.message || 'Please try again.', variant: 'destructive' });
+    } finally {
       setIsAnalyzing(false);
-    }, 1200);
+    }
   };
 
   const result = task.actionResult;
@@ -126,6 +157,10 @@ export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack
           <h3 className="text-lg font-semibold text-foreground">{task.title}</h3>
           {task.description && <p className="text-sm text-muted-foreground mt-1">{task.description}</p>}
         </div>
+        <Button onClick={handleGenerateContent} disabled={isGenerating} className="gap-2" variant="outline">
+          {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+          {isGenerating ? 'Generating...' : 'AI Generate All'}
+        </Button>
       </div>
 
       {/* Preparedness Bar */}
@@ -168,7 +203,7 @@ export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack
               </p>
               <Textarea
                 rows={5}
-                placeholder="Example: Schedule a product demo with the procurement team at Acme Corp. Goal is to present our new pricing model and get a verbal commitment for a pilot program by end of Q2. Success = meeting scheduled + agenda confirmed."
+                placeholder="Example: Schedule a product demo with the procurement team at Acme Corp. Goal is to present our new pricing model and get a verbal commitment for a pilot program by end of Q2."
                 value={content.goal}
                 onChange={e => updateField('goal', e.target.value)}
               />
@@ -186,25 +221,11 @@ export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-xs text-muted-foreground">
-                Prepare a structured script for calls or face-to-face meetings. Include opening, key talking points, objection handling, and closing.
+                Structured script for calls or meetings. Include opening, key talking points, objection handling, and closing.
               </p>
               <Textarea
                 rows={12}
-                placeholder={`Opening:
-"Good morning [Name], this is [Your Name] from [Company]. I'm calling because we've been analyzing opportunities in [their sector] and I believe we can help you with [specific pain point]."
-
-Key Talking Points:
-1. Reference their current situation / recent news
-2. Present the value proposition specific to their needs
-3. Share a relevant success story from a similar company
-
-Objection Handling:
-• "Too expensive" → Focus on ROI and total cost of ownership
-• "Already have a provider" → Ask about satisfaction level and gaps
-• "Not the right time" → Plant the seed for future follow-up
-
-Close:
-"Based on what we've discussed, I'd like to propose a brief 30-minute meeting where I can show you exactly how this would work for [their company]. Would [date] or [date] work for you?"`}
+                placeholder="Opening, key talking points, objection handling, closing..."
                 value={content.callScript}
                 onChange={e => updateField('callScript', e.target.value)}
               />
@@ -222,26 +243,11 @@ Close:
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-xs text-muted-foreground">
-                Draft the email for this action. Include subject line, body, and call-to-action. Personalize for the target audience.
+                Draft the email including subject line, body, and call-to-action personalized for the target audience.
               </p>
               <Textarea
                 rows={12}
-                placeholder={`Subject: [Personalized subject line]
-
-Dear [Name],
-
-[Opening paragraph — reference something specific to them]
-
-[Value proposition paragraph — what you're offering and why it matters to them]
-
-[Social proof — brief success story or metric from a similar client]
-
-[Call to action — specific next step with proposed dates/times]
-
-Best regards,
-[Your name]
-[Your title]
-[Contact info]`}
+                placeholder="Subject line, body, call-to-action..."
                 value={content.emailTemplate}
                 onChange={e => updateField('emailTemplate', e.target.value)}
               />
@@ -259,30 +265,11 @@ Best regards,
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-xs text-muted-foreground">
-                Outline key slides, demo flow, or meeting agenda. Include data points, visuals to prepare, and handout materials.
+                Key slides, demo flow, meeting agenda, data points, and handout materials.
               </p>
               <Textarea
                 rows={12}
-                placeholder={`Meeting Agenda:
-1. Introduction & rapport building (5 min)
-2. Discovery — confirm their challenges (10 min)
-3. Solution presentation (15 min)
-4. Case study / ROI demonstration (10 min)
-5. Q&A and objection handling (10 min)
-6. Next steps & close (5 min)
-
-Key Slides to Prepare:
-• Company overview (tailored to their industry)
-• Problem statement specific to their segment
-• Solution architecture diagram
-• ROI calculator with their numbers
-• Implementation timeline
-• Customer success stories from their sector
-
-Materials to Bring:
-• Printed proposal summary
-• Product datasheet
-• Reference customer contacts`}
+                placeholder="Meeting agenda, key slides, materials..."
                 value={content.presentationNotes}
                 onChange={e => updateField('presentationNotes', e.target.value)}
               />
@@ -304,7 +291,7 @@ Materials to Bring:
                 <Textarea
                   rows={5}
                   className="mt-1"
-                  placeholder="Describe the result: what happened during the call/meeting/email? What did the customer say? What was agreed? Any objections or concerns raised?"
+                  placeholder="Describe the result: what happened during the call/meeting/email? What did the customer say? What was agreed?"
                   value={resultText}
                   onChange={e => setResultText(e.target.value)}
                 />
@@ -313,7 +300,7 @@ Materials to Bring:
                   onClick={handleAnalyzeResult}
                   disabled={!resultText.trim() || isAnalyzing}
                 >
-                  <Sparkles className="h-4 w-4" />
+                  {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                   {isAnalyzing ? 'Analyzing...' : 'Save & Analyze Result'}
                 </Button>
               </div>
