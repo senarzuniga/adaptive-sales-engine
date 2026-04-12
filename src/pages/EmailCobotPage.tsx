@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Bot, Send, Loader2, Mail, User, ArrowRight, Copy, CheckCircle, AlertCircle,
-  MessageSquare, Clock, Tag, UserPlus, FileText, Share2, Linkedin, Twitter, Instagram, Facebook
+  MessageSquare, Clock, Tag, UserPlus, FileText, Share2, Linkedin, Twitter, Instagram, Facebook, Globe
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
