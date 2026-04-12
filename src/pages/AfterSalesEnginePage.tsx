@@ -260,6 +260,7 @@ export default function AfterSalesEnginePage() {
             {isEs ? 'Diagnóstico IA Completo' : 'Full AI Diagnostic'}
           </Button>
         </div>
+      </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-6">
