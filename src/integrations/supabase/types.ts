@@ -14,6 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      after_sales_opportunities: {
+        Row: {
+          ai_generated: boolean | null
+          asset_id: string | null
+          company_id: string
+          created_at: string
+          customer_name: string | null
+          description: string | null
+          estimated_value: number | null
+          id: string
+          opportunity_type: string
+          probability: number | null
+          recommended_action: string | null
+          status: string
+          title: string
+          trigger_signal: string | null
+          updated_at: string
+        }
+        Insert: {
+          ai_generated?: boolean | null
+          asset_id?: string | null
+          company_id: string
+          created_at?: string
+          customer_name?: string | null
+          description?: string | null
+          estimated_value?: number | null
+          id?: string
+          opportunity_type?: string
+          probability?: number | null
+          recommended_action?: string | null
+          status?: string
+          title?: string
+          trigger_signal?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ai_generated?: boolean | null
+          asset_id?: string | null
+          company_id?: string
+          created_at?: string
+          customer_name?: string | null
+          description?: string | null
+          estimated_value?: number | null
+          id?: string
+          opportunity_type?: string
+          probability?: number | null
+          recommended_action?: string | null
+          status?: string
+          title?: string
+          trigger_signal?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "after_sales_opportunities_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "installed_base_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "after_sales_opportunities_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           additional_notes: string | null
@@ -182,6 +251,89 @@ export type Database = {
             columns: ["offer_item_id"]
             isOneToOne: false
             referencedRelation: "offer_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      installed_base_assets: {
+        Row: {
+          asset_name: string
+          asset_type: string | null
+          company_id: string
+          configuration: Json | null
+          connection_status: string
+          country: string | null
+          created_at: string
+          customer_name: string | null
+          customer_value_segment: string | null
+          id: string
+          installation_date: string | null
+          last_service_date: string | null
+          lifecycle_stage: string
+          location: string | null
+          next_service_due: string | null
+          notes: string | null
+          region: string | null
+          risk_level: string | null
+          serial_number: string
+          updated_at: string
+          usage_intensity: string | null
+          warranty_expiry: string | null
+        }
+        Insert: {
+          asset_name?: string
+          asset_type?: string | null
+          company_id: string
+          configuration?: Json | null
+          connection_status?: string
+          country?: string | null
+          created_at?: string
+          customer_name?: string | null
+          customer_value_segment?: string | null
+          id?: string
+          installation_date?: string | null
+          last_service_date?: string | null
+          lifecycle_stage?: string
+          location?: string | null
+          next_service_due?: string | null
+          notes?: string | null
+          region?: string | null
+          risk_level?: string | null
+          serial_number?: string
+          updated_at?: string
+          usage_intensity?: string | null
+          warranty_expiry?: string | null
+        }
+        Update: {
+          asset_name?: string
+          asset_type?: string | null
+          company_id?: string
+          configuration?: Json | null
+          connection_status?: string
+          country?: string | null
+          created_at?: string
+          customer_name?: string | null
+          customer_value_segment?: string | null
+          id?: string
+          installation_date?: string | null
+          last_service_date?: string | null
+          lifecycle_stage?: string
+          location?: string | null
+          next_service_due?: string | null
+          notes?: string | null
+          region?: string | null
+          risk_level?: string | null
+          serial_number?: string
+          updated_at?: string
+          usage_intensity?: string | null
+          warranty_expiry?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "installed_base_assets_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -615,6 +767,156 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "products_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_contracts: {
+        Row: {
+          annual_value: number | null
+          asset_id: string | null
+          company_id: string
+          contract_name: string
+          contract_type: string
+          created_at: string
+          customer_name: string | null
+          end_date: string | null
+          id: string
+          includes_parts: boolean | null
+          includes_predictive: boolean | null
+          includes_remote: boolean | null
+          kpis: Json | null
+          notes: string | null
+          recurring_revenue_type: string | null
+          sla_response_hours: number | null
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          annual_value?: number | null
+          asset_id?: string | null
+          company_id: string
+          contract_name?: string
+          contract_type?: string
+          created_at?: string
+          customer_name?: string | null
+          end_date?: string | null
+          id?: string
+          includes_parts?: boolean | null
+          includes_predictive?: boolean | null
+          includes_remote?: boolean | null
+          kpis?: Json | null
+          notes?: string | null
+          recurring_revenue_type?: string | null
+          sla_response_hours?: number | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          annual_value?: number | null
+          asset_id?: string | null
+          company_id?: string
+          contract_name?: string
+          contract_type?: string
+          created_at?: string
+          customer_name?: string | null
+          end_date?: string | null
+          id?: string
+          includes_parts?: boolean | null
+          includes_predictive?: boolean | null
+          includes_remote?: boolean | null
+          kpis?: Json | null
+          notes?: string | null
+          recurring_revenue_type?: string | null
+          sla_response_hours?: number | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_contracts_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "installed_base_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_contracts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_interventions: {
+        Row: {
+          asset_id: string | null
+          company_id: string
+          completed_date: string | null
+          cost: number | null
+          created_at: string
+          description: string | null
+          duration_hours: number | null
+          id: string
+          intervention_type: string
+          notes: string | null
+          parts_used: Json | null
+          resolution: string | null
+          scheduled_date: string | null
+          technician: string | null
+          was_remote: boolean | null
+        }
+        Insert: {
+          asset_id?: string | null
+          company_id: string
+          completed_date?: string | null
+          cost?: number | null
+          created_at?: string
+          description?: string | null
+          duration_hours?: number | null
+          id?: string
+          intervention_type?: string
+          notes?: string | null
+          parts_used?: Json | null
+          resolution?: string | null
+          scheduled_date?: string | null
+          technician?: string | null
+          was_remote?: boolean | null
+        }
+        Update: {
+          asset_id?: string | null
+          company_id?: string
+          completed_date?: string | null
+          cost?: number | null
+          created_at?: string
+          description?: string | null
+          duration_hours?: number | null
+          id?: string
+          intervention_type?: string
+          notes?: string | null
+          parts_used?: Json | null
+          resolution?: string | null
+          scheduled_date?: string | null
+          technician?: string | null
+          was_remote?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_interventions_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "installed_base_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_interventions_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
