@@ -1,49 +1,24 @@
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useData } from '@/store/DataStore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { useState } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { Save } from 'lucide-react';
-
-interface CompanyProfile {
-  companyName: string;
-  industry: string;
-  subSector: string;
-  headquarters: string;
-  operatingRegions: string;
-  employeeCount: string;
-  annualRevenue: string;
-  mainProducts: string;
-  mainCustomerSegments: string;
-  mainCompetitors: string;
-  salesTeamSize: string;
-  kamCount: string;
-  salesChannels: string;
-  currentChallenges: string;
-  strategicGoals: string;
-  additionalNotes: string;
-}
-
-const initialProfile: CompanyProfile = {
-  companyName: '', industry: '', subSector: '', headquarters: '',
-  operatingRegions: '', employeeCount: '', annualRevenue: '', mainProducts: '',
-  mainCustomerSegments: '', mainCompetitors: '', salesTeamSize: '', kamCount: '',
-  salesChannels: '', currentChallenges: '', strategicGoals: '', additionalNotes: '',
-};
+import type { CompanyProfile } from '@/store/DataStore';
 
 const CompanyInfoPage = () => {
   const { t } = useLanguage();
-  const [profile, setProfile] = useState<CompanyProfile>(initialProfile);
+  const { data, setCompanyProfile } = useData();
+  const profile = data.companyProfile;
 
   const update = (field: keyof CompanyProfile, value: string) => {
-    setProfile(prev => ({ ...prev, [field]: value }));
+    setCompanyProfile({ ...profile, [field]: value });
   };
 
   const handleSave = () => {
-    localStorage.setItem('acs_company_profile', JSON.stringify(profile));
     toast({ title: t.companyInfo.saved });
   };
 
@@ -72,40 +47,22 @@ const CompanyInfoPage = () => {
         <h2 className="text-2xl font-semibold text-foreground mb-2">{t.companyInfo.title}</h2>
         <p className="text-muted-foreground">{t.companyInfo.subtitle}</p>
       </div>
-
       <Card>
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {fields.map((field) => (
               <div key={field.key} className={field.type === 'textarea' ? 'md:col-span-2' : ''}>
-                <Label htmlFor={field.key} className="text-sm font-medium text-foreground mb-1.5 block">
-                  {field.label}
-                </Label>
+                <Label htmlFor={field.key} className="text-sm font-medium text-foreground mb-1.5 block">{field.label}</Label>
                 {field.type === 'input' ? (
-                  <Input
-                    id={field.key}
-                    value={profile[field.key]}
-                    onChange={(e) => update(field.key, e.target.value)}
-                    className="bg-background"
-                  />
+                  <Input id={field.key} value={profile[field.key]} onChange={(e) => update(field.key, e.target.value)} className="bg-background" />
                 ) : (
-                  <Textarea
-                    id={field.key}
-                    value={profile[field.key]}
-                    onChange={(e) => update(field.key, e.target.value)}
-                    rows={3}
-                    className="bg-background"
-                  />
+                  <Textarea id={field.key} value={profile[field.key]} onChange={(e) => update(field.key, e.target.value)} rows={3} className="bg-background" />
                 )}
               </div>
             ))}
           </div>
-
           <div className="flex justify-end mt-8">
-            <Button onClick={handleSave} className="gap-2">
-              <Save className="h-4 w-4" />
-              {t.companyInfo.save}
-            </Button>
+            <Button onClick={handleSave} className="gap-2"><Save className="h-4 w-4" /> {t.companyInfo.save}</Button>
           </div>
         </CardContent>
       </Card>
