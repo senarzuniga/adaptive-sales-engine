@@ -774,6 +774,66 @@ export type Database = {
           },
         ]
       }
+      service_contract_parts: {
+        Row: {
+          actual_consumption_ytd: number | null
+          consumption_forecast: Json | null
+          contract_id: string
+          created_at: string
+          id: string
+          included_qty_annual: number
+          is_included: boolean
+          notes: string | null
+          part_id: string
+          predicted_consumption_annual: number | null
+          unit_price_override: number | null
+          updated_at: string
+        }
+        Insert: {
+          actual_consumption_ytd?: number | null
+          consumption_forecast?: Json | null
+          contract_id: string
+          created_at?: string
+          id?: string
+          included_qty_annual?: number
+          is_included?: boolean
+          notes?: string | null
+          part_id: string
+          predicted_consumption_annual?: number | null
+          unit_price_override?: number | null
+          updated_at?: string
+        }
+        Update: {
+          actual_consumption_ytd?: number | null
+          consumption_forecast?: Json | null
+          contract_id?: string
+          created_at?: string
+          id?: string
+          included_qty_annual?: number
+          is_included?: boolean
+          notes?: string | null
+          part_id?: string
+          predicted_consumption_annual?: number | null
+          unit_price_override?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_contract_parts_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "service_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_contract_parts_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "spare_parts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_contracts: {
         Row: {
           annual_value: number | null
@@ -784,16 +844,20 @@ export type Database = {
           created_at: string
           customer_name: string | null
           end_date: string | null
+          estimated_parts_cost: number | null
           id: string
           includes_parts: boolean | null
           includes_predictive: boolean | null
           includes_remote: boolean | null
           kpis: Json | null
           notes: string | null
+          parts_budget_annual: number | null
+          parts_consumption_forecast: Json | null
           recurring_revenue_type: string | null
           sla_response_hours: number | null
           start_date: string | null
           status: string
+          total_contract_value: number | null
           updated_at: string
         }
         Insert: {
@@ -805,16 +869,20 @@ export type Database = {
           created_at?: string
           customer_name?: string | null
           end_date?: string | null
+          estimated_parts_cost?: number | null
           id?: string
           includes_parts?: boolean | null
           includes_predictive?: boolean | null
           includes_remote?: boolean | null
           kpis?: Json | null
           notes?: string | null
+          parts_budget_annual?: number | null
+          parts_consumption_forecast?: Json | null
           recurring_revenue_type?: string | null
           sla_response_hours?: number | null
           start_date?: string | null
           status?: string
+          total_contract_value?: number | null
           updated_at?: string
         }
         Update: {
@@ -826,16 +894,20 @@ export type Database = {
           created_at?: string
           customer_name?: string | null
           end_date?: string | null
+          estimated_parts_cost?: number | null
           id?: string
           includes_parts?: boolean | null
           includes_predictive?: boolean | null
           includes_remote?: boolean | null
           kpis?: Json | null
           notes?: string | null
+          parts_budget_annual?: number | null
+          parts_consumption_forecast?: Json | null
           recurring_revenue_type?: string | null
           sla_response_hours?: number | null
           start_date?: string | null
           status?: string
+          total_contract_value?: number | null
           updated_at?: string
         }
         Relationships: [

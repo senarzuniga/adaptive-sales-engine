@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useData } from '@/store/DataStore';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,6 +38,7 @@ const DEMAND_TRENDS = ['increasing', 'stable', 'decreasing', 'seasonal'];
 
 export default function AfterSalesEnginePage() {
   const { language } = useLanguage();
+  const navigate = useNavigate();
   const { activeCompanyId } = useData();
   const isEs = language === 'es';
 
@@ -248,10 +250,16 @@ export default function AfterSalesEnginePage() {
             {isEs ? 'De centro de costes reactivo a motor de ingresos escalable y predecible' : 'From reactive cost center to scalable, predictable revenue engine'}
           </p>
         </div>
-        <Button onClick={runDiagnostic} disabled={analyzing}>
-          {analyzing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Brain className="h-4 w-4 mr-2" />}
-          {isEs ? 'Diagnóstico IA Completo' : 'Full AI Diagnostic'}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate('/service-contract-builder')}>
+            <Shield className="h-4 w-4 mr-2" />
+            {isEs ? 'Constructor de Contratos' : 'Contract Builder'}
+          </Button>
+          <Button onClick={runDiagnostic} disabled={analyzing}>
+            {analyzing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Brain className="h-4 w-4 mr-2" />}
+            {isEs ? 'Diagnóstico IA Completo' : 'Full AI Diagnostic'}
+          </Button>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
