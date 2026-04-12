@@ -28,6 +28,7 @@ import {
   CalendarDays,
   Contact,
   Bot,
+  Share2,
 } from 'lucide-react';
 
 export function AppSidebar() {
@@ -51,6 +52,7 @@ export function AppSidebar() {
     { title: t.nav.weeklyPlanner, url: '/weekly-planner', icon: CalendarDays },
     { title: t.nav.teamDirectory, url: '/team-directory', icon: Contact },
     { title: t.nav.emailCobot, url: '/email-cobot', icon: Bot },
+    { title: t.nav.socialMedia, url: '/social-media', icon: Share2 },
   ];
 
   return (
