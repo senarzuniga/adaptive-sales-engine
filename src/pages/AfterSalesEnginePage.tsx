@@ -38,6 +38,7 @@ const DEMAND_TRENDS = ['increasing', 'stable', 'decreasing', 'seasonal'];
 
 export default function AfterSalesEnginePage() {
   const { language } = useLanguage();
+  const navigate = useNavigate();
   const { activeCompanyId } = useData();
   const isEs = language === 'es';
 
