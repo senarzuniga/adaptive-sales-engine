@@ -14,7 +14,405 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      companies: {
+        Row: {
+          additional_notes: string | null
+          annual_revenue: string | null
+          company_name: string
+          created_at: string
+          current_challenges: string | null
+          employee_count: string | null
+          headquarters: string | null
+          id: string
+          industry: string | null
+          kam_count: string | null
+          main_competitors: string | null
+          main_customer_segments: string | null
+          main_products: string | null
+          operating_regions: string | null
+          sales_channels: string | null
+          sales_team_size: string | null
+          strategic_goals: string | null
+          sub_sector: string | null
+          updated_at: string
+        }
+        Insert: {
+          additional_notes?: string | null
+          annual_revenue?: string | null
+          company_name: string
+          created_at?: string
+          current_challenges?: string | null
+          employee_count?: string | null
+          headquarters?: string | null
+          id?: string
+          industry?: string | null
+          kam_count?: string | null
+          main_competitors?: string | null
+          main_customer_segments?: string | null
+          main_products?: string | null
+          operating_regions?: string | null
+          sales_channels?: string | null
+          sales_team_size?: string | null
+          strategic_goals?: string | null
+          sub_sector?: string | null
+          updated_at?: string
+        }
+        Update: {
+          additional_notes?: string | null
+          annual_revenue?: string | null
+          company_name?: string
+          created_at?: string
+          current_challenges?: string | null
+          employee_count?: string | null
+          headquarters?: string | null
+          id?: string
+          industry?: string | null
+          kam_count?: string | null
+          main_competitors?: string | null
+          main_customer_segments?: string | null
+          main_products?: string | null
+          operating_regions?: string | null
+          sales_channels?: string | null
+          sales_team_size?: string | null
+          strategic_goals?: string | null
+          sub_sector?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      opportunities: {
+        Row: {
+          company_id: string
+          contact: string | null
+          contract_prob: number | null
+          country: string | null
+          created_at: string
+          customer_name: string | null
+          est_purchasing_quarter: string | null
+          est_purchasing_year: string | null
+          est_revenue: number | null
+          id: string
+          kam: string | null
+          margin: number | null
+          opp_number: string | null
+          product_family: string | null
+          region: string | null
+          scope: string | null
+          segment: string | null
+          status: string | null
+        }
+        Insert: {
+          company_id: string
+          contact?: string | null
+          contract_prob?: number | null
+          country?: string | null
+          created_at?: string
+          customer_name?: string | null
+          est_purchasing_quarter?: string | null
+          est_purchasing_year?: string | null
+          est_revenue?: number | null
+          id?: string
+          kam?: string | null
+          margin?: number | null
+          opp_number?: string | null
+          product_family?: string | null
+          region?: string | null
+          scope?: string | null
+          segment?: string | null
+          status?: string | null
+        }
+        Update: {
+          company_id?: string
+          contact?: string | null
+          contract_prob?: number | null
+          country?: string | null
+          created_at?: string
+          customer_name?: string | null
+          est_purchasing_quarter?: string | null
+          est_purchasing_year?: string | null
+          est_revenue?: number | null
+          id?: string
+          kam?: string | null
+          margin?: number | null
+          opp_number?: string | null
+          product_family?: string | null
+          region?: string | null
+          scope?: string | null
+          segment?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunities_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          company_id: string
+          country: string | null
+          created_at: string
+          customer_name: string | null
+          first_offer_date: string | null
+          id: string
+          kam: string | null
+          margin: number | null
+          opp_number: string | null
+          po_date: string | null
+          product_family: string | null
+          purchasing_month: string | null
+          purchasing_quarter: string | null
+          purchasing_year: string | null
+          region: string | null
+          scope: string | null
+          segment: string | null
+          selling_price: number | null
+        }
+        Insert: {
+          company_id: string
+          country?: string | null
+          created_at?: string
+          customer_name?: string | null
+          first_offer_date?: string | null
+          id?: string
+          kam?: string | null
+          margin?: number | null
+          opp_number?: string | null
+          po_date?: string | null
+          product_family?: string | null
+          purchasing_month?: string | null
+          purchasing_quarter?: string | null
+          purchasing_year?: string | null
+          region?: string | null
+          scope?: string | null
+          segment?: string | null
+          selling_price?: number | null
+        }
+        Update: {
+          company_id?: string
+          country?: string | null
+          created_at?: string
+          customer_name?: string | null
+          first_offer_date?: string | null
+          id?: string
+          kam?: string | null
+          margin?: number | null
+          opp_number?: string | null
+          po_date?: string | null
+          product_family?: string | null
+          purchasing_month?: string | null
+          purchasing_quarter?: string | null
+          purchasing_year?: string | null
+          region?: string | null
+          scope?: string | null
+          segment?: string | null
+          selling_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          average_value: number | null
+          comments: string | null
+          company_id: string
+          created_at: string
+          id: string
+          name: string | null
+          type: string | null
+        }
+        Insert: {
+          average_value?: number | null
+          comments?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          name?: string | null
+          type?: string | null
+        }
+        Update: {
+          average_value?: number | null
+          comments?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          name?: string | null
+          type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      strategy: {
+        Row: {
+          company_id: string
+          created_at: string
+          est_purchasing_quarter: string | null
+          est_revenue: number | null
+          id: string
+          kam: string | null
+          margin: number | null
+          number_of_segment: string | null
+          product_family: string | null
+          region: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          est_purchasing_quarter?: string | null
+          est_revenue?: number | null
+          id?: string
+          kam?: string | null
+          margin?: number | null
+          number_of_segment?: string | null
+          product_family?: string | null
+          region?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          est_purchasing_quarter?: string | null
+          est_revenue?: number | null
+          id?: string
+          kam?: string | null
+          margin?: number | null
+          number_of_segment?: string | null
+          product_family?: string | null
+          region?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategy_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          action_content: Json | null
+          action_result: Json | null
+          assignee: string | null
+          category: string
+          company_id: string
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          notes: Json | null
+          pillar: string
+          priority: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          action_content?: Json | null
+          action_result?: Json | null
+          assignee?: string | null
+          category?: string
+          company_id: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: Json | null
+          pillar?: string
+          priority?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          action_content?: Json | null
+          action_result?: Json | null
+          assignee?: string | null
+          category?: string
+          company_id?: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: Json | null
+          pillar?: string
+          priority?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      upload_log: {
+        Row: {
+          company_id: string
+          created_at: string
+          detected_type: string
+          errors: Json | null
+          file_name: string
+          id: string
+          row_count: number | null
+          status: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          detected_type: string
+          errors?: Json | null
+          file_name: string
+          id?: string
+          row_count?: number | null
+          status?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          detected_type?: string
+          errors?: Json | null
+          file_name?: string
+          id?: string
+          row_count?: number | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upload_log_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
