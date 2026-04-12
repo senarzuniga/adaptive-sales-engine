@@ -4,8 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
-import { Upload, AlertTriangle, TrendingUp, Users, MapPin, Package, DollarSign } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend, ComposedChart } from 'recharts';
+import { Upload, AlertTriangle, TrendingUp, Users, MapPin, Package, DollarSign, Target } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useMemo } from 'react';
 
@@ -19,13 +21,17 @@ function groupBy<T>(arr: T[], keyFn: (item: T) => string): Record<string, T[]> {
   }, {} as Record<string, T[]>);
 }
 
+const fmt = (n: number) => n >= 1000000 ? `${(n / 1000000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(0)}K` : n.toFixed(0);
+
 const Analysis360Page = () => {
   const { t } = useLanguage();
   const { data, hasData } = useData();
   const navigate = useNavigate();
   const [periodFilter, setPeriodFilter] = useState<string>('all');
+  const [strategyView, setStrategyView] = useState<'product' | 'region' | 'kam'>('product');
 
   const orders = data.orders;
+  const strategy = data.strategy;
   const years = useMemo(() => [...new Set(orders.map(o => o.purchasingYear).filter(Boolean))].sort(), [orders]);
 
   const filtered = useMemo(() => {
@@ -37,7 +43,6 @@ const Analysis360Page = () => {
   const totalMargin = useMemo(() => filtered.reduce((s, o) => s + o.margin, 0), [filtered]);
   const avgMarginPct = totalRevenue > 0 ? (totalMargin / totalRevenue * 100) : 0;
 
-  // Sales by KAM
   const byKam = useMemo(() => {
     const groups = groupBy(filtered, o => o.kam);
     return Object.entries(groups).map(([kam, items]) => ({
@@ -45,7 +50,6 @@ const Analysis360Page = () => {
     })).sort((a, b) => b.revenue - a.revenue);
   }, [filtered]);
 
-  // Sales by Region
   const byRegion = useMemo(() => {
     const groups = groupBy(filtered, o => o.region);
     return Object.entries(groups).map(([region, items]) => ({
@@ -53,7 +57,6 @@ const Analysis360Page = () => {
     })).sort((a, b) => b.revenue - a.revenue);
   }, [filtered]);
 
-  // Sales by Customer
   const byCustomer = useMemo(() => {
     const groups = groupBy(filtered, o => o.customerName);
     return Object.entries(groups).map(([name, items]) => ({
@@ -61,7 +64,6 @@ const Analysis360Page = () => {
     })).sort((a, b) => b.revenue - a.revenue);
   }, [filtered]);
 
-  // Sales by Product Family
   const byProduct = useMemo(() => {
     const groups = groupBy(filtered, o => o.productFamily);
     return Object.entries(groups).map(([name, items]) => ({
@@ -69,7 +71,6 @@ const Analysis360Page = () => {
     })).sort((a, b) => b.revenue - a.revenue);
   }, [filtered]);
 
-  // Sales by Year (trend)
   const byYear = useMemo(() => {
     const groups = groupBy(orders, o => o.purchasingYear);
     return Object.entries(groups).map(([year, items]) => ({
@@ -78,7 +79,6 @@ const Analysis360Page = () => {
     })).sort((a, b) => a.name.localeCompare(b.name));
   }, [orders]);
 
-  // Portfolio Risk (Pareto)
   const paretoData = useMemo(() => {
     const sorted = [...byCustomer];
     let cumulative = 0;
@@ -95,7 +95,6 @@ const Analysis360Page = () => {
 
   const riskLevel = customersFor80Pct <= 3 ? 'high' : customersFor80Pct <= 6 ? 'medium' : 'low';
 
-  // Lead Time calculation
   const avgLeadTime = useMemo(() => {
     const valid = filtered.filter(o => o.poDate && o.firstOfferDate);
     if (valid.length === 0) return null;
@@ -106,6 +105,47 @@ const Analysis360Page = () => {
     }, 0);
     return Math.round(totalDays / valid.length);
   }, [filtered]);
+
+  // ─── Strategy vs Actuals ───
+  const strategyVsActualsByProduct = useMemo(() => {
+    const stratByProduct = groupBy(strategy, s => s.productFamily);
+    const actualByProduct = groupBy(filtered, o => o.productFamily);
+    const allKeys = [...new Set([...Object.keys(stratByProduct), ...Object.keys(actualByProduct)])];
+    return allKeys.map(key => {
+      const planned = (stratByProduct[key] || []).reduce((s, r) => s + r.estRevenue, 0);
+      const actual = (actualByProduct[key] || []).reduce((s, r) => s + r.sellingPrice, 0);
+      const plannedMargin = (stratByProduct[key] || []).reduce((s, r) => s + r.margin, 0);
+      const actualMargin = (actualByProduct[key] || []).reduce((s, r) => s + r.margin, 0);
+      return { name: key, planned, actual, gap: actual - planned, pct: planned > 0 ? (actual / planned * 100) : 0, plannedMargin, actualMargin };
+    }).sort((a, b) => b.planned - a.planned);
+  }, [strategy, filtered]);
+
+  const strategyVsActualsByRegion = useMemo(() => {
+    const stratByRegion = groupBy(strategy, s => s.region);
+    const actualByRegion = groupBy(filtered, o => o.region);
+    const allKeys = [...new Set([...Object.keys(stratByRegion), ...Object.keys(actualByRegion)])];
+    return allKeys.map(key => {
+      const planned = (stratByRegion[key] || []).reduce((s, r) => s + r.estRevenue, 0);
+      const actual = (actualByRegion[key] || []).reduce((s, r) => s + r.sellingPrice, 0);
+      return { name: key, planned, actual, gap: actual - planned, pct: planned > 0 ? (actual / planned * 100) : 0 };
+    }).sort((a, b) => b.planned - a.planned);
+  }, [strategy, filtered]);
+
+  const strategyVsActualsByKam = useMemo(() => {
+    const stratByKam = groupBy(strategy, s => s.kam);
+    const actualByKam = groupBy(filtered, o => o.kam);
+    const allKeys = [...new Set([...Object.keys(stratByKam), ...Object.keys(actualByKam)])];
+    return allKeys.map(key => {
+      const planned = (stratByKam[key] || []).reduce((s, r) => s + r.estRevenue, 0);
+      const actual = (actualByKam[key] || []).reduce((s, r) => s + r.sellingPrice, 0);
+      return { name: key, planned, actual, gap: actual - planned, pct: planned > 0 ? (actual / planned * 100) : 0 };
+    }).sort((a, b) => b.planned - a.planned);
+  }, [strategy, filtered]);
+
+  const totalPlanned = strategy.reduce((s, r) => s + r.estRevenue, 0);
+  const overallAchievement = totalPlanned > 0 ? (totalRevenue / totalPlanned * 100) : 0;
+
+  const currentStrategyData = strategyView === 'product' ? strategyVsActualsByProduct : strategyView === 'region' ? strategyVsActualsByRegion : strategyVsActualsByKam;
 
   if (!hasData || orders.length === 0) {
     return (
@@ -122,16 +162,12 @@ const Analysis360Page = () => {
             <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-foreground mb-2">{t.dashboard.noDataYet}</h3>
             <p className="text-muted-foreground text-sm mb-4">{t.dashboard.uploadPrompt}</p>
-            <Button onClick={() => navigate('/upload')} className="gap-2">
-              <Upload className="h-4 w-4" /> {t.dashboard.uploadData}
-            </Button>
+            <Button onClick={() => navigate('/upload')} className="gap-2"><Upload className="h-4 w-4" /> {t.dashboard.uploadData}</Button>
           </CardContent>
         </Card>
       </div>
     );
   }
-
-  const fmt = (n: number) => n >= 1000000 ? `${(n / 1000000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(0)}K` : n.toFixed(0);
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
@@ -170,8 +206,10 @@ const Analysis360Page = () => {
           <p className="text-2xl font-bold text-foreground">{filtered.length}</p>
         </CardContent></Card>
         <Card><CardContent className="pt-6">
-          <div className="flex items-center gap-2 mb-1"><MapPin className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Avg Lead Time</span></div>
-          <p className="text-2xl font-bold text-foreground">{avgLeadTime != null ? `${avgLeadTime}d` : '—'}</p>
+          <div className="flex items-center gap-2 mb-1"><Target className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Strategy Achievement</span></div>
+          <p className={`text-2xl font-bold ${overallAchievement >= 100 ? 'text-success' : overallAchievement >= 70 ? 'text-warning' : 'text-destructive'}`}>
+            {totalPlanned > 0 ? `${overallAchievement.toFixed(0)}%` : '—'}
+          </p>
         </CardContent></Card>
       </div>
 
@@ -192,13 +230,16 @@ const Analysis360Page = () => {
       )}
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="kam">By KAM</TabsTrigger>
           <TabsTrigger value="region">By Region</TabsTrigger>
           <TabsTrigger value="customer">By Customer</TabsTrigger>
           <TabsTrigger value="product">By Product</TabsTrigger>
           <TabsTrigger value="pareto">Portfolio Risk</TabsTrigger>
+          <TabsTrigger value="strategy" className="gap-1">
+            <Target className="h-3 w-3" /> Strategy vs Actuals
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -208,8 +249,7 @@ const Analysis360Page = () => {
                 <LineChart data={byYear}><CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                   <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={fmt} />
-                  <Tooltip formatter={(v: number) => fmt(v)} />
-                  <Legend />
+                  <Tooltip formatter={(v: number) => fmt(v)} /> <Legend />
                   <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} name="Revenue" />
                   <Line type="monotone" dataKey="margin" stroke="hsl(150,60%,45%)" strokeWidth={2} name="Margin" />
                 </LineChart>
@@ -291,18 +331,121 @@ const Analysis360Page = () => {
                 </span>
               </p>
               <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={paretoData.slice(0, 20)}><CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <ComposedChart data={paretoData.slice(0, 20)}><CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} angle={-30} textAnchor="end" height={80} />
                   <YAxis yAxisId="revenue" tickFormatter={fmt} stroke="hsl(var(--muted-foreground))" fontSize={12} />
                   <YAxis yAxisId="pct" orientation="right" domain={[0, 100]} stroke="hsl(var(--muted-foreground))" fontSize={12} unit="%" />
-                  <Tooltip />
-                  <Legend />
+                  <Tooltip /> <Legend />
                   <Bar yAxisId="revenue" dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Revenue" />
                   <Line yAxisId="pct" type="monotone" dataKey="cumulativePct" stroke="hsl(0,70%,55%)" strokeWidth={2} name="Cumulative %" dot={false} />
-                </BarChart>
+                </ComposedChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ─── Strategy vs Actuals Tab ─── */}
+        <TabsContent value="strategy">
+          {strategy.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Target className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                <h3 className="font-semibold text-foreground mb-2">No Strategy Data</h3>
+                <p className="text-sm text-muted-foreground mb-4">Upload your Strategy & Budget Plan to compare planned targets against actual sales results.</p>
+                <Button variant="outline" onClick={() => navigate('/upload')}>Upload Strategy Data</Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              {/* Overall achievement KPIs */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <Card><CardContent className="pt-5 pb-4">
+                  <p className="text-xs text-muted-foreground mb-1">Planned Revenue</p>
+                  <p className="text-xl font-bold text-foreground">{fmt(totalPlanned)}</p>
+                </CardContent></Card>
+                <Card><CardContent className="pt-5 pb-4">
+                  <p className="text-xs text-muted-foreground mb-1">Actual Revenue</p>
+                  <p className="text-xl font-bold text-foreground">{fmt(totalRevenue)}</p>
+                </CardContent></Card>
+                <Card><CardContent className="pt-5 pb-4">
+                  <p className="text-xs text-muted-foreground mb-1">Gap</p>
+                  <p className={`text-xl font-bold ${totalRevenue - totalPlanned >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    {totalRevenue - totalPlanned >= 0 ? '+' : ''}{fmt(totalRevenue - totalPlanned)}
+                  </p>
+                </CardContent></Card>
+                <Card><CardContent className="pt-5 pb-4">
+                  <p className="text-xs text-muted-foreground mb-1">Achievement</p>
+                  <p className={`text-xl font-bold ${overallAchievement >= 100 ? 'text-success' : overallAchievement >= 70 ? 'text-warning' : 'text-destructive'}`}>
+                    {overallAchievement.toFixed(1)}%
+                  </p>
+                </CardContent></Card>
+              </div>
+
+              {/* View selector */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">View by:</span>
+                <Select value={strategyView} onValueChange={(v) => setStrategyView(v as any)}>
+                  <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="product">Product Family</SelectItem>
+                    <SelectItem value="region">Region</SelectItem>
+                    <SelectItem value="kam">KAM</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Chart */}
+              <Card><CardHeader><CardTitle className="text-base">Planned vs Actual Revenue — by {strategyView === 'product' ? 'Product Family' : strategyView === 'region' ? 'Region' : 'KAM'}</CardTitle></CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={400}>
+                    <BarChart data={currentStrategyData}><CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <YAxis tickFormatter={fmt} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <Tooltip formatter={(v: number) => fmt(v)} /> <Legend />
+                      <Bar dataKey="planned" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} name="Planned" opacity={0.5} />
+                      <Bar dataKey="actual" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Actual" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Detailed table */}
+              <Card><CardHeader><CardTitle className="text-base">Detailed Breakdown</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader><TableRow>
+                        <TableHead className="text-xs">{strategyView === 'product' ? 'Product Family' : strategyView === 'region' ? 'Region' : 'KAM'}</TableHead>
+                        <TableHead className="text-xs text-right">Planned</TableHead>
+                        <TableHead className="text-xs text-right">Actual</TableHead>
+                        <TableHead className="text-xs text-right">Gap</TableHead>
+                        <TableHead className="text-xs text-right">Achievement</TableHead>
+                        <TableHead className="text-xs">Status</TableHead>
+                      </TableRow></TableHeader>
+                      <TableBody>
+                        {currentStrategyData.map((row) => (
+                          <TableRow key={row.name}>
+                            <TableCell className="text-xs font-medium">{row.name}</TableCell>
+                            <TableCell className="text-xs text-right tabular-nums">{fmt(row.planned)}</TableCell>
+                            <TableCell className="text-xs text-right tabular-nums">{fmt(row.actual)}</TableCell>
+                            <TableCell className={`text-xs text-right tabular-nums font-medium ${row.gap >= 0 ? 'text-success' : 'text-destructive'}`}>
+                              {row.gap >= 0 ? '+' : ''}{fmt(row.gap)}
+                            </TableCell>
+                            <TableCell className="text-xs text-right tabular-nums">{row.pct.toFixed(0)}%</TableCell>
+                            <TableCell>
+                              <Badge variant={row.pct >= 100 ? 'default' : row.pct >= 70 ? 'secondary' : 'destructive'} className="text-[10px]">
+                                {row.pct >= 100 ? 'On Track' : row.pct >= 70 ? 'At Risk' : 'Behind'}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>
