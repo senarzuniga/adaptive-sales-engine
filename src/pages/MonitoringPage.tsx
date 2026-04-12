@@ -4,7 +4,7 @@ import type { MonitoringTask, TaskPillar, TaskStatus, TaskPriority, TaskCategory
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { VoiceTextInput } from '@/components/VoiceTextInput';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -181,7 +181,7 @@ const MonitoringPage = () => {
               </div>
               <div>
                 <Label className="text-sm">Description</Label>
-                <Textarea rows={2} value={editingTask.description || ''} onChange={e => setEditingTask(p => ({ ...p, description: e.target.value }))} />
+                <VoiceTextInput rows={2} value={editingTask.description || ''} onChange={v => setEditingTask(p => ({ ...p, description: v }))} placeholder="Describe the action... (type or use voice)" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
