@@ -1,6 +1,6 @@
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useData } from '@/store/DataStore';
-import type { MonitoringTask, TaskPillar, TaskStatus, TaskPriority, TaskCategory } from '@/store/DataStore';
+import type { MonitoringTask, TaskPillar, TaskStatus, TaskPriority, TaskCategory, ActionContent, ActionResult } from '@/store/DataStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,10 +14,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Progress } from '@/components/ui/progress';
 import {
   Activity, CheckCircle, Clock, AlertTriangle, Plus, Trash2, Edit2, CalendarDays,
-  BarChart3, Building2, Users, Wrench, Brain, Heart, Package, Target
+  BarChart3, Building2, Users, Wrench, Brain, Heart, Package, Target, Eye
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { toast } from '@/hooks/use-toast';
+import { ActionContentPanel } from '@/components/ActionContentPanel';
 
 const PILLAR_LABELS: Record<TaskPillar, string> = {
   general: 'General', p0: '360º Analysis', p1: 'Sales Architecture', p2: 'KAM',
@@ -38,14 +39,16 @@ const CATEGORY_LABELS: Record<TaskCategory, string> = {
   strategy: 'Strategy', data: 'Data', meeting: 'Meeting', report: 'Report',
 };
 
+const emptyActionContent: ActionContent = { goal: '', callScript: '', emailTemplate: '', presentationNotes: '' };
+
 const emptyTask = (): Partial<MonitoringTask> => ({
   title: '', description: '', pillar: 'general', status: 'todo', priority: 'medium',
-  category: 'follow_up', assignee: '', dueDate: '', notes: [],
+  category: 'follow_up', assignee: '', dueDate: '', notes: [], actionContent: emptyActionContent,
 });
 
 const MonitoringPage = () => {
   const { t } = useLanguage();
-  const { data, addTask, updateTask, deleteTask, hasData } = useData();
+  const { data, addTask, updateTask, deleteTask } = useData();
   const tasks = data.tasks;
 
   const [filterPillar, setFilterPillar] = useState<string>('all');
@@ -53,6 +56,9 @@ const MonitoringPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Partial<MonitoringTask>>(emptyTask());
   const [editId, setEditId] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+  const selectedTask = useMemo(() => tasks.find(t => t.id === selectedTaskId), [tasks, selectedTaskId]);
 
   const filtered = useMemo(() => {
     return tasks.filter(t => {
@@ -75,7 +81,6 @@ const MonitoringPage = () => {
 
   const completionPct = stats.total > 0 ? (stats.done / stats.total * 100) : 0;
 
-  // Data readiness
   const dataChecks = [
     { label: 'Orders data', ok: data.orders.length > 0, count: data.orders.length },
     { label: 'Opportunities data', ok: data.opportunities.length > 0, count: data.opportunities.length },
@@ -102,6 +107,7 @@ const MonitoringPage = () => {
         dueDate: editingTask.dueDate || '',
         createdAt: new Date().toISOString(),
         notes: [],
+        actionContent: editingTask.actionContent || emptyActionContent,
       };
       addTask(newTask);
       toast({ title: 'Task created' });
@@ -125,6 +131,34 @@ const MonitoringPage = () => {
     });
   };
 
+  const handleUpdateContent = (content: ActionContent) => {
+    if (selectedTaskId) {
+      updateTask(selectedTaskId, { actionContent: content });
+      toast({ title: 'Action content saved' });
+    }
+  };
+
+  const handleSaveResult = (result: ActionResult) => {
+    if (selectedTaskId) {
+      updateTask(selectedTaskId, { actionResult: result });
+      toast({ title: 'Result analyzed and saved' });
+    }
+  };
+
+  // If a task is selected, show the content panel
+  if (selectedTask) {
+    return (
+      <div className="p-6 lg:p-8 max-w-5xl mx-auto">
+        <ActionContentPanel
+          task={selectedTask}
+          onUpdateContent={handleUpdateContent}
+          onSaveResult={handleSaveResult}
+          onBack={() => setSelectedTaskId(null)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
@@ -135,11 +169,11 @@ const MonitoringPage = () => {
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2" onClick={() => { setEditingTask(emptyTask()); setEditId(null); }}>
-              <Plus className="h-4 w-4" /> New Task
+              <Plus className="h-4 w-4" /> New Action
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle>{editId ? 'Edit Task' : 'New Task'}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editId ? 'Edit Action' : 'New Action'}</DialogTitle></DialogHeader>
             <div className="space-y-4 mt-2">
               <div>
                 <Label className="text-sm">Title</Label>
@@ -205,7 +239,7 @@ const MonitoringPage = () => {
       <Tabs defaultValue="overview">
         <TabsList className="mb-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="tasks">Tasks ({tasks.length})</TabsTrigger>
+          <TabsTrigger value="tasks">Actions ({tasks.length})</TabsTrigger>
           <TabsTrigger value="data">Data Readiness</TabsTrigger>
         </TabsList>
 
@@ -214,7 +248,7 @@ const MonitoringPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
             <Card><CardContent className="pt-6 flex items-center gap-4">
               <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center"><Target className="h-5 w-5 text-primary" /></div>
-              <div><p className="text-2xl font-bold text-foreground">{stats.total}</p><p className="text-xs text-muted-foreground">Total Tasks</p></div>
+              <div><p className="text-2xl font-bold text-foreground">{stats.total}</p><p className="text-xs text-muted-foreground">Total Actions</p></div>
             </CardContent></Card>
             <Card><CardContent className="pt-6 flex items-center gap-4">
               <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center"><CheckCircle className="h-5 w-5 text-success" /></div>
@@ -234,7 +268,6 @@ const MonitoringPage = () => {
             </CardContent></Card>
           </div>
 
-          {/* Progress */}
           <Card className="mb-8">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-3">
@@ -245,10 +278,9 @@ const MonitoringPage = () => {
             </CardContent>
           </Card>
 
-          {/* By Pillar */}
           {stats.byPillar.length > 0 && (
             <Card>
-              <CardHeader><CardTitle className="text-base">Tasks by Pillar</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">Actions by Pillar</CardTitle></CardHeader>
               <CardContent>
                 <div className="space-y-3">
                   {stats.byPillar.map(([pillar, count]) => {
@@ -261,7 +293,7 @@ const MonitoringPage = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-sm font-medium text-foreground truncate">{PILLAR_LABELS[pillar as TaskPillar]}</span>
-                            <span className="text-xs text-muted-foreground">{count} tasks · {donePct.toFixed(0)}%</span>
+                            <span className="text-xs text-muted-foreground">{count} actions · {donePct.toFixed(0)}%</span>
                           </div>
                           <Progress value={donePct} className="h-1.5" />
                         </div>
@@ -276,16 +308,16 @@ const MonitoringPage = () => {
           {tasks.length === 0 && (
             <Card><CardContent className="py-12 text-center">
               <Activity className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <h3 className="font-semibold text-foreground mb-2">No tasks yet</h3>
-              <p className="text-sm text-muted-foreground mb-4">Create tasks to track actions across all transformation pillars.</p>
+              <h3 className="font-semibold text-foreground mb-2">No actions yet</h3>
+              <p className="text-sm text-muted-foreground mb-4">Create actions to track commercial activities across all transformation pillars.</p>
               <Button onClick={() => { setEditingTask(emptyTask()); setEditId(null); setDialogOpen(true); }} className="gap-2">
-                <Plus className="h-4 w-4" /> Create First Task
+                <Plus className="h-4 w-4" /> Create First Action
               </Button>
             </CardContent></Card>
           )}
         </TabsContent>
 
-        {/* ─── Tasks Tab ─── */}
+        {/* ─── Actions Tab ─── */}
         <TabsContent value="tasks">
           <div className="flex items-center gap-3 mb-4">
             <Select value={filterPillar} onValueChange={setFilterPillar}>
@@ -307,7 +339,7 @@ const MonitoringPage = () => {
           </div>
 
           {filtered.length === 0 ? (
-            <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">No tasks match your filters.</CardContent></Card>
+            <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">No actions match your filters.</CardContent></Card>
           ) : (
             <Card>
               <CardContent className="pt-4">
@@ -315,21 +347,25 @@ const MonitoringPage = () => {
                   <Table>
                     <TableHeader><TableRow>
                       <TableHead className="text-xs w-8"></TableHead>
-                      <TableHead className="text-xs">Task</TableHead>
+                      <TableHead className="text-xs">Action</TableHead>
                       <TableHead className="text-xs">Pillar</TableHead>
                       <TableHead className="text-xs">Category</TableHead>
                       <TableHead className="text-xs">Priority</TableHead>
                       <TableHead className="text-xs">Assignee</TableHead>
                       <TableHead className="text-xs">Due</TableHead>
                       <TableHead className="text-xs">Status</TableHead>
-                      <TableHead className="text-xs w-16"></TableHead>
+                      <TableHead className="text-xs">Prep</TableHead>
+                      <TableHead className="text-xs w-24"></TableHead>
                     </TableRow></TableHeader>
                     <TableBody>
                       {filtered.map(task => {
                         const isOverdue = task.status !== 'done' && task.dueDate && new Date(task.dueDate) < new Date();
+                        const ac = task.actionContent || emptyActionContent;
+                        const prepFields = [ac.goal, ac.callScript, ac.emailTemplate, ac.presentationNotes];
+                        const prepPct = Math.round((prepFields.filter(f => f && f.trim().length > 0).length / prepFields.length) * 100);
                         return (
-                          <TableRow key={task.id} className={task.status === 'done' ? 'opacity-60' : ''}>
-                            <TableCell>
+                          <TableRow key={task.id} className={`${task.status === 'done' ? 'opacity-60' : ''} cursor-pointer hover:bg-muted/50`} onClick={() => setSelectedTaskId(task.id)}>
+                            <TableCell onClick={e => e.stopPropagation()}>
                               <button onClick={() => cycleStatus(task)} className="hover:opacity-70">
                                 {task.status === 'done' ? <CheckCircle className="h-4 w-4 text-success" /> :
                                   task.status === 'in_progress' ? <Clock className="h-4 w-4 text-primary" /> :
@@ -357,11 +393,20 @@ const MonitoringPage = () => {
                               </Badge>
                             </TableCell>
                             <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Progress value={prepPct} className="h-1.5 w-12" />
+                                <span className="text-[10px] text-muted-foreground">{prepPct}%</span>
+                              </div>
+                            </TableCell>
+                            <TableCell onClick={e => e.stopPropagation()}>
                               <div className="flex gap-1">
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setSelectedTaskId(task.id)} title="View content">
+                                  <Eye className="h-3 w-3" />
+                                </Button>
                                 <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openEdit(task)}>
                                   <Edit2 className="h-3 w-3" />
                                 </Button>
-                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive" onClick={() => { deleteTask(task.id); toast({ title: 'Task deleted' }); }}>
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive" onClick={() => { deleteTask(task.id); toast({ title: 'Action deleted' }); }}>
                                   <Trash2 className="h-3 w-3" />
                                 </Button>
                               </div>
