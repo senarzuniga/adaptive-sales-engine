@@ -307,6 +307,56 @@ export type Database = {
           },
         ]
       }
+      social_media_accounts: {
+        Row: {
+          account_name: string
+          api_credentials: Json | null
+          company_id: string
+          created_at: string
+          id: string
+          is_enabled: boolean
+          notes: string | null
+          platform: string
+          posting_preferences: Json | null
+          profile_url: string
+          updated_at: string
+        }
+        Insert: {
+          account_name?: string
+          api_credentials?: Json | null
+          company_id: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          notes?: string | null
+          platform?: string
+          posting_preferences?: Json | null
+          profile_url?: string
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string
+          api_credentials?: Json | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          notes?: string | null
+          platform?: string
+          posting_preferences?: Json | null
+          profile_url?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_media_accounts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       strategy: {
         Row: {
           company_id: string
