@@ -20,6 +20,7 @@ export const translations = {
       weeklyPlanner: 'Weekly Planner',
       teamDirectory: 'Team Directory',
       emailCobot: 'Email Cobot',
+      marketingContent: 'Marketing Content',
       socialMedia: 'Social Media',
     },
     dashboard: {
@@ -111,6 +112,7 @@ export const translations = {
       weeklyPlanner: 'Planificador Semanal',
       teamDirectory: 'Directorio de Equipo',
       emailCobot: 'Cobot de Email',
+      marketingContent: 'Contenido de Marketing',
       socialMedia: 'Redes Sociales',
     },
     dashboard: {
