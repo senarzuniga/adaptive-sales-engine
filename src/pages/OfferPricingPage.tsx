@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { useDataStore } from '@/store/DataStore';
+import { useData } from '@/store/DataStore';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -99,7 +99,7 @@ const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 
 export default function OfferPricingPage() {
   const { language } = useLanguage();
-  const { selectedCompanyId } = useDataStore();
+  const { activeCompanyId: selectedCompanyId } = useData();
   const isEs = language === 'es';
 
   const [offerTitle, setOfferTitle] = useState('');
