@@ -13,6 +13,8 @@ import Analysis360Page from "./pages/Analysis360Page";
 import PillarPage from "./pages/PillarPage";
 import MonitoringPage from "./pages/MonitoringPage";
 import WeeklyPlannerPage from "./pages/WeeklyPlannerPage";
+import CompanyContactsPage from "./pages/CompanyContactsPage";
+import EmailCobotPage from "./pages/EmailCobotPage";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -39,6 +41,8 @@ const App = () => (
                 <Route path="/product-strategy" element={<PillarPage pillarKey="p6" pillarNumber={6} />} />
                 <Route path="/monitoring" element={<MonitoringPage />} />
                 <Route path="/weekly-planner" element={<WeeklyPlannerPage />} />
+                <Route path="/team-directory" element={<CompanyContactsPage />} />
+                <Route path="/email-cobot" element={<EmailCobotPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AppLayout>

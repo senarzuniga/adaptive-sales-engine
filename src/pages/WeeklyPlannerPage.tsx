@@ -126,16 +126,57 @@ const WeeklyPlannerPage = () => {
     setGeneratedTasks(prev => prev.map(t => ({ ...t, selected })));
   };
 
-  const handleAddSelected = () => {
+  const [isAddingTasks, setIsAddingTasks] = useState(false);
+  const [addProgress, setAddProgress] = useState({ current: 0, total: 0 });
+
+  const handleAddSelected = async () => {
     const selected = generatedTasks.filter(t => t.selected);
     if (selected.length === 0) {
       toast({ title: 'No tasks selected', variant: 'destructive' });
       return;
     }
 
-    selected.forEach(t => {
+    setIsAddingTasks(true);
+    setAddProgress({ current: 0, total: selected.length });
+
+    for (let i = 0; i < selected.length; i++) {
+      const t = selected[i];
+      setAddProgress({ current: i + 1, total: selected.length });
+
+      // Generate action content via AI for each task
+      let actionContent: ActionContent = { goal: '', callScript: '', emailTemplate: '', presentationNotes: '' };
+      try {
+        const { data: acResult, error: acError } = await supabase.functions.invoke('generate-action-content', {
+          body: {
+            type: 'generate',
+            task: {
+              title: t.title, description: t.description, category: t.category,
+              pillar: t.pillar, priority: t.priority, assignee: '',
+            },
+            companyProfile: data.companyProfile,
+            contextData: {
+              topCustomers: data.orders.length > 0
+                ? (() => {
+                    const custRev: Record<string, number> = {};
+                    data.orders.forEach(o => { custRev[o.customerName] = (custRev[o.customerName] || 0) + o.sellingPrice; });
+                    return Object.entries(custRev).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([n, v]) => `${n}(€${v.toLocaleString()})`).join(', ');
+                  })()
+                : null,
+              topProducts: data.products.length > 0 ? data.products.slice(0, 5).map(p => `${p.name}(${p.type})`).join(', ') : null,
+              pipelineValue: data.opportunities.length > 0 ? `€${data.opportunities.filter(o => o.status !== 'Won' && o.status !== 'Lost').reduce((s, o) => s + o.estRevenue, 0).toLocaleString()}` : null,
+              strategyTargets: data.strategy.length > 0 ? `€${data.strategy.reduce((s, st) => s + st.estRevenue, 0).toLocaleString()} target` : null,
+            },
+          },
+        });
+        if (!acError && acResult && !acResult.error) {
+          actionContent = acResult;
+        }
+      } catch (e) {
+        console.warn(`Could not generate action content for task "${t.title}":`, e);
+      }
+
       const newTask: MonitoringTask = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}-${i}`,
         title: t.title,
         description: `${t.description}\n\n📋 Rationale: ${t.rationale}`,
         pillar: t.pillar as TaskPillar,
@@ -146,12 +187,13 @@ const WeeklyPlannerPage = () => {
         dueDate: t.dueDate,
         createdAt: new Date().toISOString(),
         notes: [],
-        actionContent: { goal: '', callScript: '', emailTemplate: '', presentationNotes: '' },
+        actionContent,
       };
-      addTask(newTask);
-    });
+      await addTask(newTask);
+    }
 
-    toast({ title: `${selected.length} tasks added to Monitoring`, description: 'Navigate to Monitoring to view and manage them.' });
+    setIsAddingTasks(false);
+    toast({ title: `${selected.length} tasks added with AI-generated content`, description: 'Navigate to Monitoring to view scripts, emails, and presentation notes.' });
     setGeneratedTasks([]);
     setWeekSummary('');
   };
@@ -313,8 +355,17 @@ const WeeklyPlannerPage = () => {
 
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">{selectedCount} of {generatedTasks.length} tasks selected</span>
-              <Button onClick={handleAddSelected} disabled={selectedCount === 0} className="gap-2">
-                <Plus className="h-4 w-4" /> Add {selectedCount} Tasks to Monitoring
+              <Button onClick={handleAddSelected} disabled={selectedCount === 0 || isAddingTasks} className="gap-2">
+                {isAddingTasks ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating content {addProgress.current}/{addProgress.total}...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4" /> Add {selectedCount} Tasks with AI Content
+                  </>
+                )}
               </Button>
             </div>
           </CardContent>
