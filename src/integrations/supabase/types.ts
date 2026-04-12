@@ -80,6 +80,53 @@ export type Database = {
         }
         Relationships: []
       }
+      company_contacts: {
+        Row: {
+          company_id: string
+          created_at: string
+          department: string
+          email: string
+          id: string
+          is_default_handler: boolean
+          name: string
+          notes: string | null
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          department?: string
+          email?: string
+          id?: string
+          is_default_handler?: boolean
+          name?: string
+          notes?: string | null
+          role?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          department?: string
+          email?: string
+          id?: string
+          is_default_handler?: boolean
+          name?: string
+          notes?: string | null
+          role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_contacts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       opportunities: {
         Row: {
           company_id: string

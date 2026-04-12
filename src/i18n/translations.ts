@@ -17,6 +17,8 @@ export const translations = {
       companyInfo: 'Company Info',
       monitoring: 'Monitoring',
       weeklyPlanner: 'Weekly Planner',
+      teamDirectory: 'Team Directory',
+      emailCobot: 'Email Cobot',
     },
     dashboard: {
       title: 'Dashboard Overview',
@@ -104,6 +106,8 @@ export const translations = {
       companyInfo: 'Info de Empresa',
       monitoring: 'Monitoreo',
       weeklyPlanner: 'Planificador Semanal',
+      teamDirectory: 'Directorio de Equipo',
+      emailCobot: 'Cobot de Email',
     },
     dashboard: {
       title: 'Panel General',

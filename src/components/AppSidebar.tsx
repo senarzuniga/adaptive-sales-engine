@@ -26,6 +26,8 @@ import {
   LayoutDashboard,
   Activity,
   CalendarDays,
+  Contact,
+  Bot,
 } from 'lucide-react';
 
 export function AppSidebar() {
@@ -47,6 +49,8 @@ export function AppSidebar() {
     { title: t.nav.productStrategy, url: '/product-strategy', icon: Package },
     { title: t.nav.monitoring, url: '/monitoring', icon: Activity },
     { title: t.nav.weeklyPlanner, url: '/weekly-planner', icon: CalendarDays },
+    { title: t.nav.teamDirectory, url: '/team-directory', icon: Contact },
+    { title: t.nav.emailCobot, url: '/email-cobot', icon: Bot },
   ];
 
   return (
