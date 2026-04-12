@@ -20,6 +20,7 @@ import SocialMediaSettingsPage from "./pages/SocialMediaSettingsPage";
 import PortfolioAnalysisPage from "./pages/PortfolioAnalysisPage";
 import MarketingContentPage from "./pages/MarketingContentPage";
 import OfferPricingPage from "./pages/OfferPricingPage";
+import ServiceContractBuilderPage from "./pages/ServiceContractBuilderPage";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
