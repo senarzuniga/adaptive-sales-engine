@@ -1,6 +1,7 @@
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useData } from '@/store/DataStore';
 import { parseExcelFile } from '@/lib/excelParser';
+import { DataPreviewTables } from '@/components/DataPreviewTables';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Upload, Download, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, Database, Trash2 } from 'lucide-react';
@@ -159,6 +160,11 @@ const DataUploadPage = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Data Preview */}
+      <div className="mb-8">
+        <DataPreviewTables />
+      </div>
 
       {/* Templates */}
       <h3 className="text-lg font-semibold text-foreground mb-4">Excel Templates</h3>
