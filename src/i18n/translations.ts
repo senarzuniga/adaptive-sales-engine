@@ -16,6 +16,7 @@ export const translations = {
       dataUpload: 'Data Upload',
       companyInfo: 'Company Info',
       monitoring: 'Monitoring',
+      weeklyPlanner: 'Weekly Planner',
     },
     dashboard: {
       title: 'Dashboard Overview',
@@ -102,6 +103,7 @@ export const translations = {
       dataUpload: 'Carga de Datos',
       companyInfo: 'Info de Empresa',
       monitoring: 'Monitoreo',
+      weeklyPlanner: 'Planificador Semanal',
     },
     dashboard: {
       title: 'Panel General',
