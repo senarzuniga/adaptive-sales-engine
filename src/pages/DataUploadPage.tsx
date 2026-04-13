@@ -98,7 +98,7 @@ const DataUploadPage = () => {
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
-      <div className="flex justify-between items-start mb-8">
+      <div className="flex justify-between items-start mb-6">
         <div>
           <h2 className="text-2xl font-semibold text-foreground mb-2">{t.upload.title}</h2>
           <p className="text-muted-foreground">{t.upload.subtitle}</p>
@@ -108,124 +108,143 @@ const DataUploadPage = () => {
         </Button>
       </div>
 
-      {/* Data Status */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        {datasets.map(ds => (
-          <Card key={ds.key}>
-            <CardContent className="pt-4 pb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Database className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-lg font-bold text-foreground">{ds.count}</p>
-                    <p className="text-xs text-muted-foreground">{ds.label}</p>
-                  </div>
-                </div>
-                {ds.count > 0 && (
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                    onClick={() => { clearDataset(ds.key); toast({ title: `${ds.label} data cleared` }); }}>
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Tabs defaultValue="documents" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="documents" className="gap-1.5">
+            <FolderOpen className="h-4 w-4" /> Document Library
+          </TabsTrigger>
+          <TabsTrigger value="structured" className="gap-1.5">
+            <FileSpreadsheet className="h-4 w-4" /> Structured Data
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Upload Zone */}
-      <Card className="mb-8">
-        <CardContent className="pt-6">
-          <div onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${dragOver ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
-            <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-            <p className="text-foreground font-medium mb-1">{t.upload.dragDrop}</p>
-            <p className="text-xs text-muted-foreground mb-1">{t.upload.maxSize}</p>
-            <p className="text-xs text-muted-foreground mb-4">Data is auto-saved locally in your browser</p>
-            <label>
-              <input type="file" className="hidden" accept=".xlsx,.xls,.csv" multiple onChange={handleFileInput} />
-              <Button variant="outline" className="cursor-pointer" asChild><span>{t.upload.browse}</span></Button>
-            </label>
-          </div>
-        </CardContent>
-      </Card>
+        {/* ── Document Library Tab ── */}
+        <TabsContent value="documents">
+          <ConceptDocumentUpload />
+        </TabsContent>
 
-      {/* Processing */}
-      {processing.length > 0 && (
-        <Card className="mb-6">
-          <CardContent className="pt-4 pb-4">
-            {processing.map(name => (
-              <div key={name} className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Processing {name}...
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Data Preview */}
-      <div className="mb-8">
-        <DataPreviewTables />
-      </div>
-
-      {/* Templates */}
-      <h3 className="text-lg font-semibold text-foreground mb-4">Excel Templates</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        {templates.map((tmpl) => (
-          <Card key={tmpl.key}>
-            <CardContent className="pt-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileSpreadsheet className="h-5 w-5 text-primary" />
-                    <h4 className="font-semibold text-foreground">{tmpl.title}</h4>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-3">{tmpl.desc}</p>
-                </div>
-                <Button size="sm" variant="outline" className="gap-1 flex-shrink-0" onClick={() => downloadTemplate(tmpl.key)}>
-                  <Download className="h-3 w-3" /> {t.upload.downloadTemplate}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Upload History */}
-      {data.uploadLog.length > 0 && (
-        <>
-          <h3 className="text-lg font-semibold text-foreground mb-4">{t.upload.recentUploads}</h3>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-3">
-                {data.uploadLog.map((entry) => (
-                  <div key={entry.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+        {/* ── Structured Data Tab ── */}
+        <TabsContent value="structured" className="space-y-6">
+          {/* Data Status */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {datasets.map(ds => (
+              <Card key={ds.key}>
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
+                      <Database className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <span className="text-sm font-medium text-foreground">{entry.fileName}</span>
-                        {entry.detectedType !== 'unknown' && (
-                          <span className="ml-2 text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                            {typeLabels[entry.detectedType] || entry.detectedType} — {entry.rowCount} rows
-                          </span>
-                        )}
+                        <p className="text-lg font-bold text-foreground">{ds.count}</p>
+                        <p className="text-xs text-muted-foreground">{ds.label}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-muted-foreground">{new Date(entry.timestamp).toLocaleDateString()}</span>
-                      {entry.status === 'validated' ? (
-                        <span className="flex items-center gap-1 text-xs text-success"><CheckCircle className="h-3 w-3" /> {t.upload.validated}</span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-xs text-destructive"><AlertCircle className="h-3 w-3" /> {entry.errors[0]}</span>
-                      )}
-                    </div>
+                    {ds.count > 0 && (
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => { clearDataset(ds.key); toast({ title: `${ds.label} data cleared` }); }}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
-                ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Upload Zone */}
+          <Card>
+            <CardContent className="pt-6">
+              <div onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={handleDrop}
+                className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${dragOver ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
+                <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+                <p className="text-foreground font-medium mb-1">{t.upload.dragDrop}</p>
+                <p className="text-xs text-muted-foreground mb-1">{t.upload.maxSize}</p>
+                <p className="text-xs text-muted-foreground mb-4">Auto-detects: Orders, Opportunities, Products, Strategy</p>
+                <label>
+                  <input type="file" className="hidden" accept=".xlsx,.xls,.csv" multiple onChange={handleFileInput} />
+                  <Button variant="outline" className="cursor-pointer" asChild><span>{t.upload.browse}</span></Button>
+                </label>
               </div>
             </CardContent>
           </Card>
-        </>
-      )}
+
+          {/* Processing */}
+          {processing.length > 0 && (
+            <Card>
+              <CardContent className="pt-4 pb-4">
+                {processing.map(name => (
+                  <div key={name} className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Processing {name}...
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Data Preview */}
+          <DataPreviewTables />
+
+          {/* Templates */}
+          <div>
+            <h3 className="text-lg font-semibold text-foreground mb-4">Excel Templates</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {templates.map((tmpl) => (
+                <Card key={tmpl.key}>
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <FileSpreadsheet className="h-5 w-5 text-primary" />
+                          <h4 className="font-semibold text-foreground">{tmpl.title}</h4>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-3">{tmpl.desc}</p>
+                      </div>
+                      <Button size="sm" variant="outline" className="gap-1 flex-shrink-0" onClick={() => downloadTemplate(tmpl.key)}>
+                        <Download className="h-3 w-3" /> {t.upload.downloadTemplate}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* Upload History */}
+          {data.uploadLog.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-4">{t.upload.recentUploads}</h3>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="space-y-3">
+                    {data.uploadLog.map((entry) => (
+                      <div key={entry.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                        <div className="flex items-center gap-3">
+                          <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <span className="text-sm font-medium text-foreground">{entry.fileName}</span>
+                            {entry.detectedType !== 'unknown' && (
+                              <span className="ml-2 text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                                {typeLabels[entry.detectedType] || entry.detectedType} — {entry.rowCount} rows
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-muted-foreground">{new Date(entry.timestamp).toLocaleDateString()}</span>
+                          {entry.status === 'validated' ? (
+                            <span className="flex items-center gap-1 text-xs text-success"><CheckCircle className="h-3 w-3" /> {t.upload.validated}</span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-xs text-destructive"><AlertCircle className="h-3 w-3" /> {entry.errors[0]}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
