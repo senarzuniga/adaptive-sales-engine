@@ -507,22 +507,52 @@ const MarketingContentPage = () => {
                 </CardContent>
               </Card>
 
-              <Button onClick={handleGenerate} disabled={isGenerating || !topic.trim()} className="w-full gap-2" size="lg">
+              <Button id="generate-btn" onClick={handleGenerate} disabled={isGenerating || !topic.trim()} className="w-full gap-2" size="lg">
                 {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                 {isGenerating ? 'Generating...' : 'Generate Marketing Content'}
               </Button>
             </div>
 
-            {/* RIGHT: Generated Content */}
+            {/* RIGHT: Smart Suggestions + Generated Content */}
             <div className="xl:col-span-2 space-y-4">
               {!generatedContent && !isGenerating && (
-                <Card className="min-h-[400px] flex items-center justify-center">
-                  <CardContent className="text-center">
-                    <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-                    <p className="text-sm text-muted-foreground">Fill in the content brief and generate.</p>
-                    <div className="mt-4 text-xs text-muted-foreground space-y-1">
-                      <p>📰 Newsletters & campaigns</p><p>📱 Social media posts</p><p>🏷️ Offer templates</p><p>🎥 Video scripts</p>
-                    </div>
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-primary" /> Smart Content Ideas
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Based on your company data — click any to auto-generate content.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {smartTopicSuggestions.length > 0 ? (
+                      smartTopicSuggestions.map((s, i) => (
+                        <button
+                          key={i}
+                          onClick={() => handleSmartGenerate(s)}
+                          className="w-full text-left p-3 rounded-lg border border-border hover:bg-muted/50 hover:border-primary/30 transition-colors group"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-foreground">{s.label}</span>
+                            <div className="flex items-center gap-1.5">
+                              <Badge variant="outline" className="text-[9px]">{s.type.replace('_', ' ')}</Badge>
+                              {(() => { const Icon = PLATFORM_ICONS[s.platform] || Globe; return <Icon className="h-3 w-3 text-muted-foreground" />; })()}
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{s.topic}</p>
+                          <span className="text-[10px] text-primary opacity-0 group-hover:opacity-100 transition-opacity mt-1 inline-block">Click to generate →</span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="text-center py-6">
+                        <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-50" />
+                        <p className="text-sm text-muted-foreground">Add company data to get smart content suggestions.</p>
+                        <div className="mt-4 text-xs text-muted-foreground space-y-1">
+                          <p>📰 Newsletters & campaigns</p><p>📱 Social media posts</p><p>🏷️ Offer templates</p><p>🎥 Video scripts</p>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
