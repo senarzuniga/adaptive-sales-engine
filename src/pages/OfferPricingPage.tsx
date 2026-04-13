@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useData } from '@/store/DataStore';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,7 +16,8 @@ import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   Calculator, Plus, Trash2, Brain, TrendingUp, AlertTriangle, Shield,
-  DollarSign, BarChart3, Lightbulb, ChevronDown, ChevronUp, Save, FileText, Loader2
+  DollarSign, BarChart3, Lightbulb, ChevronDown, ChevronUp, Save, FileText, Loader2,
+  FolderKanban, ArrowRight
 } from 'lucide-react';
 
 type CostLine = {
@@ -98,6 +100,7 @@ const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', c
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 
 export default function OfferPricingPage() {
+  const navigate = useNavigate();
   const { language } = useLanguage();
   const { activeCompanyId: selectedCompanyId } = useData();
   const isEs = language === 'es';
@@ -302,6 +305,87 @@ export default function OfferPricingPage() {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const [convertingId, setConvertingId] = useState<string | null>(null);
+
+  const updateOfferStatus = async (offerId: string, status: string) => {
+    await supabase.from('offers').update({ status }).eq('id', offerId);
+    loadOffers();
+  };
+
+  const convertToProject = async (offer: any) => {
+    if (!selectedCompanyId) return;
+    setConvertingId(offer.id);
+    try {
+      // Mark offer as won
+      await supabase.from('offers').update({ status: 'won' }).eq('id', offer.id);
+
+      // Load offer items & costs for budget breakdown
+      const { data: offerItems } = await supabase.from('offer_items').select('*').eq('offer_id', offer.id);
+      const itemIds = (offerItems || []).map((i: any) => i.id);
+      let costBreakdowns: any[] = [];
+      if (itemIds.length > 0) {
+        const { data } = await supabase.from('cost_breakdowns').select('*').in('offer_item_id', itemIds);
+        costBreakdowns = data || [];
+      }
+
+      // Load scenarios for contract value
+      const { data: scenarios } = await supabase.from('offer_scenarios').select('*').eq('offer_id', offer.id);
+      const baseScenario = (scenarios || []).find((s: any) => s.scenario_type === 'base') || (scenarios || [])[0];
+
+      const contractValue = baseScenario?.selling_price || 0;
+      const marginTarget = baseScenario?.margin_pct || 0;
+
+      // Create project
+      const projectNumber = `PRJ-${offer.offer_number || new Date().getTime()}`;
+      const { data: project, error } = await supabase.from('projects').insert({
+        company_id: selectedCompanyId,
+        offer_id: offer.id,
+        project_number: projectNumber,
+        title: offer.title || 'New Project',
+        customer_name: offer.customer_name || '',
+        project_type: 'machine',
+        complexity: 'medium',
+        risk_level: 'medium',
+        contract_value: contractValue,
+        margin_target: marginTarget,
+        total_budget: baseScenario?.total_cost || 0,
+        scope_of_supply: offer.project_description || '',
+        currency: offer.currency || 'EUR',
+        notes: `Auto-created from offer ${offer.offer_number}. ${offer.notes || ''}`,
+        status: 'planning',
+      }).select().single();
+
+      if (error) throw error;
+
+      // Create initial cost breakdown from offer costs
+      if (costBreakdowns.length > 0) {
+        const costsByCategory: Record<string, number> = {};
+        costBreakdowns.forEach((c: any) => {
+          costsByCategory[c.category] = (costsByCategory[c.category] || 0) + (c.total_cost || 0);
+        });
+        const projectCostRows = Object.entries(costsByCategory).map(([category, amount]) => ({
+          project_id: project.id,
+          category: category === 'materials' ? 'procurement' : category === 'transport' ? 'travel' : category === 'indirect' ? 'overhead' : category,
+          line_item: `From offer: ${category}`,
+          budget_amount: amount,
+        }));
+        await supabase.from('project_costs').insert(projectCostRows);
+      }
+
+      loadOffers();
+      toast({
+        title: isEs ? 'Proyecto creado' : 'Project Created',
+        description: isEs ? `Proyecto ${projectNumber} creado desde oferta. Redirigiendo...` : `Project ${projectNumber} created from offer. Redirecting...`,
+      });
+
+      setTimeout(() => navigate('/project-management'), 1000);
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    } finally {
+      setConvertingId(null);
     }
   };
 
@@ -704,6 +788,7 @@ export default function OfferPricingPage() {
                       <TableHead>{isEs ? 'Cliente' : 'Customer'}</TableHead>
                       <TableHead>{isEs ? 'Estado' : 'Status'}</TableHead>
                       <TableHead>{isEs ? 'Fecha' : 'Date'}</TableHead>
+                      <TableHead>{isEs ? 'Acciones' : 'Actions'}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -712,8 +797,43 @@ export default function OfferPricingPage() {
                         <TableCell className="font-mono text-sm">{o.offer_number || '-'}</TableCell>
                         <TableCell>{o.title}</TableCell>
                         <TableCell>{o.customer_name}</TableCell>
-                        <TableCell><Badge variant="outline">{o.status}</Badge></TableCell>
+                        <TableCell>
+                          <Select value={o.status} onValueChange={(v) => updateOfferStatus(o.id, v)}>
+                            <SelectTrigger className="w-28 h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="draft">{isEs ? 'Borrador' : 'Draft'}</SelectItem>
+                              <SelectItem value="sent">{isEs ? 'Enviada' : 'Sent'}</SelectItem>
+                              <SelectItem value="negotiation">{isEs ? 'Negociación' : 'Negotiation'}</SelectItem>
+                              <SelectItem value="won">{isEs ? 'Ganada' : 'Won'}</SelectItem>
+                              <SelectItem value="lost">{isEs ? 'Perdida' : 'Lost'}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
                         <TableCell className="text-sm text-muted-foreground">{new Date(o.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          {o.status !== 'won' ? (
+                            <Button
+                              size="sm"
+                              variant="default"
+                              disabled={convertingId === o.id}
+                              onClick={() => convertToProject(o)}
+                            >
+                              {convertingId === o.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                              ) : (
+                                <FolderKanban className="h-3 w-3 mr-1" />
+                              )}
+                              {isEs ? 'Crear Proyecto' : 'Create Project'}
+                            </Button>
+                          ) : (
+                            <Button size="sm" variant="outline" onClick={() => navigate('/project-management')}>
+                              <ArrowRight className="h-3 w-3 mr-1" />
+                              {isEs ? 'Ver Proyecto' : 'View Project'}
+                            </Button>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
