@@ -121,6 +121,19 @@ const Analysis360Page = () => {
         </Select>
       </div>
 
+      {useOpportunitiesFallback && (
+        <Card className="mb-6 border-l-4 border-l-primary">
+          <CardContent className="pt-4 pb-3 flex items-center gap-3">
+            <Target className="h-5 w-5 text-primary flex-shrink-0" />
+            <div>
+              <p className="font-semibold text-foreground text-sm">Showing Pipeline Data</p>
+              <p className="text-xs text-muted-foreground">No closed orders found. Analysis is based on {opportunities.length} opportunities from the pipeline.</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+
       {/* KPI Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <Card><CardContent className="pt-6">
