@@ -280,7 +280,18 @@ const PortfolioAnalysisPage = () => {
         </p>
       </div>
 
-      {/* Period Filter & AI Actions */}
+      {useOpportunitiesFallback && (
+        <Card className="mb-6 border-l-4 border-l-primary">
+          <CardContent className="pt-4 pb-3 flex items-center gap-3">
+            <Target className="h-5 w-5 text-primary flex-shrink-0" />
+            <div>
+              <p className="font-semibold text-foreground text-sm">Showing Pipeline Data</p>
+              <p className="text-xs text-muted-foreground">No closed orders found. Analysis is based on {data.opportunities.length} opportunities from the pipeline.</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <div className="flex gap-1 bg-muted/50 rounded-lg p-1">
           {(['1yr', '3yr', 'all'] as const).map(p => (
