@@ -23,11 +23,26 @@ const Analysis360Page = () => {
   const navigate = useNavigate();
   const [periodFilter, setPeriodFilter] = useState<string>('all');
 
-  const orders = data.orders;
+  const rawOrders = data.orders;
   const strategy = data.strategy;
   const opportunities = data.opportunities;
   const products = data.products;
   const company = data.companyProfile;
+
+  // Fallback: use opportunities as synthetic orders when no orders exist
+  const useOpportunitiesFallback = rawOrders.length === 0 && opportunities.length > 0;
+  const orders = useMemo(() => {
+    if (!useOpportunitiesFallback) return rawOrders;
+    return opportunities.map(o => ({
+      id: undefined, poDate: '', firstOfferDate: '', oppNumber: o.oppNumber,
+      region: o.region, country: o.country, customerName: o.customerName,
+      scope: o.scope, productFamily: o.productFamily, segment: o.segment,
+      purchasingYear: o.estPurchasingYear || String(new Date().getFullYear()),
+      purchasingQuarter: o.estPurchasingQuarter, purchasingMonth: '',
+      sellingPrice: o.estRevenue, margin: o.margin, kam: o.kam,
+    }));
+  }, [rawOrders, opportunities, useOpportunitiesFallback]);
+
   const years = useMemo(() => [...new Set(orders.map(o => o.purchasingYear).filter(Boolean))].sort(), [orders]);
 
   const filtered = useMemo(() => {
