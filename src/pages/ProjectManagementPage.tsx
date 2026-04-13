@@ -1435,6 +1435,11 @@ export default function ProjectManagementPage() {
               </div>
             </TabsContent>
 
+            {/* DELAY IMPACT SIMULATION */}
+            <TabsContent value="simulation">
+              <DelaySimulation phases={phases} milestones={milestones} gates={gates} project={selectedProject} />
+            </TabsContent>
+
           </Tabs>
         </>
       )}
