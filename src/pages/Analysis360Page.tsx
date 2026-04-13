@@ -23,11 +23,26 @@ const Analysis360Page = () => {
   const navigate = useNavigate();
   const [periodFilter, setPeriodFilter] = useState<string>('all');
 
-  const orders = data.orders;
+  const rawOrders = data.orders;
   const strategy = data.strategy;
   const opportunities = data.opportunities;
   const products = data.products;
   const company = data.companyProfile;
+
+  // Fallback: use opportunities as synthetic orders when no orders exist
+  const useOpportunitiesFallback = rawOrders.length === 0 && opportunities.length > 0;
+  const orders = useMemo(() => {
+    if (!useOpportunitiesFallback) return rawOrders;
+    return opportunities.map(o => ({
+      id: undefined, poDate: '', firstOfferDate: '', oppNumber: o.oppNumber,
+      region: o.region, country: o.country, customerName: o.customerName,
+      scope: o.scope, productFamily: o.productFamily, segment: o.segment,
+      purchasingYear: o.estPurchasingYear || String(new Date().getFullYear()),
+      purchasingQuarter: o.estPurchasingQuarter, purchasingMonth: '',
+      sellingPrice: o.estRevenue, margin: o.margin, kam: o.kam,
+    }));
+  }, [rawOrders, opportunities, useOpportunitiesFallback]);
+
   const years = useMemo(() => [...new Set(orders.map(o => o.purchasingYear).filter(Boolean))].sort(), [orders]);
 
   const filtered = useMemo(() => {
@@ -105,6 +120,19 @@ const Analysis360Page = () => {
           </SelectContent>
         </Select>
       </div>
+
+      {useOpportunitiesFallback && (
+        <Card className="mb-6 border-l-4 border-l-primary">
+          <CardContent className="pt-4 pb-3 flex items-center gap-3">
+            <Target className="h-5 w-5 text-primary flex-shrink-0" />
+            <div>
+              <p className="font-semibold text-foreground text-sm">Showing Pipeline Data</p>
+              <p className="text-xs text-muted-foreground">No closed orders found. Analysis is based on {opportunities.length} opportunities from the pipeline.</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
 
       {/* KPI Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">

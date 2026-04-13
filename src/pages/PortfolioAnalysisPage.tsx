@@ -52,16 +52,34 @@ const PortfolioAnalysisPage = () => {
   const [analysis, setAnalysis] = useState<PortfolioAnalysis | null>(null);
   const [additionalNotes, setAdditionalNotes] = useState('');
 
-  // Filter orders by period
+  // Build unified records: use orders if available, fallback to opportunities
+  const useOpportunitiesFallback = data.orders.length === 0 && data.opportunities.length > 0;
+  const dataSourceLabel = useOpportunitiesFallback ? 'Pipeline (Opportunities)' : 'Orders';
+
+  const baseRecords = useMemo(() => {
+    if (!useOpportunitiesFallback) return data.orders;
+    // Synthesize order-like records from opportunities
+    return data.opportunities.map(o => ({
+      id: undefined,
+      poDate: '', firstOfferDate: '', oppNumber: o.oppNumber,
+      region: o.region, country: o.country, customerName: o.customerName,
+      scope: o.scope, productFamily: o.productFamily, segment: o.segment,
+      purchasingYear: o.estPurchasingYear || String(new Date().getFullYear()),
+      purchasingQuarter: o.estPurchasingQuarter, purchasingMonth: '',
+      sellingPrice: o.estRevenue, margin: o.margin, kam: o.kam,
+    }));
+  }, [data.orders, data.opportunities, useOpportunitiesFallback]);
+
+  // Filter by period
   const filteredOrders = useMemo(() => {
-    if (periodFilter === 'all') return data.orders;
+    if (periodFilter === 'all') return baseRecords;
     const currentYear = new Date().getFullYear();
     const cutoff = periodFilter === '1yr' ? currentYear - 1 : currentYear - 3;
-    return data.orders.filter(o => {
+    return baseRecords.filter(o => {
       const year = parseInt(o.purchasingYear);
       return !isNaN(year) && year >= cutoff;
     });
-  }, [data.orders, periodFilter]);
+  }, [baseRecords, periodFilter]);
 
   // Pareto analysis
   const paretoData = useMemo(() => {
@@ -241,12 +259,12 @@ const PortfolioAnalysisPage = () => {
     );
   }
 
-  if (data.orders.length === 0) {
+  if (baseRecords.length === 0 && data.strategy.length === 0) {
     return (
       <div className="p-6 lg:p-8 max-w-4xl mx-auto text-center py-20">
         <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-        <h2 className="text-xl font-semibold text-foreground mb-2">No sales data available</h2>
-        <p className="text-muted-foreground">Upload orders data first to enable portfolio analysis.</p>
+        <h2 className="text-xl font-semibold text-foreground mb-2">No data available</h2>
+        <p className="text-muted-foreground">Upload orders, opportunities, or strategy data to enable portfolio analysis.</p>
       </div>
     );
   }
@@ -262,7 +280,18 @@ const PortfolioAnalysisPage = () => {
         </p>
       </div>
 
-      {/* Period Filter & AI Actions */}
+      {useOpportunitiesFallback && (
+        <Card className="mb-6 border-l-4 border-l-primary">
+          <CardContent className="pt-4 pb-3 flex items-center gap-3">
+            <Target className="h-5 w-5 text-primary flex-shrink-0" />
+            <div>
+              <p className="font-semibold text-foreground text-sm">Showing Pipeline Data</p>
+              <p className="text-xs text-muted-foreground">No closed orders found. Analysis is based on {data.opportunities.length} opportunities from the pipeline.</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <div className="flex gap-1 bg-muted/50 rounded-lg p-1">
           {(['1yr', '3yr', 'all'] as const).map(p => (
