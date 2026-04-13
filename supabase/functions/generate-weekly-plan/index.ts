@@ -59,11 +59,20 @@ Output JSON via the tool call with an array of 10-15 tasks, sorted by budgetImpa
 COMPANY PROFILE:
 - Name: ${companyProfile?.company_name || "Unknown"}
 - Industry: ${companyProfile?.industry || "Unknown"}
+- Annual Revenue: ${companyProfile?.annual_revenue || "Not specified"}
 - Challenges: ${companyProfile?.current_challenges || "Not specified"}
 - Strategic Goals: ${companyProfile?.strategic_goals || "Not specified"}
 - Sales Channels: ${companyProfile?.sales_channels || ""}
 - Customer Segments: ${companyProfile?.main_customer_segments || ""}
 - Products: ${companyProfile?.main_products || ""}
+- Operating Regions: ${companyProfile?.operating_regions || ""}
+
+CONSULTANT INSIGHTS (PRIMARY SOURCE — use as benchmark):
+- Business Description: ${companyProfile?.business_description || "Not provided"}
+- Strategy Context: ${companyProfile?.strategy_context || "Not provided"}
+- Market Context: ${companyProfile?.market_context || "Not provided"}
+- Objectives: ${companyProfile?.objectives || "Not provided"}
+- Additional Notes: ${companyProfile?.additional_notes || "Not provided"}
 
 ═══════════════════════════════════════════════
 BUDGET GAP ANALYSIS (PRIMARY DECISION DRIVER)

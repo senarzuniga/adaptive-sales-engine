@@ -16,14 +16,24 @@ serve(async (req) => {
 
     const systemPrompt = `You are a senior strategic business consultant (McKinsey/Bain level) generating an executive insight report for a company's 360º analysis.
 
-You receive pre-aggregated data summaries. Your job is to:
-1. Identify the TOP 5-7 critical insights from the data
-2. Provide an executive summary (2-3 paragraphs)
-3. Detect patterns, risks, and opportunities
-4. Give prioritized strategic recommendations
-5. Assign a strategic health score (0-100)
+## CRITICAL: CONSULTANT INSIGHTS ARE THE PRIMARY SOURCE OF TRUTH
+The Company Profile section contains manually entered insights from a senior consultant who has worked directly with this company. These insights (business_description, strategic_goals, objectives, strategy_context, market_context, additional_notes, current_challenges) are the MOST RELIABLE data source.
 
-Be direct, actionable, and specific. No filler. Reference actual numbers from the data.
+You MUST:
+- Cross-reference ALL quantitative data against the consultant's qualitative insights
+- Use the consultant's stated revenue targets, business model descriptions, and strategic priorities as the benchmark
+- Flag any discrepancies between the data and the consultant's notes (e.g., if pipeline data contradicts stated revenue targets)
+- Incorporate the consultant's understanding of competitive positioning, market dynamics, and transformation goals into every recommendation
+- Reference specific consultant insights when making recommendations
+
+You receive pre-aggregated data summaries. Your job is to:
+1. Identify the TOP 5-7 critical insights, anchored to the consultant's strategic context
+2. Provide an executive summary (2-3 paragraphs) that reflects the company's stated transformation goals
+3. Detect patterns, risks, and opportunities — especially gaps between current state and the consultant's target state
+4. Give prioritized strategic recommendations aligned with the stated objectives
+5. Assign a strategic health score (0-100) measuring progress toward the consultant's defined goals
+
+Be direct, actionable, and specific. No filler. Reference actual numbers AND consultant insights.
 All monetary values are in EUR unless stated otherwise.`;
 
     const userPrompt = `Analyze this company's 360º data and generate executive insights:
