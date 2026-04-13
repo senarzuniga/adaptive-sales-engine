@@ -15,6 +15,7 @@ import { PortfolioRisk } from '@/components/analysis360/PortfolioRisk';
 import { KeyAccountMapping } from '@/components/analysis360/KeyAccountMapping';
 import { ProductPortfolioAnalysis } from '@/components/analysis360/ProductPortfolioAnalysis';
 import { BrandingVsStrategy } from '@/components/analysis360/BrandingVsStrategy';
+import { ExecutiveInsights } from '@/components/analysis360/ExecutiveInsights';
 
 const Analysis360Page = () => {
   const { t } = useLanguage();
@@ -144,6 +145,17 @@ const Analysis360Page = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* AI Executive Insights */}
+      <div className="mb-6">
+        <ExecutiveInsights
+          orders={filtered}
+          opportunities={opportunities}
+          products={products}
+          strategy={strategy}
+          company={company}
+        />
+      </div>
 
       <Tabs defaultValue="5year" className="space-y-4">
         <TabsList className="flex-wrap h-auto gap-1">
