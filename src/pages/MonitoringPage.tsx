@@ -317,6 +317,7 @@ const MonitoringPage = () => {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <Tabs defaultValue={poolPreview && poolPreview.length > 0 ? "pool" : "overview"}>
