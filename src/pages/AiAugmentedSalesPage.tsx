@@ -151,6 +151,7 @@ const AiAugmentedSalesPage = () => {
       if (result?.error) throw new Error(result.error);
       setPoolPreview(result.actions || []);
       setPoolSummary(result.summary || null);
+      setActiveTab('pool');
       toast({ title: '✅ Action Pool Generated', description: `${result.actions?.length || 0} actions ready for review` });
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
