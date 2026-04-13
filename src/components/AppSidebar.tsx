@@ -33,6 +33,7 @@ import {
   Megaphone,
   Calculator,
   FolderKanban,
+  Landmark,
 } from 'lucide-react';
 
 export function AppSidebar() {
@@ -60,6 +61,7 @@ export function AppSidebar() {
     { title: t.nav.marketingContent, url: '/marketing-content', icon: Megaphone },
     { title: t.nav.offerPricing || 'Offer & Pricing', url: '/offer-pricing', icon: Calculator },
     { title: 'Project Management', url: '/project-management', icon: FolderKanban },
+    { title: 'Budget Command Center', url: '/budget-command-center', icon: Landmark },
     { title: t.nav.socialMedia, url: '/social-media', icon: Share2 },
   ];
 
