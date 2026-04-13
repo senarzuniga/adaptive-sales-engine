@@ -17,7 +17,7 @@ import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, isToday
 import {
   Megaphone, Loader2, Copy, CheckCircle, FileText, Share2, Linkedin, Twitter, Instagram, Facebook,
   Globe, Mail, Plus, X, Upload, Link, Newspaper, Award, Calendar as CalendarIcon, Building2, Search,
-  Sparkles, Tag, Save, Clock, Trash2, Eye, Edit2, Archive, Send, CalendarDays
+  Sparkles, Tag, Save, Clock, Trash2, Eye, Edit2, Archive, Send, CalendarDays, Zap
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
