@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import {
   FolderKanban, Plus, Trash2, Brain, TrendingUp, AlertTriangle, Shield, Settings,
   DollarSign, BarChart3, Lightbulb, Save, Loader2, Target, Calendar, Users,
-  Activity, Zap, Eye, CheckCircle, Clock, FileText, ArrowRight, Gauge
+  Activity, Zap, Eye, CheckCircle, Clock, FileText, ArrowRight, Gauge, GitBranch, Edit
 } from 'lucide-react';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
@@ -232,6 +232,12 @@ export default function ProjectManagementPage() {
   const [risks, setRisks] = useState<any[]>([]);
   const [costs, setCosts] = useState<any[]>([]);
   const [gates, setGates] = useState<any[]>([]);
+  const [changeOrders, setChangeOrders] = useState<any[]>([]);
+  const [showNewCO, setShowNewCO] = useState(false);
+  const [newCO, setNewCO] = useState({
+    change_order_number: '', title: '', description: '', category: 'scope', priority: 'medium',
+    requested_by: '', cost_impact: 0, schedule_impact_days: 0, margin_impact_pct: 0, risk_impact: 'none',
+  });
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [showNewProject, setShowNewProject] = useState(false);
@@ -254,18 +260,20 @@ export default function ProjectManagementPage() {
   }, [activeCompanyId]);
 
   const loadProjectDetails = useCallback(async (projectId: string) => {
-    const [p, m, r, c, g] = await Promise.all([
+    const [p, m, r, c, g, co] = await Promise.all([
       supabase.from('project_phases').select('*').eq('project_id', projectId).order('phase_number'),
       supabase.from('project_milestones').select('*').eq('project_id', projectId).order('planned_date'),
       supabase.from('project_risks').select('*').eq('project_id', projectId).order('risk_score', { ascending: false }),
       supabase.from('project_costs').select('*').eq('project_id', projectId).order('category'),
       supabase.from('project_gates').select('*').eq('project_id', projectId).order('gate_number'),
+      supabase.from('change_orders').select('*').eq('project_id', projectId).order('created_at', { ascending: false }),
     ]);
     setPhases(p.data || []);
     setMilestones(m.data || []);
     setRisks(r.data || []);
     setCosts(c.data || []);
     setGates(g.data || []);
+    setChangeOrders(co.data || []);
   }, []);
 
   useEffect(() => { loadProjects(); }, [loadProjects]);
@@ -616,6 +624,7 @@ export default function ProjectManagementPage() {
               <TabsTrigger value="financials" className="gap-1"><DollarSign className="h-3 w-3" /> Financials</TabsTrigger>
               <TabsTrigger value="risks" className="gap-1"><AlertTriangle className="h-3 w-3" /> Risks</TabsTrigger>
               <TabsTrigger value="intelligence" className="gap-1"><Brain className="h-3 w-3" /> Intelligence</TabsTrigger>
+              <TabsTrigger value="changes" className="gap-1"><GitBranch className="h-3 w-3" /> Changes{changeOrders.length > 0 ? ` (${changeOrders.length})` : ''}</TabsTrigger>
             </TabsList>
 
             {/* DASHBOARD */}
@@ -1083,6 +1092,206 @@ export default function ProjectManagementPage() {
                 </CardContent></Card>
               )}
             </TabsContent>
+            {/* CHANGE ORDERS */}
+            <TabsContent value="changes">
+              <div className="space-y-4">
+                {/* Summary KPIs */}
+                {changeOrders.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <Card><CardContent className="pt-3 pb-3 text-center">
+                      <p className="text-2xl font-bold text-foreground">{changeOrders.length}</p>
+                      <p className="text-[10px] text-muted-foreground">Total Changes</p>
+                    </CardContent></Card>
+                    <Card><CardContent className="pt-3 pb-3 text-center">
+                      <p className={`text-2xl font-bold ${changeOrders.reduce((s: number, c: any) => s + (c.cost_impact || 0), 0) > 0 ? 'text-destructive' : 'text-primary'}`}>
+                        {fmt(changeOrders.reduce((s: number, c: any) => s + (c.cost_impact || 0), 0))}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">Total Cost Impact</p>
+                    </CardContent></Card>
+                    <Card><CardContent className="pt-3 pb-3 text-center">
+                      <p className="text-2xl font-bold text-foreground">
+                        {changeOrders.reduce((s: number, c: any) => s + (c.schedule_impact_days || 0), 0)}d
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">Schedule Impact</p>
+                    </CardContent></Card>
+                    <Card><CardContent className="pt-3 pb-3 text-center">
+                      <p className="text-2xl font-bold text-foreground">
+                        {changeOrders.filter((c: any) => c.status === 'pending').length}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">Pending Approval</p>
+                    </CardContent></Card>
+                  </div>
+                )}
+
+                {/* New Change Order Form */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm flex items-center gap-2"><GitBranch className="h-4 w-4 text-primary" /> Change Orders</CardTitle>
+                      <Button size="sm" variant="outline" onClick={() => setShowNewCO(!showNewCO)} className="gap-1">
+                        <Plus className="h-3 w-3" /> New Change Order
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  {showNewCO && (
+                    <CardContent className="border-t pt-4">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">CO Number</label>
+                          <Input value={newCO.change_order_number} onChange={e => setNewCO({ ...newCO, change_order_number: e.target.value })} placeholder="CO-001" />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="text-xs font-medium text-muted-foreground">Title</label>
+                          <Input value={newCO.title} onChange={e => setNewCO({ ...newCO, title: e.target.value })} placeholder="Change description" />
+                        </div>
+                        <div className="col-span-3">
+                          <label className="text-xs font-medium text-muted-foreground">Description</label>
+                          <Textarea value={newCO.description} onChange={e => setNewCO({ ...newCO, description: e.target.value })} rows={2} placeholder="Detailed scope change description, justification, and affected areas..." />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Category</label>
+                          <Select value={newCO.category} onValueChange={v => setNewCO({ ...newCO, category: v })}>
+                            <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="scope">Scope</SelectItem>
+                              <SelectItem value="schedule">Schedule</SelectItem>
+                              <SelectItem value="cost">Cost</SelectItem>
+                              <SelectItem value="technical">Technical</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Priority</label>
+                          <Select value={newCO.priority} onValueChange={v => setNewCO({ ...newCO, priority: v })}>
+                            <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="low">Low</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="high">High</SelectItem>
+                              <SelectItem value="critical">Critical</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Requested By</label>
+                          <Input value={newCO.requested_by} onChange={e => setNewCO({ ...newCO, requested_by: e.target.value })} />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Cost Impact (€)</label>
+                          <Input type="number" value={newCO.cost_impact} onChange={e => setNewCO({ ...newCO, cost_impact: Number(e.target.value) })} />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Schedule Impact (days)</label>
+                          <Input type="number" value={newCO.schedule_impact_days} onChange={e => setNewCO({ ...newCO, schedule_impact_days: Number(e.target.value) })} />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Risk Impact</label>
+                          <Select value={newCO.risk_impact} onValueChange={v => setNewCO({ ...newCO, risk_impact: v })}>
+                            <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">None</SelectItem>
+                              <SelectItem value="low">Low</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="high">High</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="flex justify-end mt-3">
+                        <Button size="sm" onClick={async () => {
+                          if (!selectedProject || !newCO.title) return;
+                          const { error } = await supabase.from('change_orders').insert({
+                            ...newCO, project_id: selectedProject.id,
+                          });
+                          if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); return; }
+                          toast({ title: 'Change order created' });
+                          setShowNewCO(false);
+                          setNewCO({ change_order_number: '', title: '', description: '', category: 'scope', priority: 'medium', requested_by: '', cost_impact: 0, schedule_impact_days: 0, margin_impact_pct: 0, risk_impact: 'none' });
+                          loadProjectDetails(selectedProject.id);
+                        }} className="gap-1"><Save className="h-3 w-3" /> Save Change Order</Button>
+                      </div>
+                    </CardContent>
+                  )}
+                </Card>
+
+                {/* Change Orders Table */}
+                {changeOrders.length === 0 ? (
+                  <Card><CardContent className="py-12 text-center">
+                    <GitBranch className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                    <h3 className="font-semibold text-foreground mb-2">No Change Orders</h3>
+                    <p className="text-sm text-muted-foreground">Create change orders to track scope modifications and their impact.</p>
+                  </CardContent></Card>
+                ) : (
+                  <Card>
+                    <CardContent className="pt-4">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-20">CO #</TableHead>
+                            <TableHead>Title</TableHead>
+                            <TableHead>Category</TableHead>
+                            <TableHead>Priority</TableHead>
+                            <TableHead>Cost Impact</TableHead>
+                            <TableHead>Days</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {changeOrders.map((co: any) => (
+                            <TableRow key={co.id}>
+                              <TableCell className="font-mono text-xs">{co.change_order_number || '—'}</TableCell>
+                              <TableCell>
+                                <span className="text-sm font-medium text-foreground">{co.title}</span>
+                                {co.description && <p className="text-[10px] text-muted-foreground line-clamp-1">{co.description}</p>}
+                                {co.requested_by && <p className="text-[10px] text-muted-foreground">By: {co.requested_by}</p>}
+                              </TableCell>
+                              <TableCell><Badge variant="outline" className="text-[10px]">{co.category}</Badge></TableCell>
+                              <TableCell>
+                                <Badge variant={co.priority === 'critical' ? 'destructive' : co.priority === 'high' ? 'destructive' : 'secondary'} className="text-[10px]">
+                                  {co.priority}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className={`text-sm font-medium ${(co.cost_impact || 0) > 0 ? 'text-destructive' : (co.cost_impact || 0) < 0 ? 'text-primary' : 'text-muted-foreground'}`}>
+                                {co.cost_impact ? fmt(co.cost_impact) : '—'}
+                              </TableCell>
+                              <TableCell className={`text-sm ${(co.schedule_impact_days || 0) > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                                {co.schedule_impact_days ? `+${co.schedule_impact_days}d` : '—'}
+                              </TableCell>
+                              <TableCell>
+                                <Select value={co.status} onValueChange={async (v) => {
+                                  const updates: any = { status: v };
+                                  if (v === 'approved') { updates.approved_date = new Date().toISOString().split('T')[0]; }
+                                  await supabase.from('change_orders').update(updates).eq('id', co.id);
+                                  loadProjectDetails(selectedProject.id);
+                                }}>
+                                  <SelectTrigger className="h-7 text-xs w-28"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="pending">Pending</SelectItem>
+                                    <SelectItem value="approved">Approved</SelectItem>
+                                    <SelectItem value="rejected">Rejected</SelectItem>
+                                    <SelectItem value="implemented">Implemented</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Button variant="ghost" size="sm" onClick={async () => {
+                                  await supabase.from('change_orders').delete().eq('id', co.id);
+                                  loadProjectDetails(selectedProject.id);
+                                }}>
+                                  <Trash2 className="h-3 w-3 text-destructive" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
+
           </Tabs>
         </>
       )}
