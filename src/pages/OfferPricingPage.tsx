@@ -100,6 +100,7 @@ const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', c
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 
 export default function OfferPricingPage() {
+  const navigate = useNavigate();
   const { language } = useLanguage();
   const { activeCompanyId: selectedCompanyId } = useData();
   const isEs = language === 'es';
