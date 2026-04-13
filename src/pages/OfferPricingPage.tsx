@@ -308,6 +308,87 @@ export default function OfferPricingPage() {
     }
   };
 
+  const [convertingId, setConvertingId] = useState<string | null>(null);
+
+  const updateOfferStatus = async (offerId: string, status: string) => {
+    await supabase.from('offers').update({ status }).eq('id', offerId);
+    loadOffers();
+  };
+
+  const convertToProject = async (offer: any) => {
+    if (!selectedCompanyId) return;
+    setConvertingId(offer.id);
+    try {
+      // Mark offer as won
+      await supabase.from('offers').update({ status: 'won' }).eq('id', offer.id);
+
+      // Load offer items & costs for budget breakdown
+      const { data: offerItems } = await supabase.from('offer_items').select('*').eq('offer_id', offer.id);
+      const itemIds = (offerItems || []).map((i: any) => i.id);
+      let costBreakdowns: any[] = [];
+      if (itemIds.length > 0) {
+        const { data } = await supabase.from('cost_breakdowns').select('*').in('offer_item_id', itemIds);
+        costBreakdowns = data || [];
+      }
+
+      // Load scenarios for contract value
+      const { data: scenarios } = await supabase.from('offer_scenarios').select('*').eq('offer_id', offer.id);
+      const baseScenario = (scenarios || []).find((s: any) => s.scenario_type === 'base') || (scenarios || [])[0];
+
+      const contractValue = baseScenario?.selling_price || 0;
+      const marginTarget = baseScenario?.margin_pct || 0;
+
+      // Create project
+      const projectNumber = `PRJ-${offer.offer_number || new Date().getTime()}`;
+      const { data: project, error } = await supabase.from('projects').insert({
+        company_id: selectedCompanyId,
+        offer_id: offer.id,
+        project_number: projectNumber,
+        title: offer.title || 'New Project',
+        customer_name: offer.customer_name || '',
+        project_type: 'machine',
+        complexity: 'medium',
+        risk_level: 'medium',
+        contract_value: contractValue,
+        margin_target: marginTarget,
+        total_budget: baseScenario?.total_cost || 0,
+        scope_of_supply: offer.project_description || '',
+        currency: offer.currency || 'EUR',
+        notes: `Auto-created from offer ${offer.offer_number}. ${offer.notes || ''}`,
+        status: 'planning',
+      }).select().single();
+
+      if (error) throw error;
+
+      // Create initial cost breakdown from offer costs
+      if (costBreakdowns.length > 0) {
+        const costsByCategory: Record<string, number> = {};
+        costBreakdowns.forEach((c: any) => {
+          costsByCategory[c.category] = (costsByCategory[c.category] || 0) + (c.total_cost || 0);
+        });
+        const projectCostRows = Object.entries(costsByCategory).map(([category, amount]) => ({
+          project_id: project.id,
+          category: category === 'materials' ? 'procurement' : category === 'transport' ? 'travel' : category === 'indirect' ? 'overhead' : category,
+          line_item: `From offer: ${category}`,
+          budget_amount: amount,
+        }));
+        await supabase.from('project_costs').insert(projectCostRows);
+      }
+
+      loadOffers();
+      toast({
+        title: isEs ? 'Proyecto creado' : 'Project Created',
+        description: isEs ? `Proyecto ${projectNumber} creado desde oferta. Redirigiendo...` : `Project ${projectNumber} created from offer. Redirecting...`,
+      });
+
+      setTimeout(() => navigate('/project-management'), 1000);
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    } finally {
+      setConvertingId(null);
+    }
+  };
+
   const scoreColor = (score: string) => {
     if (score === 'high') return 'text-green-600';
     if (score === 'medium') return 'text-yellow-600';
