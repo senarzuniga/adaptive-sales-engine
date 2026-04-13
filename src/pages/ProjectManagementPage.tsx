@@ -49,6 +49,178 @@ const STATUS_VARIANT = (s: string) => {
   }
 };
 
+// --- Gantt Chart Component ---
+function GanttChart({ phases, gates, projectStart, projectEnd }: { phases: any[]; gates: any[]; projectStart?: string; projectEnd?: string }) {
+  const chartData = useMemo(() => {
+    if (phases.length === 0) return null;
+
+    // Determine timeline bounds
+    const now = new Date();
+    let minDate = projectStart ? new Date(projectStart) : new Date(now.getTime() - 7 * 86400000);
+    let maxDate = projectEnd ? new Date(projectEnd) : new Date(now.getTime() + 180 * 86400000);
+
+    // Adjust based on actual phase dates
+    phases.forEach(p => {
+      if (p.planned_start) { const d = new Date(p.planned_start); if (d < minDate) minDate = d; }
+      if (p.planned_end) { const d = new Date(p.planned_end); if (d > maxDate) maxDate = d; }
+      if (p.actual_start) { const d = new Date(p.actual_start); if (d < minDate) minDate = d; }
+      if (p.actual_end) { const d = new Date(p.actual_end); if (d > maxDate) maxDate = d; }
+    });
+
+    // Add padding
+    minDate = new Date(minDate.getTime() - 7 * 86400000);
+    maxDate = new Date(maxDate.getTime() + 14 * 86400000);
+    const totalDays = Math.max(1, Math.ceil((maxDate.getTime() - minDate.getTime()) / 86400000));
+
+    const toPercent = (date: Date) => Math.max(0, Math.min(100, ((date.getTime() - minDate.getTime()) / (maxDate.getTime() - minDate.getTime())) * 100));
+
+    // Generate month labels
+    const months: { label: string; left: number }[] = [];
+    const cursor = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+    while (cursor <= maxDate) {
+      months.push({
+        label: cursor.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+        left: toPercent(cursor),
+      });
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+
+    // Map phases to bars
+    const bars = phases.map((p, idx) => {
+      const hasPlanned = p.planned_start && p.planned_end;
+      const hasActual = p.actual_start;
+      const start = hasPlanned ? new Date(p.planned_start) : new Date(minDate.getTime() + (idx / phases.length) * (maxDate.getTime() - minDate.getTime()));
+      const end = hasPlanned ? new Date(p.planned_end) : new Date(start.getTime() + (totalDays / phases.length) * 86400000);
+      const actualStart = hasActual ? new Date(p.actual_start) : null;
+      const actualEnd = p.actual_end ? new Date(p.actual_end) : (p.status === 'in-progress' ? now : null);
+
+      return {
+        id: p.id,
+        name: p.phase_name,
+        number: p.phase_number,
+        status: p.status,
+        completion: p.completion_pct || 0,
+        plannedLeft: toPercent(start),
+        plannedWidth: Math.max(1, toPercent(end) - toPercent(start)),
+        actualLeft: actualStart ? toPercent(actualStart) : null,
+        actualWidth: actualStart && actualEnd ? Math.max(0.5, toPercent(actualEnd) - toPercent(actualStart)) : null,
+        isCritical: p.status === 'blocked' || (hasPlanned && p.actual_end && new Date(p.actual_end) > new Date(p.planned_end)),
+        responsible: p.responsible,
+      };
+    });
+
+    // Gate markers
+    const gateMarkers = gates.filter(g => g.planned_date).map(g => ({
+      id: g.id,
+      label: g.gate_number,
+      left: toPercent(new Date(g.planned_date)),
+      status: g.status,
+    }));
+
+    const todayLeft = toPercent(now);
+
+    return { bars, months, gateMarkers, todayLeft, minDate, maxDate };
+  }, [phases, gates, projectStart, projectEnd]);
+
+  if (!chartData) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-primary" /> Gantt Chart — Timeline & Critical Path
+        </CardTitle>
+        <CardDescription className="text-xs">
+          <span className="inline-flex items-center gap-3">
+            <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-primary inline-block" /> Planned</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-primary/40 inline-block" /> Actual</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-destructive inline-block" /> Critical / Delayed</span>
+            <span className="flex items-center gap-1"><span className="w-0.5 h-3 bg-destructive/70 inline-block" /> Today</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full border-2 border-primary inline-block" /> Gate</span>
+          </span>
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <div className="min-w-[700px]">
+            {/* Month headers */}
+            <div className="relative h-6 border-b border-border mb-1">
+              {chartData.months.map((m, i) => (
+                <span key={i} className="absolute text-[10px] text-muted-foreground font-medium" style={{ left: `${m.left}%` }}>
+                  {m.label}
+                </span>
+              ))}
+            </div>
+
+            {/* Bars */}
+            <div className="space-y-1">
+              {chartData.bars.map(bar => (
+                <div key={bar.id} className="flex items-center gap-0 h-9">
+                  {/* Label */}
+                  <div className="w-36 shrink-0 pr-2 text-right">
+                    <span className="text-[10px] font-medium text-foreground truncate block">{bar.number}. {bar.name}</span>
+                    {bar.responsible && <span className="text-[8px] text-muted-foreground truncate block">{bar.responsible}</span>}
+                  </div>
+                  {/* Chart area */}
+                  <div className="relative flex-1 h-full bg-muted/30 rounded-sm border border-border/50">
+                    {/* Today line */}
+                    {chartData.todayLeft > 0 && chartData.todayLeft < 100 && (
+                      <div className="absolute top-0 bottom-0 w-px bg-destructive/70 z-10" style={{ left: `${chartData.todayLeft}%` }} />
+                    )}
+                    {/* Gate markers */}
+                    {chartData.gateMarkers.map(g => (
+                      <div key={g.id} className="absolute top-0 bottom-0 flex items-center z-10" style={{ left: `${g.left}%` }} title={g.label}>
+                        <div className={`w-2.5 h-2.5 rounded-full border-2 ${g.status === 'passed' ? 'bg-primary border-primary' : g.status === 'failed' ? 'bg-destructive border-destructive' : 'bg-background border-primary'}`} />
+                      </div>
+                    ))}
+                    {/* Planned bar */}
+                    <div
+                      className={`absolute top-1 h-3 rounded-sm ${bar.isCritical ? 'bg-destructive' : 'bg-primary'}`}
+                      style={{ left: `${bar.plannedLeft}%`, width: `${bar.plannedWidth}%` }}
+                      title={`${bar.name}: ${bar.completion}% complete`}
+                    >
+                      {/* Progress fill */}
+                      <div className="h-full rounded-sm bg-foreground/20" style={{ width: `${bar.completion}%` }} />
+                    </div>
+                    {/* Actual bar */}
+                    {bar.actualLeft !== null && bar.actualWidth !== null && (
+                      <div
+                        className={`absolute bottom-1 h-2 rounded-sm ${bar.isCritical ? 'bg-destructive/40' : 'bg-primary/40'}`}
+                        style={{ left: `${bar.actualLeft}%`, width: `${bar.actualWidth}%` }}
+                      />
+                    )}
+                    {/* Dependency arrow (simple sequential) */}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Dependency lines (sequential phases → drawn as connecting lines) */}
+            <div className="relative h-0">
+              {chartData.bars.length > 1 && (
+                <svg className="absolute inset-0 w-full pointer-events-none" style={{ height: `${chartData.bars.length * 36}px`, top: `-${chartData.bars.length * 36}px` }}>
+                  {chartData.bars.slice(1).map((bar, i) => {
+                    const prev = chartData.bars[i];
+                    const x1 = prev.plannedLeft + prev.plannedWidth;
+                    const y1 = i * 36 + 16;
+                    const x2 = bar.plannedLeft;
+                    const y2 = (i + 1) * 36 + 16;
+                    if (x2 < x1 - 1) return null; // overlapping phases
+                    return (
+                      <line key={bar.id} x1={`${x1}%`} y1={y1} x2={`${x2}%`} y2={y2}
+                        stroke="hsl(var(--muted-foreground))" strokeWidth="1" strokeDasharray="3,3" opacity={0.4} />
+                    );
+                  })}
+                </svg>
+              )}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function ProjectManagementPage() {
   const { activeCompanyId } = useData();
 
