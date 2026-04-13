@@ -83,6 +83,80 @@ export type Database = {
           },
         ]
       }
+      change_orders: {
+        Row: {
+          approved_by: string | null
+          approved_date: string | null
+          category: string
+          change_order_number: string
+          cost_impact: number | null
+          created_at: string
+          description: string | null
+          id: string
+          implementation_notes: string | null
+          margin_impact_pct: number | null
+          priority: string
+          project_id: string
+          request_date: string | null
+          requested_by: string | null
+          risk_impact: string | null
+          schedule_impact_days: number | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          approved_by?: string | null
+          approved_date?: string | null
+          category?: string
+          change_order_number?: string
+          cost_impact?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          implementation_notes?: string | null
+          margin_impact_pct?: number | null
+          priority?: string
+          project_id: string
+          request_date?: string | null
+          requested_by?: string | null
+          risk_impact?: string | null
+          schedule_impact_days?: number | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_by?: string | null
+          approved_date?: string | null
+          category?: string
+          change_order_number?: string
+          cost_impact?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          implementation_notes?: string | null
+          margin_impact_pct?: number | null
+          priority?: string
+          project_id?: string
+          request_date?: string | null
+          requested_by?: string | null
+          risk_impact?: string | null
+          schedule_impact_days?: number | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "change_orders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           additional_notes: string | null
