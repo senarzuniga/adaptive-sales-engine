@@ -624,6 +624,7 @@ export default function ProjectManagementPage() {
               <TabsTrigger value="financials" className="gap-1"><DollarSign className="h-3 w-3" /> Financials</TabsTrigger>
               <TabsTrigger value="risks" className="gap-1"><AlertTriangle className="h-3 w-3" /> Risks</TabsTrigger>
               <TabsTrigger value="intelligence" className="gap-1"><Brain className="h-3 w-3" /> Intelligence</TabsTrigger>
+              <TabsTrigger value="changes" className="gap-1"><GitBranch className="h-3 w-3" /> Changes{changeOrders.length > 0 ? ` (${changeOrders.length})` : ''}</TabsTrigger>
             </TabsList>
 
             {/* DASHBOARD */}
