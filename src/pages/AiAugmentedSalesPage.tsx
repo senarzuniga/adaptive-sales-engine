@@ -676,8 +676,9 @@ const AiAugmentedSalesPage = () => {
             <div className="sticky top-6">
               <ActionContentPanel
                 task={selectedTask}
-                onUpdate={(updates) => updateTask(selectedTask.id, updates)}
-                companyProfile={companyProfile}
+                onUpdateContent={(content) => updateTask(selectedTask.id, { actionContent: content })}
+                onSaveResult={(result) => updateTask(selectedTask.id, { actionResult: result })}
+                onBack={() => setSelectedTaskId(null)}
               />
             </div>
           ) : (
