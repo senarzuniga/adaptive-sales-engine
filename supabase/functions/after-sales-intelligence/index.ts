@@ -63,6 +63,9 @@ ${JSON.stringify(spareParts || [], null, 2)}
 ## Company Context
 ${JSON.stringify(companyContext || {}, null, 2)}
 
+## Budget Gap Analysis (PRIORITIZATION DRIVER)
+${budgetGapAnalysis ? JSON.stringify(budgetGapAnalysis, null, 2) : "No budget gap data available"}
+
 Return JSON with:
 {
   "installedBaseHealth": {
