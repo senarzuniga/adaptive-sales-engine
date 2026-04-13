@@ -186,7 +186,7 @@ Provide your analysis as the specified JSON structure.`;
                   items: {
                     type: "object",
                     properties: {
-                      type: { type: "string", enum: ["cost_reduction", "margin_improvement", "risk_mitigation", "pricing"] },
+                      type: { type: "string", enum: ["cost_reduction", "margin_improvement", "risk_mitigation", "pricing", "rate_validation"] },
                       title: { type: "string" },
                       description: { type: "string" },
                       estimatedImpact: { type: "string" }
