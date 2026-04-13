@@ -319,12 +319,103 @@ const MonitoringPage = () => {
         </Dialog>
       </div>
 
-      <Tabs defaultValue="overview">
+      <Tabs defaultValue={poolPreview && poolPreview.length > 0 ? "pool" : "overview"}>
         <TabsList className="mb-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          {poolPreview && poolPreview.length > 0 && (
+            <TabsTrigger value="pool" className="gap-1">
+              <Zap className="h-3 w-3" /> Action Pool ({poolPreview.length})
+            </TabsTrigger>
+          )}
           <TabsTrigger value="tasks">Actions ({tasks.length})</TabsTrigger>
           <TabsTrigger value="data">Data Readiness</TabsTrigger>
         </TabsList>
+
+        {/* ─── Action Pool Tab ─── */}
+        {poolPreview && poolPreview.length > 0 && (
+          <TabsContent value="pool" className="space-y-4">
+            {/* Summary banner */}
+            {poolSummary && (
+              <Card className="border-primary/30 bg-primary/5">
+                <CardContent className="py-4">
+                  <div className="flex flex-wrap items-center gap-6">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-primary" />
+                      <span className="font-medium text-foreground text-sm">AI Action Pool Generated</span>
+                    </div>
+                    <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                      <span><strong className="text-foreground">{poolSummary.totalActions}</strong> actions</span>
+                      <span><strong className="text-destructive">{poolSummary.criticalCount}</strong> critical</span>
+                      <span>Pipeline protected: <strong className="text-foreground">€{(poolSummary.estimatedPipelineProtected || 0).toLocaleString()}</strong></span>
+                      <span>New revenue: <strong className="text-foreground">€{(poolSummary.estimatedNewRevenue || 0).toLocaleString()}</strong></span>
+                    </div>
+                    <div className="ml-auto flex gap-2">
+                      <Button size="sm" onClick={acceptAllPool} className="gap-1">
+                        <CheckCircle2 className="h-3 w-3" /> Accept All
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => { setPoolPreview(null); setPoolSummary(null); }}>
+                        Dismiss
+                      </Button>
+                    </div>
+                  </div>
+                  {poolSummary.coverageGaps && poolSummary.coverageGaps.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-primary/20">
+                      <p className="text-xs font-medium text-foreground mb-1">⚠️ Coverage Gaps Identified:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {poolSummary.coverageGaps.map((gap: string, i: number) => (
+                          <Badge key={i} variant="outline" className="text-[10px]">{gap}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Action cards */}
+            <div className="space-y-3">
+              {poolPreview.map((action, i) => (
+                <Card key={i} className={`${action.priority === 'critical' ? 'border-destructive/40' : action.priority === 'high' ? 'border-orange-300 dark:border-orange-700' : ''}`}>
+                  <CardContent className="py-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant={action.priority === 'critical' || action.priority === 'high' ? 'destructive' : 'secondary'} className="text-[10px]">
+                            {action.priority}
+                          </Badge>
+                          <Badge variant="outline" className="text-[10px]">
+                            {PILLAR_LABELS[action.pillar as TaskPillar] || action.pillar}
+                          </Badge>
+                          <Badge variant="outline" className="text-[10px]">
+                            {CATEGORY_LABELS[action.category as TaskCategory] || action.category}
+                          </Badge>
+                          {action.assignee && (
+                            <span className="text-[10px] text-muted-foreground">→ {action.assignee}</span>
+                          )}
+                        </div>
+                        <p className="text-sm font-medium text-foreground">{action.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{action.description}</p>
+                        {action.rationale && (
+                          <p className="text-xs text-primary mt-1">📌 {action.rationale}</p>
+                        )}
+                        {action.riskIfNotDone && (
+                          <p className="text-xs text-destructive mt-1">⚠️ {action.riskIfNotDone}</p>
+                        )}
+                        <div className="flex items-center gap-4 mt-2 text-[10px] text-muted-foreground">
+                          {action.dueDate && <span>Due: {new Date(action.dueDate).toLocaleDateString()}</span>}
+                          {action.estimatedRevenue > 0 && <span>Est. revenue: €{action.estimatedRevenue.toLocaleString()}</span>}
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline" className="gap-1 flex-shrink-0" onClick={() => acceptPoolAction(action)}>
+                        <Plus className="h-3 w-3" /> Accept
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+        )}
 
         {/* ─── Overview Tab ─── */}
         <TabsContent value="overview">
