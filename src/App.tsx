@@ -11,6 +11,7 @@ import DataUploadPage from "./pages/DataUploadPage";
 import CompanyInfoPage from "./pages/CompanyInfoPage";
 import Analysis360Page from "./pages/Analysis360Page";
 import PillarPage from "./pages/PillarPage";
+import AiAugmentedSalesPage from "./pages/AiAugmentedSalesPage";
 import SalesArchitecturePage from "./pages/SalesArchitecturePage";
 import AfterSalesEnginePage from "./pages/AfterSalesEnginePage";
 import MonitoringPage from "./pages/MonitoringPage";
