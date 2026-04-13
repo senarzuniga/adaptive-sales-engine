@@ -59,8 +59,9 @@ type AnalysisResult = {
   scoring: { marginScore: string; marginValue?: number; riskScore: string; riskValue?: number; globalScore: number; explanation: string };
   riskFactors: { category: string; description: string; severity: string; impact?: string }[];
   recommendations: { type: string; title: string; description: string; estimatedImpact?: string }[];
-  costAnalysis?: { materialsRatio: number; engineeringRatio: number; installationRatio: number; alerts?: string[] };
+  costAnalysis?: { materialsRatio: number; engineeringRatio: number; installationRatio: number; missingCategories?: string[]; rateValidation?: { rateName: string; applied: number; expected: number; deviation: string }[]; alerts?: string[] };
   pricingStrategies?: { costPlus?: { price: number; margin: number }; valueBased?: { price: number; margin: number; rationale: string }; benchmarking?: { price: number; margin: number; rationale: string } };
+  profitabilityControl?: { minimumMarginScenario?: { margin: number; conditions: string }; riskAdjustedMargin?: { margin: number; adjustments: string }; belowThreshold?: boolean; correctiveActions?: string[] };
 };
 
 const CATEGORIES = [
