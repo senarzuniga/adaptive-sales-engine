@@ -168,6 +168,7 @@ const AiAugmentedSalesPage = () => {
     } : { goal: '', callScript: '', emailTemplate: '', presentationNotes: '' };
 
     await addTask({
+      id: crypto.randomUUID(),
       title: action.title,
       description: action.description || '',
       pillar: (['general','p0','p1','p2','p3','p4','p5','p6'].includes(action.pillar) ? action.pillar : 'p4') as TaskPillar,
@@ -176,6 +177,7 @@ const AiAugmentedSalesPage = () => {
       category: (['analysis','follow_up','loyalty','cross_sell','strategy','data','meeting','report'].includes(action.category) ? action.category : 'follow_up') as TaskCategory,
       assignee: action.assignee || '',
       dueDate: action.dueDate || '',
+      createdAt: new Date().toISOString(),
       notes: action.rationale ? [action.rationale] : [],
       actionContent: ac,
     });
