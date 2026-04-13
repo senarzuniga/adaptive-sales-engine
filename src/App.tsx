@@ -21,6 +21,7 @@ import PortfolioAnalysisPage from "./pages/PortfolioAnalysisPage";
 import MarketingContentPage from "./pages/MarketingContentPage";
 import OfferPricingPage from "./pages/OfferPricingPage";
 import ServiceContractBuilderPage from "./pages/ServiceContractBuilderPage";
+import ProjectManagementPage from "./pages/ProjectManagementPage";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -54,6 +55,7 @@ const App = () => (
                 <Route path="/marketing-content" element={<MarketingContentPage />} />
                 <Route path="/offer-pricing" element={<OfferPricingPage />} />
                 <Route path="/service-contract-builder" element={<ServiceContractBuilderPage />} />
+                <Route path="/project-management" element={<ProjectManagementPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AppLayout>

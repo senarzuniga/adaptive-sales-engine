@@ -774,6 +774,485 @@ export type Database = {
           },
         ]
       }
+      project_costs: {
+        Row: {
+          actual_amount: number | null
+          budget_amount: number | null
+          category: string
+          committed_amount: number | null
+          created_at: string
+          description: string | null
+          id: string
+          line_item: string
+          notes: string | null
+          po_number: string | null
+          project_id: string
+          status: string
+          supplier: string | null
+          updated_at: string
+          variance: number | null
+          variance_pct: number | null
+        }
+        Insert: {
+          actual_amount?: number | null
+          budget_amount?: number | null
+          category?: string
+          committed_amount?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          line_item?: string
+          notes?: string | null
+          po_number?: string | null
+          project_id: string
+          status?: string
+          supplier?: string | null
+          updated_at?: string
+          variance?: number | null
+          variance_pct?: number | null
+        }
+        Update: {
+          actual_amount?: number | null
+          budget_amount?: number | null
+          category?: string
+          committed_amount?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          line_item?: string
+          notes?: string | null
+          po_number?: string | null
+          project_id?: string
+          status?: string
+          supplier?: string | null
+          updated_at?: string
+          variance?: number | null
+          variance_pct?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_costs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_gates: {
+        Row: {
+          actual_date: string | null
+          created_at: string
+          description: string | null
+          gate_name: string
+          gate_number: string
+          id: string
+          notes: string | null
+          planned_date: string | null
+          project_id: string
+          required_inputs: Json | null
+          required_outputs: Json | null
+          responsible: string | null
+          risks_if_not_passed: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          actual_date?: string | null
+          created_at?: string
+          description?: string | null
+          gate_name?: string
+          gate_number?: string
+          id?: string
+          notes?: string | null
+          planned_date?: string | null
+          project_id: string
+          required_inputs?: Json | null
+          required_outputs?: Json | null
+          responsible?: string | null
+          risks_if_not_passed?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          actual_date?: string | null
+          created_at?: string
+          description?: string | null
+          gate_name?: string
+          gate_number?: string
+          id?: string
+          notes?: string | null
+          planned_date?: string | null
+          project_id?: string
+          required_inputs?: Json | null
+          required_outputs?: Json | null
+          responsible?: string | null
+          risks_if_not_passed?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_gates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_milestones: {
+        Row: {
+          actual_date: string | null
+          created_at: string
+          dependencies: string | null
+          description: string | null
+          gate_id: string | null
+          id: string
+          is_invoiced: boolean | null
+          is_paid: boolean | null
+          linked_phase_id: string | null
+          milestone_type: string
+          notes: string | null
+          payment_amount: number | null
+          payment_pct: number | null
+          planned_date: string | null
+          project_id: string
+          required_documents: Json | null
+          responsible: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          actual_date?: string | null
+          created_at?: string
+          dependencies?: string | null
+          description?: string | null
+          gate_id?: string | null
+          id?: string
+          is_invoiced?: boolean | null
+          is_paid?: boolean | null
+          linked_phase_id?: string | null
+          milestone_type?: string
+          notes?: string | null
+          payment_amount?: number | null
+          payment_pct?: number | null
+          planned_date?: string | null
+          project_id: string
+          required_documents?: Json | null
+          responsible?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          actual_date?: string | null
+          created_at?: string
+          dependencies?: string | null
+          description?: string | null
+          gate_id?: string | null
+          id?: string
+          is_invoiced?: boolean | null
+          is_paid?: boolean | null
+          linked_phase_id?: string | null
+          milestone_type?: string
+          notes?: string | null
+          payment_amount?: number | null
+          payment_pct?: number | null
+          planned_date?: string | null
+          project_id?: string
+          required_documents?: Json | null
+          responsible?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_milestones_linked_phase_id_fkey"
+            columns: ["linked_phase_id"]
+            isOneToOne: false
+            referencedRelation: "project_phases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_milestones_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_phases: {
+        Row: {
+          actual_cost: number | null
+          actual_end: string | null
+          actual_start: string | null
+          budget: number | null
+          completion_pct: number | null
+          control_points: Json | null
+          created_at: string
+          description: string | null
+          id: string
+          key_tasks: Json | null
+          notes: string | null
+          phase_name: string
+          phase_number: number
+          planned_end: string | null
+          planned_start: string | null
+          project_id: string
+          responsible: string | null
+          risks: Json | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          actual_cost?: number | null
+          actual_end?: string | null
+          actual_start?: string | null
+          budget?: number | null
+          completion_pct?: number | null
+          control_points?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          key_tasks?: Json | null
+          notes?: string | null
+          phase_name?: string
+          phase_number?: number
+          planned_end?: string | null
+          planned_start?: string | null
+          project_id: string
+          responsible?: string | null
+          risks?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          actual_cost?: number | null
+          actual_end?: string | null
+          actual_start?: string | null
+          budget?: number | null
+          completion_pct?: number | null
+          control_points?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          key_tasks?: Json | null
+          notes?: string | null
+          phase_name?: string
+          phase_number?: number
+          planned_end?: string | null
+          planned_start?: string | null
+          project_id?: string
+          responsible?: string | null
+          risks?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_phases_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_risks: {
+        Row: {
+          category: string | null
+          contingency_plan: string | null
+          created_at: string
+          description: string | null
+          id: string
+          impact: string
+          mitigation_action: string | null
+          owner: string | null
+          probability: string
+          project_id: string
+          risk_score: number | null
+          risk_title: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          contingency_plan?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          impact?: string
+          mitigation_action?: string | null
+          owner?: string | null
+          probability?: string
+          project_id: string
+          risk_score?: number | null
+          risk_title?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          contingency_plan?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          impact?: string
+          mitigation_action?: string | null
+          owner?: string | null
+          probability?: string
+          project_id?: string
+          risk_score?: number | null
+          risk_title?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_risks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          actual_end: string | null
+          actual_start: string | null
+          ai_analysis: Json | null
+          company_id: string
+          complexity: string
+          contract_value: number | null
+          created_at: string
+          currency: string
+          customer_name: string | null
+          customer_requirements: string | null
+          customization_level: string | null
+          deliverables: string | null
+          delivery_deadline: string | null
+          dependencies: string | null
+          duration_category: string
+          engineering_complexity: string | null
+          exclusions: string | null
+          health_score: number | null
+          id: string
+          incoterms: string | null
+          margin_actual: number | null
+          margin_target: number | null
+          notes: string | null
+          offer_id: string | null
+          payment_terms: string | null
+          penalties_lds: string | null
+          planned_end: string | null
+          planned_start: string | null
+          project_number: string
+          project_type: string
+          risk_level: string
+          scope_of_supply: string | null
+          site_constraints: string | null
+          status: string
+          title: string
+          total_actual_cost: number | null
+          total_budget: number | null
+          total_invoiced: number | null
+          total_paid: number | null
+          updated_at: string
+          warranty_terms: string | null
+        }
+        Insert: {
+          actual_end?: string | null
+          actual_start?: string | null
+          ai_analysis?: Json | null
+          company_id: string
+          complexity?: string
+          contract_value?: number | null
+          created_at?: string
+          currency?: string
+          customer_name?: string | null
+          customer_requirements?: string | null
+          customization_level?: string | null
+          deliverables?: string | null
+          delivery_deadline?: string | null
+          dependencies?: string | null
+          duration_category?: string
+          engineering_complexity?: string | null
+          exclusions?: string | null
+          health_score?: number | null
+          id?: string
+          incoterms?: string | null
+          margin_actual?: number | null
+          margin_target?: number | null
+          notes?: string | null
+          offer_id?: string | null
+          payment_terms?: string | null
+          penalties_lds?: string | null
+          planned_end?: string | null
+          planned_start?: string | null
+          project_number?: string
+          project_type?: string
+          risk_level?: string
+          scope_of_supply?: string | null
+          site_constraints?: string | null
+          status?: string
+          title?: string
+          total_actual_cost?: number | null
+          total_budget?: number | null
+          total_invoiced?: number | null
+          total_paid?: number | null
+          updated_at?: string
+          warranty_terms?: string | null
+        }
+        Update: {
+          actual_end?: string | null
+          actual_start?: string | null
+          ai_analysis?: Json | null
+          company_id?: string
+          complexity?: string
+          contract_value?: number | null
+          created_at?: string
+          currency?: string
+          customer_name?: string | null
+          customer_requirements?: string | null
+          customization_level?: string | null
+          deliverables?: string | null
+          delivery_deadline?: string | null
+          dependencies?: string | null
+          duration_category?: string
+          engineering_complexity?: string | null
+          exclusions?: string | null
+          health_score?: number | null
+          id?: string
+          incoterms?: string | null
+          margin_actual?: number | null
+          margin_target?: number | null
+          notes?: string | null
+          offer_id?: string | null
+          payment_terms?: string | null
+          penalties_lds?: string | null
+          planned_end?: string | null
+          planned_start?: string | null
+          project_number?: string
+          project_type?: string
+          risk_level?: string
+          scope_of_supply?: string | null
+          site_constraints?: string | null
+          status?: string
+          title?: string
+          total_actual_cost?: number | null
+          total_budget?: number | null
+          total_invoiced?: number | null
+          total_paid?: number | null
+          updated_at?: string
+          warranty_terms?: string | null
+        }
+        Relationships: []
+      }
       service_contract_parts: {
         Row: {
           actual_consumption_ytd: number | null

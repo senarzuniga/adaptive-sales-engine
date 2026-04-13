@@ -32,6 +32,7 @@ import {
   PieChart,
   Megaphone,
   Calculator,
+  FolderKanban,
 } from 'lucide-react';
 
 export function AppSidebar() {
@@ -58,6 +59,7 @@ export function AppSidebar() {
     { title: t.nav.emailCobot, url: '/email-cobot', icon: Bot },
     { title: t.nav.marketingContent, url: '/marketing-content', icon: Megaphone },
     { title: t.nav.offerPricing || 'Offer & Pricing', url: '/offer-pricing', icon: Calculator },
+    { title: 'Project Management', url: '/project-management', icon: FolderKanban },
     { title: t.nav.socialMedia, url: '/social-media', icon: Share2 },
   ];
 
