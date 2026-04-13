@@ -801,6 +801,66 @@ export default function ProjectManagementPage() {
                 </Card>
               </div>
 
+              {/* Margin Deviation Alerts */}
+              {marginAlerts.length > 0 && (
+                <Card className={`mb-6 ${marginAlerts.some(a => a.level === 'critical') ? 'border-destructive/50' : marginAlerts.some(a => a.level === 'warning') ? 'border-yellow-500/50' : 'border-primary/30'}`}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      {marginAlerts.some(a => a.level === 'critical') ? (
+                        <AlertTriangle className="h-4 w-4 text-destructive" />
+                      ) : marginAlerts.some(a => a.level === 'warning') ? (
+                        <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                      ) : (
+                        <CheckCircle className="h-4 w-4 text-primary" />
+                      )}
+                      Margin & Cost Deviation Alerts
+                      {marginAlerts.filter(a => a.level === 'critical').length > 0 && (
+                        <Badge variant="destructive" className="text-[10px] ml-1">{marginAlerts.filter(a => a.level === 'critical').length} Critical</Badge>
+                      )}
+                      {marginAlerts.filter(a => a.level === 'warning').length > 0 && (
+                        <Badge variant="secondary" className="text-[10px] ml-1">{marginAlerts.filter(a => a.level === 'warning').length} Warning</Badge>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {marginAlerts.map((alert, i) => (
+                        <div key={i} className={`rounded-lg border p-3 ${
+                          alert.level === 'critical' ? 'border-destructive/40 bg-destructive/5' :
+                          alert.level === 'warning' ? 'border-yellow-500/40 bg-yellow-500/5' :
+                          'border-primary/30 bg-primary/5'
+                        }`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                {alert.level === 'critical' && <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />}
+                                {alert.level === 'warning' && <span className="w-2 h-2 rounded-full bg-yellow-500" />}
+                                {alert.level === 'info' && <span className="w-2 h-2 rounded-full bg-primary" />}
+                                <span className="text-sm font-semibold text-foreground">{alert.title}</span>
+                              </div>
+                              <p className="text-xs text-muted-foreground mb-2">{alert.message}</p>
+                              <div className="flex items-start gap-1.5">
+                                <Lightbulb className="h-3 w-3 text-primary mt-0.5 flex-shrink-0" />
+                                <p className="text-xs text-primary font-medium">{alert.action}</p>
+                              </div>
+                            </div>
+                            <div className={`text-right px-3 py-1 rounded-md ${
+                              alert.level === 'critical' ? 'bg-destructive/10' :
+                              alert.level === 'warning' ? 'bg-yellow-500/10' : 'bg-primary/10'
+                            }`}>
+                              <p className={`text-lg font-bold ${
+                                alert.level === 'critical' ? 'text-destructive' :
+                                alert.level === 'warning' ? 'text-yellow-600' : 'text-primary'
+                              }`}>{alert.metric}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Executive Summary */}
               {aiAnalysis.executiveSummary && (
                 <Card>
