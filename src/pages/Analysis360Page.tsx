@@ -126,8 +126,126 @@ const Analysis360Page = () => {
     })).sort((a, b) => b.revenue - a.revenue);
   }, [filtered]);
 
-  const totalPlanned = strategy.reduce((s, r) => s + r.estRevenue, 0);
-  const overallAchievement = totalPlanned > 0 ? (totalRevenue / totalPlanned * 100) : 0;
+  // Strategy achievement: use consultant target if available, deduplicate strategy rows
+  const { strategyTarget, weightedPipeline, soldRevenue, strategyAchievement, strategySource } = useMemo(() => {
+    // Parse consultant's target from company profile (e.g. "targeting €3.5M within 3 years")
+    const desc = company?.business_description || '';
+    const annualRev = company?.annual_revenue || '';
+    const notes = company?.additional_notes || '';
+    
+    let consultantTarget = 0;
+    // Try "targeting €X.XM" pattern
+    const targetMatch = (annualRev + ' ' + desc + ' ' + notes).match(/target(?:ing)?\s*[~€]?\s*([0-9.,]+)\s*(m|million|mln)/i);
+    if (targetMatch) {
+      consultantTarget = parseFloat(targetMatch[1].replace(',', '.')) * 1_000_000;
+    }
+
+    // Deduplicate strategy rows by product_family (take unique families, sum once)
+    const uniqueFamilies = new Map<string, number>();
+    strategy.forEach(s => {
+      const key = s.productFamily.trim().toLowerCase();
+      if (!uniqueFamilies.has(key)) {
+        uniqueFamilies.set(key, s.estRevenue);
+      }
+    });
+    const deduplicatedStrategyTotal = Array.from(uniqueFamilies.values()).reduce((s, v) => s + v, 0);
+
+    // Use consultant target if available, otherwise deduplicated strategy
+    const finalTarget = consultantTarget > 0 ? consultantTarget : deduplicatedStrategyTotal;
+    const source = consultantTarget > 0 ? 'Company Profile Target' : 'Strategy Data';
+
+    // Calculate actual achievement: SOLD opportunities + weighted open pipeline
+    const sold = opportunities.filter(o => o.status === 'SOLD').reduce((s, o) => s + o.estRevenue, 0);
+    const openWeighted = opportunities
+      .filter(o => o.status !== 'SOLD' && o.status !== 'DESATENDIDO')
+      .reduce((s, o) => s + o.estRevenue * (o.contractProb / 100), 0);
+    const weighted = sold + openWeighted;
+
+    const achievement = finalTarget > 0 ? (weighted / finalTarget * 100) : 0;
+
+    return {
+      strategyTarget: finalTarget,
+      weightedPipeline: weighted,
+      soldRevenue: sold,
+      strategyAchievement: achievement,
+      strategySource: source,
+    };
+  }, [strategy, opportunities, company]);
+
+  // Task accomplishment KPIs
+  const taskStats = useMemo(() => {
+    const total = tasks.length;
+    const done = tasks.filter(t => t.status === 'done').length;
+    const inProgress = tasks.filter(t => t.status === 'in_progress').length;
+    const todo = tasks.filter(t => t.status === 'todo').length;
+    const overdue = tasks.filter(t => {
+      if (t.status === 'done') return false;
+      if (!t.dueDate) return false;
+      return new Date(t.dueDate) < new Date();
+    }).length;
+    const completionRate = total > 0 ? (done / total * 100) : 0;
+    return { total, done, inProgress, todo, overdue, completionRate };
+  }, [tasks]);
+
+  // Performance risk assessment
+  const performanceRisks = useMemo(() => {
+    const risks: Array<{ level: 'critical' | 'warning' | 'info'; title: string; description: string }> = [];
+
+    // Strategy gap risk
+    if (strategyTarget > 0 && strategyAchievement < 50) {
+      risks.push({
+        level: 'critical',
+        title: 'Strategy Achievement Critical',
+        description: `Weighted pipeline covers only ${strategyAchievement.toFixed(0)}% of the ${fmt(strategyTarget)} target. Gap: ${fmt(strategyTarget - weightedPipeline)}. Urgent pipeline building needed.`,
+      });
+    } else if (strategyTarget > 0 && strategyAchievement < 75) {
+      risks.push({
+        level: 'warning',
+        title: 'Strategy Achievement Below Target',
+        description: `Weighted pipeline at ${strategyAchievement.toFixed(0)}% of target. Gap of ${fmt(strategyTarget - weightedPipeline)} requires attention.`,
+      });
+    }
+
+    // Pipeline quality risk — too many low-probability deals
+    const lowProbDeals = opportunities.filter(o => o.contractProb < 0.3 && o.status !== 'SOLD' && o.status !== 'DESATENDIDO');
+    if (lowProbDeals.length > opportunities.length * 0.5 && opportunities.length > 5) {
+      risks.push({
+        level: 'warning',
+        title: 'Pipeline Quality Concern',
+        description: `${lowProbDeals.length} of ${opportunities.length} opportunities (${(lowProbDeals.length / opportunities.length * 100).toFixed(0)}%) have <30% probability. Pipeline may be inflated.`,
+      });
+    }
+
+    // Neglected opportunities
+    const neglected = opportunities.filter(o => o.status === 'DESATENDIDO');
+    if (neglected.length > 0) {
+      const neglectedValue = neglected.reduce((s, o) => s + o.estRevenue, 0);
+      risks.push({
+        level: 'warning',
+        title: `${neglected.length} Neglected Opportunities`,
+        description: `${fmt(neglectedValue)} in pipeline marked as "DESATENDIDO". Review and either reactivate or close these deals.`,
+      });
+    }
+
+    // Task execution risk
+    if (taskStats.overdue > 0) {
+      risks.push({
+        level: taskStats.overdue > 3 ? 'critical' : 'warning',
+        title: `${taskStats.overdue} Overdue Action${taskStats.overdue > 1 ? 's' : ''}`,
+        description: `Overdue actions reduce commercial momentum. Complete or reschedule to maintain pipeline velocity.`,
+      });
+    }
+
+    if (taskStats.total > 0 && taskStats.completionRate < 30) {
+      risks.push({
+        level: 'warning',
+        title: 'Low Action Completion Rate',
+        description: `Only ${taskStats.completionRate.toFixed(0)}% of actions completed. This pace risks budget achievement.`,
+      });
+    }
+
+    return risks;
+  }, [strategyTarget, strategyAchievement, weightedPipeline, opportunities, taskStats]);
 
   // Pareto risk
   const paretoData = useMemo(() => {
