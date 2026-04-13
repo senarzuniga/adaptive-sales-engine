@@ -123,10 +123,20 @@ export default function OfferPricingPage() {
   const [saving, setSaving] = useState(false);
   const [savedOffers, setSavedOffers] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('builder');
+  const [companyRates, setCompanyRates] = useState<any[]>([]);
 
   useEffect(() => {
-    if (selectedCompanyId) loadOffers();
+    if (selectedCompanyId) {
+      loadOffers();
+      loadRates();
+    }
   }, [selectedCompanyId]);
+
+  const loadRates = async () => {
+    if (!selectedCompanyId) return;
+    const { data } = await supabase.from('cost_rates').select('*').eq('company_id', selectedCompanyId).eq('is_active', true);
+    if (data) setCompanyRates(data);
+  };
 
   const loadOffers = async () => {
     if (!selectedCompanyId) return;
