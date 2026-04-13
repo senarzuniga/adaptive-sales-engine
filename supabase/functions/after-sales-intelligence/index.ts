@@ -63,6 +63,13 @@ ${JSON.stringify(spareParts || [], null, 2)}
 ## Company Context
 ${JSON.stringify(companyContext || {}, null, 2)}
 
+## Consultant Insights (PRIMARY SOURCE — highest reliability)
+These are manually entered by the consultant and should be used as the benchmark:
+- Business Description: ${companyContext?.business_description || "Not provided"}
+- Strategy Context: ${companyContext?.strategy_context || "Not provided"}
+- Market Context: ${companyContext?.market_context || "Not provided"}
+- Additional Notes: ${companyContext?.additional_notes || "Not provided"}
+
 ## Budget Gap Analysis (PRIORITIZATION DRIVER)
 ${budgetGapAnalysis ? JSON.stringify(budgetGapAnalysis, null, 2) : "No budget gap data available"}
 
