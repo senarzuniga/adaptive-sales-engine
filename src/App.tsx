@@ -47,7 +47,7 @@ const App = () => (
                 <Route path="/sales-architecture" element={<SalesArchitecturePage />} />
                 <Route path="/kam" element={<PillarPage pillarKey="p2" pillarNumber={2} />} />
                 <Route path="/after-sales" element={<AfterSalesEnginePage />} />
-                <Route path="/ai-sales" element={<PillarPage pillarKey="p4" pillarNumber={4} />} />
+                <Route path="/ai-sales" element={<AiAugmentedSalesPage />} />
                 <Route path="/behavioral" element={<PillarPage pillarKey="p5" pillarNumber={5} />} />
                 <Route path="/product-strategy" element={<PillarPage pillarKey="p6" pillarNumber={6} />} />
                 <Route path="/monitoring" element={<MonitoringPage />} />

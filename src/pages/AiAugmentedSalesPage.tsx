@@ -14,7 +14,10 @@ import {
   Users, DollarSign, BarChart3, Zap, Clock, ShieldAlert
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
-import { fmtEur, fmtPct, fmtAxis } from '@/components/analysis360/AnalysisUtils';
+import { fmt, fmtAxis } from '@/components/analysis360/AnalysisUtils';
+
+const fmtEur = fmt;
+const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 
 /* ───────── Lead Score helpers ───────── */
 interface ScoredLead {
@@ -81,16 +84,16 @@ function scoreLead(o: any, strategyFamilies: Set<string>, strategyRegions: Set<s
 /* ───────── Component ───────── */
 const AiAugmentedSalesPage = () => {
   const { t } = useLanguage();
-  const { state } = useData();
-  const { opportunities, orders, strategy, tasks, companyProfile } = state;
+  const { data } = useData();
+  const { opportunities, orders, strategy, tasks, companyProfile } = data;
   const [aiInsight, setAiInsight] = useState<string>('');
   const [loadingAi, setLoadingAi] = useState(false);
 
   const hasData = opportunities.length > 0 || orders.length > 0;
 
   // Strategy sets for alignment scoring
-  const strategyFamilies = useMemo(() => new Set(strategy.map(s => s.productFamily).filter(Boolean)), [strategy]);
-  const strategyRegions = useMemo(() => new Set(strategy.map(s => s.region).filter(Boolean)), [strategy]);
+  const strategyFamilies = useMemo(() => new Set(strategy.map(s => s.productFamily).filter(Boolean) as string[]), [strategy]);
+  const strategyRegions = useMemo(() => new Set(strategy.map(s => s.region).filter(Boolean) as string[]), [strategy]);
 
   // Score all opportunities
   const scoredLeads = useMemo(() =>
