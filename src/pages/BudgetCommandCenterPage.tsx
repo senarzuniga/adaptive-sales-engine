@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { useDataStore } from '@/store/DataStore';
+import { useData } from '@/store/DataStore';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
