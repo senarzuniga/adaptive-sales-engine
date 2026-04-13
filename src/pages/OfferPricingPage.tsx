@@ -788,6 +788,7 @@ export default function OfferPricingPage() {
                       <TableHead>{isEs ? 'Cliente' : 'Customer'}</TableHead>
                       <TableHead>{isEs ? 'Estado' : 'Status'}</TableHead>
                       <TableHead>{isEs ? 'Fecha' : 'Date'}</TableHead>
+                      <TableHead>{isEs ? 'Acciones' : 'Actions'}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -796,8 +797,43 @@ export default function OfferPricingPage() {
                         <TableCell className="font-mono text-sm">{o.offer_number || '-'}</TableCell>
                         <TableCell>{o.title}</TableCell>
                         <TableCell>{o.customer_name}</TableCell>
-                        <TableCell><Badge variant="outline">{o.status}</Badge></TableCell>
+                        <TableCell>
+                          <Select value={o.status} onValueChange={(v) => updateOfferStatus(o.id, v)}>
+                            <SelectTrigger className="w-28 h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="draft">{isEs ? 'Borrador' : 'Draft'}</SelectItem>
+                              <SelectItem value="sent">{isEs ? 'Enviada' : 'Sent'}</SelectItem>
+                              <SelectItem value="negotiation">{isEs ? 'Negociación' : 'Negotiation'}</SelectItem>
+                              <SelectItem value="won">{isEs ? 'Ganada' : 'Won'}</SelectItem>
+                              <SelectItem value="lost">{isEs ? 'Perdida' : 'Lost'}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
                         <TableCell className="text-sm text-muted-foreground">{new Date(o.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          {o.status !== 'won' ? (
+                            <Button
+                              size="sm"
+                              variant="default"
+                              disabled={convertingId === o.id}
+                              onClick={() => convertToProject(o)}
+                            >
+                              {convertingId === o.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                              ) : (
+                                <FolderKanban className="h-3 w-3 mr-1" />
+                              )}
+                              {isEs ? 'Crear Proyecto' : 'Create Project'}
+                            </Button>
+                          ) : (
+                            <Button size="sm" variant="outline" onClick={() => navigate('/project-management')}>
+                              <ArrowRight className="h-3 w-3 mr-1" />
+                              {isEs ? 'Ver Proyecto' : 'View Project'}
+                            </Button>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
