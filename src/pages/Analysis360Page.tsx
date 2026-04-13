@@ -54,6 +54,25 @@ const Analysis360Page = () => {
   const totalMargin = useMemo(() => filtered.reduce((s, o) => s + o.margin, 0), [filtered]);
   const avgMarginPct = totalRevenue > 0 ? (totalMargin / totalRevenue * 100) : 0;
 
+  // Yearly average revenue (exclude current year for historical avg)
+  const { yearlyAvgRevenue, currentYearRevenue, yearCount } = useMemo(() => {
+    const currentYear = String(new Date().getFullYear());
+    const byYear: Record<string, number> = {};
+    filtered.forEach(o => {
+      const yr = o.purchasingYear || 'Unknown';
+      byYear[yr] = (byYear[yr] || 0) + o.sellingPrice;
+    });
+    const curYearRev = byYear[currentYear] || 0;
+    const historicalYears = Object.entries(byYear).filter(([yr]) => yr !== currentYear && yr !== 'Unknown');
+    const histTotal = historicalYears.reduce((s, [, v]) => s + v, 0);
+    const histCount = historicalYears.length;
+    return {
+      yearlyAvgRevenue: histCount > 0 ? histTotal / histCount : totalRevenue,
+      currentYearRevenue: curYearRev,
+      yearCount: histCount || 1,
+    };
+  }, [filtered, totalRevenue]);
+
   const byCustomer = useMemo(() => {
     const groups = groupBy(filtered, o => o.customerName);
     return Object.entries(groups).map(([name, items]) => ({
