@@ -34,6 +34,16 @@ const CATEGORY_LABELS: Record<string, string> = {
   strategy: 'Strategy', data: 'Data', meeting: 'Meeting', report: 'Report',
 };
 
+interface BudgetGap {
+  segment: string;
+  segmentType: 'product_family' | 'region' | 'kam';
+  targetRevenue: number;
+  actualRevenue: number;
+  gapAmount: number;
+  gapPct: number;
+  pipelineCoverage: number;
+}
+
 interface GeneratedTask {
   title: string;
   description: string;
@@ -42,6 +52,9 @@ interface GeneratedTask {
   category: string;
   dueDate: string;
   rationale: string;
+  budgetImpactScore: number;
+  targetSegment: string;
+  estimatedRevenueImpact: number;
   selected: boolean;
 }
 
@@ -51,6 +64,51 @@ const WeeklyPlannerPage = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [weekSummary, setWeekSummary] = useState('');
   const [generatedTasks, setGeneratedTasks] = useState<GeneratedTask[]>([]);
+
+  const computeBudgetGapAnalysis = useCallback(() => {
+    if (data.strategy.length === 0) return { gaps: [] as BudgetGap[], overallAchievement: 0, totalTarget: 0, totalActual: 0, totalGap: 0, summary: '' };
+
+    const totalTarget = data.strategy.reduce((s, st) => s + st.estRevenue, 0);
+    const totalActual = data.orders.reduce((s, o) => s + o.sellingPrice, 0);
+    const overallAchievement = totalTarget > 0 ? (totalActual / totalTarget) * 100 : 0;
+    const totalGap = totalTarget - totalActual;
+
+    // Gaps by product family
+    const productFamilies = [...new Set(data.strategy.map(s => s.productFamily).filter(Boolean))];
+    const productGaps: BudgetGap[] = productFamilies.map(pf => {
+      const target = data.strategy.filter(s => s.productFamily === pf).reduce((s, st) => s + st.estRevenue, 0);
+      const actual = data.orders.filter(o => o.productFamily === pf).reduce((s, o) => s + o.sellingPrice, 0);
+      const pipeline = data.opportunities.filter(o => o.productFamily === pf && o.status !== 'Won' && o.status !== 'Lost').reduce((s, o) => s + o.estRevenue * (o.contractProb / 100), 0);
+      return { segment: pf, segmentType: 'product_family' as const, targetRevenue: target, actualRevenue: actual, gapAmount: target - actual, gapPct: target > 0 ? ((target - actual) / target) * 100 : 0, pipelineCoverage: pipeline };
+    });
+
+    // Gaps by region
+    const regions = [...new Set(data.strategy.map(s => s.region).filter(Boolean))];
+    const regionGaps: BudgetGap[] = regions.map(r => {
+      const target = data.strategy.filter(s => s.region === r).reduce((s, st) => s + st.estRevenue, 0);
+      const actual = data.orders.filter(o => o.region === r).reduce((s, o) => s + o.sellingPrice, 0);
+      const pipeline = data.opportunities.filter(o => o.region === r && o.status !== 'Won' && o.status !== 'Lost').reduce((s, o) => s + o.estRevenue * (o.contractProb / 100), 0);
+      return { segment: r, segmentType: 'region' as const, targetRevenue: target, actualRevenue: actual, gapAmount: target - actual, gapPct: target > 0 ? ((target - actual) / target) * 100 : 0, pipelineCoverage: pipeline };
+    });
+
+    // Gaps by KAM
+    const kams = [...new Set(data.strategy.map(s => s.kam).filter(Boolean))];
+    const kamGaps: BudgetGap[] = kams.map(k => {
+      const target = data.strategy.filter(s => s.kam === k).reduce((s, st) => s + st.estRevenue, 0);
+      const actual = data.orders.filter(o => o.kam === k).reduce((s, o) => s + o.sellingPrice, 0);
+      const pipeline = data.opportunities.filter(o => o.kam === k && o.status !== 'Won' && o.status !== 'Lost').reduce((s, o) => s + o.estRevenue * (o.contractProb / 100), 0);
+      return { segment: k, segmentType: 'kam' as const, targetRevenue: target, actualRevenue: actual, gapAmount: target - actual, gapPct: target > 0 ? ((target - actual) / target) * 100 : 0, pipelineCoverage: pipeline };
+    });
+
+    const allGaps = [...productGaps, ...regionGaps, ...kamGaps].filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmount - a.gapAmount);
+
+    const summary = `Overall: ${overallAchievement.toFixed(0)}% achieved (€${totalActual.toLocaleString()} of €${totalTarget.toLocaleString()}, gap: €${totalGap.toLocaleString()}).
+TOP GAPS BY PRODUCT: ${productGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmount - a.gapAmount).slice(0, 5).map(g => `${g.segment}: €${g.gapAmount.toLocaleString()} gap (${g.gapPct.toFixed(0)}%), pipeline coverage: €${g.pipelineCoverage.toLocaleString()}`).join('; ')}
+TOP GAPS BY REGION: ${regionGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmount - a.gapAmount).slice(0, 5).map(g => `${g.segment}: €${g.gapAmount.toLocaleString()} gap (${g.gapPct.toFixed(0)}%), pipeline coverage: €${g.pipelineCoverage.toLocaleString()}`).join('; ')}
+TOP GAPS BY KAM: ${kamGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmount - a.gapAmount).slice(0, 5).map(g => `${g.segment}: €${g.gapAmount.toLocaleString()} gap (${g.gapPct.toFixed(0)}%), pipeline coverage: €${g.pipelineCoverage.toLocaleString()}`).join('; ')}`;
+
+    return { gaps: allGaps, overallAchievement, totalTarget, totalActual, totalGap, summary };
+  }, [data]);
 
   const buildDataSummary = useCallback(() => {
     const ordersData = data.orders.length > 0
@@ -85,8 +143,10 @@ const WeeklyPlannerPage = () => {
       ? data.tasks.filter(t => t.status !== 'done').map(t => `[${t.pillar}/${t.priority}] ${t.title}`).join('; ')
       : null;
 
-    return { ordersData, opportunitiesData: oppData, strategyData: stratData, productsData: prodData, existingTasks };
-  }, [data]);
+    const budgetGap = computeBudgetGapAnalysis();
+
+    return { ordersData, opportunitiesData: oppData, strategyData: stratData, productsData: prodData, existingTasks, budgetGapAnalysis: budgetGap.summary || null };
+  }, [data, computeBudgetGapAnalysis]);
 
   const handleGenerate = async () => {
     if (!activeCompanyId) {
