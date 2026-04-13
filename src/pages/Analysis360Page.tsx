@@ -63,7 +63,9 @@ const Analysis360Page = () => {
   }, [paretoData]);
   const riskLevel = customersFor80Pct <= 3 ? 'high' : customersFor80Pct <= 6 ? 'medium' : 'low';
 
-  if (!hasData || orders.length === 0) {
+  const hasAnyAnalysisData = orders.length > 0 || opportunities.length > 0 || strategy.length > 0 || products.length > 0;
+
+  if (!hasAnyAnalysisData) {
     return (
       <div className="p-6 lg:p-8 max-w-7xl mx-auto">
         <div className="mb-8">

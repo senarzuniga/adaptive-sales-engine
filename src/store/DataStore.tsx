@@ -558,7 +558,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const hasData = data.orders.length > 0 || data.opportunities.length > 0;
+  const hasData = data.orders.length > 0 || data.opportunities.length > 0 || data.strategy.length > 0 || data.products.length > 0;
 
   return (
     <DataContext.Provider value={{
