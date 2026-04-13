@@ -241,65 +241,86 @@ export type Database = {
         Row: {
           additional_notes: string | null
           annual_revenue: string | null
+          business_description: string | null
           company_name: string
           created_at: string
           current_challenges: string | null
           employee_count: string | null
+          enrichment_status: string | null
           headquarters: string | null
           id: string
           industry: string | null
           kam_count: string | null
+          linkedin_url: string | null
           main_competitors: string | null
           main_customer_segments: string | null
           main_products: string | null
+          market_context: string | null
+          objectives: string | null
           operating_regions: string | null
           sales_channels: string | null
           sales_team_size: string | null
           strategic_goals: string | null
+          strategy_context: string | null
           sub_sector: string | null
           updated_at: string
+          website_url: string | null
         }
         Insert: {
           additional_notes?: string | null
           annual_revenue?: string | null
+          business_description?: string | null
           company_name: string
           created_at?: string
           current_challenges?: string | null
           employee_count?: string | null
+          enrichment_status?: string | null
           headquarters?: string | null
           id?: string
           industry?: string | null
           kam_count?: string | null
+          linkedin_url?: string | null
           main_competitors?: string | null
           main_customer_segments?: string | null
           main_products?: string | null
+          market_context?: string | null
+          objectives?: string | null
           operating_regions?: string | null
           sales_channels?: string | null
           sales_team_size?: string | null
           strategic_goals?: string | null
+          strategy_context?: string | null
           sub_sector?: string | null
           updated_at?: string
+          website_url?: string | null
         }
         Update: {
           additional_notes?: string | null
           annual_revenue?: string | null
+          business_description?: string | null
           company_name?: string
           created_at?: string
           current_challenges?: string | null
           employee_count?: string | null
+          enrichment_status?: string | null
           headquarters?: string | null
           id?: string
           industry?: string | null
           kam_count?: string | null
+          linkedin_url?: string | null
           main_competitors?: string | null
           main_customer_segments?: string | null
           main_products?: string | null
+          market_context?: string | null
+          objectives?: string | null
           operating_regions?: string | null
           sales_channels?: string | null
           sales_team_size?: string | null
           strategic_goals?: string | null
+          strategy_context?: string | null
           sub_sector?: string | null
           updated_at?: string
+          website_url?: string | null
         }
         Relationships: []
       }
