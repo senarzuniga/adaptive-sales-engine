@@ -52,16 +52,34 @@ const PortfolioAnalysisPage = () => {
   const [analysis, setAnalysis] = useState<PortfolioAnalysis | null>(null);
   const [additionalNotes, setAdditionalNotes] = useState('');
 
-  // Filter orders by period
+  // Build unified records: use orders if available, fallback to opportunities
+  const useOpportunitiesFallback = data.orders.length === 0 && data.opportunities.length > 0;
+  const dataSourceLabel = useOpportunitiesFallback ? 'Pipeline (Opportunities)' : 'Orders';
+
+  const baseRecords = useMemo(() => {
+    if (!useOpportunitiesFallback) return data.orders;
+    // Synthesize order-like records from opportunities
+    return data.opportunities.map(o => ({
+      id: undefined,
+      poDate: '', firstOfferDate: '', oppNumber: o.oppNumber,
+      region: o.region, country: o.country, customerName: o.customerName,
+      scope: o.scope, productFamily: o.productFamily, segment: o.segment,
+      purchasingYear: o.estPurchasingYear || String(new Date().getFullYear()),
+      purchasingQuarter: o.estPurchasingQuarter, purchasingMonth: '',
+      sellingPrice: o.estRevenue, margin: o.margin, kam: o.kam,
+    }));
+  }, [data.orders, data.opportunities, useOpportunitiesFallback]);
+
+  // Filter by period
   const filteredOrders = useMemo(() => {
-    if (periodFilter === 'all') return data.orders;
+    if (periodFilter === 'all') return baseRecords;
     const currentYear = new Date().getFullYear();
     const cutoff = periodFilter === '1yr' ? currentYear - 1 : currentYear - 3;
-    return data.orders.filter(o => {
+    return baseRecords.filter(o => {
       const year = parseInt(o.purchasingYear);
       return !isNaN(year) && year >= cutoff;
     });
-  }, [data.orders, periodFilter]);
+  }, [baseRecords, periodFilter]);
 
   // Pareto analysis
   const paretoData = useMemo(() => {
