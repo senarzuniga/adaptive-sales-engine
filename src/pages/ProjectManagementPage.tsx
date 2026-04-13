@@ -559,42 +559,48 @@ export default function ProjectManagementPage() {
                   </Button>
                 </CardContent></Card>
               ) : (
-                <div className="space-y-3">
-                  {phases.map(phase => (
-                    <Card key={phase.id}>
-                      <CardContent className="pt-4 pb-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Badge variant="outline" className="text-[10px]">Phase {phase.phase_number}</Badge>
-                              <span className="font-medium text-foreground">{phase.phase_name}</span>
-                              <Badge variant={STATUS_VARIANT(phase.status) as any} className="text-[10px]">{phase.status}</Badge>
-                              {phase.responsible && <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" />{phase.responsible}</span>}
-                            </div>
-                            {phase.description && <p className="text-xs text-muted-foreground mb-2">{phase.description}</p>}
-                            <div className="flex items-center gap-2 mb-2">
-                              <Progress value={phase.completion_pct || 0} className="flex-1 h-2" />
-                              <span className="text-xs text-muted-foreground">{fmtPct(phase.completion_pct || 0)}</span>
-                            </div>
-                            {phase.key_tasks?.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mb-2">
-                                {(phase.key_tasks as string[]).map((t: string, i: number) => (
-                                  <span key={i} className="text-[10px] px-1.5 py-0.5 bg-muted rounded text-muted-foreground">{t}</span>
-                                ))}
+                <div className="space-y-4">
+                  {/* Gantt Chart */}
+                  <GanttChart phases={phases} gates={gates} projectStart={selectedProject.planned_start} projectEnd={selectedProject.planned_end} />
+
+                  {/* Phase list */}
+                  <div className="space-y-3">
+                    {phases.map(phase => (
+                      <Card key={phase.id}>
+                        <CardContent className="pt-4 pb-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge variant="outline" className="text-[10px]">Phase {phase.phase_number}</Badge>
+                                <span className="font-medium text-foreground">{phase.phase_name}</span>
+                                <Badge variant={STATUS_VARIANT(phase.status) as any} className="text-[10px]">{phase.status}</Badge>
+                                {phase.responsible && <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" />{phase.responsible}</span>}
                               </div>
-                            )}
-                            {phase.budget > 0 && <span className="text-xs text-muted-foreground">Budget: {fmt(phase.budget)}{phase.actual_cost > 0 ? ` | Actual: ${fmt(phase.actual_cost)}` : ''}</span>}
+                              {phase.description && <p className="text-xs text-muted-foreground mb-2">{phase.description}</p>}
+                              <div className="flex items-center gap-2 mb-2">
+                                <Progress value={phase.completion_pct || 0} className="flex-1 h-2" />
+                                <span className="text-xs text-muted-foreground">{fmtPct(phase.completion_pct || 0)}</span>
+                              </div>
+                              {phase.key_tasks?.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mb-2">
+                                  {(phase.key_tasks as string[]).map((t: string, i: number) => (
+                                    <span key={i} className="text-[10px] px-1.5 py-0.5 bg-muted rounded text-muted-foreground">{t}</span>
+                                  ))}
+                                </div>
+                              )}
+                              {phase.budget > 0 && <span className="text-xs text-muted-foreground">Budget: {fmt(phase.budget)}{phase.actual_cost > 0 ? ` | Actual: ${fmt(phase.actual_cost)}` : ''}</span>}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Select value={phase.status} onValueChange={v => updatePhaseStatus(phase.id, v, v === 'completed' ? 100 : phase.completion_pct)}>
+                                <SelectTrigger className="h-7 text-xs w-28"><SelectValue /></SelectTrigger>
+                                <SelectContent>{PHASE_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                              </Select>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Select value={phase.status} onValueChange={v => updatePhaseStatus(phase.id, v, v === 'completed' ? 100 : phase.completion_pct)}>
-                              <SelectTrigger className="h-7 text-xs w-28"><SelectValue /></SelectTrigger>
-                              <SelectContent>{PHASE_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
               )}
             </TabsContent>
