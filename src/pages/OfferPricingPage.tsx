@@ -16,7 +16,8 @@ import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   Calculator, Plus, Trash2, Brain, TrendingUp, AlertTriangle, Shield,
-  DollarSign, BarChart3, Lightbulb, ChevronDown, ChevronUp, Save, FileText, Loader2
+  DollarSign, BarChart3, Lightbulb, ChevronDown, ChevronUp, Save, FileText, Loader2,
+  FolderKanban, ArrowRight
 } from 'lucide-react';
 
 type CostLine = {
