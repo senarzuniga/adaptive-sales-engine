@@ -12,9 +12,26 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const { companyProfile, ordersData, opportunitiesData, strategyData, productsData, existingTasks, weekNotes } = await req.json();
+    const { companyProfile, ordersData, opportunitiesData, strategyData, productsData, existingTasks, weekNotes, budgetGapAnalysis } = await req.json();
 
-    const systemPrompt = `You are an expert B2B sales consultant and augmented sales planner. You analyze company data, strategy gaps, customer patterns, and pillar priorities to generate a weekly action plan.
+    const systemPrompt = `You are an expert B2B sales consultant and augmented sales planner. Your PRIMARY OBJECTIVE is to maximize budget achievement — closing the gap between actual revenue and strategic targets.
+
+## CORE PRIORITIZATION PRINCIPLE
+Every task you generate must be evaluated against: "How much does this contribute to closing the budget gap?"
+
+The budget gap analysis below shows EXACTLY where revenue is missing — by product family, region, and KAM. 
+Tasks that address the LARGEST GAPS with the HIGHEST probability of closing must be ranked HIGHEST.
+
+## PRIORITIZATION HIERARCHY (strict order)
+1. **CRITICAL**: Actions targeting segments with >30% budget gap AND high-value pipeline opportunities
+2. **HIGH**: Actions targeting segments with >15% budget gap OR high-probability deals in underperforming areas
+3. **MEDIUM**: Actions maintaining momentum in on-track segments or building future pipeline
+4. **LOW**: Administrative, data collection, or long-term strategic actions
+
+## BUDGET-DRIVEN TASK WEIGHTING
+- Each task MUST include a "budgetImpactScore" (0-100) indicating how much it contributes to closing the budget gap
+- Each task MUST include "targetSegment" identifying which product_family / region / KAM gap it addresses
+- Each task MUST include "estimatedRevenueImpact" — the € value this task could influence
 
 You MUST cover ALL 7 transformation pillars in your recommendations:
 - p0: 360º Analysis — results analysis, patterns, portfolio risk, strategic alignment
@@ -35,9 +52,9 @@ For each task you generate, choose the most appropriate category:
 - report: Reporting, documentation, dashboards
 - data: Data collection, cleanup, CRM updates
 
-Output JSON via the tool call with an array of 10-15 tasks, each covering different pillars and priorities.`;
+Output JSON via the tool call with an array of 10-15 tasks, sorted by budgetImpactScore descending.`;
 
-    const userPrompt = `Generate a weekly action plan for this company:
+    const userPrompt = `Generate a weekly action plan for this company, DRIVEN BY BUDGET ACHIEVEMENT:
 
 COMPANY PROFILE:
 - Name: ${companyProfile?.company_name || "Unknown"}
@@ -47,6 +64,11 @@ COMPANY PROFILE:
 - Sales Channels: ${companyProfile?.sales_channels || ""}
 - Customer Segments: ${companyProfile?.main_customer_segments || ""}
 - Products: ${companyProfile?.main_products || ""}
+
+═══════════════════════════════════════════════
+BUDGET GAP ANALYSIS (PRIMARY DECISION DRIVER)
+═══════════════════════════════════════════════
+${budgetGapAnalysis || "No budget gap data available — use pipeline and strategy data to infer gaps."}
 
 SALES DATA SUMMARY:
 ${ordersData || "No orders data available"}
@@ -66,15 +88,14 @@ ${existingTasks || "No existing tasks"}
 CONSULTANT NOTES FOR THIS WEEK:
 ${weekNotes || "No additional notes"}
 
-Generate 10-15 specific, actionable tasks that:
-1. Cover ALL 7 pillars (p0-p6) — at least 1 task per pillar
-2. Prioritize based on urgency and strategic impact
-3. Include loyalty calls to top customers at risk
-4. Identify cross-selling opportunities from data patterns
-5. Address strategy gaps between targets and actuals
-6. Include follow-ups on high-value opportunities
-7. Plan proactive actions for each pillar
-8. Set realistic due dates (within the next 7 days from today: ${new Date().toISOString().split('T')[0]})`;
+INSTRUCTIONS:
+1. FIRST analyze the budget gaps — which product families, regions, and KAMs are furthest from target
+2. THEN generate 10-15 tasks that MAXIMIZE budget gap closure
+3. At least 50% of tasks must directly target the top 3 underperforming segments
+4. Each task must quantify its expected revenue impact
+5. Cover ALL 7 pillars (p0-p6) — at least 1 task per pillar
+6. Sort tasks by budgetImpactScore descending
+7. Set realistic due dates (within the next 7 days from today: ${new Date().toISOString().split('T')[0]})`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -93,11 +114,30 @@ Generate 10-15 specific, actionable tasks that:
             type: "function",
             function: {
               name: "generate_weekly_plan",
-              description: "Generate a weekly action plan with tasks across all pillars",
+              description: "Generate a budget-achievement-driven weekly action plan",
               parameters: {
                 type: "object",
                 properties: {
-                  weekSummary: { type: "string", description: "Brief analysis of the current situation and priorities for the week" },
+                  weekSummary: { type: "string", description: "Brief analysis of the budget situation — overall achievement %, top gaps, and strategic priorities for the week" },
+                  overallBudgetAchievement: { type: "number", description: "Current overall budget achievement percentage" },
+                  topGaps: {
+                    type: "array",
+                    description: "Top 5 budget gaps driving task prioritization",
+                    items: {
+                      type: "object",
+                      properties: {
+                        segment: { type: "string", description: "Product family, region, or KAM name" },
+                        segmentType: { type: "string", enum: ["product_family", "region", "kam"] },
+                        targetRevenue: { type: "number" },
+                        actualRevenue: { type: "number" },
+                        gapAmount: { type: "number" },
+                        gapPct: { type: "number" },
+                        pipelineCoverage: { type: "number", description: "Pipeline value available to close this gap" },
+                      },
+                      required: ["segment", "segmentType", "gapAmount", "gapPct"],
+                      additionalProperties: false,
+                    },
+                  },
                   tasks: {
                     type: "array",
                     items: {
@@ -109,14 +149,17 @@ Generate 10-15 specific, actionable tasks that:
                         priority: { type: "string", enum: ["low", "medium", "high", "critical"] },
                         category: { type: "string", enum: ["analysis", "follow_up", "loyalty", "cross_sell", "strategy", "data", "meeting", "report"] },
                         dueDate: { type: "string", description: "ISO date string" },
-                        rationale: { type: "string", description: "Why this task matters strategically" },
+                        rationale: { type: "string", description: "Why this task matters for budget achievement" },
+                        budgetImpactScore: { type: "number", description: "0-100 score of how much this task contributes to closing budget gaps" },
+                        targetSegment: { type: "string", description: "Which product_family / region / KAM gap this addresses" },
+                        estimatedRevenueImpact: { type: "number", description: "Estimated € revenue this task could influence" },
                       },
-                      required: ["title", "description", "pillar", "priority", "category", "dueDate", "rationale"],
+                      required: ["title", "description", "pillar", "priority", "category", "dueDate", "rationale", "budgetImpactScore", "targetSegment", "estimatedRevenueImpact"],
                       additionalProperties: false,
                     },
                   },
                 },
-                required: ["weekSummary", "tasks"],
+                required: ["weekSummary", "overallBudgetAchievement", "topGaps", "tasks"],
                 additionalProperties: false,
               },
             },
