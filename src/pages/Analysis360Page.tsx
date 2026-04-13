@@ -146,6 +146,17 @@ const Analysis360Page = () => {
         </Card>
       )}
 
+      {/* AI Executive Insights */}
+      <div className="mb-6">
+        <ExecutiveInsights
+          orders={filtered}
+          opportunities={opportunities}
+          products={products}
+          strategy={strategy}
+          company={company}
+        />
+      </div>
+
       <Tabs defaultValue="5year" className="space-y-4">
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="5year" className="gap-1 text-xs"><BarChart3 className="h-3 w-3" /> 5-Year Results</TabsTrigger>
