@@ -398,10 +398,17 @@ TOP GAPS BY KAM: ${kamGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmou
                           <span className="text-sm font-medium text-foreground">{task.title}</span>
                           <Badge variant={PRIORITY_COLORS[task.priority] as any} className="text-[10px]">{task.priority}</Badge>
                           <Badge variant="outline" className="text-[10px]">{CATEGORY_LABELS[task.category] || task.category}</Badge>
+                          {task.budgetImpactScore > 0 && (
+                            <Badge variant={task.budgetImpactScore >= 70 ? 'destructive' : task.budgetImpactScore >= 40 ? 'default' : 'secondary'} className="text-[10px]">
+                              Impact: {task.budgetImpactScore}/100
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground mb-1">{task.description}</p>
-                        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                        <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
                           <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" /> {task.dueDate}</span>
+                          {task.targetSegment && <span className="flex items-center gap-1"><Target className="h-3 w-3" /> {task.targetSegment}</span>}
+                          {task.estimatedRevenueImpact > 0 && <span className="font-medium text-primary">€{task.estimatedRevenueImpact.toLocaleString()}</span>}
                           <span>📋 {task.rationale}</span>
                         </div>
                       </div>
