@@ -241,7 +241,7 @@ const PortfolioAnalysisPage = () => {
     }
   };
 
-  const fmt = (n: number) => n >= 1e6 ? `€${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `€${(n / 1e3).toFixed(0)}K` : `€${n.toFixed(0)}`;
+  const fmt = (n: number) => `€${n.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
   const RiskIcon = ({ level }: { level: string }) => {
     if (level === 'critical' || level === 'high') return <ShieldAlert className="h-5 w-5 text-destructive" />;
