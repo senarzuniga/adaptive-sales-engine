@@ -21,6 +21,13 @@ export interface CompanyProfile {
   current_challenges: string;
   strategic_goals: string;
   additional_notes: string;
+  website_url: string;
+  linkedin_url: string;
+  business_description: string;
+  objectives: string;
+  strategy_context: string;
+  market_context: string;
+  enrichment_status: string;
 }
 
 export interface OrderRecord {
@@ -189,6 +196,8 @@ const emptyProfile: CompanyProfile = {
   operating_regions: '', employee_count: '', annual_revenue: '', main_products: '',
   main_customer_segments: '', main_competitors: '', sales_team_size: '', kam_count: '',
   sales_channels: '', current_challenges: '', strategic_goals: '', additional_notes: '',
+  website_url: '', linkedin_url: '', business_description: '', objectives: '',
+  strategy_context: '', market_context: '', enrichment_status: 'pending',
 };
 
 interface DataContextType {
@@ -197,7 +206,8 @@ interface DataContextType {
   activeCompanyId: string | null;
   setActiveCompany: (id: string | null) => void;
   loadCompanies: () => Promise<void>;
-  createCompany: (name: string) => Promise<string | null>;
+  createCompany: (name: string, websiteUrl?: string, linkedinUrl?: string, businessDescription?: string) => Promise<string | null>;
+  triggerEnrichment: (companyId: string) => Promise<void>;
   deleteCompany: (id: string) => Promise<void>;
   exportCompanyPack: () => Promise<string>;
   importCompanyPack: (json: string) => Promise<void>;
@@ -242,6 +252,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         kam_count: r.kam_count || '', sales_channels: r.sales_channels || '',
         current_challenges: r.current_challenges || '', strategic_goals: r.strategic_goals || '',
         additional_notes: r.additional_notes || '',
+        website_url: r.website_url || '', linkedin_url: r.linkedin_url || '',
+        business_description: r.business_description || '', objectives: r.objectives || '',
+        strategy_context: r.strategy_context || '', market_context: r.market_context || '',
+        enrichment_status: r.enrichment_status || 'pending',
       })));
     }
   }, []);
@@ -281,6 +295,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
           kam_count: compRes.data.kam_count || '', sales_channels: compRes.data.sales_channels || '',
           current_challenges: compRes.data.current_challenges || '', strategic_goals: compRes.data.strategic_goals || '',
           additional_notes: compRes.data.additional_notes || '',
+          website_url: compRes.data.website_url || '', linkedin_url: compRes.data.linkedin_url || '',
+          business_description: compRes.data.business_description || '', objectives: compRes.data.objectives || '',
+          strategy_context: compRes.data.strategy_context || '', market_context: compRes.data.market_context || '',
+          enrichment_status: compRes.data.enrichment_status || 'pending',
         } : emptyProfile,
       });
     } finally {
@@ -301,12 +319,32 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [loadCompanyData]);
 
   // ─── Create company ───
-  const createCompany = useCallback(async (name: string): Promise<string | null> => {
-    const { data: row, error } = await supabase.from('companies').insert({ company_name: name }).select().single();
+  const createCompany = useCallback(async (name: string, websiteUrl?: string, linkedinUrl?: string, businessDescription?: string): Promise<string | null> => {
+    const insertData: any = { company_name: name };
+    if (websiteUrl) insertData.website_url = websiteUrl;
+    if (linkedinUrl) insertData.linkedin_url = linkedinUrl;
+    if (businessDescription) insertData.business_description = businessDescription;
+    const { data: row, error } = await supabase.from('companies').insert(insertData).select().single();
     if (error) { toast({ title: 'Error creating company', description: error.message, variant: 'destructive' }); return null; }
     await loadCompanies();
     return row.id;
   }, [loadCompanies]);
+
+  // ─── Trigger AI enrichment ───
+  const triggerEnrichment = useCallback(async (companyId: string) => {
+    try {
+      await supabase.from('companies').update({ enrichment_status: 'enriching' }).eq('id', companyId);
+      const { error } = await supabase.functions.invoke('enrich-company', { body: { companyId } });
+      if (error) throw error;
+      // Reload company data to reflect enrichment results
+      await loadCompanyData(companyId);
+      await loadCompanies();
+      toast({ title: 'Company enrichment completed', description: 'AI has gathered and stored company intelligence.' });
+    } catch (e: any) {
+      await supabase.from('companies').update({ enrichment_status: 'failed' }).eq('id', companyId);
+      toast({ title: 'Enrichment failed', description: e.message, variant: 'destructive' });
+    }
+  }, [loadCompanyData, loadCompanies]);
 
   // ─── Delete company ───
   const deleteCompany = useCallback(async (id: string) => {
@@ -441,6 +479,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       kam_count: profile.kam_count, sales_channels: profile.sales_channels,
       current_challenges: profile.current_challenges, strategic_goals: profile.strategic_goals,
       additional_notes: profile.additional_notes,
+      website_url: profile.website_url, linkedin_url: profile.linkedin_url,
+      business_description: profile.business_description, objectives: profile.objectives,
+      strategy_context: profile.strategy_context, market_context: profile.market_context,
     }).eq('id', activeCompanyId);
     setData(prev => ({ ...prev, companyProfile: profile }));
     await loadCompanies(); // refresh company list
@@ -522,7 +563,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   return (
     <DataContext.Provider value={{
       data, companies, activeCompanyId, setActiveCompany, loadCompanies,
-      createCompany, deleteCompany, exportCompanyPack, importCompanyPack,
+      createCompany, deleteCompany, exportCompanyPack, importCompanyPack, triggerEnrichment,
       setOrders, setOpportunities, setProducts, setStrategy, setCompanyProfile,
       addUploadLog, addTask, updateTask, deleteTask, clearDataset, clearAll, hasData, loading,
     }}>
