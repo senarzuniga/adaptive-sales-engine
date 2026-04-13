@@ -259,12 +259,12 @@ const PortfolioAnalysisPage = () => {
     );
   }
 
-  if (data.orders.length === 0) {
+  if (baseRecords.length === 0 && data.strategy.length === 0) {
     return (
       <div className="p-6 lg:p-8 max-w-4xl mx-auto text-center py-20">
         <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-        <h2 className="text-xl font-semibold text-foreground mb-2">No sales data available</h2>
-        <p className="text-muted-foreground">Upload orders data first to enable portfolio analysis.</p>
+        <h2 className="text-xl font-semibold text-foreground mb-2">No data available</h2>
+        <p className="text-muted-foreground">Upload orders, opportunities, or strategy data to enable portfolio analysis.</p>
       </div>
     );
   }
