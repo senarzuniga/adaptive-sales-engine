@@ -35,6 +35,7 @@ import {
   FolderKanban,
   Landmark,
   Settings2,
+  SearchCheck,
 } from 'lucide-react';
 
 export function AppSidebar() {
@@ -64,6 +65,7 @@ export function AppSidebar() {
     { title: language === 'es' ? 'Control de Tasas' : 'Cost & Rates', url: '/cost-rates', icon: Settings2 },
     { title: 'Project Management', url: '/project-management', icon: FolderKanban },
     { title: 'Budget Command Center', url: '/budget-command-center', icon: Landmark },
+    { title: language === 'es' ? 'Inteligencia Empresarial' : 'Business Intelligence', url: '/business-intelligence', icon: SearchCheck },
     { title: t.nav.socialMedia, url: '/social-media', icon: Share2 },
   ];
 

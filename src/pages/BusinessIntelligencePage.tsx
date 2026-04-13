@@ -62,7 +62,7 @@ const SectionCard = ({ icon: Icon, title, children, className = '' }: any) => (
 );
 
 export default function BusinessIntelligencePage() {
-  const { selectedCompanyId } = useData();
+  const { activeCompanyId: selectedCompanyId } = useData();
   const { language } = useLanguage();
   const queryClient = useQueryClient();
 
