@@ -15,7 +15,7 @@ import { Progress } from '@/components/ui/progress';
 import {
   Activity, CheckCircle, Clock, AlertTriangle, Plus, Trash2, Edit2, CalendarDays,
   BarChart3, Building2, Users, Wrench, Brain, Heart, Package, Target, Eye,
-  Sparkles, Loader2, Zap, CheckCircle2
+  Sparkles, Loader2, Zap, CheckCircle2, Phone, Mail, FileText
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { toast } from '@/hooks/use-toast';
