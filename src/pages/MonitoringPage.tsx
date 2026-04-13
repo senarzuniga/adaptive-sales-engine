@@ -14,11 +14,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Progress } from '@/components/ui/progress';
 import {
   Activity, CheckCircle, Clock, AlertTriangle, Plus, Trash2, Edit2, CalendarDays,
-  BarChart3, Building2, Users, Wrench, Brain, Heart, Package, Target, Eye
+  BarChart3, Building2, Users, Wrench, Brain, Heart, Package, Target, Eye,
+  Sparkles, Loader2, Zap, CheckCircle2
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { ActionContentPanel } from '@/components/ActionContentPanel';
+import { supabase } from '@/integrations/supabase/client';
 
 const PILLAR_LABELS: Record<TaskPillar, string> = {
   general: 'General', p0: '360º Analysis', p1: 'Sales Architecture', p2: 'KAM',
@@ -57,6 +59,9 @@ const MonitoringPage = () => {
   const [editingTask, setEditingTask] = useState<Partial<MonitoringTask>>(emptyTask());
   const [editId, setEditId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [generatingPool, setGeneratingPool] = useState(false);
+  const [poolPreview, setPoolPreview] = useState<any[] | null>(null);
+  const [poolSummary, setPoolSummary] = useState<any | null>(null);
 
   const selectedTask = useMemo(() => tasks.find(t => t.id === selectedTaskId), [tasks, selectedTaskId]);
 
@@ -88,6 +93,79 @@ const MonitoringPage = () => {
     { label: 'Strategy data', ok: data.strategy.length > 0, count: data.strategy.length },
     { label: 'Company profile', ok: !!data.companyProfile.company_name, count: data.companyProfile.company_name ? 1 : 0 },
   ];
+
+  // ─── Action Pool Generation ───
+  const generateActionPool = async () => {
+    setGeneratingPool(true);
+    setPoolPreview(null);
+    setPoolSummary(null);
+    try {
+      // Fetch team members for assignment suggestions
+      const companyId = data.companyProfile.id;
+      let teamMembers: any[] = [];
+      if (companyId) {
+        const { data: contacts } = await supabase.from('company_contacts').select('*').eq('company_id', companyId);
+        teamMembers = contacts || [];
+      }
+
+      const { data: result, error } = await supabase.functions.invoke('generate-action-pool', {
+        body: {
+          companyProfile: data.companyProfile,
+          opportunities: data.opportunities,
+          orders: data.orders,
+          strategy: data.strategy,
+          tasks: data.tasks.map(t => ({ title: t.title, status: t.status, pillar: t.pillar })),
+          teamMembers,
+        },
+      });
+      if (error) throw error;
+      if (result.error) throw new Error(result.error);
+      setPoolPreview(result.actions || []);
+      setPoolSummary(result.summary || null);
+      toast({ title: `${(result.actions || []).length} actions generated`, description: 'Review and accept the actions you want to add.' });
+    } catch (e: any) {
+      toast({ title: 'Error generating action pool', description: e.message, variant: 'destructive' });
+    } finally {
+      setGeneratingPool(false);
+    }
+  };
+
+  const categoryMap: Record<string, TaskCategory> = {
+    follow_up: 'follow_up', loyalty: 'loyalty', cross_sell: 'cross_sell',
+    strategy: 'strategy', analysis: 'analysis', meeting: 'meeting',
+    report: 'report', data: 'data',
+  };
+
+  const acceptPoolAction = (action: any) => {
+    const cat = categoryMap[action.category] || 'follow_up';
+    const pillar = (['general', 'p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6'].includes(action.pillar) ? action.pillar : 'general') as TaskPillar;
+    const pri = (['low', 'medium', 'high', 'critical'].includes(action.priority) ? action.priority : 'medium') as TaskPriority;
+    const newTask: MonitoringTask = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      title: action.title || 'Untitled Action',
+      description: `${action.description || ''}\n\n📌 Rationale: ${action.rationale || ''}\n⚠️ Risk if not done: ${action.riskIfNotDone || ''}`,
+      pillar,
+      status: 'todo',
+      priority: pri,
+      category: cat,
+      assignee: action.assignee || '',
+      dueDate: action.dueDate || '',
+      createdAt: new Date().toISOString(),
+      notes: [],
+      actionContent: emptyActionContent,
+    };
+    addTask(newTask);
+    setPoolPreview(prev => prev ? prev.filter(a => a !== action) : null);
+    toast({ title: `"${action.title}" added` });
+  };
+
+  const acceptAllPool = () => {
+    if (!poolPreview) return;
+    poolPreview.forEach(a => acceptPoolAction(a));
+    setPoolPreview(null);
+    setPoolSummary(null);
+    toast({ title: 'All actions added to monitoring' });
+  };
 
   const handleSaveTask = () => {
     if (!editingTask.title) { toast({ title: 'Title required', variant: 'destructive' }); return; }
@@ -166,12 +244,17 @@ const MonitoringPage = () => {
           <h2 className="text-2xl font-semibold text-foreground mb-2">{t.nav.monitoring}</h2>
           <p className="text-muted-foreground">Track project status, actions, and pending tasks across all pillars.</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2" onClick={() => { setEditingTask(emptyTask()); setEditId(null); }}>
-              <Plus className="h-4 w-4" /> New Action
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button variant="outline" className="gap-2" onClick={generateActionPool} disabled={generatingPool}>
+            {generatingPool ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {generatingPool ? 'Generating...' : 'Generate Action Pool'}
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2" onClick={() => { setEditingTask(emptyTask()); setEditId(null); }}>
+                <Plus className="h-4 w-4" /> New Action
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>{editId ? 'Edit Action' : 'New Action'}</DialogTitle></DialogHeader>
             <div className="space-y-4 mt-2">
@@ -234,14 +317,106 @@ const MonitoringPage = () => {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
-      <Tabs defaultValue="overview">
+      <Tabs defaultValue={poolPreview && poolPreview.length > 0 ? "pool" : "overview"}>
         <TabsList className="mb-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          {poolPreview && poolPreview.length > 0 && (
+            <TabsTrigger value="pool" className="gap-1">
+              <Zap className="h-3 w-3" /> Action Pool ({poolPreview.length})
+            </TabsTrigger>
+          )}
           <TabsTrigger value="tasks">Actions ({tasks.length})</TabsTrigger>
           <TabsTrigger value="data">Data Readiness</TabsTrigger>
         </TabsList>
+
+        {/* ─── Action Pool Tab ─── */}
+        {poolPreview && poolPreview.length > 0 && (
+          <TabsContent value="pool" className="space-y-4">
+            {/* Summary banner */}
+            {poolSummary && (
+              <Card className="border-primary/30 bg-primary/5">
+                <CardContent className="py-4">
+                  <div className="flex flex-wrap items-center gap-6">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-primary" />
+                      <span className="font-medium text-foreground text-sm">AI Action Pool Generated</span>
+                    </div>
+                    <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                      <span><strong className="text-foreground">{poolSummary.totalActions}</strong> actions</span>
+                      <span><strong className="text-destructive">{poolSummary.criticalCount}</strong> critical</span>
+                      <span>Pipeline protected: <strong className="text-foreground">€{(poolSummary.estimatedPipelineProtected || 0).toLocaleString()}</strong></span>
+                      <span>New revenue: <strong className="text-foreground">€{(poolSummary.estimatedNewRevenue || 0).toLocaleString()}</strong></span>
+                    </div>
+                    <div className="ml-auto flex gap-2">
+                      <Button size="sm" onClick={acceptAllPool} className="gap-1">
+                        <CheckCircle2 className="h-3 w-3" /> Accept All
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => { setPoolPreview(null); setPoolSummary(null); }}>
+                        Dismiss
+                      </Button>
+                    </div>
+                  </div>
+                  {poolSummary.coverageGaps && poolSummary.coverageGaps.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-primary/20">
+                      <p className="text-xs font-medium text-foreground mb-1">⚠️ Coverage Gaps Identified:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {poolSummary.coverageGaps.map((gap: string, i: number) => (
+                          <Badge key={i} variant="outline" className="text-[10px]">{gap}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Action cards */}
+            <div className="space-y-3">
+              {poolPreview.map((action, i) => (
+                <Card key={i} className={`${action.priority === 'critical' ? 'border-destructive/40' : action.priority === 'high' ? 'border-orange-300 dark:border-orange-700' : ''}`}>
+                  <CardContent className="py-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant={action.priority === 'critical' || action.priority === 'high' ? 'destructive' : 'secondary'} className="text-[10px]">
+                            {action.priority}
+                          </Badge>
+                          <Badge variant="outline" className="text-[10px]">
+                            {PILLAR_LABELS[action.pillar as TaskPillar] || action.pillar}
+                          </Badge>
+                          <Badge variant="outline" className="text-[10px]">
+                            {CATEGORY_LABELS[action.category as TaskCategory] || action.category}
+                          </Badge>
+                          {action.assignee && (
+                            <span className="text-[10px] text-muted-foreground">→ {action.assignee}</span>
+                          )}
+                        </div>
+                        <p className="text-sm font-medium text-foreground">{action.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{action.description}</p>
+                        {action.rationale && (
+                          <p className="text-xs text-primary mt-1">📌 {action.rationale}</p>
+                        )}
+                        {action.riskIfNotDone && (
+                          <p className="text-xs text-destructive mt-1">⚠️ {action.riskIfNotDone}</p>
+                        )}
+                        <div className="flex items-center gap-4 mt-2 text-[10px] text-muted-foreground">
+                          {action.dueDate && <span>Due: {new Date(action.dueDate).toLocaleDateString()}</span>}
+                          {action.estimatedRevenue > 0 && <span>Est. revenue: €{action.estimatedRevenue.toLocaleString()}</span>}
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline" className="gap-1 flex-shrink-0" onClick={() => acceptPoolAction(action)}>
+                        <Plus className="h-3 w-3" /> Accept
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+        )}
 
         {/* ─── Overview Tab ─── */}
         <TabsContent value="overview">
