@@ -241,10 +241,16 @@ export default function OfferPricingPage() {
         currency,
       };
 
+      const ratesContext = companyRates.length > 0 ? companyRates.map(r => ({
+        type: r.rate_type, name: r.rate_name, value: r.rate_value, unit: r.rate_unit,
+        department: r.department, projectType: r.project_type, geography: r.geography,
+      })) : null;
+
       const { data, error } = await supabase.functions.invoke('analyze-offer', {
         body: {
           costBreakdown,
           offerContext: { title: offerTitle, customer: customerName, project: projectDesc, offerNumber },
+          companyRates: ratesContext,
         },
       });
 
