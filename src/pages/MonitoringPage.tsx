@@ -59,6 +59,9 @@ const MonitoringPage = () => {
   const [editingTask, setEditingTask] = useState<Partial<MonitoringTask>>(emptyTask());
   const [editId, setEditId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [generatingPool, setGeneratingPool] = useState(false);
+  const [poolPreview, setPoolPreview] = useState<any[] | null>(null);
+  const [poolSummary, setPoolSummary] = useState<any | null>(null);
 
   const selectedTask = useMemo(() => tasks.find(t => t.id === selectedTaskId), [tasks, selectedTaskId]);
 
