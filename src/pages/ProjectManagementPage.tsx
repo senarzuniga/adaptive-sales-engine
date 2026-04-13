@@ -443,6 +443,7 @@ export default function ProjectManagementPage() {
   // Dashboard KPIs
   const totalBudget = costs.reduce((s, c) => s + (c.budget_amount || 0), 0);
   const totalActualCost = costs.reduce((s, c) => s + (c.actual_amount || 0), 0);
+  const totalCommitted = costs.reduce((s, c) => s + (c.committed_amount || 0), 0);
   const costVariance = totalBudget > 0 ? ((totalActualCost - totalBudget) / totalBudget) * 100 : 0;
   const completedPhases = phases.filter(p => p.status === 'completed').length;
   const overallProgress = phases.length > 0 ? phases.reduce((s, p) => s + (p.completion_pct || 0), 0) / phases.length : 0;
@@ -452,6 +453,87 @@ export default function ProjectManagementPage() {
   const invoiced = paymentMilestones.filter(m => m.is_invoiced).reduce((s, m) => s + (m.payment_amount || 0), 0);
   const paid = paymentMilestones.filter(m => m.is_paid).reduce((s, m) => s + (m.payment_amount || 0), 0);
   const aiAnalysis = selectedProject?.ai_analysis || {};
+
+  // Margin deviation alerts
+  const marginAlerts = useMemo(() => {
+    const alerts: { level: 'warning' | 'critical' | 'info'; title: string; message: string; action: string; metric: string }[] = [];
+    const contractValue = selectedProject?.contract_value || 0;
+    const marginTarget = selectedProject?.margin_target || 0;
+    const exposedCost = Math.max(totalActualCost, totalCommitted);
+    const projectedMargin = contractValue > 0 ? ((contractValue - exposedCost) / contractValue) * 100 : 0;
+    const marginDeviation = marginTarget > 0 ? projectedMargin - marginTarget : 0;
+
+    // Cost overruns by category
+    const categoryOverruns: { category: string; budget: number; actual: number; variance: number }[] = [];
+    const byCat: Record<string, { budget: number; actual: number }> = {};
+    costs.forEach((c: any) => {
+      const cat = c.category || 'other';
+      if (!byCat[cat]) byCat[cat] = { budget: 0, actual: 0 };
+      byCat[cat].budget += c.budget_amount || 0;
+      byCat[cat].actual += Math.max(c.actual_amount || 0, c.committed_amount || 0);
+    });
+    Object.entries(byCat).forEach(([category, { budget, actual }]) => {
+      if (budget > 0 && actual > budget) {
+        categoryOverruns.push({ category, budget, actual, variance: ((actual - budget) / budget) * 100 });
+      }
+    });
+
+    // Change order cumulative impact
+    const coImpact = changeOrders
+      .filter((co: any) => co.status === 'approved' || co.status === 'implemented')
+      .reduce((s: number, co: any) => s + (co.cost_impact || 0), 0);
+
+    // Alert: Overall cost variance > 5%
+    if (costVariance > 10) {
+      alerts.push({ level: 'critical', title: 'Critical Cost Overrun', message: `Total costs exceed budget by ${fmtPct(costVariance)}. Actual: ${fmt(totalActualCost)} vs Budget: ${fmt(totalBudget)}.`, action: 'Immediate cost review meeting. Freeze non-critical procurement. Evaluate scope reduction options.', metric: `+${fmtPct(costVariance)}` });
+    } else if (costVariance > 5) {
+      alerts.push({ level: 'warning', title: 'Cost Variance Warning', message: `Costs trending ${fmtPct(costVariance)} above budget. Early intervention recommended.`, action: 'Review uncommitted costs. Negotiate supplier discounts. Reassess contingency allocation.', metric: `+${fmtPct(costVariance)}` });
+    }
+
+    // Alert: Margin erosion
+    if (contractValue > 0 && marginTarget > 0) {
+      if (marginDeviation < -10) {
+        alerts.push({ level: 'critical', title: 'Margin Collapse Risk', message: `Projected margin (${fmtPct(projectedMargin)}) is ${fmtPct(Math.abs(marginDeviation))} below target (${fmtPct(marginTarget)}).`, action: 'Escalate to management. Consider change order to customer for additional scope costs. Review all remaining spend.', metric: `${fmtPct(projectedMargin)}` });
+      } else if (marginDeviation < -5) {
+        alerts.push({ level: 'warning', title: 'Margin Under Pressure', message: `Projected margin at ${fmtPct(projectedMargin)} vs target ${fmtPct(marginTarget)}.`, action: 'Identify cost savings in remaining phases. Defer non-essential activities. Consider value engineering.', metric: `${fmtPct(projectedMargin)}` });
+      } else if (marginDeviation >= 0 && contractValue > 0 && totalActualCost > 0) {
+        alerts.push({ level: 'info', title: 'Margin On Track', message: `Projected margin at ${fmtPct(projectedMargin)}, meeting or exceeding target of ${fmtPct(marginTarget)}.`, action: 'Continue monitoring. Consider investing savings into quality improvements.', metric: `${fmtPct(projectedMargin)}` });
+      }
+    }
+
+    // Alert: Category-specific overruns
+    categoryOverruns.sort((a, b) => b.variance - a.variance);
+    categoryOverruns.slice(0, 2).forEach(ov => {
+      alerts.push({
+        level: ov.variance > 20 ? 'critical' : 'warning',
+        title: `${ov.category.charAt(0).toUpperCase() + ov.category.slice(1)} Over Budget`,
+        message: `${ov.category} costs at ${fmt(ov.actual)} vs budget ${fmt(ov.budget)} (+${fmtPct(ov.variance)}).`,
+        action: ov.category === 'engineering' ? 'Audit engineering hours. Check for scope creep in design phase.' :
+          ov.category === 'procurement' ? 'Review supplier quotes. Consider alternative sources or bulk negotiation.' :
+          ov.category === 'labor' ? 'Optimize crew allocation. Reduce overtime. Evaluate subcontracting options.' :
+          `Review ${ov.category} spending and identify reduction opportunities.`,
+        metric: `+${fmtPct(ov.variance)}`,
+      });
+    });
+
+    // Alert: Change order impact
+    if (coImpact > 0 && contractValue > 0) {
+      const coAsPercent = (coImpact / contractValue) * 100;
+      if (coAsPercent > 5) {
+        alerts.push({ level: 'warning', title: 'Significant Change Order Impact', message: `Approved change orders add ${fmt(coImpact)} (${fmtPct(coAsPercent)} of contract value).`, action: 'Ensure all change orders are billed to customer. Update project baseline budget.', metric: fmt(coImpact) });
+      }
+    }
+
+    // Alert: Committed but not spent (exposure)
+    if (totalCommitted > totalActualCost && totalBudget > 0) {
+      const exposureGap = totalCommitted - totalActualCost;
+      if (exposureGap > totalBudget * 0.1) {
+        alerts.push({ level: 'info', title: 'High Committed Exposure', message: `${fmt(exposureGap)} committed but not yet invoiced. Ensure cash flow planning accounts for these commitments.`, action: 'Verify PO status with suppliers. Update cash flow forecast.', metric: fmt(totalCommitted) });
+      }
+    }
+
+    return alerts;
+  }, [costs, selectedProject, changeOrders, costVariance, totalBudget, totalActualCost, totalCommitted]);
 
   if (!activeCompanyId) return <div className="p-8 text-center text-muted-foreground">Select a company to manage projects.</div>;
 
