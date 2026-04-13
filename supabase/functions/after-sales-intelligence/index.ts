@@ -86,7 +86,7 @@ Return JSON with:
     "recommendations": ["string"]
   },
   "revenueOpportunities": [
-    { "type": "upsell|cross-sell|renewal|upgrade|spare-parts|new-contract|parts-bundling|tier-upgrade", "title": "string", "description": "string", "estimatedValue": number, "probability": number, "triggerSignal": "string", "recommendedAction": "string", "urgency": "high|medium|low" }
+    { "type": "upsell|cross-sell|renewal|upgrade|spare-parts|new-contract|parts-bundling|tier-upgrade", "title": "string", "description": "string", "estimatedValue": number, "probability": number, "triggerSignal": "string", "recommendedAction": "string", "urgency": "high|medium|low", "budgetGapContribution": { "targetSegment": "string", "segmentType": "product_family|region|kam", "gapClosureAmount": number, "gapClosurePct": number } }
   ],
   "sparePartsIntelligence": {
     "totalInventoryValue": number,
