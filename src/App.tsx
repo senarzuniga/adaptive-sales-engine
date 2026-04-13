@@ -24,6 +24,7 @@ import ServiceContractBuilderPage from "./pages/ServiceContractBuilderPage";
 import ProjectManagementPage from "./pages/ProjectManagementPage";
 import BudgetCommandCenterPage from "./pages/BudgetCommandCenterPage";
 import CostRatesPage from "./pages/CostRatesPage";
+import BusinessIntelligencePage from "./pages/BusinessIntelligencePage";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -60,6 +61,7 @@ const App = () => (
                 <Route path="/project-management" element={<ProjectManagementPage />} />
                 <Route path="/budget-command-center" element={<BudgetCommandCenterPage />} />
                 <Route path="/cost-rates" element={<CostRatesPage />} />
+                <Route path="/business-intelligence" element={<BusinessIntelligencePage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AppLayout>
