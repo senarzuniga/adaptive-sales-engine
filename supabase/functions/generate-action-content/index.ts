@@ -71,6 +71,13 @@ COMPANY PROFILE:
 - Current Challenges: ${companyProfile?.current_challenges || ""}
 - Strategic Goals: ${companyProfile?.strategic_goals || ""}
 
+CONSULTANT INSIGHTS (PRIMARY SOURCE — highest reliability):
+- Business Description: ${companyProfile?.business_description || "Not provided"}
+- Strategy Context: ${companyProfile?.strategy_context || "Not provided"}
+- Market Context: ${companyProfile?.market_context || "Not provided"}
+- Objectives: ${companyProfile?.objectives || "Not provided"}
+- Additional Notes: ${companyProfile?.additional_notes || "Not provided"}
+
 CONTEXTUAL DATA:
 ${contextData?.topCustomers ? `Top Customers by Revenue: ${contextData.topCustomers}` : ""}
 ${contextData?.topProducts ? `Top Product Families: ${contextData.topProducts}` : ""}
