@@ -18,6 +18,7 @@ import {
   DollarSign, BarChart3, Lightbulb, Save, Loader2, Target, Calendar, Users,
   Activity, Zap, Eye, CheckCircle, Clock, FileText, ArrowRight, Gauge, GitBranch, Edit
 } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
@@ -735,7 +736,18 @@ export default function ProjectManagementPage() {
         loadProjectDetails(selectedProject.id);
         toast({ title: 'AI Analysis Complete', description: 'Execution plan generated with phases, milestones, gates, risks, and costs.' });
       } else if (type === 'health_check') {
-        await supabase.from('projects').update({ ai_analysis: analysis, health_score: analysis.healthScore || selectedProject.health_score }).eq('id', selectedProject.id);
+        // Append to health history
+        const existingAnalysis = selectedProject.ai_analysis as any || {};
+        const healthHistory = existingAnalysis.healthHistory || [];
+        healthHistory.push({
+          date: new Date().toISOString(),
+          score: analysis.healthScore || 0,
+          progress: phases.length > 0 ? phases.reduce((s: number, p: any) => s + (p.completion_pct || 0), 0) / phases.length : 0,
+          costVariance: totalBudget > 0 ? ((totalActualCost - totalBudget) / totalBudget) * 100 : 0,
+          openRisks: risks.filter((r: any) => r.status === 'open').length,
+        });
+        const mergedAnalysis = { ...analysis, healthHistory };
+        await supabase.from('projects').update({ ai_analysis: mergedAnalysis, health_score: analysis.healthScore || selectedProject.health_score }).eq('id', selectedProject.id);
         const { data: updatedProject } = await supabase.from('projects').select('*').eq('id', selectedProject.id).single();
         if (updatedProject) setSelectedProject(updatedProject);
         toast({ title: 'Health Check Complete', description: `Score: ${analysis.healthScore}/100` });
@@ -1187,6 +1199,51 @@ export default function ProjectManagementPage() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Health Trend Chart */}
+              {(() => {
+                const healthHistory = (aiAnalysis as any)?.healthHistory || [];
+                if (healthHistory.length === 0) return null;
+                const chartData = healthHistory.map((h: any, i: number) => ({
+                  name: new Date(h.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                  score: h.score,
+                  progress: Math.round(h.progress || 0),
+                  costVariance: Math.round((h.costVariance || 0) * 10) / 10,
+                }));
+                return (
+                  <Card className="mb-6">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4 text-primary" /> Health Score Trend
+                        <Badge variant="outline" className="ml-auto text-[10px]">{healthHistory.length} check{healthHistory.length !== 1 ? 's' : ''}</Badge>
+                      </CardTitle>
+                      <CardDescription className="text-xs">Track how project health evolves with each health check</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={250}>
+                        <LineChart data={chartData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                          <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }}
+                            labelStyle={{ color: 'hsl(var(--foreground))' }}
+                          />
+                          <ReferenceLine y={60} stroke="hsl(var(--destructive))" strokeDasharray="4 4" label={{ value: 'Alert', position: 'right', fill: 'hsl(var(--destructive))', fontSize: 10 }} />
+                          <ReferenceLine y={80} stroke="hsl(var(--primary))" strokeDasharray="4 4" label={{ value: 'Good', position: 'right', fill: 'hsl(var(--primary))', fontSize: 10 }} />
+                          <Line type="monotone" dataKey="score" name="Health Score" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ fill: 'hsl(var(--primary))', r: 4 }} activeDot={{ r: 6 }} />
+                          <Line type="monotone" dataKey="progress" name="Progress %" stroke="hsl(220, 70%, 50%)" strokeWidth={1.5} strokeDasharray="5 5" dot={{ fill: 'hsl(220, 70%, 50%)', r: 3 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                      <div className="flex items-center justify-center gap-6 mt-2 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-primary inline-block rounded" /> Health Score</span>
+                        <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 inline-block rounded" style={{ backgroundColor: 'hsl(220, 70%, 50%)' }} /> Progress %</span>
+                        <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-destructive inline-block rounded opacity-50" /> Alert Threshold (60)</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
 
               {/* Executive Summary */}
               {aiAnalysis.executiveSummary && (
