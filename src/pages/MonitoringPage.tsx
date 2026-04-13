@@ -244,12 +244,17 @@ const MonitoringPage = () => {
           <h2 className="text-2xl font-semibold text-foreground mb-2">{t.nav.monitoring}</h2>
           <p className="text-muted-foreground">Track project status, actions, and pending tasks across all pillars.</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2" onClick={() => { setEditingTask(emptyTask()); setEditId(null); }}>
-              <Plus className="h-4 w-4" /> New Action
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button variant="outline" className="gap-2" onClick={generateActionPool} disabled={generatingPool}>
+            {generatingPool ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {generatingPool ? 'Generating...' : 'Generate Action Pool'}
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2" onClick={() => { setEditingTask(emptyTask()); setEditId(null); }}>
+                <Plus className="h-4 w-4" /> New Action
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>{editId ? 'Edit Action' : 'New Action'}</DialogTitle></DialogHeader>
             <div className="space-y-4 mt-2">
