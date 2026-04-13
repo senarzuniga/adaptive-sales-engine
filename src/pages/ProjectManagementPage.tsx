@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import {
   FolderKanban, Plus, Trash2, Brain, TrendingUp, AlertTriangle, Shield, Settings,
   DollarSign, BarChart3, Lightbulb, Save, Loader2, Target, Calendar, Users,
-  Activity, Zap, Eye, CheckCircle, Clock, FileText, ArrowRight, Gauge
+  Activity, Zap, Eye, CheckCircle, Clock, FileText, ArrowRight, Gauge, GitBranch, Edit
 } from 'lucide-react';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
