@@ -232,6 +232,12 @@ export default function ProjectManagementPage() {
   const [risks, setRisks] = useState<any[]>([]);
   const [costs, setCosts] = useState<any[]>([]);
   const [gates, setGates] = useState<any[]>([]);
+  const [changeOrders, setChangeOrders] = useState<any[]>([]);
+  const [showNewCO, setShowNewCO] = useState(false);
+  const [newCO, setNewCO] = useState({
+    change_order_number: '', title: '', description: '', category: 'scope', priority: 'medium',
+    requested_by: '', cost_impact: 0, schedule_impact_days: 0, margin_impact_pct: 0, risk_impact: 'none',
+  });
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [showNewProject, setShowNewProject] = useState(false);
