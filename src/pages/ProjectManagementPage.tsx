@@ -260,18 +260,20 @@ export default function ProjectManagementPage() {
   }, [activeCompanyId]);
 
   const loadProjectDetails = useCallback(async (projectId: string) => {
-    const [p, m, r, c, g] = await Promise.all([
+    const [p, m, r, c, g, co] = await Promise.all([
       supabase.from('project_phases').select('*').eq('project_id', projectId).order('phase_number'),
       supabase.from('project_milestones').select('*').eq('project_id', projectId).order('planned_date'),
       supabase.from('project_risks').select('*').eq('project_id', projectId).order('risk_score', { ascending: false }),
       supabase.from('project_costs').select('*').eq('project_id', projectId).order('category'),
       supabase.from('project_gates').select('*').eq('project_id', projectId).order('gate_number'),
+      supabase.from('change_orders').select('*').eq('project_id', projectId).order('created_at', { ascending: false }),
     ]);
     setPhases(p.data || []);
     setMilestones(m.data || []);
     setRisks(r.data || []);
     setCosts(c.data || []);
     setGates(g.data || []);
+    setChangeOrders(co.data || []);
   }, []);
 
   useEffect(() => { loadProjects(); }, [loadProjects]);
