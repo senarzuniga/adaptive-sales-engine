@@ -54,8 +54,39 @@ const Analysis360Page = () => {
   const totalMargin = useMemo(() => filtered.reduce((s, o) => s + o.margin, 0), [filtered]);
   const avgMarginPct = totalRevenue > 0 ? (totalMargin / totalRevenue * 100) : 0;
 
-  // Yearly average revenue (exclude current year for historical avg)
-  const { yearlyAvgRevenue, currentYearRevenue, yearCount } = useMemo(() => {
+  // Parse consultant-entered revenue from company profile (most reliable source)
+  const consultantRevenue = useMemo(() => {
+    // Try to extract numeric revenue from additional_notes first (e.g., "average revenue: 2,5 Million Euro")
+    const notes = company?.additional_notes || '';
+    const desc = company?.business_description || '';
+    const annualRev = company?.annual_revenue || '';
+
+    // Parse "average revenue: X,X Million" pattern from additional_notes
+    const avgRevMatch = notes.match(/average\s+revenue[:\s]*([0-9.,]+)\s*(million|mln|m)\s*(euro|eur|€)?/i);
+    if (avgRevMatch) {
+      const val = parseFloat(avgRevMatch[1].replace(',', '.'));
+      return { value: val * 1_000_000, source: 'Company Profile (Additional Notes)', isAverage: true };
+    }
+
+    // Parse from annual_revenue field (e.g., "€2.0M (current)")
+    const annualMatch = annualRev.match(/€?\s*([0-9.,]+)\s*(m|million|mln)/i);
+    if (annualMatch) {
+      const val = parseFloat(annualMatch[1].replace(',', '.'));
+      return { value: val * 1_000_000, source: 'Company Profile (Annual Revenue)', isAverage: false };
+    }
+
+    // Parse from business_description (e.g., "Revenue: €2.0M")
+    const descMatch = desc.match(/revenue[:\s]*€?\s*([0-9.,]+)\s*(m|million|mln)/i);
+    if (descMatch) {
+      const val = parseFloat(descMatch[1].replace(',', '.'));
+      return { value: val * 1_000_000, source: 'Company Profile (Description)', isAverage: false };
+    }
+
+    return null;
+  }, [company]);
+
+  // Yearly average revenue: use consultant data if available, otherwise compute from orders
+  const { yearlyAvgRevenue, currentYearRevenue, yearCount, revenueSource } = useMemo(() => {
     const currentYear = String(new Date().getFullYear());
     const byYear: Record<string, number> = {};
     filtered.forEach(o => {
@@ -63,6 +94,18 @@ const Analysis360Page = () => {
       byYear[yr] = (byYear[yr] || 0) + o.sellingPrice;
     });
     const curYearRev = byYear[currentYear] || 0;
+
+    // If consultant provided revenue, use it as the authoritative source
+    if (consultantRevenue) {
+      return {
+        yearlyAvgRevenue: consultantRevenue.value,
+        currentYearRevenue: curYearRev,
+        yearCount: 1,
+        revenueSource: consultantRevenue.source,
+      };
+    }
+
+    // Otherwise compute from historical order data
     const historicalYears = Object.entries(byYear).filter(([yr]) => yr !== currentYear && yr !== 'Unknown');
     const histTotal = historicalYears.reduce((s, [, v]) => s + v, 0);
     const histCount = historicalYears.length;
@@ -70,8 +113,9 @@ const Analysis360Page = () => {
       yearlyAvgRevenue: histCount > 0 ? histTotal / histCount : totalRevenue,
       currentYearRevenue: curYearRev,
       yearCount: histCount || 1,
+      revenueSource: histCount > 0 ? 'Historical Orders' : 'Pipeline Data',
     };
-  }, [filtered, totalRevenue]);
+  }, [filtered, totalRevenue, consultantRevenue]);
 
   const byCustomer = useMemo(() => {
     const groups = groupBy(filtered, o => o.customerName);
