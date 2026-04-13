@@ -202,7 +202,7 @@ const Analysis360Page = () => {
         <Card><CardContent className="pt-6">
           <div className="flex items-center gap-2 mb-1"><DollarSign className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Avg Yearly Revenue</span></div>
           <p className="text-2xl font-bold text-foreground">{fmt(yearlyAvgRevenue)}</p>
-          <p className="text-xs text-muted-foreground mt-1">Based on {yearCount} year{yearCount !== 1 ? 's' : ''}</p>
+          <p className="text-xs text-muted-foreground mt-1">Source: {revenueSource}</p>
         </CardContent></Card>
         <Card><CardContent className="pt-6">
           <div className="flex items-center gap-2 mb-1"><TrendingUp className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">{new Date().getFullYear()} Pipeline</span></div>
