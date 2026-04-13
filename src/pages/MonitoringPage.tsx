@@ -94,6 +94,79 @@ const MonitoringPage = () => {
     { label: 'Company profile', ok: !!data.companyProfile.company_name, count: data.companyProfile.company_name ? 1 : 0 },
   ];
 
+  // ─── Action Pool Generation ───
+  const generateActionPool = async () => {
+    setGeneratingPool(true);
+    setPoolPreview(null);
+    setPoolSummary(null);
+    try {
+      // Fetch team members for assignment suggestions
+      const companyId = data.companyProfile.id;
+      let teamMembers: any[] = [];
+      if (companyId) {
+        const { data: contacts } = await supabase.from('company_contacts').select('*').eq('company_id', companyId);
+        teamMembers = contacts || [];
+      }
+
+      const { data: result, error } = await supabase.functions.invoke('generate-action-pool', {
+        body: {
+          companyProfile: data.companyProfile,
+          opportunities: data.opportunities,
+          orders: data.orders,
+          strategy: data.strategy,
+          tasks: data.tasks.map(t => ({ title: t.title, status: t.status, pillar: t.pillar })),
+          teamMembers,
+        },
+      });
+      if (error) throw error;
+      if (result.error) throw new Error(result.error);
+      setPoolPreview(result.actions || []);
+      setPoolSummary(result.summary || null);
+      toast({ title: `${(result.actions || []).length} actions generated`, description: 'Review and accept the actions you want to add.' });
+    } catch (e: any) {
+      toast({ title: 'Error generating action pool', description: e.message, variant: 'destructive' });
+    } finally {
+      setGeneratingPool(false);
+    }
+  };
+
+  const categoryMap: Record<string, TaskCategory> = {
+    follow_up: 'follow_up', loyalty: 'loyalty', cross_sell: 'cross_sell',
+    strategy: 'strategy', analysis: 'analysis', meeting: 'meeting',
+    report: 'report', data: 'data',
+  };
+
+  const acceptPoolAction = (action: any) => {
+    const cat = categoryMap[action.category] || 'follow_up';
+    const pillar = (['general', 'p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6'].includes(action.pillar) ? action.pillar : 'general') as TaskPillar;
+    const pri = (['low', 'medium', 'high', 'critical'].includes(action.priority) ? action.priority : 'medium') as TaskPriority;
+    const newTask: MonitoringTask = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      title: action.title || 'Untitled Action',
+      description: `${action.description || ''}\n\n📌 Rationale: ${action.rationale || ''}\n⚠️ Risk if not done: ${action.riskIfNotDone || ''}`,
+      pillar,
+      status: 'todo',
+      priority: pri,
+      category: cat,
+      assignee: action.assignee || '',
+      dueDate: action.dueDate || '',
+      createdAt: new Date().toISOString(),
+      notes: [],
+      actionContent: emptyActionContent,
+    };
+    addTask(newTask);
+    setPoolPreview(prev => prev ? prev.filter(a => a !== action) : null);
+    toast({ title: `"${action.title}" added` });
+  };
+
+  const acceptAllPool = () => {
+    if (!poolPreview) return;
+    poolPreview.forEach(a => acceptPoolAction(a));
+    setPoolPreview(null);
+    setPoolSummary(null);
+    toast({ title: 'All actions added to monitoring' });
+  };
+
   const handleSaveTask = () => {
     if (!editingTask.title) { toast({ title: 'Title required', variant: 'destructive' }); return; }
     if (editId) {
