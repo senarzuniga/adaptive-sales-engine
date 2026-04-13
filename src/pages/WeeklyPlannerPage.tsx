@@ -300,6 +300,84 @@ TOP GAPS BY KAM: ${kamGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmou
         </CardContent>
       </Card>
 
+      {/* Budget Gap Dashboard */}
+      {(() => {
+        const gap = computeBudgetGapAnalysis();
+        if (gap.totalTarget === 0) return null;
+        const topProductGaps = gap.gaps.filter(g => g.segmentType === 'product_family').slice(0, 3);
+        const topRegionGaps = gap.gaps.filter(g => g.segmentType === 'region').slice(0, 3);
+        const topKamGaps = gap.gaps.filter(g => g.segmentType === 'kam').slice(0, 3);
+        return (
+          <Card className="mb-6 border-primary/30">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Target className="h-4 w-4 text-primary" /> Budget Achievement Dashboard
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Target</p>
+                  <p className="text-lg font-bold text-foreground">€{gap.totalTarget.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Actual</p>
+                  <p className="text-lg font-bold text-foreground">€{gap.totalActual.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Gap</p>
+                  <p className="text-lg font-bold text-destructive">€{gap.totalGap.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Achievement</p>
+                  <p className={`text-lg font-bold ${gap.overallAchievement >= 80 ? 'text-primary' : gap.overallAchievement >= 50 ? 'text-foreground' : 'text-destructive'}`}>
+                    {gap.overallAchievement.toFixed(0)}%
+                  </p>
+                </div>
+              </div>
+              <Progress value={Math.min(gap.overallAchievement, 100)} className="mb-4" />
+              {(topProductGaps.length > 0 || topRegionGaps.length > 0 || topKamGaps.length > 0) && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {topProductGaps.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Top Product Gaps</p>
+                      {topProductGaps.map(g => (
+                        <div key={g.segment} className="flex justify-between text-xs py-0.5">
+                          <span className="text-foreground">{g.segment}</span>
+                          <span className="text-destructive font-medium">-€{g.gapAmount.toLocaleString()} ({g.gapPct.toFixed(0)}%)</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {topRegionGaps.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Top Region Gaps</p>
+                      {topRegionGaps.map(g => (
+                        <div key={g.segment} className="flex justify-between text-xs py-0.5">
+                          <span className="text-foreground">{g.segment}</span>
+                          <span className="text-destructive font-medium">-€{g.gapAmount.toLocaleString()} ({g.gapPct.toFixed(0)}%)</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {topKamGaps.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Top KAM Gaps</p>
+                      {topKamGaps.map(g => (
+                        <div key={g.segment} className="flex justify-between text-xs py-0.5">
+                          <span className="text-foreground">{g.segment}</span>
+                          <span className="text-destructive font-medium">-€{g.gapAmount.toLocaleString()} ({g.gapPct.toFixed(0)}%)</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {/* Consultant notes with voice input */}
       <Card className="mb-6">
         <CardHeader className="pb-3">
