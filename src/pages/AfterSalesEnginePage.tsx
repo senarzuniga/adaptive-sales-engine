@@ -215,8 +215,7 @@ export default function AfterSalesEnginePage() {
   const runDiagnostic = async () => {
     setAnalyzing(true);
     try {
-      // Compute budget gap analysis for the AI
-      const budgetGap = computeBudgetGapForAfterSales();
+      const budgetGap = await computeBudgetGapForAfterSales();
       const { data, error } = await supabase.functions.invoke('after-sales-intelligence', {
         body: { assets, contracts, interventions, spareParts, analysisType: 'full_diagnostic', budgetGapAnalysis: budgetGap },
       });
