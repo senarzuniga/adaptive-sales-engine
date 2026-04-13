@@ -203,6 +203,8 @@ Provide your analysis as the specified JSON structure.`;
                     subcontractingRatio: { type: "number" },
                     transportRatio: { type: "number" },
                     indirectRatio: { type: "number" },
+                    missingCategories: { type: "array", items: { type: "string" } },
+                    rateValidation: { type: "array", items: { type: "object", properties: { rateName: { type: "string" }, applied: { type: "number" }, expected: { type: "number" }, deviation: { type: "string" } } } },
                     alerts: { type: "array", items: { type: "string" } }
                   }
                 },
@@ -212,6 +214,15 @@ Provide your analysis as the specified JSON structure.`;
                     costPlus: { type: "object", properties: { price: { type: "number" }, margin: { type: "number" } } },
                     valueBased: { type: "object", properties: { price: { type: "number" }, margin: { type: "number" }, rationale: { type: "string" } } },
                     benchmarking: { type: "object", properties: { price: { type: "number" }, margin: { type: "number" }, rationale: { type: "string" } } }
+                  }
+                },
+                profitabilityControl: {
+                  type: "object",
+                  properties: {
+                    minimumMarginScenario: { type: "object", properties: { margin: { type: "number" }, conditions: { type: "string" } } },
+                    riskAdjustedMargin: { type: "object", properties: { margin: { type: "number" }, adjustments: { type: "string" } } },
+                    belowThreshold: { type: "boolean" },
+                    correctiveActions: { type: "array", items: { type: "string" } }
                   }
                 }
               },
