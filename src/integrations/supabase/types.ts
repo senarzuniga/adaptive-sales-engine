@@ -329,6 +329,71 @@ export type Database = {
           },
         ]
       }
+      cost_rates: {
+        Row: {
+          company_id: string
+          created_at: string
+          department: string | null
+          geography: string | null
+          id: string
+          is_active: boolean
+          notes: string | null
+          project_type: string | null
+          rate_name: string
+          rate_type: string
+          rate_unit: string
+          rate_value: number
+          updated_at: string
+          valid_from: string | null
+          valid_until: string | null
+          version: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          department?: string | null
+          geography?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          project_type?: string | null
+          rate_name?: string
+          rate_type?: string
+          rate_unit?: string
+          rate_value?: number
+          updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
+          version?: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          department?: string | null
+          geography?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          project_type?: string | null
+          rate_name?: string
+          rate_type?: string
+          rate_unit?: string
+          rate_value?: number
+          updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_rates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       installed_base_assets: {
         Row: {
           asset_name: string
