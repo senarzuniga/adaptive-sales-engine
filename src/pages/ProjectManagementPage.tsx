@@ -49,6 +49,332 @@ const STATUS_VARIANT = (s: string) => {
   }
 };
 
+// --- Delay Impact Simulation ---
+function DelaySimulation({ phases, milestones, gates, project }: { phases: any[]; milestones: any[]; gates: any[]; project: any }) {
+  const [delayPhaseId, setDelayPhaseId] = useState<string>('');
+  const [delayDays, setDelayDays] = useState<number>(0);
+
+  const simulation = useMemo(() => {
+    if (!delayPhaseId || delayDays <= 0 || phases.length === 0) return null;
+
+    const delayedPhaseIdx = phases.findIndex(p => p.id === delayPhaseId);
+    if (delayedPhaseIdx < 0) return null;
+    const delayedPhase = phases[delayedPhaseIdx];
+    const delayMs = delayDays * 86400000;
+
+    // Build cascade: all subsequent phases shift by delay amount (sequential dependency model)
+    const cascadedPhases = phases.map((p, i) => {
+      const isAffected = i >= delayedPhaseIdx;
+      const shift = isAffected ? delayDays : 0;
+      const origStart = p.planned_start ? new Date(p.planned_start) : null;
+      const origEnd = p.planned_end ? new Date(p.planned_end) : null;
+      const newStart = origStart && isAffected ? new Date(origStart.getTime() + delayMs) : origStart;
+      const newEnd = origEnd && isAffected ? new Date(origEnd.getTime() + delayMs) : origEnd;
+
+      return {
+        ...p,
+        isAffected,
+        shiftDays: shift,
+        originalStart: origStart,
+        originalEnd: origEnd,
+        newStart,
+        newEnd,
+        isSource: p.id === delayPhaseId,
+      };
+    });
+
+    // Delivery deadline impact
+    const deadline = project.delivery_deadline ? new Date(project.delivery_deadline) : null;
+    const lastPhase = cascadedPhases[cascadedPhases.length - 1];
+    const newProjectEnd = lastPhase?.newEnd;
+    const deadlineBreached = deadline && newProjectEnd && newProjectEnd > deadline;
+    const breachDays = deadlineBreached ? Math.ceil((newProjectEnd.getTime() - deadline.getTime()) / 86400000) : 0;
+
+    // Affected milestones
+    const affectedMilestones = milestones.filter(ms => {
+      if (!ms.linked_phase_id) return false;
+      const phaseIdx = phases.findIndex(p => p.id === ms.linked_phase_id);
+      return phaseIdx >= delayedPhaseIdx;
+    }).map(ms => ({
+      ...ms,
+      shiftDays: delayDays,
+    }));
+
+    // Affected gates
+    const affectedGates = gates.filter(g => {
+      if (!g.planned_date) return false;
+      const gateDate = new Date(g.planned_date);
+      const delayedStart = delayedPhase.planned_start ? new Date(delayedPhase.planned_start) : null;
+      return delayedStart && gateDate >= delayedStart;
+    }).map(g => ({
+      ...g,
+      newDate: new Date(new Date(g.planned_date).getTime() + delayMs),
+      shiftDays: delayDays,
+    }));
+
+    // Cost impact estimate (rough: delay days × daily burn rate)
+    const totalBudget = phases.reduce((s: number, p: any) => s + (p.budget || 0), 0);
+    const totalPlannedDays = phases.reduce((s: number, p: any) => {
+      if (!p.planned_start || !p.planned_end) return s;
+      return s + Math.max(1, Math.ceil((new Date(p.planned_end).getTime() - new Date(p.planned_start).getTime()) / 86400000));
+    }, 0);
+    const dailyBurnRate = totalPlannedDays > 0 ? totalBudget / totalPlannedDays : 0;
+    const estimatedAdditionalCost = dailyBurnRate * delayDays;
+
+    // Penalty risk
+    const hasPenalties = !!project.penalties_lds;
+    const penaltyRisk = deadlineBreached && hasPenalties;
+
+    const affectedCount = cascadedPhases.filter(p => p.isAffected && !p.isSource).length;
+
+    return {
+      cascadedPhases,
+      affectedCount,
+      deadlineBreached,
+      breachDays,
+      affectedMilestones,
+      affectedGates,
+      estimatedAdditionalCost,
+      dailyBurnRate,
+      penaltyRisk,
+      delayedPhaseName: delayedPhase.phase_name,
+    };
+  }, [delayPhaseId, delayDays, phases, milestones, gates, project]);
+
+  return (
+    <div className="space-y-4">
+      {/* Controls */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2"><Zap className="h-4 w-4 text-primary" /> Delay Impact Simulator</CardTitle>
+          <CardDescription className="text-xs">Select a phase and introduce a delay to see how it cascades through the project timeline, milestones, and delivery.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-end gap-4 flex-wrap">
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-xs font-medium text-muted-foreground">Phase to Delay</label>
+              <Select value={delayPhaseId} onValueChange={setDelayPhaseId}>
+                <SelectTrigger><SelectValue placeholder="Select phase..." /></SelectTrigger>
+                <SelectContent>
+                  {phases.map(p => (
+                    <SelectItem key={p.id} value={p.id}>Phase {p.phase_number}: {p.phase_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-40">
+              <label className="text-xs font-medium text-muted-foreground">Delay (days)</label>
+              <Input type="number" min={0} value={delayDays} onChange={e => setDelayDays(Number(e.target.value))} />
+            </div>
+            <div className="flex gap-2">
+              {[7, 14, 30, 60].map(d => (
+                <Button key={d} size="sm" variant={delayDays === d ? 'default' : 'outline'} onClick={() => setDelayDays(d)} className="text-xs">
+                  +{d}d
+                </Button>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Simulation Results */}
+      {simulation && (
+        <>
+          {/* Impact Summary */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <Card className={simulation.deadlineBreached ? 'border-destructive/50' : ''}>
+              <CardContent className="pt-3 pb-3 text-center">
+                <p className={`text-2xl font-bold ${simulation.deadlineBreached ? 'text-destructive' : 'text-foreground'}`}>
+                  {simulation.deadlineBreached ? `+${simulation.breachDays}d` : 'OK'}
+                </p>
+                <p className="text-[10px] text-muted-foreground">Deadline Impact</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-3 pb-3 text-center">
+                <p className="text-2xl font-bold text-foreground">{simulation.affectedCount}</p>
+                <p className="text-[10px] text-muted-foreground">Phases Affected</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-3 pb-3 text-center">
+                <p className="text-2xl font-bold text-foreground">{simulation.affectedGates.length}</p>
+                <p className="text-[10px] text-muted-foreground">Gates Shifted</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-3 pb-3 text-center">
+                <p className="text-2xl font-bold text-destructive">{fmt(simulation.estimatedAdditionalCost)}</p>
+                <p className="text-[10px] text-muted-foreground">Est. Added Cost</p>
+              </CardContent>
+            </Card>
+            <Card className={simulation.penaltyRisk ? 'border-destructive/50' : ''}>
+              <CardContent className="pt-3 pb-3 text-center">
+                <p className={`text-2xl font-bold ${simulation.penaltyRisk ? 'text-destructive' : 'text-primary'}`}>
+                  {simulation.penaltyRisk ? 'YES' : 'NO'}
+                </p>
+                <p className="text-[10px] text-muted-foreground">Penalty Risk</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Cascade visualization */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Phase Cascade Timeline</CardTitle>
+              <CardDescription className="text-xs">
+                Red = source delay | Orange = cascaded shift | Green = unaffected
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {simulation.cascadedPhases.map((p: any) => (
+                  <div key={p.id} className="flex items-center gap-3">
+                    <div className="w-40 shrink-0 text-right">
+                      <span className="text-xs font-medium text-foreground">{p.phase_number}. {p.phase_name}</span>
+                    </div>
+                    <div className="flex-1 relative">
+                      <div className="flex items-center gap-2">
+                        {/* Original bar */}
+                        <div className={`h-5 rounded-sm flex items-center justify-center text-[9px] font-medium text-primary-foreground ${
+                          p.isSource ? 'bg-destructive' : p.isAffected ? 'bg-muted-foreground/30' : 'bg-primary/60'
+                        }`} style={{ width: '60%', minWidth: '80px' }}>
+                          {p.originalStart ? p.originalStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
+                          {' → '}
+                          {p.originalEnd ? p.originalEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
+                        </div>
+                        {/* Shift indicator */}
+                        {p.isAffected && (
+                          <>
+                            <ArrowRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                            <div className={`h-5 rounded-sm flex items-center justify-center text-[9px] font-medium text-primary-foreground ${
+                              p.isSource ? 'bg-destructive' : 'bg-yellow-500'
+                            }`} style={{ width: '60%', minWidth: '80px' }}>
+                              {p.newStart ? p.newStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
+                              {' → '}
+                              {p.newEnd ? p.newEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
+                            </div>
+                            <Badge variant={p.isSource ? 'destructive' : 'secondary'} className="text-[10px] ml-1">
+                              +{p.shiftDays}d
+                            </Badge>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Affected Gates */}
+          {simulation.affectedGates.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Shield className="h-4 w-4 text-primary" /> Shifted Gates</CardTitle></CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {simulation.affectedGates.map((g: any) => (
+                    <div key={g.id} className="flex items-center gap-3 p-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5">
+                      <div className="w-10 h-10 rounded-full border-2 border-yellow-500 flex items-center justify-center text-xs font-bold text-foreground">{g.gate_number}</div>
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-foreground">{g.gate_name}</p>
+                        <p className="text-[10px] text-muted-foreground line-through">{new Date(g.planned_date).toLocaleDateString()}</p>
+                        <p className="text-[10px] text-yellow-600 font-medium">{g.newDate.toLocaleDateString()} (+{g.shiftDays}d)</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Risk Assessment */}
+          <Card className={simulation.deadlineBreached ? 'border-destructive/30' : 'border-primary/30'}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <AlertTriangle className={`h-4 w-4 ${simulation.deadlineBreached ? 'text-destructive' : 'text-primary'}`} />
+                Simulation Risk Assessment
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {simulation.deadlineBreached && (
+                  <div className="p-3 rounded-lg border border-destructive/30 bg-destructive/5">
+                    <div className="flex items-start gap-2">
+                      <span className="w-2 h-2 rounded-full bg-destructive mt-1.5 animate-pulse" />
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Delivery Deadline Breach</p>
+                        <p className="text-xs text-muted-foreground">A {delayDays}-day delay in "{simulation.delayedPhaseName}" pushes final delivery {simulation.breachDays} days past the contractual deadline.</p>
+                        <div className="mt-2 flex items-start gap-1.5">
+                          <Lightbulb className="h-3 w-3 text-primary mt-0.5 flex-shrink-0" />
+                          <p className="text-xs text-primary font-medium">Negotiate deadline extension with customer, accelerate parallel activities, or add resources to compress subsequent phases.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {simulation.penaltyRisk && (
+                  <div className="p-3 rounded-lg border border-destructive/30 bg-destructive/5">
+                    <div className="flex items-start gap-2">
+                      <span className="w-2 h-2 rounded-full bg-destructive mt-1.5" />
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Liquidated Damages Exposure</p>
+                        <p className="text-xs text-muted-foreground">Contract includes penalty clauses (LDs). A {simulation.breachDays}-day breach may trigger financial penalties.</p>
+                        <div className="mt-2 flex items-start gap-1.5">
+                          <Lightbulb className="h-3 w-3 text-primary mt-0.5 flex-shrink-0" />
+                          <p className="text-xs text-primary font-medium">Review LD clause terms, quantify exposure, and prepare mitigation documentation for customer discussion.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div className="p-3 rounded-lg border bg-muted/30">
+                  <div className="flex items-start gap-2">
+                    <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Financial Impact Estimate</p>
+                      <p className="text-xs text-muted-foreground">
+                        Daily burn rate: {fmt(simulation.dailyBurnRate)}/day × {delayDays} days = <span className="font-medium text-destructive">{fmt(simulation.estimatedAdditionalCost)}</span> additional cost exposure.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                {!simulation.deadlineBreached && (
+                  <div className="p-3 rounded-lg border border-primary/30 bg-primary/5">
+                    <div className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 text-primary mt-0.5" />
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Deadline Buffer Sufficient</p>
+                        <p className="text-xs text-muted-foreground">The {delayDays}-day delay can be absorbed within the current project schedule without breaching the delivery deadline.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {!simulation && phases.length > 0 && (
+        <Card><CardContent className="py-12 text-center">
+          <Zap className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+          <h3 className="font-semibold text-foreground mb-2">Configure a Simulation</h3>
+          <p className="text-sm text-muted-foreground">Select a phase and set the delay days above to simulate the cascading impact on your project timeline.</p>
+        </CardContent></Card>
+      )}
+
+      {phases.length === 0 && (
+        <Card><CardContent className="py-12 text-center">
+          <ArrowRight className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+          <h3 className="font-semibold text-foreground mb-2">No Phases Defined</h3>
+          <p className="text-sm text-muted-foreground">Generate an execution plan first to use the delay simulator.</p>
+        </CardContent></Card>
+      )}
+    </div>
+  );
+}
+
 // --- Gantt Chart Component ---
 function GanttChart({ phases, gates, projectStart, projectEnd }: { phases: any[]; gates: any[]; projectStart?: string; projectEnd?: string }) {
   const chartData = useMemo(() => {
@@ -707,6 +1033,7 @@ export default function ProjectManagementPage() {
               <TabsTrigger value="risks" className="gap-1"><AlertTriangle className="h-3 w-3" /> Risks</TabsTrigger>
               <TabsTrigger value="intelligence" className="gap-1"><Brain className="h-3 w-3" /> Intelligence</TabsTrigger>
               <TabsTrigger value="changes" className="gap-1"><GitBranch className="h-3 w-3" /> Changes{changeOrders.length > 0 ? ` (${changeOrders.length})` : ''}</TabsTrigger>
+              <TabsTrigger value="simulation" className="gap-1"><Zap className="h-3 w-3" /> Simulation</TabsTrigger>
             </TabsList>
 
             {/* DASHBOARD */}
@@ -1432,6 +1759,11 @@ export default function ProjectManagementPage() {
                   </Card>
                 )}
               </div>
+            </TabsContent>
+
+            {/* DELAY IMPACT SIMULATION */}
+            <TabsContent value="simulation">
+              <DelaySimulation phases={phases} milestones={milestones} gates={gates} project={selectedProject} />
             </TabsContent>
 
           </Tabs>
