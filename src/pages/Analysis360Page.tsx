@@ -54,6 +54,25 @@ const Analysis360Page = () => {
   const totalMargin = useMemo(() => filtered.reduce((s, o) => s + o.margin, 0), [filtered]);
   const avgMarginPct = totalRevenue > 0 ? (totalMargin / totalRevenue * 100) : 0;
 
+  // Yearly average revenue (exclude current year for historical avg)
+  const { yearlyAvgRevenue, currentYearRevenue, yearCount } = useMemo(() => {
+    const currentYear = String(new Date().getFullYear());
+    const byYear: Record<string, number> = {};
+    filtered.forEach(o => {
+      const yr = o.purchasingYear || 'Unknown';
+      byYear[yr] = (byYear[yr] || 0) + o.sellingPrice;
+    });
+    const curYearRev = byYear[currentYear] || 0;
+    const historicalYears = Object.entries(byYear).filter(([yr]) => yr !== currentYear && yr !== 'Unknown');
+    const histTotal = historicalYears.reduce((s, [, v]) => s + v, 0);
+    const histCount = historicalYears.length;
+    return {
+      yearlyAvgRevenue: histCount > 0 ? histTotal / histCount : totalRevenue,
+      currentYearRevenue: curYearRev,
+      yearCount: histCount || 1,
+    };
+  }, [filtered, totalRevenue]);
+
   const byCustomer = useMemo(() => {
     const groups = groupBy(filtered, o => o.customerName);
     return Object.entries(groups).map(([name, items]) => ({
@@ -137,19 +156,20 @@ const Analysis360Page = () => {
       {/* KPI Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <Card><CardContent className="pt-6">
-          <div className="flex items-center gap-2 mb-1"><DollarSign className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Total Revenue</span></div>
-          <p className="text-2xl font-bold text-foreground">{fmt(totalRevenue)}</p>
+          <div className="flex items-center gap-2 mb-1"><DollarSign className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Avg Yearly Revenue</span></div>
+          <p className="text-2xl font-bold text-foreground">{fmt(yearlyAvgRevenue)}</p>
+          <p className="text-xs text-muted-foreground mt-1">Based on {yearCount} year{yearCount !== 1 ? 's' : ''}</p>
         </CardContent></Card>
         <Card><CardContent className="pt-6">
-          <div className="flex items-center gap-2 mb-1"><TrendingUp className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Avg Margin</span></div>
-          <p className="text-2xl font-bold text-foreground">{avgMarginPct.toFixed(1)}%</p>
+          <div className="flex items-center gap-2 mb-1"><TrendingUp className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">{new Date().getFullYear()} Pipeline</span></div>
+          <p className="text-2xl font-bold text-foreground">{fmt(currentYearRevenue)}</p>
         </CardContent></Card>
         <Card><CardContent className="pt-6">
           <div className="flex items-center gap-2 mb-1"><Users className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Customers</span></div>
           <p className="text-2xl font-bold text-foreground">{byCustomer.length}</p>
         </CardContent></Card>
         <Card><CardContent className="pt-6">
-          <div className="flex items-center gap-2 mb-1"><Package className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Orders</span></div>
+          <div className="flex items-center gap-2 mb-1"><Package className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">{useOpportunitiesFallback ? 'Opportunities' : 'Orders'}</span></div>
           <p className="text-2xl font-bold text-foreground">{filtered.length}</p>
         </CardContent></Card>
         <Card><CardContent className="pt-6">
