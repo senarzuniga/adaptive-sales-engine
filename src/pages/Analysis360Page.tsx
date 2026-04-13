@@ -317,32 +317,86 @@ const Analysis360Page = () => {
       )}
 
 
-      {/* KPI Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+      {/* KPI Summary - Row 1: Revenue & Pipeline */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <Card><CardContent className="pt-6">
           <div className="flex items-center gap-2 mb-1"><DollarSign className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Avg Yearly Revenue</span></div>
           <p className="text-2xl font-bold text-foreground">{fmt(yearlyAvgRevenue)}</p>
           <p className="text-xs text-muted-foreground mt-1">Source: {revenueSource}</p>
         </CardContent></Card>
         <Card><CardContent className="pt-6">
-          <div className="flex items-center gap-2 mb-1"><TrendingUp className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">{new Date().getFullYear()} Pipeline</span></div>
-          <p className="text-2xl font-bold text-foreground">{fmt(currentYearRevenue)}</p>
-        </CardContent></Card>
-        <Card><CardContent className="pt-6">
-          <div className="flex items-center gap-2 mb-1"><Users className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Customers</span></div>
-          <p className="text-2xl font-bold text-foreground">{byCustomer.length}</p>
-        </CardContent></Card>
-        <Card><CardContent className="pt-6">
-          <div className="flex items-center gap-2 mb-1"><Package className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">{useOpportunitiesFallback ? 'Opportunities' : 'Orders'}</span></div>
-          <p className="text-2xl font-bold text-foreground">{filtered.length}</p>
+          <div className="flex items-center gap-2 mb-1"><TrendingUp className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Weighted Pipeline</span></div>
+          <p className="text-2xl font-bold text-foreground">{fmt(weightedPipeline)}</p>
+          <p className="text-xs text-muted-foreground mt-1">Sold: {fmt(soldRevenue)} + Weighted open</p>
         </CardContent></Card>
         <Card><CardContent className="pt-6">
           <div className="flex items-center gap-2 mb-1"><Target className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Strategy Achievement</span></div>
-          <p className={`text-2xl font-bold ${overallAchievement >= 100 ? 'text-success' : overallAchievement >= 70 ? 'text-warning' : 'text-destructive'}`}>
-            {totalPlanned > 0 ? `${overallAchievement.toFixed(0)}%` : '—'}
+          <p className={`text-2xl font-bold ${strategyAchievement >= 100 ? 'text-success' : strategyAchievement >= 70 ? 'text-warning' : 'text-destructive'}`}>
+            {strategyTarget > 0 ? `${strategyAchievement.toFixed(0)}%` : '—'}
+          </p>
+          <div className="mt-1">
+            <Progress value={Math.min(strategyAchievement, 100)} className="h-1.5" />
+            <p className="text-xs text-muted-foreground mt-1">Target: {fmt(strategyTarget)} · {strategySource}</p>
+          </div>
+        </CardContent></Card>
+        <Card><CardContent className="pt-6">
+          <div className="flex items-center gap-2 mb-1"><Users className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Pipeline Overview</span></div>
+          <p className="text-2xl font-bold text-foreground">{opportunities.length} deals</p>
+          <p className="text-xs text-muted-foreground mt-1">{byCustomer.length} customers · {filtered.length} {useOpportunitiesFallback ? 'opportunities' : 'orders'}</p>
+        </CardContent></Card>
+      </div>
+
+      {/* KPI Summary - Row 2: Actions & Performance */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <Card><CardContent className="pt-6">
+          <div className="flex items-center gap-2 mb-1"><CheckCircle2 className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Action Completion</span></div>
+          <p className={`text-2xl font-bold ${taskStats.completionRate >= 70 ? 'text-success' : taskStats.completionRate >= 40 ? 'text-warning' : taskStats.total === 0 ? 'text-muted-foreground' : 'text-destructive'}`}>
+            {taskStats.total > 0 ? `${taskStats.completionRate.toFixed(0)}%` : '—'}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">{taskStats.done}/{taskStats.total} actions completed</p>
+        </CardContent></Card>
+        <Card><CardContent className="pt-6">
+          <div className="flex items-center gap-2 mb-1"><Activity className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Actions In Progress</span></div>
+          <p className="text-2xl font-bold text-foreground">{taskStats.inProgress}</p>
+          <p className="text-xs text-muted-foreground mt-1">{taskStats.todo} pending · {taskStats.inProgress} active</p>
+        </CardContent></Card>
+        <Card className={taskStats.overdue > 0 ? 'border-destructive/50' : ''}><CardContent className="pt-6">
+          <div className="flex items-center gap-2 mb-1"><Clock className={`h-4 w-4 ${taskStats.overdue > 0 ? 'text-destructive' : 'text-muted-foreground'}`} /><span className="text-sm text-muted-foreground">Overdue Actions</span></div>
+          <p className={`text-2xl font-bold ${taskStats.overdue > 0 ? 'text-destructive' : 'text-success'}`}>{taskStats.overdue}</p>
+          <p className="text-xs text-muted-foreground mt-1">{taskStats.overdue > 0 ? 'Requires immediate attention' : 'On track'}</p>
+        </CardContent></Card>
+        <Card><CardContent className="pt-6">
+          <div className="flex items-center gap-2 mb-1"><Shield className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Risk Alerts</span></div>
+          <p className={`text-2xl font-bold ${performanceRisks.filter(r => r.level === 'critical').length > 0 ? 'text-destructive' : performanceRisks.length > 0 ? 'text-warning' : 'text-success'}`}>
+            {performanceRisks.length}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {performanceRisks.filter(r => r.level === 'critical').length} critical · {performanceRisks.filter(r => r.level === 'warning').length} warnings
           </p>
         </CardContent></Card>
       </div>
+
+      {/* Performance Risk Alerts */}
+      {performanceRisks.length > 0 && (
+        <div className="space-y-3 mb-6">
+          {performanceRisks.map((risk, i) => (
+            <Card key={i} className={`border-l-4 ${risk.level === 'critical' ? 'border-l-destructive bg-destructive/5' : 'border-l-warning bg-warning/5'}`}>
+              <CardContent className="pt-4 pb-3 flex items-start gap-3">
+                <AlertCircle className={`h-5 w-5 flex-shrink-0 mt-0.5 ${risk.level === 'critical' ? 'text-destructive' : 'text-warning'}`} />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-foreground text-sm">{risk.title}</p>
+                    <Badge variant={risk.level === 'critical' ? 'destructive' : 'secondary'} className="text-[10px]">
+                      {risk.level === 'critical' ? '🔴 CRITICAL' : '🟡 WARNING'}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{risk.description}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Portfolio Risk Alert */}
       {riskLevel !== 'low' && (
