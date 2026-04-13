@@ -31,7 +31,8 @@ const COLORS = ['hsl(var(--primary))', 'hsl(var(--destructive))', 'hsl(220, 70%,
 
 export default function BudgetCommandCenterPage() {
   const { t } = useLanguage();
-  const { selectedCompanyId } = useDataStore();
+  const { activeCompanyId } = useData();
+  const selectedCompanyId = activeCompanyId;
   const [loading, setLoading] = useState(true);
   const [salesData, setSalesData] = useState<{ orders: any[]; opportunities: any[] }>({ orders: [], opportunities: [] });
   const [projectsData, setProjectsData] = useState<{ projects: any[]; costs: any[]; changeOrders: any[] }>({ projects: [], costs: [], changeOrders: [] });
