@@ -14,11 +14,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Progress } from '@/components/ui/progress';
 import {
   Activity, CheckCircle, Clock, AlertTriangle, Plus, Trash2, Edit2, CalendarDays,
-  BarChart3, Building2, Users, Wrench, Brain, Heart, Package, Target, Eye
+  BarChart3, Building2, Users, Wrench, Brain, Heart, Package, Target, Eye,
+  Sparkles, Loader2, Zap, CheckCircle2
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { ActionContentPanel } from '@/components/ActionContentPanel';
+import { supabase } from '@/integrations/supabase/client';
 
 const PILLAR_LABELS: Record<TaskPillar, string> = {
   general: 'General', p0: '360º Analysis', p1: 'Sales Architecture', p2: 'KAM',
