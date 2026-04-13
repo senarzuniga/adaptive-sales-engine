@@ -29,6 +29,7 @@ const Analysis360Page = () => {
   const opportunities = data.opportunities;
   const products = data.products;
   const company = data.companyProfile;
+  const tasks = data.tasks;
 
   // Fallback: use opportunities as synthetic orders when no orders exist
   const useOpportunitiesFallback = rawOrders.length === 0 && opportunities.length > 0;
