@@ -408,6 +408,14 @@ const MonitoringPage = () => {
                         {action.riskIfNotDone && (
                           <p className="text-xs text-destructive mt-1">⚠️ {action.riskIfNotDone}</p>
                         )}
+                        {action.actionContent && (
+                          <div className="flex items-center gap-2 mt-2">
+                            {action.actionContent.goal && <Badge variant="outline" className="text-[9px] gap-1"><Target className="h-2.5 w-2.5" /> Goal</Badge>}
+                            {action.actionContent.callScript && <Badge variant="outline" className="text-[9px] gap-1"><Phone className="h-2.5 w-2.5" /> Script</Badge>}
+                            {action.actionContent.emailTemplate && <Badge variant="outline" className="text-[9px] gap-1"><Mail className="h-2.5 w-2.5" /> Email</Badge>}
+                            {action.actionContent.presentationNotes && <Badge variant="outline" className="text-[9px] gap-1"><FileText className="h-2.5 w-2.5" /> Notes</Badge>}
+                          </div>
+                        )}
                         <div className="flex items-center gap-4 mt-2 text-[10px] text-muted-foreground">
                           {action.dueDate && <span>Due: {new Date(action.dueDate).toLocaleDateString()}</span>}
                           {action.estimatedRevenue > 0 && <span>Est. revenue: €{action.estimatedRevenue.toLocaleString()}</span>}
