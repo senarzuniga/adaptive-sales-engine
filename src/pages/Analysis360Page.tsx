@@ -6,7 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
-import { Upload, AlertTriangle, TrendingUp, Users, MapPin, Package, DollarSign, Target, BarChart3, Shield, Layers, Eye } from 'lucide-react';
+import { Upload, AlertTriangle, TrendingUp, Users, MapPin, Package, DollarSign, Target, BarChart3, Shield, Layers, Eye, CheckCircle2, Clock, AlertCircle, Activity } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { useNavigate } from 'react-router-dom';
 import { useState, useMemo } from 'react';
 import { groupBy, fmt, COLORS } from '@/components/analysis360/AnalysisUtils';
