@@ -35,6 +35,17 @@ serve(async (req) => {
       .download(doc.file_path);
     if (dlErr || !fileData) throw new Error("Failed to download file: " + (dlErr?.message || "unknown"));
 
+    // Helper: convert Uint8Array to base64 without stack overflow
+    function uint8ToBase64(bytes: Uint8Array): string {
+      let binary = "";
+      const CHUNK = 8192;
+      for (let i = 0; i < bytes.length; i += CHUNK) {
+        const chunk = bytes.subarray(i, Math.min(i + CHUNK, bytes.length));
+        binary += String.fromCharCode.apply(null, Array.from(chunk));
+      }
+      return btoa(binary);
+    }
+
     // Extract text content based on file type
     let textContent = "";
     const mime = doc.mime_type || "";
@@ -45,20 +56,15 @@ serve(async (req) => {
     } else if (mime.includes("json")) {
       textContent = await fileData.text();
     } else if (mime.includes("spreadsheet") || mime.includes("excel") || fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
-      // For Excel files, read as base64 and let AI interpret the raw data
       const buffer = await fileData.arrayBuffer();
       const bytes = new Uint8Array(buffer);
-      // Try to extract CSV-like text from the binary
       textContent = `[Binary Excel file: ${fileName}, size: ${doc.file_size} bytes. The file content is provided as base64 for interpretation.]\n`;
-      textContent += btoa(String.fromCharCode(...bytes)).substring(0, 50000); // Limit to ~50KB of base64
+      textContent += uint8ToBase64(bytes).substring(0, 50000);
     } else {
-      // For PDFs, images, and other binary formats - send as base64
       const buffer = await fileData.arrayBuffer();
-      const bytes = new Uint8Array(buffer);
+      const bytes = new Uint8Array(buffer.slice(0, 100000));
       textContent = `[Binary file: ${fileName}, type: ${mime}, size: ${doc.file_size} bytes]\n`;
-      // For very large files, truncate
-      const b64 = btoa(String.fromCharCode(...bytes.slice(0, 100000)));
-      textContent += b64;
+      textContent += uint8ToBase64(bytes);
     }
 
     // Truncate if too long
