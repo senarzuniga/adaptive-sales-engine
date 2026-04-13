@@ -19,7 +19,7 @@ const SalesArchitecturePage = () => {
   const [aiRecommendation, setAiRecommendation] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const company = data.company;
+  const company = data.companyProfile;
   const opportunities = data.opportunities;
   const orders = data.orders;
   const strategy = data.strategy;

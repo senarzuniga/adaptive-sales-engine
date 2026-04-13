@@ -11,6 +11,7 @@ import DataUploadPage from "./pages/DataUploadPage";
 import CompanyInfoPage from "./pages/CompanyInfoPage";
 import Analysis360Page from "./pages/Analysis360Page";
 import PillarPage from "./pages/PillarPage";
+import SalesArchitecturePage from "./pages/SalesArchitecturePage";
 import AfterSalesEnginePage from "./pages/AfterSalesEnginePage";
 import MonitoringPage from "./pages/MonitoringPage";
 import WeeklyPlannerPage from "./pages/WeeklyPlannerPage";
@@ -43,7 +44,7 @@ const App = () => (
                 <Route path="/upload" element={<DataUploadPage />} />
                 <Route path="/company-info" element={<CompanyInfoPage />} />
                 <Route path="/360-analysis" element={<Analysis360Page />} />
-                <Route path="/sales-architecture" element={<PillarPage pillarKey="p1" pillarNumber={1} />} />
+                <Route path="/sales-architecture" element={<SalesArchitecturePage />} />
                 <Route path="/kam" element={<PillarPage pillarKey="p2" pillarNumber={2} />} />
                 <Route path="/after-sales" element={<AfterSalesEnginePage />} />
                 <Route path="/ai-sales" element={<PillarPage pillarKey="p4" pillarNumber={4} />} />
