@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
   Calculator, Plus, Trash2, Brain, TrendingUp, AlertTriangle, Shield,
   DollarSign, BarChart3, Lightbulb, ChevronDown, ChevronUp, Save, FileText, Loader2,
-  FolderKanban, ArrowRight
+  FolderKanban, ArrowRight, Settings2
 } from 'lucide-react';
 
 type CostLine = {
@@ -59,8 +59,9 @@ type AnalysisResult = {
   scoring: { marginScore: string; marginValue?: number; riskScore: string; riskValue?: number; globalScore: number; explanation: string };
   riskFactors: { category: string; description: string; severity: string; impact?: string }[];
   recommendations: { type: string; title: string; description: string; estimatedImpact?: string }[];
-  costAnalysis?: { materialsRatio: number; engineeringRatio: number; installationRatio: number; alerts?: string[] };
+  costAnalysis?: { materialsRatio: number; engineeringRatio: number; installationRatio: number; missingCategories?: string[]; rateValidation?: { rateName: string; applied: number; expected: number; deviation: string }[]; alerts?: string[] };
   pricingStrategies?: { costPlus?: { price: number; margin: number }; valueBased?: { price: number; margin: number; rationale: string }; benchmarking?: { price: number; margin: number; rationale: string } };
+  profitabilityControl?: { minimumMarginScenario?: { margin: number; conditions: string }; riskAdjustedMargin?: { margin: number; adjustments: string }; belowThreshold?: boolean; correctiveActions?: string[] };
 };
 
 const CATEGORIES = [
@@ -123,10 +124,20 @@ export default function OfferPricingPage() {
   const [saving, setSaving] = useState(false);
   const [savedOffers, setSavedOffers] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('builder');
+  const [companyRates, setCompanyRates] = useState<any[]>([]);
 
   useEffect(() => {
-    if (selectedCompanyId) loadOffers();
+    if (selectedCompanyId) {
+      loadOffers();
+      loadRates();
+    }
   }, [selectedCompanyId]);
+
+  const loadRates = async () => {
+    if (!selectedCompanyId) return;
+    const { data } = await supabase.from('cost_rates').select('*').eq('company_id', selectedCompanyId).eq('is_active', true);
+    if (data) setCompanyRates(data);
+  };
 
   const loadOffers = async () => {
     if (!selectedCompanyId) return;
@@ -231,10 +242,16 @@ export default function OfferPricingPage() {
         currency,
       };
 
+      const ratesContext = companyRates.length > 0 ? companyRates.map(r => ({
+        type: r.rate_type, name: r.rate_name, value: r.rate_value, unit: r.rate_unit,
+        department: r.department, projectType: r.project_type, geography: r.geography,
+      })) : null;
+
       const { data, error } = await supabase.functions.invoke('analyze-offer', {
         body: {
           costBreakdown,
           offerContext: { title: offerTitle, customer: customerName, project: projectDesc, offerNumber },
+          companyRates: ratesContext,
         },
       });
 
@@ -735,7 +752,97 @@ export default function OfferPricingPage() {
                 </Card>
               )}
 
-              {/* Risk Factors */}
+              {/* Profitability Control */}
+              {analysis.profitabilityControl && (
+                <Card className={analysis.profitabilityControl.belowThreshold ? 'border-destructive border-2' : ''}>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Shield className="h-5 w-5 text-primary" />
+                      {isEs ? 'Control de Rentabilidad' : 'Profitability Control'}
+                      {analysis.profitabilityControl.belowThreshold && (
+                        <Badge variant="destructive">{isEs ? '⚠ BAJO UMBRAL' : '⚠ BELOW THRESHOLD'}</Badge>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {analysis.profitabilityControl.minimumMarginScenario && (
+                        <div className="p-3 rounded-lg bg-muted/50">
+                          <p className="text-xs text-muted-foreground">{isEs ? 'Margen Mínimo Escenario' : 'Minimum Margin Scenario'}</p>
+                          <p className="text-lg font-bold">{fmtPct(analysis.profitabilityControl.minimumMarginScenario.margin)}</p>
+                          <p className="text-xs text-muted-foreground">{analysis.profitabilityControl.minimumMarginScenario.conditions}</p>
+                        </div>
+                      )}
+                      {analysis.profitabilityControl.riskAdjustedMargin && (
+                        <div className="p-3 rounded-lg bg-muted/50">
+                          <p className="text-xs text-muted-foreground">{isEs ? 'Margen Ajustado por Riesgo' : 'Risk-Adjusted Margin'}</p>
+                          <p className="text-lg font-bold">{fmtPct(analysis.profitabilityControl.riskAdjustedMargin.margin)}</p>
+                          <p className="text-xs text-muted-foreground">{analysis.profitabilityControl.riskAdjustedMargin.adjustments}</p>
+                        </div>
+                      )}
+                    </div>
+                    {analysis.profitabilityControl.correctiveActions && analysis.profitabilityControl.correctiveActions.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium mb-2">{isEs ? 'Acciones Correctivas' : 'Corrective Actions'}</p>
+                        <ul className="space-y-1">
+                          {analysis.profitabilityControl.correctiveActions.map((a, i) => (
+                            <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                              <AlertTriangle className="h-3 w-3 mt-1 text-destructive flex-shrink-0" />
+                              {a}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Rate Validation */}
+              {analysis.costAnalysis?.rateValidation && analysis.costAnalysis.rateValidation.length > 0 && (
+                <Card>
+                  <CardHeader><CardTitle className="flex items-center gap-2"><Settings2 className="h-5 w-5 text-primary" />{isEs ? 'Validación de Tasas' : 'Rate Validation'}</CardTitle></CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{isEs ? 'Tasa' : 'Rate'}</TableHead>
+                          <TableHead>{isEs ? 'Aplicado' : 'Applied'}</TableHead>
+                          <TableHead>{isEs ? 'Esperado' : 'Expected'}</TableHead>
+                          <TableHead>{isEs ? 'Desviación' : 'Deviation'}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {analysis.costAnalysis.rateValidation.map((rv, i) => (
+                          <TableRow key={i}>
+                            <TableCell className="font-medium">{rv.rateName}</TableCell>
+                            <TableCell>{fmt(rv.applied)}</TableCell>
+                            <TableCell>{fmt(rv.expected)}</TableCell>
+                            <TableCell><Badge variant={rv.deviation.includes('high') || rv.deviation.includes('under') ? 'destructive' : 'secondary'}>{rv.deviation}</Badge></TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Missing Categories Alert */}
+              {analysis.costAnalysis?.missingCategories && analysis.costAnalysis.missingCategories.length > 0 && (
+                <Card className="border-destructive">
+                  <CardContent className="pt-4">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-destructive">{isEs ? 'Categorías de Coste Faltantes' : 'Missing Cost Categories'}</p>
+                        <p className="text-sm text-muted-foreground mt-1">{analysis.costAnalysis.missingCategories.join(', ')}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+
               <Card>
                 <CardHeader><CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-destructive" />{isEs ? 'Riesgos Detectados' : 'Detected Risks'}</CardTitle></CardHeader>
                 <CardContent className="space-y-3">

@@ -9,29 +9,55 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { costBreakdown, offerContext, companyContext, historicalData } = await req.json();
+    const { costBreakdown, offerContext, companyContext, historicalData, companyRates } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const systemPrompt = `You are an expert industrial costing, pricing intelligence, and risk analysis system for B2B machinery/industrial projects.
+    const systemPrompt = `You are a senior Costing and Pricing Manager specialized in preparing accurate, profitable, and risk-controlled commercial offers for B2B machinery/industrial projects.
+
+Your mission is to ensure that EVERY offer:
+- Reflects real costs (no underestimation)
+- Includes all applicable rates and indirect costs
+- Protects the expected margin
+- Identifies risks and uncertainties
+- Is competitive but financially safe
+
+CORE PRINCIPLE: "An offer is only valid if it guarantees profitability under realistic execution conditions." Never prioritize winning a deal over protecting margin.
+
+COST STRUCTURE VALIDATION:
+You must verify that all offers include:
+1. Direct Costs: Labour (real rates), Materials, Machines/production
+2. Indirect Costs: Overhead rates, Support functions
+3. External Costs: Freight/logistics, Insurance (liability, transport, currency), Subcontracting
+4. Risk Adjustments: Contingencies, Uncertainty factors, Project complexity
+5. Margin: Minimum threshold, Target margin, Risk-adjusted margin
+
+RATE VALIDATION (CRITICAL):
+- Validate that labour rates, overhead rates, machine rates, efficiency rates, risk factor rates, and margin rates are realistic
+- Flag ANY missing rate category
+- Compare applied rates against company-configured rates if provided
+- Detect underestimated productivity assumptions
 
 You analyze offer cost structures and provide:
 1. THREE scenarios: conservative (high costs, low margin), base, and optimized (efficient costs, high margin)
-2. Multi-dimensional scoring: margin score (high >25%, medium 15-25%, low <15%), risk score, global score
-3. Risk detection: underestimated engineering, installation costs, logistics variability, dependencies, incomplete inputs
+2. Multi-dimensional scoring: margin score, risk score, global score (0-100)
+3. Risk detection: underestimated engineering, installation costs, logistics variability, missing indirect costs, missing insurance, missing contingencies
 4. Pricing recommendations: cost-plus, value-based, benchmarking approaches
-5. Actionable optimization suggestions
+5. Profitability control: minimum margin scenario, risk-adjusted margin
+6. Actionable optimization suggestions
 
 CRITICAL RULES:
 - Always generate exactly 3 scenarios with concrete numbers
 - Score margin, risk, and global on a 0-100 scale
 - Identify at least 3 risk factors
-- Provide at least 3 actionable recommendations
+- NEVER ignore indirect costs — flag if missing
+- NEVER assume ideal productivity
+- ALWAYS include contingencies
+- ALWAYS justify margin
 - If data is incomplete, propose ranges and indicate impact on margin
 - Never return a single solution without comparison
-- Compare engineering vs materials ratio, installation vs total ratio
-- Detect outliers and inconsistencies
+- Detect outliers and inconsistencies in cost ratios
 
 Return a JSON object with this exact structure:
 {
@@ -52,7 +78,7 @@ Return a JSON object with this exact structure:
     { "category": "string", "description": "string", "severity": "high|medium|low", "impact": "string" }
   ],
   "recommendations": [
-    { "type": "cost_reduction|margin_improvement|risk_mitigation|pricing", "title": "string", "description": "string", "estimatedImpact": "string" }
+    { "type": "cost_reduction|margin_improvement|risk_mitigation|pricing|rate_validation", "title": "string", "description": "string", "estimatedImpact": "string" }
   ],
   "costAnalysis": {
     "materialsRatio": number,
@@ -61,12 +87,20 @@ Return a JSON object with this exact structure:
     "subcontractingRatio": number,
     "transportRatio": number,
     "indirectRatio": number,
+    "missingCategories": ["string"],
+    "rateValidation": [{ "rateName": "string", "applied": number, "expected": number, "deviation": "string" }],
     "alerts": ["string"]
   },
   "pricingStrategies": {
     "costPlus": { "price": number, "margin": number },
     "valueBased": { "price": number, "margin": number, "rationale": "string" },
     "benchmarking": { "price": number, "margin": number, "rationale": "string" }
+  },
+  "profitabilityControl": {
+    "minimumMarginScenario": { "margin": number, "conditions": "string" },
+    "riskAdjustedMargin": { "margin": number, "adjustments": "string" },
+    "belowThreshold": boolean,
+    "correctiveActions": ["string"]
   }
 }`;
 
@@ -79,6 +113,8 @@ ${JSON.stringify(costBreakdown, null, 2)}
 ${JSON.stringify(offerContext, null, 2)}
 
 ${companyContext ? `## Company Context\n${JSON.stringify(companyContext, null, 2)}` : ''}
+
+${companyRates ? `## Company Configured Rates (VALIDATE AGAINST THESE)\n${JSON.stringify(companyRates, null, 2)}` : ''}
 
 ${historicalData ? `## Historical Data\n${JSON.stringify(historicalData, null, 2)}` : ''}
 
@@ -150,7 +186,7 @@ Provide your analysis as the specified JSON structure.`;
                   items: {
                     type: "object",
                     properties: {
-                      type: { type: "string", enum: ["cost_reduction", "margin_improvement", "risk_mitigation", "pricing"] },
+                      type: { type: "string", enum: ["cost_reduction", "margin_improvement", "risk_mitigation", "pricing", "rate_validation"] },
                       title: { type: "string" },
                       description: { type: "string" },
                       estimatedImpact: { type: "string" }
@@ -167,6 +203,8 @@ Provide your analysis as the specified JSON structure.`;
                     subcontractingRatio: { type: "number" },
                     transportRatio: { type: "number" },
                     indirectRatio: { type: "number" },
+                    missingCategories: { type: "array", items: { type: "string" } },
+                    rateValidation: { type: "array", items: { type: "object", properties: { rateName: { type: "string" }, applied: { type: "number" }, expected: { type: "number" }, deviation: { type: "string" } } } },
                     alerts: { type: "array", items: { type: "string" } }
                   }
                 },
@@ -176,6 +214,15 @@ Provide your analysis as the specified JSON structure.`;
                     costPlus: { type: "object", properties: { price: { type: "number" }, margin: { type: "number" } } },
                     valueBased: { type: "object", properties: { price: { type: "number" }, margin: { type: "number" }, rationale: { type: "string" } } },
                     benchmarking: { type: "object", properties: { price: { type: "number" }, margin: { type: "number" }, rationale: { type: "string" } } }
+                  }
+                },
+                profitabilityControl: {
+                  type: "object",
+                  properties: {
+                    minimumMarginScenario: { type: "object", properties: { margin: { type: "number" }, conditions: { type: "string" } } },
+                    riskAdjustedMargin: { type: "object", properties: { margin: { type: "number" }, adjustments: { type: "string" } } },
+                    belowThreshold: { type: "boolean" },
+                    correctiveActions: { type: "array", items: { type: "string" } }
                   }
                 }
               },
