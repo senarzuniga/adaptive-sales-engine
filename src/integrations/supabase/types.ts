@@ -83,6 +83,86 @@ export type Database = {
           },
         ]
       }
+      business_intelligence_reports: {
+        Row: {
+          company_id: string
+          company_profile: Json | null
+          competitive_analysis: Json | null
+          created_at: string
+          data_sources: Json | null
+          executive_summary: string | null
+          financial_analysis: Json | null
+          future_scenarios: Json | null
+          hypothesis_log: Json | null
+          id: string
+          market_analysis: Json | null
+          product_analysis: Json | null
+          recommendations: Json | null
+          report_type: string
+          sale_propensity: Json | null
+          status: string
+          strategic_analysis: Json | null
+          target_company_name: string
+          target_company_website: string | null
+          updated_at: string
+          valuation: Json | null
+        }
+        Insert: {
+          company_id: string
+          company_profile?: Json | null
+          competitive_analysis?: Json | null
+          created_at?: string
+          data_sources?: Json | null
+          executive_summary?: string | null
+          financial_analysis?: Json | null
+          future_scenarios?: Json | null
+          hypothesis_log?: Json | null
+          id?: string
+          market_analysis?: Json | null
+          product_analysis?: Json | null
+          recommendations?: Json | null
+          report_type?: string
+          sale_propensity?: Json | null
+          status?: string
+          strategic_analysis?: Json | null
+          target_company_name?: string
+          target_company_website?: string | null
+          updated_at?: string
+          valuation?: Json | null
+        }
+        Update: {
+          company_id?: string
+          company_profile?: Json | null
+          competitive_analysis?: Json | null
+          created_at?: string
+          data_sources?: Json | null
+          executive_summary?: string | null
+          financial_analysis?: Json | null
+          future_scenarios?: Json | null
+          hypothesis_log?: Json | null
+          id?: string
+          market_analysis?: Json | null
+          product_analysis?: Json | null
+          recommendations?: Json | null
+          report_type?: string
+          sale_propensity?: Json | null
+          status?: string
+          strategic_analysis?: Json | null
+          target_company_name?: string
+          target_company_website?: string | null
+          updated_at?: string
+          valuation?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_intelligence_reports_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       change_orders: {
         Row: {
           approved_by: string | null
