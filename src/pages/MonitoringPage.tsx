@@ -15,7 +15,7 @@ import { Progress } from '@/components/ui/progress';
 import {
   Activity, CheckCircle, Clock, AlertTriangle, Plus, Trash2, Edit2, CalendarDays,
   BarChart3, Building2, Users, Wrench, Brain, Heart, Package, Target, Eye,
-  Sparkles, Loader2, Zap, CheckCircle2
+  Sparkles, Loader2, Zap, CheckCircle2, Phone, Mail, FileText
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { toast } from '@/hooks/use-toast';
@@ -140,6 +140,12 @@ const MonitoringPage = () => {
     const cat = categoryMap[action.category] || 'follow_up';
     const pillar = (['general', 'p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6'].includes(action.pillar) ? action.pillar : 'general') as TaskPillar;
     const pri = (['low', 'medium', 'high', 'critical'].includes(action.priority) ? action.priority : 'medium') as TaskPriority;
+    const generatedContent: ActionContent = action.actionContent ? {
+      goal: action.actionContent.goal || '',
+      callScript: action.actionContent.callScript || '',
+      emailTemplate: action.actionContent.emailTemplate || '',
+      presentationNotes: action.actionContent.presentationNotes || '',
+    } : emptyActionContent;
     const newTask: MonitoringTask = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       title: action.title || 'Untitled Action',
@@ -152,7 +158,7 @@ const MonitoringPage = () => {
       dueDate: action.dueDate || '',
       createdAt: new Date().toISOString(),
       notes: [],
-      actionContent: emptyActionContent,
+      actionContent: generatedContent,
     };
     addTask(newTask);
     setPoolPreview(prev => prev ? prev.filter(a => a !== action) : null);
@@ -401,6 +407,14 @@ const MonitoringPage = () => {
                         )}
                         {action.riskIfNotDone && (
                           <p className="text-xs text-destructive mt-1">⚠️ {action.riskIfNotDone}</p>
+                        )}
+                        {action.actionContent && (
+                          <div className="flex items-center gap-2 mt-2">
+                            {action.actionContent.goal && <Badge variant="outline" className="text-[9px] gap-1"><Target className="h-2.5 w-2.5" /> Goal</Badge>}
+                            {action.actionContent.callScript && <Badge variant="outline" className="text-[9px] gap-1"><Phone className="h-2.5 w-2.5" /> Script</Badge>}
+                            {action.actionContent.emailTemplate && <Badge variant="outline" className="text-[9px] gap-1"><Mail className="h-2.5 w-2.5" /> Email</Badge>}
+                            {action.actionContent.presentationNotes && <Badge variant="outline" className="text-[9px] gap-1"><FileText className="h-2.5 w-2.5" /> Notes</Badge>}
+                          </div>
                         )}
                         <div className="flex items-center gap-4 mt-2 text-[10px] text-muted-foreground">
                           {action.dueDate && <span>Due: {new Date(action.dueDate).toLocaleDateString()}</span>}

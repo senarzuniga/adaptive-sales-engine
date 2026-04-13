@@ -14,7 +14,6 @@ serve(async (req) => {
 
     const { companyProfile, opportunities, orders, strategy, tasks, teamMembers } = await req.json();
 
-    // Build comprehensive data summary for the AI
     const existingTitles = (tasks || []).map((t: any) => t.title).join("; ");
     
     const oppSummary = (opportunities || []).map((o: any) => 
@@ -49,6 +48,30 @@ CRITICAL RULES:
 6. Consider team capacity — if team members are provided, suggest assignments
 7. Generate 15-25 actions covering ALL categories above
 
+IMPORTANT — EACH ACTION MUST INCLUDE FULL SUPPORTIVE CONTENT:
+For EVERY action you generate, you MUST provide complete supportive material so the person executing the action has everything they need to succeed:
+
+- "goal": A clear, measurable objective with success criteria and expected outcome. Include what metrics define success.
+- "callScript": A complete, ready-to-use call/conversation script with:
+  * Opening line (personalized to the customer/context)
+  * Key talking points with specific data references (prices, products, dates)
+  * Anticipated objections and responses
+  * Closing technique and next-step request
+  * If the action doesn't require a call, provide meeting talking points or conversation guidelines instead.
+- "emailTemplate": A complete, ready-to-send email with:
+  * Subject line
+  * Professional body personalized with customer name, product references, and specific value propositions
+  * Clear call-to-action
+  * If the action doesn't require an email, provide a brief follow-up message template instead.
+- "presentationNotes": Supporting information for the action owner including:
+  * Key data points and figures to reference
+  * Customer history highlights
+  * Competitive positioning notes
+  * Internal preparation checklist
+  * Meeting agenda if applicable
+
+Use REAL customer names, product families, revenue figures, and dates from the provided data. Never use generic placeholders like [Customer Name].
+
 Output JSON with this structure:
 {
   "actions": [
@@ -62,7 +85,13 @@ Output JSON with this structure:
       "dueDate": "ISO date string (within next 2 weeks for critical, 4 weeks for high, 6 weeks for medium)",
       "rationale": "Why this action matters for strategy achievement",
       "estimatedRevenue": 0,
-      "riskIfNotDone": "What happens if this action is not executed"
+      "riskIfNotDone": "What happens if this action is not executed",
+      "actionContent": {
+        "goal": "Clear measurable objective with success criteria",
+        "callScript": "Complete call/conversation script ready to use",
+        "emailTemplate": "Complete email with subject, body, and CTA",
+        "presentationNotes": "Supporting data, preparation checklist, key figures"
+      }
     }
   ],
   "summary": {
@@ -110,7 +139,9 @@ ${existingTitles || "No existing tasks"}
 
 TODAY: ${new Date().toISOString().split('T')[0]}
 
-Generate the action pool now. Be specific with customer names, products, and amounts from the data. Prioritize: (1) Don't lose any good opportunity, (2) Strategic alignment, (3) After-sales profitability, (4) New business development.`;
+Generate the action pool now. Be specific with customer names, products, and amounts from the data. Prioritize: (1) Don't lose any good opportunity, (2) Strategic alignment, (3) After-sales profitability, (4) New business development.
+
+REMEMBER: Each action MUST include complete "actionContent" with goal, callScript, emailTemplate, and presentationNotes — all personalized with real data. The person executing the action should be able to pick up the phone or send the email immediately.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -128,7 +159,7 @@ Generate the action pool now. Be specific with customer names, products, and amo
           type: "function",
           function: {
             name: "generate_action_pool",
-            description: "Generate a prioritized pool of commercial actions",
+            description: "Generate a prioritized pool of commercial actions with full supportive content",
             parameters: {
               type: "object",
               properties: {
@@ -147,8 +178,18 @@ Generate the action pool now. Be specific with customer names, products, and amo
                       rationale: { type: "string" },
                       estimatedRevenue: { type: "number" },
                       riskIfNotDone: { type: "string" },
+                      actionContent: {
+                        type: "object",
+                        properties: {
+                          goal: { type: "string" },
+                          callScript: { type: "string" },
+                          emailTemplate: { type: "string" },
+                          presentationNotes: { type: "string" },
+                        },
+                        required: ["goal", "callScript", "emailTemplate", "presentationNotes"],
+                      },
                     },
-                    required: ["title", "description", "category", "pillar", "priority"],
+                    required: ["title", "description", "category", "pillar", "priority", "actionContent"],
                   },
                 },
                 summary: {
