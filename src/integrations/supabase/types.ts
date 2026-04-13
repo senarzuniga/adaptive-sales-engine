@@ -376,36 +376,42 @@ export type Database = {
           category: string
           company_id: string
           created_at: string
+          extracted_data: Json | null
           file_name: string
           file_path: string
           file_size: number
           id: string
           mime_type: string
           notes: string | null
+          processing_status: string
           updated_at: string
         }
         Insert: {
           category?: string
           company_id: string
           created_at?: string
+          extracted_data?: Json | null
           file_name?: string
           file_path?: string
           file_size?: number
           id?: string
           mime_type?: string
           notes?: string | null
+          processing_status?: string
           updated_at?: string
         }
         Update: {
           category?: string
           company_id?: string
           created_at?: string
+          extracted_data?: Json | null
           file_name?: string
           file_path?: string
           file_size?: number
           id?: string
           mime_type?: string
           notes?: string | null
+          processing_status?: string
           updated_at?: string
         }
         Relationships: [
