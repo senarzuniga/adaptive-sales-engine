@@ -435,7 +435,7 @@ const Analysis360Page = () => {
         </TabsList>
 
         <TabsContent value="5year">
-          <FiveYearResults orders={orders} strategy={strategy} />
+          <FiveYearResults orders={orders} strategy={strategy} isPipelineData={useOpportunitiesFallback} company={company} />
         </TabsContent>
 
         <TabsContent value="portfolio-risk">

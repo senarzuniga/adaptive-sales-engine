@@ -9,6 +9,12 @@ export function groupBy<T>(arr: T[], keyFn: (item: T) => string): Record<string,
 export const fmt = (n: number) =>
   `€${n.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
+export const fmtAxis = (n: number) => {
+  if (Math.abs(n) >= 1_000_000) return `€${(n / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(n) >= 1_000) return `€${(n / 1_000).toFixed(0)}K`;
+  return `€${n}`;
+};
+
 export const COLORS = [
   'hsl(215,80%,55%)', 'hsl(150,60%,45%)', 'hsl(35,90%,55%)', 'hsl(0,70%,55%)',
   'hsl(280,60%,55%)', 'hsl(180,50%,45%)', 'hsl(60,70%,50%)', 'hsl(330,60%,55%)',
