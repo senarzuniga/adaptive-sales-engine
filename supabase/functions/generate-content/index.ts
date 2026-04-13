@@ -12,7 +12,8 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const { contentType, topic, companyProfile, productsData, targetPlatform, brandGuidelines, additionalContext } = await req.json();
+    const { contentType, topic, companyProfile, productsData, targetPlatform, brandGuidelines, additionalContext,
+            ordersContext, opportunitiesContext, strategyContext } = await req.json();
 
     const platformGuidance: Record<string, string> = {
       linkedin: "LinkedIn post format: professional tone, 1300 chars max, use relevant hashtags, include a call-to-action. Can include emojis sparingly.",
@@ -24,28 +25,56 @@ serve(async (req) => {
 
     const systemPrompt = `You are a commercial content creation AI for ${companyProfile?.company_name || "the company"}.
 You create engaging, professional content for commercial and marketing purposes.
+Your content should position the company as a thought leader and drive commercial results.
 
 COMPANY CONTEXT:
 - Name: ${companyProfile?.company_name || "Unknown"}
 - Industry: ${companyProfile?.industry || "Unknown"}
+- Sub-sector: ${companyProfile?.sub_sector || ""}
+- Headquarters: ${companyProfile?.headquarters || ""}
+- Operating Regions: ${companyProfile?.operating_regions || ""}
 - Products: ${companyProfile?.main_products || "Not specified"}
 - Customer Segments: ${companyProfile?.main_customer_segments || ""}
+- Competitors: ${companyProfile?.main_competitors || ""}
 - Strategic Goals: ${companyProfile?.strategic_goals || ""}
+- Current Challenges: ${companyProfile?.current_challenges || ""}
+- Sales Channels: ${companyProfile?.sales_channels || ""}
 
-${productsData ? `PRODUCT DATA:\n${productsData}` : ""}
+CONSULTANT INSIGHTS (PRIMARY SOURCE — highest reliability):
+- Business Description: ${companyProfile?.business_description || "Not provided"}
+- Strategy Context: ${companyProfile?.strategy_context || "Not provided"}
+- Market Context: ${companyProfile?.market_context || "Not provided"}
+- Objectives: ${companyProfile?.objectives || "Not provided"}
+- Additional Notes: ${companyProfile?.additional_notes || "Not provided"}
+
+${productsData ? `PRODUCT PORTFOLIO:\n${productsData}` : ""}
+
+${ordersContext ? `RECENT COMMERCIAL ACTIVITY (orders/wins):\n${ordersContext}` : ""}
+
+${opportunitiesContext ? `ACTIVE PIPELINE & OPPORTUNITIES:\n${opportunitiesContext}` : ""}
+
+${strategyContext ? `COMMERCIAL STRATEGY TARGETS:\n${strategyContext}` : ""}
 
 ${brandGuidelines ? `BRAND GUIDELINES:\n${brandGuidelines}` : ""}
 
 PLATFORM: ${targetPlatform || "general"}
 ${platformGuidance[targetPlatform] || "General content format."}
 
+IMPORTANT RULES:
+- Content must be authentic and based on real company data — never fabricate achievements or metrics
+- Position the company as a knowledgeable player in its industry
+- Reference real products, markets, and capabilities from the data
+- Make content commercially useful: attract prospects, reinforce relationships, demonstrate expertise
+- Adapt tone to the platform but maintain professionalism
+- Include relevant industry-specific hashtags
+
 Use the tool to return the structured content.`;
 
     const userPrompt = `Create ${contentType || "a post"} about: ${topic || "company update"}
 
-${additionalContext ? `Additional context: ${additionalContext}` : ""}
+${additionalContext ? `Additional context:\n${additionalContext}` : ""}
 
-Generate compelling, on-brand content ready to publish.`;
+Generate compelling, on-brand content ready to publish. Use real data from the company context to make it specific and credible.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -115,8 +144,8 @@ Generate compelling, on-brand content ready to publish.`;
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
-    const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    const aiData = await response.json();
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall) throw new Error("No tool call in response");
 
     const result = JSON.parse(toolCall.function.arguments);

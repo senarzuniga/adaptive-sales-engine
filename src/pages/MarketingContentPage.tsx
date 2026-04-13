@@ -17,7 +17,7 @@ import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, isToday
 import {
   Megaphone, Loader2, Copy, CheckCircle, FileText, Share2, Linkedin, Twitter, Instagram, Facebook,
   Globe, Mail, Plus, X, Upload, Link, Newspaper, Award, Calendar as CalendarIcon, Building2, Search,
-  Sparkles, Tag, Save, Clock, Trash2, Eye, Edit2, Archive, Send, CalendarDays
+  Sparkles, Tag, Save, Clock, Trash2, Eye, Edit2, Archive, Send, CalendarDays, Zap
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
@@ -135,13 +135,131 @@ const MarketingContentPage = () => {
     websiteUrl, youtubeUrl, referenceUrls, offerDetails, uploadedText, brandGuidelines,
   });
 
+  // Build rich context from available data
+  const buildDataContext = () => {
+    const productsInfo = data.products.length > 0
+      ? data.products.map(p => `${p.name} (${p.type}) - Avg value: €${p.averageValue}`).join('\n') : '';
+
+    const ordersCtx = data.orders.length > 0
+      ? (() => {
+          const customerRevenue: Record<string, number> = {};
+          const productRevenue: Record<string, number> = {};
+          const regionRevenue: Record<string, number> = {};
+          data.orders.forEach(o => {
+            customerRevenue[o.customerName] = (customerRevenue[o.customerName] || 0) + o.sellingPrice;
+            productRevenue[o.productFamily] = (productRevenue[o.productFamily] || 0) + o.sellingPrice;
+            if (o.region) regionRevenue[o.region] = (regionRevenue[o.region] || 0) + o.sellingPrice;
+          });
+          const topCustomers = Object.entries(customerRevenue).sort((a, b) => b[1] - a[1]).slice(0, 10)
+            .map(([n, v]) => `${n}: €${v.toLocaleString()}`).join(', ');
+          const topProducts = Object.entries(productRevenue).sort((a, b) => b[1] - a[1]).slice(0, 5)
+            .map(([n, v]) => `${n}: €${v.toLocaleString()}`).join(', ');
+          const regions = Object.entries(regionRevenue).sort((a, b) => b[1] - a[1])
+            .map(([n, v]) => `${n}: €${v.toLocaleString()}`).join(', ');
+          return `Total orders: ${data.orders.length}, Top customers: ${topCustomers}, Top product families: ${topProducts}, Active regions: ${regions}`;
+        })()
+      : '';
+
+    const oppsCtx = data.opportunities.length > 0
+      ? (() => {
+          const active = data.opportunities.filter(o => o.status !== 'Won' && o.status !== 'Lost');
+          const totalPipeline = active.reduce((s, o) => s + o.estRevenue, 0);
+          const families = [...new Set(active.map(o => o.productFamily).filter(Boolean))];
+          const regions = [...new Set(active.map(o => o.region).filter(Boolean))];
+          return `Active pipeline: €${totalPipeline.toLocaleString()}, ${active.length} opportunities, Product families: ${families.join(', ')}, Regions: ${regions.join(', ')}`;
+        })()
+      : '';
+
+    const stratCtx = data.strategy.length > 0
+      ? data.strategy.map(s => `${s.productFamily} in ${s.region}: target €${s.estRevenue.toLocaleString()}, margin=${s.margin}%`).join('; ')
+      : '';
+
+    return { productsInfo, ordersCtx, oppsCtx, stratCtx };
+  };
+
+  // Smart topic suggestions based on available data
+  const smartTopicSuggestions = useMemo(() => {
+    const suggestions: { label: string; topic: string; type: string; platform: string }[] = [];
+    const cp = data.companyProfile;
+
+    if (cp.main_products) {
+      suggestions.push({
+        label: '🏭 Product Capabilities',
+        topic: `Showcase ${cp.company_name}'s key product capabilities and value proposition: ${cp.main_products}. Highlight what differentiates us in the ${cp.industry || 'industrial'} sector.`,
+        type: 'article', platform: 'linkedin',
+      });
+    }
+    if (data.orders.length > 0) {
+      const regions = [...new Set(data.orders.map(o => o.region).filter(Boolean))];
+      suggestions.push({
+        label: '🌍 Market Presence',
+        topic: `Highlight ${cp.company_name}'s growing presence across ${regions.length} regions (${regions.slice(0, 4).join(', ')}). Demonstrate our track record of successful project delivery and customer partnerships.`,
+        type: 'update', platform: 'linkedin',
+      });
+    }
+    if (cp.strategic_goals) {
+      suggestions.push({
+        label: '🎯 Strategic Vision',
+        topic: `Share ${cp.company_name}'s strategic direction and industry leadership vision. Goals: ${cp.strategic_goals}. Position us as forward-thinking innovators in ${cp.industry || 'the industry'}.`,
+        type: 'article', platform: 'linkedin',
+      });
+    }
+    if (data.products.length > 0) {
+      const topProduct = data.products.sort((a, b) => b.averageValue - a.averageValue)[0];
+      suggestions.push({
+        label: '📦 Product Spotlight',
+        topic: `Deep dive into our ${topProduct.name} (${topProduct.type}) — its applications, benefits, and why customers choose it. Average project value: €${topProduct.averageValue.toLocaleString()}.`,
+        type: 'product_news', platform: 'linkedin',
+      });
+    }
+    if (cp.main_customer_segments) {
+      suggestions.push({
+        label: '🤝 Customer Success',
+        topic: `How ${cp.company_name} delivers value to its key customer segments: ${cp.main_customer_segments}. Share insights on solving industry challenges and building lasting partnerships.`,
+        type: 'case_study', platform: 'linkedin',
+      });
+    }
+    if (cp.market_context) {
+      suggestions.push({
+        label: '📊 Industry Trends',
+        topic: `Share expert perspective on current market trends in ${cp.industry || 'the industry'}. Context: ${cp.market_context}. Position ${cp.company_name} as a thought leader.`,
+        type: 'industry_insight', platform: 'linkedin',
+      });
+    }
+    if (data.opportunities.length > 0) {
+      const families = [...new Set(data.opportunities.map(o => o.productFamily).filter(Boolean))];
+      suggestions.push({
+        label: '🚀 Solutions Portfolio',
+        topic: `Showcase ${cp.company_name}'s comprehensive solutions portfolio across ${families.slice(0, 4).join(', ')}. Demonstrate breadth of expertise and ability to serve diverse customer needs.`,
+        type: 'article', platform: 'linkedin',
+      });
+    }
+    // Newsletter suggestion
+    suggestions.push({
+      label: '📰 Monthly Newsletter',
+      topic: `Monthly newsletter for ${cp.company_name}: company updates, recent achievements, industry insights, and upcoming initiatives in the ${cp.industry || 'industrial'} sector. Include a section on our products: ${cp.main_products || 'our portfolio'}.`,
+      type: 'newsletter', platform: 'newsletter',
+    });
+
+    return suggestions;
+  }, [data]);
+
+  const handleSmartGenerate = (suggestion: { topic: string; type: string; platform: string }) => {
+    setTopic(suggestion.topic);
+    setContentType(suggestion.type);
+    setTargetPlatform(suggestion.platform);
+    // Auto-trigger generation
+    setTimeout(() => {
+      document.getElementById('generate-btn')?.click();
+    }, 100);
+  };
+
   const handleGenerate = async () => {
     if (!activeCompanyId) { toast({ title: 'No company selected', variant: 'destructive' }); return; }
     if (!topic.trim()) { toast({ title: 'Topic is required', variant: 'destructive' }); return; }
     setIsGenerating(true);
     try {
-      const productsInfo = data.products.length > 0
-        ? data.products.map(p => `${p.name} (${p.type}) - Avg value: €${p.averageValue}`).join('\n') : '';
+      const { productsInfo, ordersCtx, oppsCtx, stratCtx } = buildDataContext();
       const platformAccount = socialAccounts.find(a => a.platform === targetPlatform);
       const marketIntelligence = [
         competitorInfo && `COMPETITOR INTELLIGENCE:\n${competitorInfo}`,
@@ -156,8 +274,16 @@ const MarketingContentPage = () => {
       ].filter(Boolean).join('\n\n');
 
       const { data: result, error } = await supabase.functions.invoke('generate-content', {
-        body: { contentType, topic, targetPlatform, companyProfile: data.companyProfile, productsData: productsInfo,
-          brandGuidelines: brandGuidelines || platformAccount?.notes || '', additionalContext: marketIntelligence },
+        body: {
+          contentType, topic, targetPlatform,
+          companyProfile: data.companyProfile,
+          productsData: productsInfo,
+          brandGuidelines: brandGuidelines || platformAccount?.notes || '',
+          additionalContext: marketIntelligence,
+          ordersContext: ordersCtx,
+          opportunitiesContext: oppsCtx,
+          strategyContext: stratCtx,
+        },
       });
       if (error) throw error;
       if (result?.error) throw new Error(result.error);
@@ -381,22 +507,52 @@ const MarketingContentPage = () => {
                 </CardContent>
               </Card>
 
-              <Button onClick={handleGenerate} disabled={isGenerating || !topic.trim()} className="w-full gap-2" size="lg">
+              <Button id="generate-btn" onClick={handleGenerate} disabled={isGenerating || !topic.trim()} className="w-full gap-2" size="lg">
                 {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                 {isGenerating ? 'Generating...' : 'Generate Marketing Content'}
               </Button>
             </div>
 
-            {/* RIGHT: Generated Content */}
+            {/* RIGHT: Smart Suggestions + Generated Content */}
             <div className="xl:col-span-2 space-y-4">
               {!generatedContent && !isGenerating && (
-                <Card className="min-h-[400px] flex items-center justify-center">
-                  <CardContent className="text-center">
-                    <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-                    <p className="text-sm text-muted-foreground">Fill in the content brief and generate.</p>
-                    <div className="mt-4 text-xs text-muted-foreground space-y-1">
-                      <p>📰 Newsletters & campaigns</p><p>📱 Social media posts</p><p>🏷️ Offer templates</p><p>🎥 Video scripts</p>
-                    </div>
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-primary" /> Smart Content Ideas
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Based on your company data — click any to auto-generate content.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {smartTopicSuggestions.length > 0 ? (
+                      smartTopicSuggestions.map((s, i) => (
+                        <button
+                          key={i}
+                          onClick={() => handleSmartGenerate(s)}
+                          className="w-full text-left p-3 rounded-lg border border-border hover:bg-muted/50 hover:border-primary/30 transition-colors group"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-foreground">{s.label}</span>
+                            <div className="flex items-center gap-1.5">
+                              <Badge variant="outline" className="text-[9px]">{s.type.replace('_', ' ')}</Badge>
+                              {(() => { const Icon = PLATFORM_ICONS[s.platform] || Globe; return <Icon className="h-3 w-3 text-muted-foreground" />; })()}
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{s.topic}</p>
+                          <span className="text-[10px] text-primary opacity-0 group-hover:opacity-100 transition-opacity mt-1 inline-block">Click to generate →</span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="text-center py-6">
+                        <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-50" />
+                        <p className="text-sm text-muted-foreground">Add company data to get smart content suggestions.</p>
+                        <div className="mt-4 text-xs text-muted-foreground space-y-1">
+                          <p>📰 Newsletters & campaigns</p><p>📱 Social media posts</p><p>🏷️ Offer templates</p><p>🎥 Video scripts</p>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
