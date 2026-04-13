@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
   Calculator, Plus, Trash2, Brain, TrendingUp, AlertTriangle, Shield,
   DollarSign, BarChart3, Lightbulb, ChevronDown, ChevronUp, Save, FileText, Loader2,
-  FolderKanban, ArrowRight
+  FolderKanban, ArrowRight, Settings2
 } from 'lucide-react';
 
 type CostLine = {
