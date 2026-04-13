@@ -26,7 +26,7 @@ const Analysis360Page = () => {
   const strategy = data.strategy;
   const opportunities = data.opportunities;
   const products = data.products;
-  const company = data.company;
+  const company = data.companyProfile;
   const years = useMemo(() => [...new Set(orders.map(o => o.purchasingYear).filter(Boolean))].sort(), [orders]);
 
   const filtered = useMemo(() => {
