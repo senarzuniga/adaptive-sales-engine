@@ -57,6 +57,41 @@ export default function AfterSalesEnginePage() {
   const [showPartForm, setShowPartForm] = useState(false);
   const [partFilter, setPartFilter] = useState('all');
 
+  const computeBudgetGapForAfterSales = useCallback(async () => {
+    if (!activeCompanyId) return null;
+    try {
+      const [{ data: strategy }, { data: orders }] = await Promise.all([
+        supabase.from('strategy').select('*').eq('company_id', activeCompanyId),
+        supabase.from('orders').select('*').eq('company_id', activeCompanyId),
+      ]);
+      if (!strategy?.length) return null;
+      const totalTarget = strategy.reduce((s: number, st: any) => s + (st.est_revenue || 0), 0);
+      const totalActual = (orders || []).reduce((s: number, o: any) => s + (o.selling_price || 0), 0);
+      const overallAchievement = totalTarget > 0 ? (totalActual / totalTarget) * 100 : 0;
+
+      const productFamilies = [...new Set(strategy.map((s: any) => s.product_family).filter(Boolean))];
+      const productGaps = productFamilies.map(pf => {
+        const target = strategy.filter((s: any) => s.product_family === pf).reduce((s: number, st: any) => s + (st.est_revenue || 0), 0);
+        const actual = (orders || []).filter((o: any) => o.product_family === pf).reduce((s: number, o: any) => s + (o.selling_price || 0), 0);
+        return { segment: pf, segmentType: 'product_family', targetRevenue: target, actualRevenue: actual, gapAmount: target - actual, gapPct: target > 0 ? ((target - actual) / target) * 100 : 0 };
+      });
+
+      const regions = [...new Set(strategy.map((s: any) => s.region).filter(Boolean))];
+      const regionGaps = regions.map(r => {
+        const target = strategy.filter((s: any) => s.region === r).reduce((s: number, st: any) => s + (st.est_revenue || 0), 0);
+        const actual = (orders || []).filter((o: any) => o.region === r).reduce((s: number, o: any) => s + (o.selling_price || 0), 0);
+        return { segment: r, segmentType: 'region', targetRevenue: target, actualRevenue: actual, gapAmount: target - actual, gapPct: target > 0 ? ((target - actual) / target) * 100 : 0 };
+      });
+
+      const allGaps = [...productGaps, ...regionGaps].filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmount - a.gapAmount);
+      return {
+        overallAchievement: overallAchievement.toFixed(0) + '%',
+        totalTarget, totalActual, totalGap: totalTarget - totalActual,
+        topGaps: allGaps.slice(0, 10),
+      };
+    } catch { return null; }
+  }, [activeCompanyId]);
+
   // Form states
   const [assetForm, setAssetForm] = useState({ serial_number: '', asset_name: '', asset_type: 'machine', customer_name: '', location: '', country: '', region: '', lifecycle_stage: 'active', connection_status: 'registered', usage_intensity: 'normal', customer_value_segment: 'standard', risk_level: 'medium', notes: '' });
   const [contractForm, setContractForm] = useState({ contract_type: 'basic', contract_name: '', customer_name: '', annual_value: 0, recurring_revenue_type: 'subscription', status: 'active', sla_response_hours: 24, includes_parts: false, includes_remote: false, includes_predictive: false, notes: '', asset_id: '' });
@@ -180,8 +215,9 @@ export default function AfterSalesEnginePage() {
   const runDiagnostic = async () => {
     setAnalyzing(true);
     try {
+      const budgetGap = await computeBudgetGapForAfterSales();
       const { data, error } = await supabase.functions.invoke('after-sales-intelligence', {
-        body: { assets, contracts, interventions, spareParts, analysisType: 'full_diagnostic' },
+        body: { assets, contracts, interventions, spareParts, analysisType: 'full_diagnostic', budgetGapAnalysis: budgetGap },
       });
       if (error) throw error;
       if (data?.analysis) {
