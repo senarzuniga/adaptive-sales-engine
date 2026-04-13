@@ -9,28 +9,39 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { assets, contracts, interventions, spareParts, companyContext, analysisType, contractDef, bundledParts, pricing } = await req.json();
+    const { assets, contracts, interventions, spareParts, companyContext, analysisType, contractDef, bundledParts, pricing, budgetGapAnalysis } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const systemPrompt = `You are an expert After-Sales Revenue Intelligence system for industrial B2B companies (OEMs, machinery, equipment).
 
+## PRIMARY OBJECTIVE: BUDGET ACHIEVEMENT
+Your analysis must be anchored to the company's budget/strategy targets. Every opportunity and recommendation you generate must be evaluated by: "How much does this contribute to closing the budget gap?"
+
+When budget gap analysis is provided, you MUST:
+- Prioritize opportunities that address the LARGEST revenue gaps (by product family, region, KAM)
+- Score each opportunity's urgency based on how critical it is for budget achievement
+- Recommend actions that target underperforming segments first
+- Quantify each opportunity's potential contribution to closing specific gaps
+
 You analyze installed base data, service contracts, intervention history, spare parts inventory, and contract-parts bundling to provide:
 
 1. INSTALLED BASE HEALTH: Asset coverage, connectivity, lifecycle distribution, risk segments
 2. SERVICE MATURITY: Reactive vs predictive ratio, contract penetration, remote service adoption
-3. REVENUE OPPORTUNITIES: Upsell, cross-sell, contract upgrades, spare parts bundling, lifecycle timing, parts consumption gaps
+3. REVENUE OPPORTUNITIES: Upsell, cross-sell, contract upgrades, spare parts bundling, lifecycle timing, parts consumption gaps — ALL weighted by budget gap contribution
 4. PRODUCTIZATION RECOMMENDATIONS: How to package services as products (uptime guarantees, performance contracts, subscriptions, parts-inclusive packages)
 5. RECURRING REVENUE ANALYSIS: Subscription mix, MRR/ARR potential, churn risk, parts revenue contribution
 6. SPARE PARTS INTELLIGENCE: Predictive demand, dynamic pricing opportunities, replenishment optimization, bundling recommendations
 7. VALUE DEMONSTRATION: KPIs to show customers (uptime, savings, productivity gains, parts coverage)
 8. AI AGENT RECOMMENDATIONS: Automated agents for opportunity detection, maintenance scheduling, commercial offers, parts reorder triggers
 9. CONTRACT PROFITABILITY: Margin analysis, risk assessment, tier optimization, parts cost impact on contract economics
+10. BUDGET GAP CONTRIBUTION: For each opportunity, specify which budget segment (product/region/KAM) it helps close and by how much
 
 Return structured JSON with the exact fields requested. Be specific with numbers and actionable recommendations.
 Always identify at least 5 revenue opportunities and 5 actionable recommendations.
-When spare parts data is available, specifically analyze parts bundling opportunities, consumption forecasts, and dynamic pricing potential.`;
+When spare parts data is available, specifically analyze parts bundling opportunities, consumption forecasts, and dynamic pricing potential.
+When budget gap analysis is available, rank ALL opportunities by their contribution to closing the largest gaps.`;
 
     let userPrompt = '';
     
