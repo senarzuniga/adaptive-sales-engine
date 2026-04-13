@@ -6,7 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
-import { Upload, AlertTriangle, TrendingUp, Users, MapPin, Package, DollarSign, Target, BarChart3, Shield, Layers, Eye } from 'lucide-react';
+import { Upload, AlertTriangle, TrendingUp, Users, MapPin, Package, DollarSign, Target, BarChart3, Shield, Layers, Eye, CheckCircle2, Clock, AlertCircle, Activity } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { useNavigate } from 'react-router-dom';
 import { useState, useMemo } from 'react';
 import { groupBy, fmt, COLORS } from '@/components/analysis360/AnalysisUtils';
@@ -28,6 +29,7 @@ const Analysis360Page = () => {
   const opportunities = data.opportunities;
   const products = data.products;
   const company = data.companyProfile;
+  const tasks = data.tasks;
 
   // Fallback: use opportunities as synthetic orders when no orders exist
   const useOpportunitiesFallback = rawOrders.length === 0 && opportunities.length > 0;
@@ -124,8 +126,126 @@ const Analysis360Page = () => {
     })).sort((a, b) => b.revenue - a.revenue);
   }, [filtered]);
 
-  const totalPlanned = strategy.reduce((s, r) => s + r.estRevenue, 0);
-  const overallAchievement = totalPlanned > 0 ? (totalRevenue / totalPlanned * 100) : 0;
+  // Strategy achievement: use consultant target if available, deduplicate strategy rows
+  const { strategyTarget, weightedPipeline, soldRevenue, strategyAchievement, strategySource } = useMemo(() => {
+    // Parse consultant's target from company profile (e.g. "targeting €3.5M within 3 years")
+    const desc = company?.business_description || '';
+    const annualRev = company?.annual_revenue || '';
+    const notes = company?.additional_notes || '';
+    
+    let consultantTarget = 0;
+    // Try "targeting €X.XM" pattern
+    const targetMatch = (annualRev + ' ' + desc + ' ' + notes).match(/target(?:ing)?\s*[~€]?\s*([0-9.,]+)\s*(m|million|mln)/i);
+    if (targetMatch) {
+      consultantTarget = parseFloat(targetMatch[1].replace(',', '.')) * 1_000_000;
+    }
+
+    // Deduplicate strategy rows by product_family (take unique families, sum once)
+    const uniqueFamilies = new Map<string, number>();
+    strategy.forEach(s => {
+      const key = s.productFamily.trim().toLowerCase();
+      if (!uniqueFamilies.has(key)) {
+        uniqueFamilies.set(key, s.estRevenue);
+      }
+    });
+    const deduplicatedStrategyTotal = Array.from(uniqueFamilies.values()).reduce((s, v) => s + v, 0);
+
+    // Use consultant target if available, otherwise deduplicated strategy
+    const finalTarget = consultantTarget > 0 ? consultantTarget : deduplicatedStrategyTotal;
+    const source = consultantTarget > 0 ? 'Company Profile Target' : 'Strategy Data';
+
+    // Calculate actual achievement: SOLD opportunities + weighted open pipeline
+    const sold = opportunities.filter(o => o.status === 'SOLD').reduce((s, o) => s + o.estRevenue, 0);
+    const openWeighted = opportunities
+      .filter(o => o.status !== 'SOLD' && o.status !== 'DESATENDIDO')
+      .reduce((s, o) => s + o.estRevenue * (o.contractProb / 100), 0);
+    const weighted = sold + openWeighted;
+
+    const achievement = finalTarget > 0 ? (weighted / finalTarget * 100) : 0;
+
+    return {
+      strategyTarget: finalTarget,
+      weightedPipeline: weighted,
+      soldRevenue: sold,
+      strategyAchievement: achievement,
+      strategySource: source,
+    };
+  }, [strategy, opportunities, company]);
+
+  // Task accomplishment KPIs
+  const taskStats = useMemo(() => {
+    const total = tasks.length;
+    const done = tasks.filter(t => t.status === 'done').length;
+    const inProgress = tasks.filter(t => t.status === 'in_progress').length;
+    const todo = tasks.filter(t => t.status === 'todo').length;
+    const overdue = tasks.filter(t => {
+      if (t.status === 'done') return false;
+      if (!t.dueDate) return false;
+      return new Date(t.dueDate) < new Date();
+    }).length;
+    const completionRate = total > 0 ? (done / total * 100) : 0;
+    return { total, done, inProgress, todo, overdue, completionRate };
+  }, [tasks]);
+
+  // Performance risk assessment
+  const performanceRisks = useMemo(() => {
+    const risks: Array<{ level: 'critical' | 'warning' | 'info'; title: string; description: string }> = [];
+
+    // Strategy gap risk
+    if (strategyTarget > 0 && strategyAchievement < 50) {
+      risks.push({
+        level: 'critical',
+        title: 'Strategy Achievement Critical',
+        description: `Weighted pipeline covers only ${strategyAchievement.toFixed(0)}% of the ${fmt(strategyTarget)} target. Gap: ${fmt(strategyTarget - weightedPipeline)}. Urgent pipeline building needed.`,
+      });
+    } else if (strategyTarget > 0 && strategyAchievement < 75) {
+      risks.push({
+        level: 'warning',
+        title: 'Strategy Achievement Below Target',
+        description: `Weighted pipeline at ${strategyAchievement.toFixed(0)}% of target. Gap of ${fmt(strategyTarget - weightedPipeline)} requires attention.`,
+      });
+    }
+
+    // Pipeline quality risk — too many low-probability deals
+    const lowProbDeals = opportunities.filter(o => o.contractProb < 0.3 && o.status !== 'SOLD' && o.status !== 'DESATENDIDO');
+    if (lowProbDeals.length > opportunities.length * 0.5 && opportunities.length > 5) {
+      risks.push({
+        level: 'warning',
+        title: 'Pipeline Quality Concern',
+        description: `${lowProbDeals.length} of ${opportunities.length} opportunities (${(lowProbDeals.length / opportunities.length * 100).toFixed(0)}%) have <30% probability. Pipeline may be inflated.`,
+      });
+    }
+
+    // Neglected opportunities
+    const neglected = opportunities.filter(o => o.status === 'DESATENDIDO');
+    if (neglected.length > 0) {
+      const neglectedValue = neglected.reduce((s, o) => s + o.estRevenue, 0);
+      risks.push({
+        level: 'warning',
+        title: `${neglected.length} Neglected Opportunities`,
+        description: `${fmt(neglectedValue)} in pipeline marked as "DESATENDIDO". Review and either reactivate or close these deals.`,
+      });
+    }
+
+    // Task execution risk
+    if (taskStats.overdue > 0) {
+      risks.push({
+        level: taskStats.overdue > 3 ? 'critical' : 'warning',
+        title: `${taskStats.overdue} Overdue Action${taskStats.overdue > 1 ? 's' : ''}`,
+        description: `Overdue actions reduce commercial momentum. Complete or reschedule to maintain pipeline velocity.`,
+      });
+    }
+
+    if (taskStats.total > 0 && taskStats.completionRate < 30) {
+      risks.push({
+        level: 'warning',
+        title: 'Low Action Completion Rate',
+        description: `Only ${taskStats.completionRate.toFixed(0)}% of actions completed. This pace risks budget achievement.`,
+      });
+    }
+
+    return risks;
+  }, [strategyTarget, strategyAchievement, weightedPipeline, opportunities, taskStats]);
 
   // Pareto risk
   const paretoData = useMemo(() => {
@@ -197,32 +317,86 @@ const Analysis360Page = () => {
       )}
 
 
-      {/* KPI Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+      {/* KPI Summary - Row 1: Revenue & Pipeline */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <Card><CardContent className="pt-6">
           <div className="flex items-center gap-2 mb-1"><DollarSign className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Avg Yearly Revenue</span></div>
           <p className="text-2xl font-bold text-foreground">{fmt(yearlyAvgRevenue)}</p>
           <p className="text-xs text-muted-foreground mt-1">Source: {revenueSource}</p>
         </CardContent></Card>
         <Card><CardContent className="pt-6">
-          <div className="flex items-center gap-2 mb-1"><TrendingUp className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">{new Date().getFullYear()} Pipeline</span></div>
-          <p className="text-2xl font-bold text-foreground">{fmt(currentYearRevenue)}</p>
-        </CardContent></Card>
-        <Card><CardContent className="pt-6">
-          <div className="flex items-center gap-2 mb-1"><Users className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Customers</span></div>
-          <p className="text-2xl font-bold text-foreground">{byCustomer.length}</p>
-        </CardContent></Card>
-        <Card><CardContent className="pt-6">
-          <div className="flex items-center gap-2 mb-1"><Package className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">{useOpportunitiesFallback ? 'Opportunities' : 'Orders'}</span></div>
-          <p className="text-2xl font-bold text-foreground">{filtered.length}</p>
+          <div className="flex items-center gap-2 mb-1"><TrendingUp className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Weighted Pipeline</span></div>
+          <p className="text-2xl font-bold text-foreground">{fmt(weightedPipeline)}</p>
+          <p className="text-xs text-muted-foreground mt-1">Sold: {fmt(soldRevenue)} + Weighted open</p>
         </CardContent></Card>
         <Card><CardContent className="pt-6">
           <div className="flex items-center gap-2 mb-1"><Target className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Strategy Achievement</span></div>
-          <p className={`text-2xl font-bold ${overallAchievement >= 100 ? 'text-success' : overallAchievement >= 70 ? 'text-warning' : 'text-destructive'}`}>
-            {totalPlanned > 0 ? `${overallAchievement.toFixed(0)}%` : '—'}
+          <p className={`text-2xl font-bold ${strategyAchievement >= 100 ? 'text-success' : strategyAchievement >= 70 ? 'text-warning' : 'text-destructive'}`}>
+            {strategyTarget > 0 ? `${strategyAchievement.toFixed(0)}%` : '—'}
+          </p>
+          <div className="mt-1">
+            <Progress value={Math.min(strategyAchievement, 100)} className="h-1.5" />
+            <p className="text-xs text-muted-foreground mt-1">Target: {fmt(strategyTarget)} · {strategySource}</p>
+          </div>
+        </CardContent></Card>
+        <Card><CardContent className="pt-6">
+          <div className="flex items-center gap-2 mb-1"><Users className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Pipeline Overview</span></div>
+          <p className="text-2xl font-bold text-foreground">{opportunities.length} deals</p>
+          <p className="text-xs text-muted-foreground mt-1">{byCustomer.length} customers · {filtered.length} {useOpportunitiesFallback ? 'opportunities' : 'orders'}</p>
+        </CardContent></Card>
+      </div>
+
+      {/* KPI Summary - Row 2: Actions & Performance */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <Card><CardContent className="pt-6">
+          <div className="flex items-center gap-2 mb-1"><CheckCircle2 className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Action Completion</span></div>
+          <p className={`text-2xl font-bold ${taskStats.completionRate >= 70 ? 'text-success' : taskStats.completionRate >= 40 ? 'text-warning' : taskStats.total === 0 ? 'text-muted-foreground' : 'text-destructive'}`}>
+            {taskStats.total > 0 ? `${taskStats.completionRate.toFixed(0)}%` : '—'}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">{taskStats.done}/{taskStats.total} actions completed</p>
+        </CardContent></Card>
+        <Card><CardContent className="pt-6">
+          <div className="flex items-center gap-2 mb-1"><Activity className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Actions In Progress</span></div>
+          <p className="text-2xl font-bold text-foreground">{taskStats.inProgress}</p>
+          <p className="text-xs text-muted-foreground mt-1">{taskStats.todo} pending · {taskStats.inProgress} active</p>
+        </CardContent></Card>
+        <Card className={taskStats.overdue > 0 ? 'border-destructive/50' : ''}><CardContent className="pt-6">
+          <div className="flex items-center gap-2 mb-1"><Clock className={`h-4 w-4 ${taskStats.overdue > 0 ? 'text-destructive' : 'text-muted-foreground'}`} /><span className="text-sm text-muted-foreground">Overdue Actions</span></div>
+          <p className={`text-2xl font-bold ${taskStats.overdue > 0 ? 'text-destructive' : 'text-success'}`}>{taskStats.overdue}</p>
+          <p className="text-xs text-muted-foreground mt-1">{taskStats.overdue > 0 ? 'Requires immediate attention' : 'On track'}</p>
+        </CardContent></Card>
+        <Card><CardContent className="pt-6">
+          <div className="flex items-center gap-2 mb-1"><Shield className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Risk Alerts</span></div>
+          <p className={`text-2xl font-bold ${performanceRisks.filter(r => r.level === 'critical').length > 0 ? 'text-destructive' : performanceRisks.length > 0 ? 'text-warning' : 'text-success'}`}>
+            {performanceRisks.length}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {performanceRisks.filter(r => r.level === 'critical').length} critical · {performanceRisks.filter(r => r.level === 'warning').length} warnings
           </p>
         </CardContent></Card>
       </div>
+
+      {/* Performance Risk Alerts */}
+      {performanceRisks.length > 0 && (
+        <div className="space-y-3 mb-6">
+          {performanceRisks.map((risk, i) => (
+            <Card key={i} className={`border-l-4 ${risk.level === 'critical' ? 'border-l-destructive bg-destructive/5' : 'border-l-warning bg-warning/5'}`}>
+              <CardContent className="pt-4 pb-3 flex items-start gap-3">
+                <AlertCircle className={`h-5 w-5 flex-shrink-0 mt-0.5 ${risk.level === 'critical' ? 'text-destructive' : 'text-warning'}`} />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-foreground text-sm">{risk.title}</p>
+                    <Badge variant={risk.level === 'critical' ? 'destructive' : 'secondary'} className="text-[10px]">
+                      {risk.level === 'critical' ? '🔴 CRITICAL' : '🟡 WARNING'}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{risk.description}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Portfolio Risk Alert */}
       {riskLevel !== 'low' && (
