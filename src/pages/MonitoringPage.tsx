@@ -140,6 +140,12 @@ const MonitoringPage = () => {
     const cat = categoryMap[action.category] || 'follow_up';
     const pillar = (['general', 'p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6'].includes(action.pillar) ? action.pillar : 'general') as TaskPillar;
     const pri = (['low', 'medium', 'high', 'critical'].includes(action.priority) ? action.priority : 'medium') as TaskPriority;
+    const generatedContent: ActionContent = action.actionContent ? {
+      goal: action.actionContent.goal || '',
+      callScript: action.actionContent.callScript || '',
+      emailTemplate: action.actionContent.emailTemplate || '',
+      presentationNotes: action.actionContent.presentationNotes || '',
+    } : emptyActionContent;
     const newTask: MonitoringTask = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       title: action.title || 'Untitled Action',
@@ -152,7 +158,7 @@ const MonitoringPage = () => {
       dueDate: action.dueDate || '',
       createdAt: new Date().toISOString(),
       notes: [],
-      actionContent: emptyActionContent,
+      actionContent: generatedContent,
     };
     addTask(newTask);
     setPoolPreview(prev => prev ? prev.filter(a => a !== action) : null);
