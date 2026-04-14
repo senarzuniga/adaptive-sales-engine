@@ -1,0 +1,31 @@
+services:
+  # ── Development service (hot-reload via Vite dev server) ────────────────────
+  app-dev:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm ci && npm run dev"
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount source so changes are reflected immediately
+      - .:/app
+      # Isolate node_modules inside the container
+      - /app/node_modules
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+
+  # ── Production service (pre-built → nginx) ──────────────────────────────────
+  app-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+        VITE_SUPABASE_PROJECT_ID: ${VITE_SUPABASE_PROJECT_ID}
+    ports:
+      - "3000:80"
+    profiles:
+      - prod

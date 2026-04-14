@@ -1,6 +1,6 @@
 # Adaptive Sales Engine
 
-A Vite + React + TypeScript application connected to Supabase, compatible with both **local development** and the **Lovable** platform.
+A Vite + React + TypeScript application connected to Supabase, compatible with **local development**, **VS Code Dev Containers**, **Docker**, and the **Lovable** platform.
 
 ---
 
@@ -21,10 +21,10 @@ git pull
 
 ---
 
-## 🚀 Running locally
+## 🚀 Running locally (plain npm)
 
 ### Prerequisites
-- Node.js 18+ and npm
+- Node.js **20+** and npm 10+ (use `.nvmrc` with [nvm](https://github.com/nvm-sh/nvm): `nvm use`)
 
 ### Setup
 
@@ -36,7 +36,7 @@ git pull
 
 2. **Install dependencies**
    ```bash
-   npm install
+   npm ci
    ```
 
 3. **Configure environment variables**
@@ -59,6 +59,41 @@ git pull
 | `npm run preview` | Preview the production build |
 | `npm run lint` | Run ESLint |
 | `npm test` | Run tests |
+
+---
+
+## 🐳 Running with Docker
+
+Docker gives you a consistent environment on any OS without installing Node locally.
+
+### Dev mode (hot-reload)
+
+```bash
+cp .env.example .env   # fill in your Supabase credentials
+docker compose up app-dev
+```
+
+The Vite dev server will be available at [http://localhost:8080](http://localhost:8080) with live hot-reload.
+
+### Production build
+
+```bash
+docker compose --profile prod up --build app-prod
+```
+
+The production build is served by nginx at [http://localhost:3000](http://localhost:3000).
+
+---
+
+## 💻 VS Code Dev Container
+
+Open the repo in VS Code and, when prompted, click **"Reopen in Container"** (requires the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)).
+
+The devcontainer automatically:
+- Uses Node 20
+- Runs `npm ci` on startup
+- Installs recommended VS Code extensions (ESLint, Tailwind, Prettier, etc.)
+- Forwards port 8080 and opens a browser preview
 
 ---
 
@@ -85,4 +120,20 @@ Use `.env.example` as a template. Required variables:
 | `VITE_SUPABASE_PROJECT_ID` | Supabase project ID |
 
 On Lovable, set these in **Project Settings → Environment Variables**.
+
+> **Note:** If any required variable is missing the app will throw a descriptive error at startup instead of crashing silently.
+
+---
+
+## ✅ CI/CD (GitHub Actions)
+
+Every push and pull-request runs the `.github/workflows/ci.yml` pipeline:
+
+1. Install dependencies (`npm ci`)
+2. Lint (`npm run lint`)
+3. Unit tests (`npm test`)
+4. Production build (`npm run build`)
+5. Docker image build (pushes to main only)
+
+The workflow uses the Node version pinned in `.nvmrc` and caches npm for fast runs.
 
