@@ -12,6 +12,23 @@ dist
 dist-ssr
 *.local
 
+# Environment variables – never commit secrets
+.env
+.env.local
+.env.*.local
+
+# Bun lock files (project uses npm / package-lock.json)
+bun.lockb
+bun.lock
+
+# Docker
+.dockerignore
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

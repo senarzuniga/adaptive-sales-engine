@@ -1,0 +1,50 @@
+name: AI Dev Team
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+permissions:
+  contents: write   # needed to commit the generated report back to the branch
+
+jobs:
+  ai-agent:
+    name: Run AI Dev Team
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Fetch full history so the agent can inspect all files
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run AI Dev Team (analysis + safe fixes)
+        id: ai_run
+        run: python .ai/run_team.py
+        # Continue even if the script exits non-zero (e.g. analysis found issues)
+        continue-on-error: true
+
+      - name: Commit report (if any changes were made)
+        # Only commit when:
+        #   • we are on a push (not a PR from a fork)
+        #   • there are actual changes to stage
+        if: github.event_name == 'push'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .ai/reports/ src/__tests__/ 2>/dev/null || true
+          # Only commit when there is something new
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(ai-team): auto-generated report [skip ci]"
+            git push
+          else
+            echo "No changes to commit."
+          fi
