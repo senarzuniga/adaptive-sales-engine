@@ -18,6 +18,9 @@
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
         "bradlc.vscode-tailwindcss",
+        "ms-vscode.vscode-typescript-next",
+        "eamodio.gitlens",
+        "PKief.material-icon-theme",
         "christian-kohler.path-intellisense",
         "ms-azuretools.vscode-docker",
         "GitHub.copilot"
