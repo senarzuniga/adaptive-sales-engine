@@ -75,6 +75,25 @@ def _open_browser(port: int) -> None:
     threading.Thread(target=_open, daemon=True).start()
 
 
+def _load_repo_env() -> dict[str, str]:
+    """Load repo-root .env variables so launched apps share the same API settings."""
+    repo_root = Path(__file__).parent.parent
+    env_file = repo_root / ".env"
+    values: dict[str, str] = {}
+
+    if not env_file.exists():
+        return values
+
+    for raw_line in env_file.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip().strip('"').strip("'")
+
+    return values
+
+
 # ─── AppRow ───────────────────────────────────────────────────────────────────
 
 
@@ -205,6 +224,9 @@ class AppRow:
                 full_cmd = ["bash", "-c", cmd]
                 create_flags = 0
 
+            child_env = os.environ.copy()
+            child_env.update(_load_repo_env())
+
             self.process = subprocess.Popen(
                 full_cmd,
                 cwd=str(work_dir),
@@ -212,6 +234,7 @@ class AppRow:
                 stderr=subprocess.STDOUT,
                 bufsize=1,
                 text=True,
+                env=child_env,
                 creationflags=create_flags if sys.platform == "win32" else 0,
             )
         except Exception as exc:

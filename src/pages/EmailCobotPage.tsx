@@ -14,6 +14,7 @@ import {
   MessageSquare, Clock, Tag, UserPlus, FileText, Share2, Linkedin, Twitter, Instagram, Facebook, Globe
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { buildFallbackEmailResponse, buildFallbackGeneratedContent, classifyEdgeRuntimeError } from '@/lib/edgeStability';
 
 interface CobotResponse {
   canAnswer: boolean;
@@ -137,7 +138,10 @@ const EmailCobotPage = () => {
       toast({ title: result.canAnswer ? '✅ Response drafted' : '📨 Escalation drafted', description: `Confidence: ${result.confidence}%` });
     } catch (e: any) {
       console.error('Email cobot error:', e);
-      toast({ title: 'Processing failed', description: e.message, variant: 'destructive' });
+      const details = classifyEdgeRuntimeError(e, 'local email draft');
+      const fallback = buildFallbackEmailResponse({ customerName, emailSubject, emailBody, companyProfile: data.companyProfile });
+      setResponse(fallback);
+      toast({ title: details.title, description: details.description });
     } finally {
       setIsProcessing(false);
     }
@@ -170,7 +174,16 @@ const EmailCobotPage = () => {
       toast({ title: '✅ Content generated', description: `${result.contentType} for ${result.platform}` });
     } catch (e: any) {
       console.error('Content generation error:', e);
-      toast({ title: 'Generation failed', description: e.message, variant: 'destructive' });
+      const details = classifyEdgeRuntimeError(e, 'local content draft');
+      const fallback = buildFallbackGeneratedContent({
+        topic: contentTopic,
+        targetPlatform,
+        contentType,
+        companyProfile: data.companyProfile,
+        additionalContext,
+      });
+      setGeneratedContent(fallback);
+      toast({ title: details.title, description: details.description });
     } finally {
       setIsGeneratingContent(false);
     }

@@ -133,11 +133,6 @@ For every data point, consider multiple possibilities and select the most likely
     });
   } catch (e) {
     console.error("Enrichment error:", e);
-    
-    // Try to update status to failed
-    try {
-      const { companyId } = await (e as any)._body?.json?.() || {};
-    } catch {}
 
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },

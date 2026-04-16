@@ -19,6 +19,7 @@ import {
   DollarSign, BarChart3, Lightbulb, ChevronDown, ChevronUp, Save, FileText, Loader2,
   FolderKanban, ArrowRight, Settings2
 } from 'lucide-react';
+import { buildFallbackOfferAnalysis, classifyEdgeRuntimeError } from '@/lib/edgeStability';
 
 type CostLine = {
   id: string;
@@ -262,7 +263,10 @@ export default function OfferPricingPage() {
         toast({ title: isEs ? 'Análisis completado' : 'Analysis complete' });
       }
     } catch (e: any) {
-      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+      const details = classifyEdgeRuntimeError(e, 'local offer analysis');
+      setAnalysis(buildFallbackOfferAnalysis({ totalCost: totals.total, targetMargin, currency }));
+      setActiveTab('analysis');
+      toast({ title: details.title, description: details.description });
     } finally {
       setAnalyzing(false);
     }

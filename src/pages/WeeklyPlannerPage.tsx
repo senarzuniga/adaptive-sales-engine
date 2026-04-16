@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { isOpenOpportunityStatus } from '@/lib/salesData';
+import { buildFallbackActionContent, buildFallbackWeeklyPlan, classifyEdgeRuntimeError } from '@/lib/edgeStability';
 
 const PILLAR_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   p0: { label: '360º Analysis', icon: BarChart3, color: 'text-blue-500' },
@@ -78,7 +80,7 @@ const WeeklyPlannerPage = () => {
     const productGaps: BudgetGap[] = productFamilies.map(pf => {
       const target = data.strategy.filter(s => s.productFamily === pf).reduce((s, st) => s + st.estRevenue, 0);
       const actual = data.orders.filter(o => o.productFamily === pf).reduce((s, o) => s + o.sellingPrice, 0);
-      const pipeline = data.opportunities.filter(o => o.productFamily === pf && o.status !== 'Won' && o.status !== 'Lost').reduce((s, o) => s + o.estRevenue * (o.contractProb / 100), 0);
+      const pipeline = data.opportunities.filter(o => o.productFamily === pf && isOpenOpportunityStatus(o.status)).reduce((s, o) => s + o.estRevenue * (o.contractProb / 100), 0);
       return { segment: pf, segmentType: 'product_family' as const, targetRevenue: target, actualRevenue: actual, gapAmount: target - actual, gapPct: target > 0 ? ((target - actual) / target) * 100 : 0, pipelineCoverage: pipeline };
     });
 
@@ -87,7 +89,7 @@ const WeeklyPlannerPage = () => {
     const regionGaps: BudgetGap[] = regions.map(r => {
       const target = data.strategy.filter(s => s.region === r).reduce((s, st) => s + st.estRevenue, 0);
       const actual = data.orders.filter(o => o.region === r).reduce((s, o) => s + o.sellingPrice, 0);
-      const pipeline = data.opportunities.filter(o => o.region === r && o.status !== 'Won' && o.status !== 'Lost').reduce((s, o) => s + o.estRevenue * (o.contractProb / 100), 0);
+      const pipeline = data.opportunities.filter(o => o.region === r && isOpenOpportunityStatus(o.status)).reduce((s, o) => s + o.estRevenue * (o.contractProb / 100), 0);
       return { segment: r, segmentType: 'region' as const, targetRevenue: target, actualRevenue: actual, gapAmount: target - actual, gapPct: target > 0 ? ((target - actual) / target) * 100 : 0, pipelineCoverage: pipeline };
     });
 
@@ -96,7 +98,7 @@ const WeeklyPlannerPage = () => {
     const kamGaps: BudgetGap[] = kams.map(k => {
       const target = data.strategy.filter(s => s.kam === k).reduce((s, st) => s + st.estRevenue, 0);
       const actual = data.orders.filter(o => o.kam === k).reduce((s, o) => s + o.sellingPrice, 0);
-      const pipeline = data.opportunities.filter(o => o.kam === k && o.status !== 'Won' && o.status !== 'Lost').reduce((s, o) => s + o.estRevenue * (o.contractProb / 100), 0);
+      const pipeline = data.opportunities.filter(o => o.kam === k && isOpenOpportunityStatus(o.status)).reduce((s, o) => s + o.estRevenue * (o.contractProb / 100), 0);
       return { segment: k, segmentType: 'kam' as const, targetRevenue: target, actualRevenue: actual, gapAmount: target - actual, gapPct: target > 0 ? ((target - actual) / target) * 100 : 0, pipelineCoverage: pipeline };
     });
 
@@ -124,10 +126,10 @@ TOP GAPS BY KAM: ${kamGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmou
 
     const oppData = data.opportunities.length > 0
       ? (() => {
-          const open = data.opportunities.filter(o => o.status !== 'Won' && o.status !== 'Lost');
+          const open = data.opportunities.filter(o => isOpenOpportunityStatus(o.status));
           const totalPipeline = open.reduce((s, o) => s + o.estRevenue, 0);
-          const highProb = open.filter(o => o.contractProb >= 70);
-          return `Pipeline: €${totalPipeline.toLocaleString()}, ${open.length} open opps, ${highProb.length} high-prob (>70%). Stages: ${open.map(o => `${o.customerName}/${o.productFamily}/${o.status}`).slice(0, 10).join('; ')}`;
+          const highProb = open.filter(o => o.contractProb >= 75);
+          return `Pipeline: €${totalPipeline.toLocaleString()}, ${open.length} open opps, ${highProb.length} strong-prob (≥75%). Stages: ${open.map(o => `${o.customerName}/${o.productFamily}/${o.status}`).slice(0, 10).join('; ')}`;
         })()
       : null;
 
@@ -172,7 +174,17 @@ TOP GAPS BY KAM: ${kamGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmou
       toast({ title: 'Weekly plan generated', description: `${result.tasks?.length || 0} tasks across all pillars.` });
     } catch (e: any) {
       console.error('Weekly plan error:', e);
-      toast({ title: 'Generation failed', description: e.message, variant: 'destructive' });
+      const details = classifyEdgeRuntimeError(e, 'local weekly planning');
+      const fallback = buildFallbackWeeklyPlan({
+        companyProfile: data.companyProfile,
+        opportunities: data.opportunities,
+        orders: data.orders,
+        strategy: data.strategy,
+        weekNotes,
+      });
+      setWeekSummary(fallback.weekSummary || '');
+      setGeneratedTasks((fallback.tasks || []).map((task: any) => ({ ...task, selected: true })));
+      toast({ title: details.title, description: details.description });
     } finally {
       setIsGenerating(false);
     }
@@ -223,7 +235,7 @@ TOP GAPS BY KAM: ${kamGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmou
                   })()
                 : null,
               topProducts: data.products.length > 0 ? data.products.slice(0, 5).map(p => `${p.name}(${p.type})`).join(', ') : null,
-              pipelineValue: data.opportunities.length > 0 ? `€${data.opportunities.filter(o => o.status !== 'Won' && o.status !== 'Lost').reduce((s, o) => s + o.estRevenue, 0).toLocaleString()}` : null,
+              pipelineValue: data.opportunities.length > 0 ? `€${data.opportunities.filter(o => isOpenOpportunityStatus(o.status)).reduce((s, o) => s + o.estRevenue, 0).toLocaleString()}` : null,
               strategyTargets: data.strategy.length > 0 ? `€${data.strategy.reduce((s, st) => s + st.estRevenue, 0).toLocaleString()} target` : null,
             },
           },
@@ -233,6 +245,10 @@ TOP GAPS BY KAM: ${kamGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmou
         }
       } catch (e) {
         console.warn(`Could not generate action content for task "${t.title}":`, e);
+        actionContent = buildFallbackActionContent({
+          task: { title: t.title, description: t.description, category: t.category, pillar: t.pillar, priority: t.priority },
+          companyProfile: data.companyProfile,
+        });
       }
 
       const newTask: MonitoringTask = {

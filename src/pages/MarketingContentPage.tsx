@@ -20,6 +20,8 @@ import {
   Sparkles, Tag, Save, Clock, Trash2, Eye, Edit2, Archive, Send, CalendarDays, Zap
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { isOpenOpportunityStatus } from '@/lib/salesData';
+import { buildFallbackMarketingContent } from '@/lib/marketingContentFallback';
 
 interface ContentResponse {
   title: string;
@@ -162,7 +164,7 @@ const MarketingContentPage = () => {
 
     const oppsCtx = data.opportunities.length > 0
       ? (() => {
-          const active = data.opportunities.filter(o => o.status !== 'Won' && o.status !== 'Lost');
+          const active = data.opportunities.filter(o => isOpenOpportunityStatus(o.status));
           const totalPipeline = active.reduce((s, o) => s + o.estRevenue, 0);
           const families = [...new Set(active.map(o => o.productFamily).filter(Boolean))];
           const regions = [...new Set(active.map(o => o.region).filter(Boolean))];
@@ -290,7 +292,19 @@ const MarketingContentPage = () => {
       setGeneratedContent(result);
       toast({ title: '✅ Content generated', description: `${result.contentType} for ${result.platform}` });
     } catch (e: any) {
-      toast({ title: 'Generation failed', description: e.message, variant: 'destructive' });
+      const { productsInfo, ordersCtx, oppsCtx, stratCtx } = buildDataContext();
+      const fallback = buildFallbackMarketingContent({
+        contentType,
+        topic,
+        targetPlatform,
+        companyProfile: data.companyProfile,
+        context: { productsInfo, ordersCtx, oppsCtx, stratCtx },
+      });
+      setGeneratedContent(fallback);
+      toast({
+        title: 'Content generated',
+        description: 'Local fallback created a publish-ready draft because the remote AI service was unavailable.',
+      });
     } finally { setIsGenerating(false); }
   };
 

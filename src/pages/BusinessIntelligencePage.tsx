@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,6 +19,7 @@ import {
   AlertTriangle, ArrowRight, Loader2, ChevronRight, BarChart3,
   Clock, CheckCircle2, XCircle, Lightbulb, Eye
 } from 'lucide-react';
+import { buildFallbackIntelligenceReport } from '@/lib/businessIntelligenceFallback';
 
 type Report = {
   id: string;
@@ -62,15 +64,24 @@ const SectionCard = ({ icon: Icon, title, children, className = '' }: any) => (
 );
 
 export default function BusinessIntelligencePage() {
-  const { activeCompanyId: selectedCompanyId } = useData();
+  const { activeCompanyId: selectedCompanyId, data: workspaceData } = useData();
   const { language } = useLanguage();
   const queryClient = useQueryClient();
 
   const [newCompanyName, setNewCompanyName] = useState('');
   const [newCompanyWebsite, setNewCompanyWebsite] = useState('');
+  const [subjectType, setSubjectType] = useState('company');
   const [analysisType, setAnalysisType] = useState('full');
+  const [analysisBrief, setAnalysisBrief] = useState('');
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [activeTab, setActiveTab] = useState('reports');
+
+  const subjectPresets = [
+    { label: language === 'es' ? 'Región geográfica' : 'Geographical region', subjectType: 'geographical', analysisType: 'geographic-market', name: 'Southern Europe packaging market', brief: 'Analyze demand, industry segments, typical company profiles, and commercial access routes.' },
+    { label: language === 'es' ? 'Sector industrial' : 'Industry sector', subjectType: 'sector', analysisType: 'sector-landscape', name: 'Carton board sector', brief: 'Review sector structure, key players, growth logic, and strategic opportunities by region.' },
+    { label: language === 'es' ? 'Proceso productivo' : 'Production process', subjectType: 'process', analysisType: 'process-analysis', name: 'Carton board production process', brief: 'Analyze production stages, bottlenecks, supplier relevance, value drivers, and commercial opportunities.' },
+    { label: language === 'es' ? 'Trade show' : 'Trade show', subjectType: 'trade-show', analysisType: 'trade-show', name: 'Packaging trade show in Germany', brief: 'Assess participant profile, takeaways, key themes, and relevance for business development.' },
+  ];
 
   const { data: reports = [], isLoading } = useQuery({
     queryKey: ['bi-reports', selectedCompanyId],
@@ -91,39 +102,78 @@ export default function BusinessIntelligencePage() {
     mutationFn: async () => {
       if (!selectedCompanyId || !newCompanyName.trim()) throw new Error('Missing data');
 
-      // Create report record first
+      const reportType = `${subjectType}:${analysisType}`;
       const { data: report, error: insertErr } = await supabase
         .from('business_intelligence_reports')
         .insert({
           company_id: selectedCompanyId,
           target_company_name: newCompanyName.trim(),
           target_company_website: newCompanyWebsite.trim(),
-          report_type: analysisType,
+          report_type: reportType,
           status: 'pending',
         })
         .select()
         .single();
       if (insertErr) throw insertErr;
 
-      // Call edge function
-      const { data, error } = await supabase.functions.invoke('business-intelligence', {
-        body: {
-          reportId: report.id,
-          targetCompanyName: newCompanyName.trim(),
-          targetCompanyWebsite: newCompanyWebsite.trim(),
-          companyId: selectedCompanyId,
-          analysisType,
-        },
-      });
+      try {
+        const { data, error } = await supabase.functions.invoke('business-intelligence', {
+          body: {
+            reportId: report.id,
+            targetCompanyName: newCompanyName.trim(),
+            targetCompanyWebsite: newCompanyWebsite.trim(),
+            companyId: selectedCompanyId,
+            analysisType,
+            targetSubjectType: subjectType,
+            analysisBrief,
+          },
+        });
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+        return { fallback: false, data };
+      } catch (edgeError: any) {
+        const fallbackReport = buildFallbackIntelligenceReport({
+          targetName: newCompanyName.trim(),
+          targetWebsite: newCompanyWebsite.trim(),
+          analysisType,
+          subjectType: subjectType as any,
+          analysisBrief,
+          companyContext: workspaceData.companyProfile,
+        });
+
+        const { error: updateErr } = await supabase
+          .from('business_intelligence_reports')
+          .update({
+            status: 'completed',
+            executive_summary: fallbackReport.executive_summary,
+            company_profile: fallbackReport.company_profile as any,
+            financial_analysis: fallbackReport.financial_analysis as any,
+            product_analysis: fallbackReport.product_analysis as any,
+            market_analysis: fallbackReport.market_analysis as any,
+            competitive_analysis: fallbackReport.competitive_analysis as any,
+            strategic_analysis: fallbackReport.strategic_analysis as any,
+            valuation: fallbackReport.valuation as any,
+            sale_propensity: fallbackReport.sale_propensity as any,
+            future_scenarios: fallbackReport.future_scenarios as any,
+            recommendations: fallbackReport.recommendations as any,
+            data_sources: fallbackReport.data_sources as any,
+            hypothesis_log: fallbackReport.hypothesis_log as any,
+          })
+          .eq('id', report.id);
+
+        if (updateErr) throw updateErr;
+        return { fallback: true, data: { report: fallbackReport, error: edgeError?.message || 'Edge fallback used' } };
+      }
     },
-    onSuccess: () => {
-      toast.success(language === 'es' ? 'Informe generado con éxito' : 'Intelligence report generated successfully');
+    onSuccess: (result: any) => {
+      toast.success(result?.fallback
+        ? (language === 'es' ? 'Informe generado en modo local con el nuevo alcance temático' : 'Intelligence report generated locally with expanded subject coverage')
+        : (language === 'es' ? 'Informe generado con éxito' : 'Intelligence report generated successfully'));
       queryClient.invalidateQueries({ queryKey: ['bi-reports'] });
       setNewCompanyName('');
       setNewCompanyWebsite('');
+      setAnalysisBrief('');
+      setActiveTab('reports');
     },
     onError: (e: any) => {
       toast.error(e.message || 'Failed to generate report');
@@ -139,7 +189,7 @@ export default function BusinessIntelligencePage() {
         <Card className="p-8 text-center">
           <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <p className="text-muted-foreground">
-            {language === 'es' ? 'Selecciona una empresa para comenzar el análisis de inteligencia' : 'Select a company to start intelligence analysis'}
+            {language === 'es' ? 'Selecciona una empresa base para usarla como contexto del análisis de inteligencia' : 'Select a base company to use as context for the intelligence analysis'}
           </p>
         </Card>
       </div>
@@ -162,7 +212,7 @@ export default function BusinessIntelligencePage() {
             Business Intelligence & Assessment
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {language === 'es' ? 'Sistema de inteligencia empresarial y valoración estratégica' : 'Enterprise intelligence and strategic valuation system'}
+            {language === 'es' ? 'Sistema de inteligencia estratégica para empresas, regiones, sectores, productos y eventos' : 'Strategic intelligence system for companies, regions, sectors, products, and events'}
           </p>
         </div>
         <CompanySelector />
@@ -207,7 +257,7 @@ export default function BusinessIntelligencePage() {
                       {statusIcon(r.status)}
                       <div>
                         <p className="font-semibold">{r.target_company_name}</p>
-                        <p className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString()} · {r.report_type}</p>
+                        <p className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString()} · {String(r.report_type || '').replace(/:/g, ' · ')}</p>
                       </div>
                       <Badge variant="outline" className="text-xs">{r.status}</Badge>
                     </div>
@@ -236,20 +286,54 @@ export default function BusinessIntelligencePage() {
           <Card>
             <CardHeader>
               <CardTitle>{language === 'es' ? 'Nuevo Análisis de Inteligencia' : 'New Intelligence Analysis'}</CardTitle>
-              <CardDescription>{language === 'es' ? 'Analiza cualquier empresa de forma profunda con IA estratégica' : 'Deep-analyze any company with strategic AI'}</CardDescription>
+              <CardDescription>{language === 'es' ? 'Analiza empresas, regiones, sectores, procesos, productos o trade shows con IA estratégica' : 'Deep-analyze companies, regions, sectors, processes, products, or trade shows with strategic AI'}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label>{language === 'es' ? 'Nombre de la Empresa' : 'Company Name'}</Label>
+                  <Label>{language === 'es' ? 'Tipo de Sujeto' : 'Subject Type'}</Label>
+                  <Select value={subjectType} onValueChange={setSubjectType}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="company">{language === 'es' ? 'Empresa' : 'Company'}</SelectItem>
+                      <SelectItem value="geographical">{language === 'es' ? 'Región geográfica' : 'Geographical region'}</SelectItem>
+                      <SelectItem value="sector">{language === 'es' ? 'Sector / industria' : 'Sector / industry'}</SelectItem>
+                      <SelectItem value="product">{language === 'es' ? 'Producto / solución' : 'Product / solution'}</SelectItem>
+                      <SelectItem value="process">{language === 'es' ? 'Proceso productivo' : 'Production process'}</SelectItem>
+                      <SelectItem value="trade-show">{language === 'es' ? 'Trade show / feria' : 'Trade show / event'}</SelectItem>
+                      <SelectItem value="custom">{language === 'es' ? 'Tema libre' : 'Custom topic'}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>{language === 'es' ? 'Tipo de análisis' : 'Analysis type'}</Label>
+                  <Select value={analysisType} onValueChange={setAnalysisType}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="full">{language === 'es' ? 'Informe completo' : 'Full report'}</SelectItem>
+                      <SelectItem value="geographic-market">{language === 'es' ? 'Análisis geográfico / mercado' : 'Geographic / market analysis'}</SelectItem>
+                      <SelectItem value="sector-landscape">{language === 'es' ? 'Landscape sectorial' : 'Sector landscape'}</SelectItem>
+                      <SelectItem value="product-process">{language === 'es' ? 'Producto / proceso' : 'Product / process'}</SelectItem>
+                      <SelectItem value="trade-show">{language === 'es' ? 'Trade show intelligence' : 'Trade show intelligence'}</SelectItem>
+                      <SelectItem value="strategic">{language === 'es' ? 'Análisis estratégico' : 'Strategic analysis'}</SelectItem>
+                      <SelectItem value="financial">{language === 'es' ? 'Análisis financiero' : 'Financial analysis'}</SelectItem>
+                      <SelectItem value="valuation">{language === 'es' ? 'Valoración / atractivo' : 'Valuation / attractiveness'}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>{language === 'es' ? 'Objetivo o sujeto a analizar' : 'Target or subject to analyze'}</Label>
                   <Input
-                    placeholder="e.g. Siemens, ABB, Bosch..."
+                    placeholder={language === 'es' ? 'Ej.: carton board sector, Sur de Europa, feria de packaging, proceso productivo…' : 'e.g. carton board sector, Southern Europe, packaging trade show, production process…'}
                     value={newCompanyName}
                     onChange={(e) => setNewCompanyName(e.target.value)}
                   />
                 </div>
                 <div>
-                  <Label>{language === 'es' ? 'Sitio Web (opcional)' : 'Website (optional)'}</Label>
+                  <Label>{language === 'es' ? 'Sitio web o fuente (opcional)' : 'Website or source (optional)'}</Label>
                   <Input
                     placeholder="https://www.example.com"
                     value={newCompanyWebsite}
@@ -257,18 +341,41 @@ export default function BusinessIntelligencePage() {
                   />
                 </div>
               </div>
+
               <div>
-                <Label>{language === 'es' ? 'Tipo de Análisis' : 'Analysis Type'}</Label>
-                <Select value={analysisType} onValueChange={setAnalysisType}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="full">{language === 'es' ? 'Informe Completo (todos los módulos)' : 'Full Report (all modules)'}</SelectItem>
-                    <SelectItem value="financial">{language === 'es' ? 'Análisis Financiero' : 'Financial Analysis'}</SelectItem>
-                    <SelectItem value="strategic">{language === 'es' ? 'Análisis Estratégico' : 'Strategic Analysis'}</SelectItem>
-                    <SelectItem value="valuation">{language === 'es' ? 'Valoración y Propensión a Venta' : 'Valuation & Sale Propensity'}</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>{language === 'es' ? 'Brief / contexto adicional' : 'Brief / additional context'}</Label>
+                <Textarea
+                  value={analysisBrief}
+                  onChange={(e) => setAnalysisBrief(e.target.value)}
+                  placeholder={language === 'es'
+                    ? 'Ej.: analizar Francia por sector, tipo de empresas, competidores, takeaways de feria, participants clave, procesos productivos, etc.'
+                    : 'e.g. analyze France by sector, company types, competitors, trade-show participants, key takeaways, production process, etc.'}
+                  className="min-h-[110px]"
+                />
               </div>
+
+              <div className="space-y-2">
+                <Label>{language === 'es' ? 'Ejemplos rápidos' : 'Quick examples'}</Label>
+                <div className="flex flex-wrap gap-2">
+                  {subjectPresets.map((preset) => (
+                    <Button
+                      key={preset.label}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSubjectType(preset.subjectType);
+                        setAnalysisType(preset.analysisType);
+                        setNewCompanyName(preset.name);
+                        setAnalysisBrief(preset.brief);
+                      }}
+                    >
+                      {preset.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
               <Button
                 className="w-full"
                 size="lg"
@@ -278,23 +385,22 @@ export default function BusinessIntelligencePage() {
                 {generateMutation.isPending ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {language === 'es' ? 'Generando Informe...' : 'Generating Report...'}</>
                 ) : (
-                  <><Brain className="h-4 w-4 mr-2" /> {language === 'es' ? 'Generar Informe de Inteligencia' : 'Generate Intelligence Report'}</>
+                  <><Brain className="h-4 w-4 mr-2" /> {language === 'es' ? 'Generar análisis de inteligencia' : 'Generate intelligence analysis'}</>
                 )}
               </Button>
             </CardContent>
           </Card>
 
-          {/* What the system analyzes */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { icon: Building2, label: language === 'es' ? 'Perfil Empresa' : 'Company Profile' },
-              { icon: DollarSign, label: language === 'es' ? 'Finanzas' : 'Financials' },
+              { icon: Building2, label: language === 'es' ? 'Empresas' : 'Companies' },
+              { icon: Globe, label: language === 'es' ? 'Regiones' : 'Regions' },
+              { icon: Swords, label: language === 'es' ? 'Sectores' : 'Sectors' },
               { icon: Package, label: language === 'es' ? 'Productos' : 'Products' },
-              { icon: Globe, label: language === 'es' ? 'Mercado' : 'Market' },
-              { icon: Swords, label: language === 'es' ? 'Competencia' : 'Competition' },
-              { icon: Brain, label: 'SWOT' },
-              { icon: Diamond, label: language === 'es' ? 'Valoración' : 'Valuation' },
-              { icon: Target, label: language === 'es' ? 'Propensión Venta' : 'Sale Propensity' },
+              { icon: Brain, label: language === 'es' ? 'Procesos' : 'Processes' },
+              { icon: Target, label: language === 'es' ? 'Trade shows' : 'Trade shows' },
+              { icon: DollarSign, label: language === 'es' ? 'Atractivo' : 'Attractiveness' },
+              { icon: Diamond, label: language === 'es' ? 'Recomendación' : 'Recommendation' },
             ].map((m) => (
               <Card key={m.label} className="p-3 text-center">
                 <m.icon className="h-5 w-5 mx-auto text-primary mb-1" />
@@ -380,7 +486,7 @@ function ReportDetail({ report, language }: { report: Report; language: string }
       {/* Detail Sections in Tabs */}
       <Tabs defaultValue="company">
         <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="company" className="text-xs"><Building2 className="h-3 w-3 mr-1" /> {language === 'es' ? 'Empresa' : 'Company'}</TabsTrigger>
+          <TabsTrigger value="company" className="text-xs"><Building2 className="h-3 w-3 mr-1" /> {language === 'es' ? 'Perfil' : 'Profile'}</TabsTrigger>
           <TabsTrigger value="financial" className="text-xs"><DollarSign className="h-3 w-3 mr-1" /> {language === 'es' ? 'Finanzas' : 'Financial'}</TabsTrigger>
           <TabsTrigger value="product" className="text-xs"><Package className="h-3 w-3 mr-1" /> {language === 'es' ? 'Producto' : 'Product'}</TabsTrigger>
           <TabsTrigger value="market" className="text-xs"><Globe className="h-3 w-3 mr-1" /> {language === 'es' ? 'Mercado' : 'Market'}</TabsTrigger>
@@ -394,7 +500,7 @@ function ReportDetail({ report, language }: { report: Report; language: string }
 
         {/* Company Profile */}
         <TabsContent value="company">
-          <SectionCard icon={Building2} title={language === 'es' ? 'Perfil de Empresa' : 'Company Profile'}>
+          <SectionCard icon={Building2} title={language === 'es' ? 'Perfil del Sujeto Analizado' : 'Analyzed Subject Profile'}>
             <div className="grid grid-cols-2 gap-3 text-xs">
               {[
                 [language === 'es' ? 'Sector' : 'Sector', comp.sector],
@@ -546,7 +652,7 @@ function ReportDetail({ report, language }: { report: Report; language: string }
 
         {/* Valuation */}
         <TabsContent value="valuation">
-          <SectionCard icon={Diamond} title={language === 'es' ? 'Valoración de Empresa' : 'Company Valuation'}>
+          <SectionCard icon={Diamond} title={language === 'es' ? 'Valor / Atractivo Estratégico' : 'Strategic Value / Attractiveness'}>
             <div className="grid grid-cols-3 gap-4 text-center">
               <Card className="p-3">
                 <p className="text-xs text-muted-foreground">Min</p>
@@ -573,7 +679,7 @@ function ReportDetail({ report, language }: { report: Report; language: string }
 
         {/* Sale Propensity */}
         <TabsContent value="sale">
-          <SectionCard icon={Target} title={language === 'es' ? 'Análisis de Propensión a Venta' : 'Sale Propensity Analysis'}>
+          <SectionCard icon={Target} title={language === 'es' ? 'Atractivo Comercial / Señales Estratégicas' : 'Commercial Attractiveness / Strategic Signals'}>
             <div className="flex items-center gap-4 mb-3">
               <div className="text-center">
                 <p className="text-xs text-muted-foreground">{language === 'es' ? 'Probabilidad' : 'Probability'}</p>

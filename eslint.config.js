@@ -5,7 +5,16 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "supabase/"] },
+  {
+    ignores: [
+      "dist",
+      "Adaptive Sales Engine - Lovable_files/**",
+      "adaptive-sales-engine/**",
+      "middleware.ts",
+      "page.tsx",
+      "src/utils/supabase/**",
+    ],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
