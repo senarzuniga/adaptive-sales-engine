@@ -13,6 +13,9 @@ import Analysis360Page from "./pages/Analysis360Page";
 import PillarPage from "./pages/PillarPage";
 import AiAugmentedSalesPage from "./pages/AiAugmentedSalesPage";
 import SalesArchitecturePage from "./pages/SalesArchitecturePage";
+import KeyAccountManagementPage from "./pages/KeyAccountManagementPage";
+import BehavioralTransformationPage from "./pages/BehavioralTransformationPage";
+import ProductStrategyPage from "./pages/ProductStrategyPage";
 import AfterSalesEnginePage from "./pages/AfterSalesEnginePage";
 import MonitoringPage from "./pages/MonitoringPage";
 import WeeklyPlannerPage from "./pages/WeeklyPlannerPage";
@@ -27,6 +30,7 @@ import ProjectManagementPage from "./pages/ProjectManagementPage";
 import BudgetCommandCenterPage from "./pages/BudgetCommandCenterPage";
 import CostRatesPage from "./pages/CostRatesPage";
 import BusinessIntelligencePage from "./pages/BusinessIntelligencePage";
+import SavedCompaniesPage from "./pages/SavedCompaniesPage";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -46,11 +50,11 @@ const App = () => (
                 <Route path="/company-info" element={<CompanyInfoPage />} />
                 <Route path="/360-analysis" element={<Analysis360Page />} />
                 <Route path="/sales-architecture" element={<SalesArchitecturePage />} />
-                <Route path="/kam" element={<PillarPage pillarKey="p2" pillarNumber={2} />} />
+                <Route path="/kam" element={<KeyAccountManagementPage />} />
                 <Route path="/after-sales" element={<AfterSalesEnginePage />} />
                 <Route path="/ai-sales" element={<AiAugmentedSalesPage />} />
-                <Route path="/behavioral" element={<PillarPage pillarKey="p5" pillarNumber={5} />} />
-                <Route path="/product-strategy" element={<PillarPage pillarKey="p6" pillarNumber={6} />} />
+                <Route path="/behavioral" element={<BehavioralTransformationPage />} />
+                <Route path="/product-strategy" element={<ProductStrategyPage />} />
                 <Route path="/monitoring" element={<MonitoringPage />} />
                 <Route path="/weekly-planner" element={<WeeklyPlannerPage />} />
                 <Route path="/team-directory" element={<CompanyContactsPage />} />
@@ -64,6 +68,7 @@ const App = () => (
                 <Route path="/budget-command-center" element={<BudgetCommandCenterPage />} />
                 <Route path="/cost-rates" element={<CostRatesPage />} />
                 <Route path="/business-intelligence" element={<BusinessIntelligencePage />} />
+                <Route path="/companies" element={<SavedCompaniesPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AppLayout>

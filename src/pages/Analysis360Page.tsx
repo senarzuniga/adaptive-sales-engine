@@ -17,6 +17,7 @@ import { KeyAccountMapping } from '@/components/analysis360/KeyAccountMapping';
 import { ProductPortfolioAnalysis } from '@/components/analysis360/ProductPortfolioAnalysis';
 import { BrandingVsStrategy } from '@/components/analysis360/BrandingVsStrategy';
 import { ExecutiveInsights } from '@/components/analysis360/ExecutiveInsights';
+import { buildPipelineMetrics, getProbabilityGuidance, isNeglectedStatus, isOpenOpportunityStatus } from '@/lib/salesData';
 
 const Analysis360Page = () => {
   const { t } = useLanguage();
@@ -154,12 +155,10 @@ const Analysis360Page = () => {
     const finalTarget = consultantTarget > 0 ? consultantTarget : deduplicatedStrategyTotal;
     const source = consultantTarget > 0 ? 'Company Profile Target' : 'Strategy Data';
 
-    // Calculate actual achievement: SOLD opportunities + weighted open pipeline
-    const sold = opportunities.filter(o => o.status === 'SOLD').reduce((s, o) => s + o.estRevenue, 0);
-    const openWeighted = opportunities
-      .filter(o => o.status !== 'SOLD' && o.status !== 'DESATENDIDO')
-      .reduce((s, o) => s + o.estRevenue * (o.contractProb / 100), 0);
-    const weighted = sold + openWeighted;
+    const pipelineMetrics = buildPipelineMetrics({ opportunities, orders: rawOrders });
+    const sold = pipelineMetrics.soldRevenue;
+    const openWeighted = pipelineMetrics.weightedOpenRevenue;
+    const weighted = pipelineMetrics.weightedPipeline;
 
     const achievement = finalTarget > 0 ? (weighted / finalTarget * 100) : 0;
 
@@ -206,24 +205,25 @@ const Analysis360Page = () => {
       });
     }
 
-    // Pipeline quality risk — too many low-probability deals
-    const lowProbDeals = opportunities.filter(o => o.contractProb < 0.3 && o.status !== 'SOLD' && o.status !== 'DESATENDIDO');
-    if (lowProbDeals.length > opportunities.length * 0.5 && opportunities.length > 5) {
+    // Pipeline quality risk — offers below 75% are considered weak and need actions
+    const weakDeals = opportunities.filter(o => isOpenOpportunityStatus(o.status) && getProbabilityGuidance(o.contractProb).band === 'weak');
+    if (weakDeals.length > 0) {
+      const weakOpenCount = opportunities.filter(o => isOpenOpportunityStatus(o.status)).length || 1;
       risks.push({
-        level: 'warning',
-        title: 'Pipeline Quality Concern',
-        description: `${lowProbDeals.length} of ${opportunities.length} opportunities (${(lowProbDeals.length / opportunities.length * 100).toFixed(0)}%) have <30% probability. Pipeline may be inflated.`,
+        level: weakDeals.length > weakOpenCount * 0.5 ? 'warning' : 'info',
+        title: 'Weak Pipeline Coverage',
+        description: `${weakDeals.length} open opportunities are below 75% success probability and need actions to improve the chance of winning. Deals above 75% should focus on confidence, relationship strength, and disciplined follow-up.`,
       });
     }
 
     // Neglected opportunities
-    const neglected = opportunities.filter(o => o.status === 'DESATENDIDO');
+    const neglected = opportunities.filter(o => isNeglectedStatus(o.status));
     if (neglected.length > 0) {
       const neglectedValue = neglected.reduce((s, o) => s + o.estRevenue, 0);
       risks.push({
         level: 'warning',
         title: `${neglected.length} Neglected Opportunities`,
-        description: `${fmt(neglectedValue)} in pipeline marked as "DESATENDIDO". Review and either reactivate or close these deals.`,
+        description: `${fmt(neglectedValue)} in pipeline marked as neglected or unattended. Review and either reactivate or close these deals.`,
       });
     }
 
@@ -327,7 +327,7 @@ const Analysis360Page = () => {
         <Card><CardContent className="pt-6">
           <div className="flex items-center gap-2 mb-1"><TrendingUp className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Weighted Pipeline</span></div>
           <p className="text-2xl font-bold text-foreground">{fmt(weightedPipeline)}</p>
-          <p className="text-xs text-muted-foreground mt-1">Sold: {fmt(soldRevenue)} + Weighted open</p>
+          <p className="text-xs text-muted-foreground mt-1">Confirmed sold: {fmt(soldRevenue)} + weighted open offers</p>
         </CardContent></Card>
         <Card><CardContent className="pt-6">
           <div className="flex items-center gap-2 mb-1"><Target className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Strategy Achievement</span></div>

@@ -6,9 +6,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
-import { Users, Globe, MapPin, Building2, AlertTriangle, CheckCircle2, TrendingUp, Brain, Network, Target, Loader2 } from 'lucide-react';
+import { Users, Globe, MapPin, Building2, AlertTriangle, CheckCircle2, TrendingUp, Brain, Network, Target, Loader2, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { buildSalesArchitectureFallbackRecommendation } from '@/lib/salesArchitecture';
+import { buildSalesScenarioRecommendation, buildScenarioSynthesis } from '@/lib/salesScenario';
+import { dedupeOpportunities, dedupeOrders, isNeglectedStatus, isOpenOpportunityStatus, normalizeOpportunityStatus } from '@/lib/salesData';
 
 const COLORS = ['hsl(var(--primary))', 'hsl(35,90%,55%)', 'hsl(150,60%,45%)', 'hsl(280,60%,55%)', 'hsl(0,70%,55%)', 'hsl(200,70%,50%)'];
 
@@ -18,12 +22,17 @@ const SalesArchitecturePage = () => {
   const { data } = useData();
   const [aiRecommendation, setAiRecommendation] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [scenarioPrompt, setScenarioPrompt] = useState('');
+  const [scenarioReports, setScenarioReports] = useState<Array<{ name: string; prompt: string; report: string }>>([]);
 
   const company = data.companyProfile;
-  const opportunities = data.opportunities;
-  const orders = data.orders;
+  const opportunities = useMemo(() => dedupeOpportunities(data.opportunities), [data.opportunities]);
+  const orders = useMemo(() => dedupeOrders(data.orders), [data.orders]);
   const strategy = data.strategy;
   const tasks = data.tasks;
+  const totalOpenPipelineValue = useMemo(() => opportunities.filter(o => isOpenOpportunityStatus(o.status)).reduce((s, o) => s + o.estRevenue, 0), [opportunities]);
+  const totalNeglectedValue = useMemo(() => opportunities.filter(o => isNeglectedStatus(o.status)).reduce((s, o) => s + o.estRevenue, 0), [opportunities]);
+  const totalNeglectedCount = useMemo(() => opportunities.filter(o => isNeglectedStatus(o.status)).length, [opportunities]);
 
   // ── Parse company profile for structure info ──
   const companyInsights = useMemo(() => {
@@ -51,16 +60,45 @@ const SalesArchitecturePage = () => {
   // ── Regional Analysis ──
   const regionalAnalysis = useMemo(() => {
     const regionMap: Record<string, { pipeline: number; oppCount: number; customers: Set<string>; sold: number; neglected: number; neglectedValue: number; kams: Set<string> }> = {};
+    const ensureRegion = (region: string) => {
+      if (!regionMap[region]) {
+        regionMap[region] = { pipeline: 0, oppCount: 0, customers: new Set(), sold: 0, neglected: 0, neglectedValue: 0, kams: new Set() };
+      }
+      return regionMap[region];
+    };
+    const useWonOpportunitiesForSold = orders.length === 0;
 
     opportunities.forEach(o => {
       const region = o.region || 'Unknown';
-      if (!regionMap[region]) regionMap[region] = { pipeline: 0, oppCount: 0, customers: new Set(), sold: 0, neglected: 0, neglectedValue: 0, kams: new Set() };
-      regionMap[region].pipeline += o.estRevenue;
-      regionMap[region].oppCount += 1;
-      regionMap[region].customers.add(o.customerName);
-      if (o.kam) regionMap[region].kams.add(o.kam);
-      if (o.status === 'SOLD') regionMap[region].sold += o.estRevenue;
-      if (o.status === 'DESATENDIDO') { regionMap[region].neglected += 1; regionMap[region].neglectedValue += o.estRevenue; }
+      const bucket = ensureRegion(region);
+      const status = normalizeOpportunityStatus(o.status);
+
+      bucket.customers.add(o.customerName);
+      if (o.kam) bucket.kams.add(o.kam);
+
+      if (status === 'won') {
+        if (useWonOpportunitiesForSold) bucket.sold += o.estRevenue;
+        return;
+      }
+
+      if (status === 'neglected') {
+        bucket.neglected += 1;
+        bucket.neglectedValue += o.estRevenue;
+        return;
+      }
+
+      if (status !== 'lost') {
+        bucket.pipeline += o.estRevenue;
+        bucket.oppCount += 1;
+      }
+    });
+
+    orders.forEach(o => {
+      const region = o.region || 'Unknown';
+      const bucket = ensureRegion(region);
+      bucket.sold += o.sellingPrice;
+      bucket.customers.add(o.customerName);
+      if (o.kam) bucket.kams.add(o.kam);
     });
 
     return Object.entries(regionMap)
@@ -74,24 +112,53 @@ const SalesArchitecturePage = () => {
         neglected: d.neglected,
         neglectedValue: d.neglectedValue,
         kams: [...d.kams],
-        conversionRate: d.oppCount > 0 ? (d.sold / d.pipeline * 100) : 0,
+        conversionRate: d.pipeline + d.sold > 0 ? (d.sold / (d.pipeline + d.sold) * 100) : 0,
       }))
-      .sort((a, b) => b.pipeline - a.pipeline);
-  }, [opportunities]);
+      .sort((a, b) => (b.pipeline + b.sold) - (a.pipeline + a.sold));
+  }, [opportunities, orders]);
 
   // ── KAM Performance ──
   const kamAnalysis = useMemo(() => {
     const kamMap: Record<string, { pipeline: number; oppCount: number; sold: number; neglected: number; neglectedValue: number; regions: Set<string>; customers: Set<string> }> = {};
+    const ensureKam = (kam: string) => {
+      if (!kamMap[kam]) {
+        kamMap[kam] = { pipeline: 0, oppCount: 0, sold: 0, neglected: 0, neglectedValue: 0, regions: new Set(), customers: new Set() };
+      }
+      return kamMap[kam];
+    };
+    const useWonOpportunitiesForSold = orders.length === 0;
 
     opportunities.forEach(o => {
       const kam = o.kam || 'Unassigned';
-      if (!kamMap[kam]) kamMap[kam] = { pipeline: 0, oppCount: 0, sold: 0, neglected: 0, neglectedValue: 0, regions: new Set(), customers: new Set() };
-      kamMap[kam].pipeline += o.estRevenue;
-      kamMap[kam].oppCount += 1;
-      if (o.region) kamMap[kam].regions.add(o.region);
-      kamMap[kam].customers.add(o.customerName);
-      if (o.status === 'SOLD') kamMap[kam].sold += o.estRevenue;
-      if (o.status === 'DESATENDIDO') { kamMap[kam].neglected += 1; kamMap[kam].neglectedValue += o.estRevenue; }
+      const bucket = ensureKam(kam);
+      const status = normalizeOpportunityStatus(o.status);
+
+      if (o.region) bucket.regions.add(o.region);
+      bucket.customers.add(o.customerName);
+
+      if (status === 'won') {
+        if (useWonOpportunitiesForSold) bucket.sold += o.estRevenue;
+        return;
+      }
+
+      if (status === 'neglected') {
+        bucket.neglected += 1;
+        bucket.neglectedValue += o.estRevenue;
+        return;
+      }
+
+      if (status !== 'lost') {
+        bucket.pipeline += o.estRevenue;
+        bucket.oppCount += 1;
+      }
+    });
+
+    orders.forEach(o => {
+      const kam = o.kam || 'Unassigned';
+      const bucket = ensureKam(kam);
+      bucket.sold += o.sellingPrice;
+      if (o.region) bucket.regions.add(o.region);
+      bucket.customers.add(o.customerName);
     });
 
     return Object.entries(kamMap).map(([kam, d]) => ({
@@ -103,21 +170,21 @@ const SalesArchitecturePage = () => {
       neglectedValue: d.neglectedValue,
       regions: [...d.regions],
       customers: d.customers.size,
-      efficiency: d.pipeline > 0 ? (d.sold / d.pipeline * 100) : 0,
-    })).sort((a, b) => b.pipeline - a.pipeline);
-  }, [opportunities]);
+      efficiency: d.pipeline + d.sold > 0 ? (d.sold / (d.pipeline + d.sold) * 100) : 0,
+    })).sort((a, b) => (b.pipeline + b.sold) - (a.pipeline + a.sold));
+  }, [opportunities, orders]);
 
   // ── Structure Recommendations (rule-based) ──
   const structureRecommendations = useMemo(() => {
     const recs: { type: 'critical' | 'warning' | 'opportunity'; title: string; detail: string; region?: string }[] = [];
-    const totalNeglected = opportunities.filter(o => o.status === 'DESATENDIDO').reduce((s, o) => s + o.estRevenue, 0);
-    const totalPipeline = opportunities.reduce((s, o) => s + o.estRevenue, 0);
+    const totalNeglected = totalNeglectedValue;
+    const totalPipeline = totalOpenPipelineValue;
 
     if (totalNeglected > 0) {
       recs.push({
         type: 'critical',
         title: `€${(totalNeglected / 1_000_000).toFixed(1)}M in Neglected Opportunities`,
-        detail: `${opportunities.filter(o => o.status === 'DESATENDIDO').length} opportunities worth €${(totalNeglected / 1_000_000).toFixed(1)}M are DESATENDIDO. This signals insufficient commercial coverage capacity.`,
+        detail: `${totalNeglectedCount} opportunities worth €${(totalNeglected / 1_000_000).toFixed(1)}M are unattended or neglected. This signals insufficient commercial coverage capacity.`,
       });
     }
 
@@ -178,7 +245,7 @@ const SalesArchitecturePage = () => {
     }
 
     return recs;
-  }, [opportunities, regionalAnalysis, kamAnalysis, companyInsights]);
+  }, [regionalAnalysis, kamAnalysis, companyInsights, totalNeglectedValue, totalOpenPipelineValue, totalNeglectedCount]);
 
   // ── Proposed Structure ──
   const proposedStructure = useMemo(() => {
@@ -262,111 +329,97 @@ const SalesArchitecturePage = () => {
   }, [regionalAnalysis, companyInsights]);
 
   // ── AI Recommendation Engine ──
+  const generateFallbackRecommendation = () => {
+    return buildSalesArchitectureFallbackRecommendation({
+      companyName: company?.company_name || 'Company',
+      currentRevenue: companyInsights.currentRevenue || 0,
+      targetRevenue: companyInsights.targetRevenue || 0,
+      teamSize: companyInsights.teamSize || 0,
+      businessDescription: company?.business_description || '',
+      strategicGoals: company?.strategic_goals || company?.strategy_context || '',
+      totalPipeline: totalOpenPipelineValue,
+      totalNeglected: totalNeglectedValue,
+      regions: regionalAnalysis.map(r => ({ region: r.region, pipeline: r.pipeline, customers: r.customers, neglected: r.neglected })),
+      kams: kamAnalysis.map(k => ({ name: k.kam, pipeline: k.pipeline, sold: k.sold, neglected: k.neglected, regions: k.regions })),
+    });
+  };
+
+  useEffect(() => {
+    setAiRecommendation((prev) => prev || generateFallbackRecommendation());
+  }, [company?.company_name, totalOpenPipelineValue, totalNeglectedValue, regionalAnalysis.length, kamAnalysis.length, strategy.length]);
+
   const generateAiRecommendation = async () => {
     setLoading(true);
+
+    const fallbackRecommendation = generateFallbackRecommendation();
+
     try {
-      const context = {
-        company: company?.company_name,
-        currentRevenue: companyInsights.currentRevenue,
-        targetRevenue: companyInsights.targetRevenue,
-        teamSize: companyInsights.teamSize,
-        regions: regionalAnalysis.map(r => ({ region: r.region, pipeline: r.pipeline, customers: r.customers, neglected: r.neglected })),
-        kams: kamAnalysis.map(k => ({ name: k.kam, pipeline: k.pipeline, sold: k.sold, neglected: k.neglected, regions: k.regions })),
-        totalPipeline: opportunities.reduce((s, o) => s + o.estRevenue, 0),
-        totalNeglected: opportunities.filter(o => o.status === 'DESATENDIDO').reduce((s, o) => s + o.estRevenue, 0),
-        businessDescription: (company?.business_description || '').slice(0, 2000),
-        strategyContext: (company?.strategy_context || '').slice(0, 1000),
+      const regionSummary = regionalAnalysis
+        .map(r => `${r.region}: ${fmt(r.pipeline)} pipeline, ${r.customers} customers, ${r.neglected} neglected`)
+        .join(' | ');
+
+      const task = {
+        title: 'Global Sales Architecture Blueprint',
+        description: 'Design a scalable global sales architecture that explicitly covers market segmentation, geographic sales model, channel strategy, pricing architecture, opportunity management, and sales resource allocation. Compare at least 3 structural options and select the best safe option using business impact, technical risk, complexity, maintainability, and scalability.',
+        category: 'strategy',
+        pillar: 'p1',
+        priority: 'high',
+        assignee: 'AI Advisor',
+      };
+
+      const contextData = {
+        pipelineValue: fmt(totalOpenPipelineValue),
+        topCustomers: regionSummary,
+        topProducts: [...new Set([...orders.map(o => o.productFamily), ...opportunities.map(o => o.productFamily)].filter(Boolean))].slice(0, 8).join(', '),
+        strategyTargets: strategy.map(s => `${s.productFamily} in ${s.region}: ${fmt(s.estRevenue)}`).slice(0, 8).join(' | '),
       };
 
       const { data: result, error } = await supabase.functions.invoke('generate-action-content', {
         body: {
-          type: 'sales_architecture',
-          context: JSON.stringify(context),
-          prompt: `You are a B2B industrial sales architecture consultant. Analyze this company data and provide a detailed sales architecture recommendation.
-
-Company: ${context.company}
-Current Revenue: €${((context.currentRevenue || 0) / 1_000_000).toFixed(1)}M → Target: €${((context.targetRevenue || 0) / 1_000_000).toFixed(1)}M
-Team Size: ${context.teamSize} employees
-Total Pipeline: €${((context.totalPipeline || 0) / 1_000_000).toFixed(1)}M
-Neglected Pipeline: €${((context.totalNeglected || 0) / 1_000_000).toFixed(1)}M
-
-Regional Distribution:
-${context.regions.map(r => `- ${r.region}: €${(r.pipeline / 1_000_000).toFixed(1)}M pipeline, ${r.customers} customers, ${r.neglected} neglected`).join('\n')}
-
-KAM Performance:
-${context.kams.map(k => `- ${k.name}: €${(k.pipeline / 1_000_000).toFixed(1)}M pipeline, €${(k.sold / 1_000_000).toFixed(1)}M sold, ${k.neglected} neglected, regions: ${k.regions.join(', ')}`).join('\n')}
-
-Business Context: ${context.businessDescription.slice(0, 500)}
-
-Provide:
-1. RECOMMENDED STRUCTURE (Centralized vs Hybrid vs Agent-based)
-2. SPECIFIC ROLES needed with priorities
-3. REGIONAL COVERAGE PLAN
-4. COST-BENEFIT ANALYSIS
-5. IMPLEMENTATION ROADMAP (6-12 months)
-6. RISK MITIGATION
-
-Format with clear headers and bullet points.`,
+          type: 'generate',
+          task,
+          companyProfile: company,
+          contextData,
         },
       });
 
-      if (result?.content) {
-        setAiRecommendation(result.content);
-      } else if (result?.emailTemplate) {
-        setAiRecommendation(result.emailTemplate);
-      } else {
-        // Fallback: generate structured recommendation from data
-        setAiRecommendation(generateFallbackRecommendation());
-      }
+      if (error) throw error;
+
+      const agentAddendum = [
+        '## AI Agent Addendum',
+        result?.goal ? `- Recommended operating goal: ${result.goal}` : '',
+        result?.presentationNotes ? `- Execution blueprint: ${result.presentationNotes}` : '',
+        result?.callScript ? `- Management cadence: ${result.callScript}` : '',
+      ].filter(Boolean).join('\n');
+
+      setAiRecommendation([fallbackRecommendation, agentAddendum].filter(Boolean).join('\n\n'));
     } catch (err) {
       console.error('AI recommendation error:', err);
-      setAiRecommendation(generateFallbackRecommendation());
+      setAiRecommendation(fallbackRecommendation);
     }
+
     setLoading(false);
   };
 
-  const generateFallbackRecommendation = () => {
-    const totalPipeline = opportunities.reduce((s, o) => s + o.estRevenue, 0);
-    const totalNeglected = opportunities.filter(o => o.status === 'DESATENDIDO').reduce((s, o) => s + o.estRevenue, 0);
+  const createScenarioReport = () => {
+    if (!scenarioPrompt.trim()) return;
 
-    return `## Sales Architecture Recommendation — ${company?.company_name || 'Company'}
+    const scenarioName = `Scenario ${scenarioReports.length + 1}`;
+    const report = buildSalesScenarioRecommendation({
+      scenarioName,
+      prompt: scenarioPrompt.trim(),
+      companyName: company?.company_name || 'Company',
+      totalPipeline: totalOpenPipelineValue,
+      totalSold: orders.reduce((sum, order) => sum + order.sellingPrice, 0),
+      keyRegions: regionalAnalysis.map((region) => region.region).slice(0, 4),
+      topCustomers: [...new Set([...orders.map((order) => order.customerName), ...opportunities.map((opportunity) => opportunity.customerName)].filter(Boolean))].slice(0, 4),
+    });
 
-### Recommended: HYBRID STRUCTURE (Centralized HQ + Regional Agents)
-
-Given the company profile (${companyInsights.teamSize || '~10'} employees, €${((companyInsights.currentRevenue || 2_000_000) / 1_000_000).toFixed(1)}M → €${((companyInsights.targetRevenue || 3_500_000) / 1_000_000).toFixed(1)}M target), a purely centralized structure cannot cover all regional markets effectively. The data shows:
-
-**Critical Evidence:**
-- ${fmt(totalNeglected)} (${((totalNeglected / totalPipeline) * 100).toFixed(0)}% of pipeline) is NEGLECTED — this is lost revenue due to insufficient coverage
-- USA represents the largest market but requires local presence (agent LINETEX)
-- Spain/Europe/LATAM need different coverage models
-
-### Proposed Structure:
-
-**1. CENTRALIZED HQ (Spain) — Back Office + Inside Sales**
-- Commercial Back-Office Coordinator: Quote preparation, CRM management, follow-up automation
-- Inside Sales for Spain & Europe: Handle local accounts, service contracts, small/mid-size opportunities
-- Owner/GM remains strategic sales lead for key accounts
-
-**2. REGIONAL AGENTS (Commission-based)**
-- USA: Formalize LINETEX relationship with exclusive territory agreement, structured 5-8% commission, quarterly targets
-- Europe: Build agent network in key packaging markets (Germany, Italy, France)
-- LATAM: Start with finder's fee model (3-5%), upgrade to agent once volume justifies
-
-**3. SERVICE BUSINESS (Dedicated Channel)**
-- Dedicated service sales/coordination role to expand from local ${companyInsights.serviceRadius || 50}km to national coverage
-- Contract-based recurring revenue model vs. reactive maintenance
-
-### Implementation Priority:
-1. **Immediate (Month 1-3):** Hire back-office coordinator, formalize LINETEX agreement
-2. **Short-term (Month 3-6):** Add inside sales for Spain, recover neglected Spanish opportunities
-3. **Medium-term (Month 6-12):** European agent scouting, LATAM finder network, service expansion
-
-### Cost Impact:
-- Back-office: ~€35K/year → Enables recovery of ${fmt(totalNeglected)} neglected pipeline
-- Agent commissions: Variable (5-8%) → No fixed cost risk
-- Inside sales: ~€45K/year → Covers Spain + service growth
-- **Total fixed investment: ~€80K/year for potential ${fmt(companyInsights.targetRevenue || 3_500_000)} revenue**`;
+    setScenarioReports((prev) => [...prev, { name: scenarioName, prompt: scenarioPrompt.trim(), report }]);
+    setScenarioPrompt('');
   };
+
+  const finalScenarioRecommendation = useMemo(() => buildScenarioSynthesis(scenarioReports), [scenarioReports]);
 
   // Chart data
   const regionChartData = regionalAnalysis.map(r => ({
@@ -400,7 +453,7 @@ Given the company profile (${companyInsights.teamSize || '~10'} employees, €${
           </div>
           <h2 className="text-2xl font-semibold text-foreground">Sales Architecture</h2>
           <p className="text-muted-foreground text-sm mt-1">
-            Commercial structure recommendation based on pipeline, coverage, and strategy analysis
+            Global sales architecture blueprint for segmentation, geography, channels, pricing, and systematic growth
           </p>
         </div>
         <Button onClick={generateAiRecommendation} disabled={loading} className="gap-2">
@@ -440,8 +493,8 @@ Given the company profile (${companyInsights.teamSize || '~10'} employees, €${
             <AlertTriangle className="h-4 w-4 text-destructive" />
             <p className="text-xs text-muted-foreground">Neglected Pipeline</p>
           </div>
-          <p className="text-2xl font-bold text-destructive">{fmt(opportunities.filter(o => o.status === 'DESATENDIDO').reduce((s, o) => s + o.estRevenue, 0))}</p>
-          <p className="text-[10px] text-muted-foreground">{opportunities.filter(o => o.status === 'DESATENDIDO').length} opportunities lost</p>
+          <p className="text-2xl font-bold text-destructive">{fmt(totalNeglectedValue)}</p>
+          <p className="text-[10px] text-muted-foreground">{totalNeglectedCount} neglected opportunities</p>
         </CardContent></Card>
       </div>
 
@@ -486,9 +539,9 @@ Given the company profile (${companyInsights.teamSize || '~10'} employees, €${
                     <YAxis tickFormatter={(v) => v >= 1_000_000 ? `€${(v / 1_000_000).toFixed(0)}M` : `€${(v / 1_000).toFixed(0)}K`} stroke="hsl(var(--muted-foreground))" fontSize={11} />
                     <Tooltip formatter={(v: number) => fmt(v)} />
                     <Legend />
-                    <Bar dataKey="sold" fill="hsl(150,60%,45%)" name="Sold" stackId="a" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="pipeline" fill="hsl(var(--primary))" name="Open Pipeline" stackId="b" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="neglected" fill="hsl(0,70%,55%)" name="Neglected" stackId="c" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="sold" fill="hsl(150,60%,45%)" name="Sold" stackId="total" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="pipeline" fill="hsl(var(--primary))" name="Open Pipeline" stackId="total" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="neglected" fill="hsl(0,70%,55%)" name="Neglected" stackId="total" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -694,12 +747,42 @@ Given the company profile (${companyInsights.teamSize || '~10'} employees, €${
 
         {/* ── AI Recommendation ── */}
         <TabsContent value="recommendation" className="space-y-4">
-          {aiRecommendation ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                Scenario Workspace
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Write a question or commercial scenario to test alternative sales structures. Each prompt creates a new scenario report and contributes to the final AI + Context recommendation.
+              </p>
+              <Textarea
+                value={scenarioPrompt}
+                onChange={(event) => setScenarioPrompt(event.target.value)}
+                placeholder="Example: What if we use a hybrid distributor model in Germany while keeping direct KAM ownership for strategic accounts?"
+                className="min-h-[120px] text-sm"
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={createScenarioReport} disabled={!scenarioPrompt.trim()} className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Create Scenario
+                </Button>
+                <Button onClick={generateAiRecommendation} disabled={loading} variant="outline" className="gap-2">
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Brain className="h-4 w-4" />}
+                  Refresh Base Recommendation
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {aiRecommendation && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
                   <Brain className="h-4 w-4 text-primary" />
-                  AI Sales Architecture Recommendation
+                  Base Global Sales Architecture Recommendation
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -715,21 +798,44 @@ Given the company profile (${companyInsights.teamSize || '~10'} employees, €${
                 </div>
               </CardContent>
             </Card>
-          ) : (
-            <Card>
-              <CardContent className="py-16 text-center">
-                <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">AI Architecture Advisor</h3>
-                <p className="text-muted-foreground text-sm max-w-md mx-auto mb-4">
-                  Click "Generate AI Recommendation" to get a detailed, data-driven analysis of the optimal sales architecture for {company?.company_name || 'your company'}.
-                </p>
-                <Button onClick={generateAiRecommendation} disabled={loading} className="gap-2">
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Brain className="h-4 w-4" />}
-                  Generate Recommendation
-                </Button>
+          )}
+
+          {scenarioReports.map((scenario) => (
+            <Card key={scenario.name}>
+              <CardHeader>
+                <CardTitle className="text-base">{scenario.name}</CardTitle>
+                <p className="text-xs text-muted-foreground">{scenario.prompt}</p>
+              </CardHeader>
+              <CardContent>
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                  {scenario.report.split('\n').map((line, i) => {
+                    if (line.startsWith('## ')) return <h2 key={i} className="text-lg font-bold text-foreground mt-4 mb-2">{line.replace('## ', '')}</h2>;
+                    if (line.startsWith('### ')) return <h3 key={i} className="text-sm font-bold text-foreground mt-3 mb-1">{line.replace('### ', '')}</h3>;
+                    if (line.startsWith('- ')) return <li key={i} className="text-xs text-muted-foreground ml-4">{line.replace('- ', '')}</li>;
+                    if (line.trim() === '') return <br key={i} />;
+                    return <p key={i} className="text-xs text-muted-foreground">{line}</p>;
+                  })}
+                </div>
               </CardContent>
             </Card>
-          )}
+          ))}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Final AI + Context - Recommendations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="prose prose-sm dark:prose-invert max-w-none">
+                {finalScenarioRecommendation.split('\n').map((line, i) => {
+                  if (line.startsWith('## ')) return <h2 key={i} className="text-lg font-bold text-foreground mt-4 mb-2">{line.replace('## ', '')}</h2>;
+                  if (line.startsWith('### ')) return <h3 key={i} className="text-sm font-bold text-foreground mt-3 mb-1">{line.replace('### ', '')}</h3>;
+                  if (line.startsWith('- ')) return <li key={i} className="text-xs text-muted-foreground ml-4">{line.replace('- ', '')}</li>;
+                  if (line.trim() === '') return <br key={i} />;
+                  return <p key={i} className="text-xs text-muted-foreground">{line}</p>;
+                })}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

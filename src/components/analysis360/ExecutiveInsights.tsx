@@ -8,6 +8,8 @@ import { OrderRecord, OpportunityRecord, ProductRecord, StrategyRecord, CompanyP
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { groupBy, fmt } from './AnalysisUtils';
+import { buildPipelineMetrics, isOpenOpportunityStatus } from '@/lib/salesData';
+import { buildFallbackExecutiveInsights, classifyEdgeRuntimeError } from '@/lib/edgeStability';
 import {
   Brain, Sparkles, AlertTriangle, TrendingUp, Shield, Lightbulb,
   Target, Zap, Clock, ArrowRight, ChevronDown, ChevronUp, Loader2
@@ -86,9 +88,12 @@ export const ExecutiveInsights = ({ orders, opportunities, products, strategy, c
         customers: new Set(items.map(i => i.customerName)).size,
       })).sort((a, b) => b.revenue - a.revenue);
 
-      const totalPipeline = opportunities.reduce((s, o) => s + o.estRevenue, 0);
-      const avgProb = opportunities.length > 0
-        ? opportunities.reduce((s, o) => s + o.contractProb, 0) / opportunities.length : 0;
+      const pipelineMetrics = buildPipelineMetrics({ opportunities, orders });
+      const openOpportunities = opportunities.filter((opportunity) => isOpenOpportunityStatus(opportunity.status));
+      const totalPipeline = pipelineMetrics.openPipeline;
+      const avgProb = openOpportunities.length > 0
+        ? openOpportunities.reduce((sum, opportunity) => sum + (opportunity.contractProb || 0), 0) / openOpportunities.length
+        : 0;
 
       const totalPlanned = strategy.reduce((s, r) => s + r.estRevenue, 0);
 
@@ -134,9 +139,9 @@ export const ExecutiveInsights = ({ orders, opportunities, products, strategy, c
           },
           opportunitiesSummary: {
             totalPipeline,
-            count: opportunities.length,
+            count: openOpportunities.length,
             avgProbability: avgProb,
-            weightedPipeline: opportunities.reduce((s, o) => s + o.estRevenue * (o.contractProb / 100), 0),
+            weightedPipeline: pipelineMetrics.weightedOpenRevenue,
           },
           productsSummary: {
             count: products.length,
@@ -154,8 +159,10 @@ export const ExecutiveInsights = ({ orders, opportunities, products, strategy, c
         throw new Error(data?.error || "No insights returned");
       }
     } catch (e: any) {
-      console.error("Insight generation error:", e);
-      toast({ title: "Error generating insights", description: e.message, variant: "destructive" });
+      console.error('Insight generation error:', e);
+      const details = classifyEdgeRuntimeError(e, 'local executive insights');
+      setInsights(buildFallbackExecutiveInsights({ orders, opportunities, products, strategy, company }));
+      toast({ title: details.title, description: details.description });
     } finally {
       setLoading(false);
     }

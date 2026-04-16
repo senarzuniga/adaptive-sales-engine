@@ -21,6 +21,8 @@ import { useState, useMemo } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { ActionContentPanel } from '@/components/ActionContentPanel';
 import { supabase } from '@/integrations/supabase/client';
+import { buildFallbackActionPool } from '@/lib/aiSalesFallback';
+import { classifyEdgeRuntimeError } from '@/lib/edgeStability';
 
 const PILLAR_LABELS: Record<TaskPillar, string> = {
   general: 'General', p0: '360º Analysis', p1: 'Sales Architecture', p2: 'KAM',
@@ -124,7 +126,17 @@ const MonitoringPage = () => {
       setPoolSummary(result.summary || null);
       toast({ title: `${(result.actions || []).length} actions generated`, description: 'Review and accept the actions you want to add.' });
     } catch (e: any) {
-      toast({ title: 'Error generating action pool', description: e.message, variant: 'destructive' });
+      const details = classifyEdgeRuntimeError(e, 'local action pool');
+      const fallback = buildFallbackActionPool({
+        companyProfile: data.companyProfile,
+        opportunities: data.opportunities,
+        orders: data.orders,
+        strategy: data.strategy,
+        tasks: data.tasks,
+      });
+      setPoolPreview(fallback.actions || []);
+      setPoolSummary(fallback.summary || null);
+      toast({ title: details.title, description: details.description });
     } finally {
       setGeneratingPool(false);
     }

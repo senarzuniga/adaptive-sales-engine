@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { buildFallbackExtraction } from "../_shared/documentFallback.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,7 +16,7 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY")!;
+    const lovableKey = Deno.env.get("LOVABLE_API_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Get document metadata
@@ -48,20 +49,25 @@ serve(async (req) => {
 
     // Extract text content based on file type
     let textContent = "";
+    let rawContent: string | ArrayBuffer = "";
     const mime = doc.mime_type || "";
     const fileName = doc.file_name || "";
 
     if (mime.includes("text") || fileName.endsWith(".csv") || fileName.endsWith(".txt") || fileName.endsWith(".md")) {
       textContent = await fileData.text();
+      rawContent = textContent;
     } else if (mime.includes("json")) {
       textContent = await fileData.text();
+      rawContent = textContent;
     } else if (mime.includes("spreadsheet") || mime.includes("excel") || fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
       const buffer = await fileData.arrayBuffer();
+      rawContent = buffer;
       const bytes = new Uint8Array(buffer);
       textContent = `[Binary Excel file: ${fileName}, size: ${doc.file_size} bytes. The file content is provided as base64 for interpretation.]\n`;
       textContent += uint8ToBase64(bytes).substring(0, 50000);
     } else {
       const buffer = await fileData.arrayBuffer();
+      rawContent = buffer;
       const bytes = new Uint8Array(buffer.slice(0, 100000));
       textContent = `[Binary file: ${fileName}, type: ${mime}, size: ${doc.file_size} bytes]\n`;
       textContent += uint8ToBase64(bytes);
@@ -125,6 +131,108 @@ serve(async (req) => {
 
     const targetTable = categoryTableMapping[doc.category] || "none";
 
+    const persistExtraction = async (extractedData: any, mode: "ai" | "fallback" = "ai") => {
+      await supabase.from("company_documents").update({
+        processing_status: "completed",
+        extracted_data: extractedData,
+      }).eq("id", documentId);
+
+      const records = extractedData.extracted_records || [];
+      const table = extractedData.target_table || targetTable;
+      let insertedCount = 0;
+
+      if (records.length > 0 && table !== "none" && table !== "company_info_update") {
+        const dbRecords = records.map((r: any) => ({ ...r, company_id: doc.company_id }));
+
+        const cleanRecords = dbRecords.map((r: any) => {
+          const clean: any = { company_id: doc.company_id };
+          if (table === "orders") {
+            clean.po_date = r.po_date || r.poDate || "";
+            clean.customer_name = r.customer_name || r.customerName || "";
+            clean.product_family = r.product_family || r.productFamily || "";
+            clean.region = r.region || "";
+            clean.country = r.country || "";
+            clean.segment = r.segment || "";
+            clean.selling_price = Number(r.selling_price || r.sellingPrice || 0) || 0;
+            clean.margin = Number(r.margin || 0) || 0;
+            clean.kam = r.kam || "";
+            clean.purchasing_year = r.purchasing_year || r.purchasingYear || "";
+            clean.purchasing_quarter = r.purchasing_quarter || r.purchasingQuarter || "";
+            clean.scope = r.scope || "";
+          } else if (table === "opportunities") {
+            clean.opp_number = r.opp_number || r.oppNumber || "";
+            clean.status = r.status || "open";
+            clean.customer_name = r.customer_name || r.customerName || "";
+            clean.product_family = r.product_family || r.productFamily || "";
+            clean.region = r.region || "";
+            clean.est_revenue = Number(r.est_revenue || r.estRevenue || 0) || 0;
+            clean.contract_prob = Number(r.contract_prob || r.contractProb || 0) || 0;
+            clean.margin = Number(r.margin || 0) || 0;
+            clean.kam = r.kam || "";
+            clean.est_purchasing_year = r.est_purchasing_year || "";
+          } else if (table === "strategy") {
+            clean.product_family = r.product_family || r.productFamily || "";
+            clean.number_of_segment = r.number_of_segment || r.numberOfSegment || "";
+            clean.region = r.region || "";
+            clean.est_purchasing_quarter = r.est_purchasing_quarter || "";
+            clean.est_revenue = Number(r.est_revenue || r.estRevenue || 0) || 0;
+            clean.margin = Number(r.margin || 0) || 0;
+            clean.kam = r.kam || "";
+          } else if (table === "products") {
+            clean.name = r.name || "";
+            clean.average_value = Number(r.average_value || r.averageValue || 0) || 0;
+            clean.type = r.type || "";
+            clean.comments = r.comments || "";
+          } else if (table === "company_contacts") {
+            clean.name = r.name || "";
+            clean.email = r.email || "";
+            clean.role = r.role || r.job_title || "";
+            clean.department = r.department || "";
+            clean.notes = r.notes || r.phone || "";
+          }
+          return clean;
+        });
+
+        const { error: insertErr } = await supabase.from(table).insert(cleanRecords);
+        if (!insertErr) insertedCount = cleanRecords.length;
+        else console.error("Insert error:", insertErr.message);
+      }
+
+      if (extractedData.company_info_updates && Object.keys(extractedData.company_info_updates).length > 0) {
+        const updates = extractedData.company_info_updates;
+        const allowedFields = [
+          "industry", "sub_sector", "annual_revenue", "employee_count", "main_products",
+          "main_competitors", "main_customer_segments", "operating_regions", "headquarters",
+          "sales_channels", "current_challenges", "strategic_goals", "business_description",
+          "market_context", "strategy_context", "objectives",
+        ];
+        const safeUpdates: any = {};
+        for (const [k, v] of Object.entries(updates)) {
+          if (allowedFields.includes(k) && v) safeUpdates[k] = v;
+        }
+        if (Object.keys(safeUpdates).length > 0) {
+          await supabase.from("companies").update(safeUpdates).eq("id", doc.company_id);
+        }
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        summary: extractedData.summary,
+        recordCount: insertedCount,
+        confidence: extractedData.confidence_score,
+        dataQualityNotes: extractedData.data_quality_notes,
+        fallback: mode === "fallback",
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    };
+
+    const completeWithFallback = async (reason: string) => {
+      const fallbackData = buildFallbackExtraction({ category: doc.category, fileName, targetTable }, rawContent || textContent);
+      fallbackData.data_quality_notes = [...(fallbackData.data_quality_notes || []), reason];
+      return await persistExtraction(fallbackData, "fallback");
+    };
+
     const systemPrompt = `You are a Senior Data Interpretation Agent specialized in extracting, normalizing, and structuring business data from unstructured documents.
 
 COMPANY CONTEXT: ${companyContext}
@@ -158,6 +266,10 @@ You MUST respond with a valid JSON object using this exact structure:
   "company_info_updates": {}  // Only if category suggests company-level info updates
 }`;
 
+    if (!lovableKey) {
+      return await completeWithFallback("LOVABLE_API_KEY is not configured in Supabase secrets.");
+    }
+
     // Call AI for interpretation
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -178,16 +290,16 @@ You MUST respond with a valid JSON object using this exact structure:
     if (!aiResponse.ok) {
       const status = aiResponse.status;
       if (status === 429) {
-        await supabase.from("company_documents").update({ processing_status: "failed" }).eq("id", documentId);
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return await completeWithFallback("AI rate limit was reached, so basic extraction was used instead.");
+      }
+      if (status === 401 || status === 403) {
+        return await completeWithFallback("AI gateway authorization failed. LOVABLE_API_KEY is invalid or expired.");
       }
       if (status === 402) {
-        await supabase.from("company_documents").update({ processing_status: "failed" }).eq("id", documentId);
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return await completeWithFallback("AI credits are exhausted, so basic extraction was used instead.");
+      }
+      if (status >= 500) {
+        return await completeWithFallback(`Temporary AI gateway issue (${status}); basic extraction was used instead.`);
       }
       throw new Error(`AI gateway error: ${status}`);
     }
@@ -200,124 +312,36 @@ You MUST respond with a valid JSON object using this exact structure:
     try {
       extractedData = JSON.parse(content);
     } catch {
-      // Try to extract JSON from markdown code blocks
       const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
       if (jsonMatch) {
         extractedData = JSON.parse(jsonMatch[1]);
       } else {
-        throw new Error("Failed to parse AI response as JSON");
+        return await completeWithFallback("The AI response could not be parsed, so basic extraction was used instead.");
       }
     }
 
-    // Save extracted data to the document record
-    await supabase.from("company_documents").update({
-      processing_status: "completed",
-      extracted_data: extractedData,
-    }).eq("id", documentId);
-
-    // Auto-insert extracted records into target tables
-    const records = extractedData.extracted_records || [];
-    const table = extractedData.target_table || targetTable;
-    let insertedCount = 0;
-
-    if (records.length > 0 && table !== "none" && table !== "company_info_update") {
-      const dbRecords = records.map((r: any) => ({ ...r, company_id: doc.company_id }));
-      
-      // Clean records: remove fields that don't exist in target table
-      const cleanRecords = dbRecords.map((r: any) => {
-        const clean: any = { company_id: doc.company_id };
-        if (table === "orders") {
-          clean.po_date = r.po_date || r.poDate || "";
-          clean.customer_name = r.customer_name || r.customerName || "";
-          clean.product_family = r.product_family || r.productFamily || "";
-          clean.region = r.region || "";
-          clean.country = r.country || "";
-          clean.segment = r.segment || "";
-          clean.selling_price = parseFloat(r.selling_price || r.sellingPrice || 0);
-          clean.margin = parseFloat(r.margin || 0);
-          clean.kam = r.kam || "";
-          clean.purchasing_year = r.purchasing_year || r.purchasingYear || "";
-          clean.purchasing_quarter = r.purchasing_quarter || r.purchasingQuarter || "";
-          clean.scope = r.scope || "";
-        } else if (table === "opportunities") {
-          clean.opp_number = r.opp_number || r.oppNumber || "";
-          clean.status = r.status || "open";
-          clean.customer_name = r.customer_name || r.customerName || "";
-          clean.product_family = r.product_family || r.productFamily || "";
-          clean.region = r.region || "";
-          clean.est_revenue = parseFloat(r.est_revenue || r.estRevenue || 0);
-          clean.contract_prob = parseFloat(r.contract_prob || r.contractProb || 0);
-          clean.margin = parseFloat(r.margin || 0);
-          clean.kam = r.kam || "";
-          clean.est_purchasing_year = r.est_purchasing_year || "";
-        } else if (table === "strategy") {
-          clean.product_family = r.product_family || r.productFamily || "";
-          clean.number_of_segment = r.number_of_segment || r.numberOfSegment || "";
-          clean.region = r.region || "";
-          clean.est_purchasing_quarter = r.est_purchasing_quarter || "";
-          clean.est_revenue = parseFloat(r.est_revenue || r.estRevenue || 0);
-          clean.margin = parseFloat(r.margin || 0);
-          clean.kam = r.kam || "";
-        } else if (table === "products") {
-          clean.name = r.name || "";
-          clean.average_value = parseFloat(r.average_value || r.averageValue || 0);
-          clean.type = r.type || "";
-          clean.comments = r.comments || "";
-        } else if (table === "company_contacts") {
-          clean.name = r.name || "";
-          clean.email = r.email || "";
-          clean.role = r.role || r.job_title || "";
-          clean.department = r.department || "";
-          clean.notes = r.notes || r.phone || "";
-        }
-        return clean;
-      });
-
-      const { error: insertErr } = await supabase.from(table).insert(cleanRecords);
-      if (!insertErr) insertedCount = cleanRecords.length;
-      else console.error("Insert error:", insertErr.message);
-    }
-
-    // Update company-level info if applicable
-    if (extractedData.company_info_updates && Object.keys(extractedData.company_info_updates).length > 0) {
-      const updates = extractedData.company_info_updates;
-      const allowedFields = [
-        "industry", "sub_sector", "annual_revenue", "employee_count", "main_products",
-        "main_competitors", "main_customer_segments", "operating_regions", "headquarters",
-        "sales_channels", "current_challenges", "strategic_goals", "business_description",
-        "market_context", "strategy_context", "objectives",
-      ];
-      const safeUpdates: any = {};
-      for (const [k, v] of Object.entries(updates)) {
-        if (allowedFields.includes(k) && v) safeUpdates[k] = v;
-      }
-      if (Object.keys(safeUpdates).length > 0) {
-        await supabase.from("companies").update(safeUpdates).eq("id", doc.company_id);
-      }
-    }
-
-    return new Response(JSON.stringify({
-      success: true,
-      summary: extractedData.summary,
-      recordCount: insertedCount,
-      confidence: extractedData.confidence_score,
-      dataQualityNotes: extractedData.data_quality_notes,
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return await persistExtraction(extractedData);
   } catch (err: any) {
     console.error("process-document error:", err);
-    // Try to update status to failed
+    const message = err?.message || "Unexpected processing error";
+    const transient = /temporary|temporarily|timeout|timed out|failed to fetch|network|rate limit|gateway error: 5/i.test(message);
+
     try {
       const { documentId } = await req.clone().json();
       if (documentId) {
         const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-        await supabase.from("company_documents").update({ processing_status: "failed" }).eq("id", documentId);
+        await supabase
+          .from("company_documents")
+          .update({ processing_status: transient ? "pending" : "failed" })
+          .eq("id", documentId);
       }
-    } catch { /* ignore cleanup errors */ }
+    } catch {
+      // Ignore cleanup errors.
+    }
 
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    return new Response(JSON.stringify({ error: message, transient }), {
+      status: transient ? 503 : 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

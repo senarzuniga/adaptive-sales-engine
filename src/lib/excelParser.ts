@@ -1,13 +1,13 @@
 import * as XLSX from 'xlsx';
 import type { OrderRecord, OpportunityRecord, ProductRecord, StrategyRecord } from '@/store/DataStore';
+import { normalizeOpportunityStatus, parseFlexibleNumber } from '@/lib/salesData';
 
 function normalizeHeader(h: string): string {
   return (h || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
 function safeNumber(val: any): number {
-  const n = parseFloat(val);
-  return isNaN(n) ? 0 : n;
+  return parseFlexibleNumber(val);
 }
 
 function safeString(val: any): string {
@@ -123,7 +123,7 @@ export function parseExcelFile(file: File): Promise<{
             kam: findCol(headers, 'KAM'),
           };
           const opportunities: OpportunityRecord[] = dataRows.map(r => ({
-            oppNumber: getVal(r, cols.oppNum), status: getVal(r, cols.status),
+            oppNumber: getVal(r, cols.oppNum), status: normalizeOpportunityStatus(getVal(r, cols.status)),
             region: getVal(r, cols.region), country: getVal(r, cols.country),
             customerName: getVal(r, cols.customer), scope: getVal(r, cols.scope),
             productFamily: getVal(r, cols.productFamily), segment: getVal(r, cols.segment),
