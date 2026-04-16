@@ -70,6 +70,25 @@ If `path` is relative (e.g. `"."` or `"backend"`), it is resolved relative to th
 
 ---
 
+## 📊 Document Ingestion Monitor
+
+A Streamlit monitor is included at [launcher/ingestion_monitor.py](launcher/ingestion_monitor.py).
+
+### Start it manually
+
+```bash
+pip install -r launcher/requirements-streamlit.txt
+python -m streamlit run launcher/ingestion_monitor.py --server.port 8502
+```
+
+The monitor shows:
+- uploaded documents and processing status
+- parsed document structure
+- extracted entities and data points
+- relationships graph and ingestion-run preview
+
+---
+
 ## 🎛️ Features
 
 | Feature | Details |

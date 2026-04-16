@@ -122,9 +122,13 @@ export function ConceptDocumentUpload() {
             next.delete(d.id);
             if (d.processing_status === 'completed') {
               const ext = (d.extracted_data as any);
+              const semanticCounts = ext?.semantic_counts;
+              const semanticDetail = semanticCounts
+                ? `, ${semanticCounts.entities || 0} entities / ${semanticCounts.relationships || 0} relationships`
+                : '';
               toast({
                 title: `âœ… ${d.file_name} processed`,
-                description: `${ext?.summary || 'Data extracted'} (${ext?.record_count || 0} records, confidence: ${ext?.confidence_score || 'N/A'}%)`,
+                description: `${ext?.summary || 'Data extracted'} (${ext?.record_count || 0} records${semanticDetail}, confidence: ${ext?.confidence_score || 'N/A'}%)`,
               });
             } else {
               toast({ title: `âŒ ${d.file_name} processing failed`, variant: 'destructive' });
