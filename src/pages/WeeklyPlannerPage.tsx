@@ -15,7 +15,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { getActivePipelineOpportunities } from '@/lib/salesData';
-import { buildFallbackActionContent, buildFallbackWeeklyPlan, classifyEdgeRuntimeError } from '@/lib/edgeStability';
+import { buildFallbackActionContent, buildFallbackWeeklyPlan, classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
 
 const PILLAR_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   p0: { label: '360º Analysis', icon: BarChart3, color: 'text-blue-500' },
@@ -159,16 +159,11 @@ TOP GAPS BY KAM: ${kamGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmou
     setIsGenerating(true);
     try {
       const summary = buildDataSummary();
-      const { data: result, error } = await supabase.functions.invoke('generate-weekly-plan', {
-        body: {
-          companyProfile: data.companyProfile,
-          ...summary,
-          weekNotes,
-        },
-      });
-
-      if (error) throw error;
-      if (result?.error) throw new Error(result.error);
+      const result = await invokeEdgeWithRetry<any>('generate-weekly-plan', {
+        companyProfile: data.companyProfile,
+        ...summary,
+        weekNotes,
+      }, { fallbackLabel: 'local weekly planning' });
 
       setWeekSummary(result.weekSummary || '');
       setGeneratedTasks((result.tasks || []).map((t: any) => ({ ...t, selected: true })));

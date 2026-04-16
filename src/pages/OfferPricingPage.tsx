@@ -19,7 +19,7 @@ import {
   DollarSign, BarChart3, Lightbulb, ChevronDown, ChevronUp, Save, FileText, Loader2,
   FolderKanban, ArrowRight, Settings2
 } from 'lucide-react';
-import { buildFallbackOfferAnalysis, classifyEdgeRuntimeError } from '@/lib/edgeStability';
+import { buildFallbackOfferAnalysis, classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
 
 type CostLine = {
   id: string;
@@ -248,15 +248,11 @@ export default function OfferPricingPage() {
         department: r.department, projectType: r.project_type, geography: r.geography,
       })) : null;
 
-      const { data, error } = await supabase.functions.invoke('analyze-offer', {
-        body: {
-          costBreakdown,
-          offerContext: { title: offerTitle, customer: customerName, project: projectDesc, offerNumber },
-          companyRates: ratesContext,
-        },
-      });
-
-      if (error) throw error;
+      const data = await invokeEdgeWithRetry<any>('analyze-offer', {
+        costBreakdown,
+        offerContext: { title: offerTitle, customer: customerName, project: projectDesc, offerNumber },
+        companyRates: ratesContext,
+      }, { fallbackLabel: 'local offer analysis' });
       if (data?.analysis) {
         setAnalysis(data.analysis);
         setActiveTab('analysis');

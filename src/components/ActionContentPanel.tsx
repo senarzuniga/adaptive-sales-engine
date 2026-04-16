@@ -16,7 +16,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { getActivePipelineOpportunities } from '@/lib/salesData';
-import { buildFallbackActionContent, buildFallbackActionResultAnalysis, classifyEdgeRuntimeError } from '@/lib/edgeStability';
+import { buildFallbackActionContent, buildFallbackActionResultAnalysis, classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
 
 const PILLAR_LABELS: Record<TaskPillar, string> = {
   general: 'General', p0: '360º Analysis', p1: 'Sales Architecture', p2: 'KAM',
@@ -75,17 +75,12 @@ export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack
         contextData.strategyTargets = `Total target: €${totalTarget.toLocaleString()}`;
       }
 
-      const { data: result, error } = await supabase.functions.invoke('generate-action-content', {
-        body: {
-          type: 'generate',
-          task: { title: task.title, description: task.description, category: task.category, pillar: task.pillar, priority: task.priority, assignee: task.assignee },
-          companyProfile: data.companyProfile,
-          contextData,
-        },
-      });
-
-      if (error) throw error;
-      if (result?.error) throw new Error(result.error);
+      const result = await invokeEdgeWithRetry<any>('generate-action-content', {
+        type: 'generate',
+        task: { title: task.title, description: task.description, category: task.category, pillar: task.pillar, priority: task.priority, assignee: task.assignee },
+        companyProfile: data.companyProfile,
+        contextData,
+      }, { fallbackLabel: 'local action content' });
 
       const generated: ActionContent = {
         goal: result.goal || content.goal,
@@ -116,16 +111,11 @@ export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack
     if (!resultText.trim()) return;
     setIsAnalyzing(true);
     try {
-      const { data: result, error } = await supabase.functions.invoke('generate-action-content', {
-        body: {
-          type: 'analyze',
-          task: { ...task, resultText, actionContent: content },
-          companyProfile: data.companyProfile,
-        },
-      });
-
-      if (error) throw error;
-      if (result?.error) throw new Error(result.error);
+      const result = await invokeEdgeWithRetry<any>('generate-action-content', {
+        type: 'analyze',
+        task: { ...task, resultText, actionContent: content },
+        companyProfile: data.companyProfile,
+      }, { fallbackLabel: 'local result analysis' });
 
       const analysisResult: ActionResult = {
         outcome: resultText,

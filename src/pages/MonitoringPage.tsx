@@ -22,7 +22,7 @@ import { toast } from '@/hooks/use-toast';
 import { ActionContentPanel } from '@/components/ActionContentPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { buildFallbackActionPool } from '@/lib/aiSalesFallback';
-import { classifyEdgeRuntimeError } from '@/lib/edgeStability';
+import { classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
 
 const PILLAR_LABELS: Record<TaskPillar, string> = {
   general: 'General', p0: '360º Analysis', p1: 'Sales Architecture', p2: 'KAM',
@@ -110,17 +110,15 @@ const MonitoringPage = () => {
         teamMembers = contacts || [];
       }
 
-      const { data: result, error } = await supabase.functions.invoke('generate-action-pool', {
-        body: {
-          companyProfile: data.companyProfile,
-          opportunities: data.opportunities,
-          orders: data.orders,
-          strategy: data.strategy,
-          tasks: data.tasks.map(t => ({ title: t.title, status: t.status, pillar: t.pillar })),
-          teamMembers,
-        },
-      });
-      if (error) throw error;
+      const result = await invokeEdgeWithRetry<any>('generate-action-pool', {
+        companyProfile: data.companyProfile,
+        opportunities: data.opportunities,
+        orders: data.orders,
+        strategy: data.strategy,
+        tasks: data.tasks.map(t => ({ title: t.title, status: t.status, pillar: t.pillar })),
+        teamMembers,
+      }, { fallbackLabel: 'local action pool' });
+
       if (result.error) throw new Error(result.error);
       setPoolPreview(result.actions || []);
       setPoolSummary(result.summary || null);

@@ -1,16 +1,38 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildFallbackActionContent,
   buildFallbackExecutiveInsights,
   classifyEdgeRuntimeError,
+  invokeEdgeWithRetry,
 } from '@/lib/edgeStability';
 
 describe('edge stability fallbacks', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('converts non-2xx edge errors into a friendly fallback message', () => {
     const details = classifyEdgeRuntimeError({ message: 'Edge Function returned a non-2xx status code', context: { status: 503 } }, 'local recovery');
 
     expect(details.retryable).toBe(true);
     expect(details.description.toLowerCase()).toContain('local recovery');
+  });
+
+  it('retries a temporary AI outage before succeeding', async () => {
+    const invokeSpy = vi.fn()
+      .mockResolvedValueOnce({
+        data: null,
+        error: { message: 'Edge Function returned a non-2xx status code', context: { status: 503 } },
+      })
+      .mockResolvedValueOnce({
+        data: { ok: true },
+        error: null,
+      });
+
+    const result = await invokeEdgeWithRetry<{ ok: boolean }>('analyze-360', { sample: true }, { retries: 1, baseDelayMs: 0, invoke: invokeSpy });
+
+    expect(result.ok).toBe(true);
+    expect(invokeSpy).toHaveBeenCalledTimes(2);
   });
 
   it('builds local action content when the AI edge function is unavailable', () => {

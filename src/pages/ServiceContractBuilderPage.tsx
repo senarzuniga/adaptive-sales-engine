@@ -20,7 +20,7 @@ import {
   BarChart3, ArrowLeft, Wrench, TrendingUp, AlertTriangle, Settings,
   Calculator, Zap, Target, Box, CheckCircle, Clock, Users
 } from 'lucide-react';
-import { buildFallbackServiceContractAnalysis, classifyEdgeRuntimeError } from '@/lib/edgeStability';
+import { buildFallbackServiceContractAnalysis, classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
@@ -193,18 +193,15 @@ export default function ServiceContractBuilderPage() {
   const runAnalysis = async () => {
     setAnalyzing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('after-sales-intelligence', {
-        body: {
-          assets, contracts,
-          spareParts: spareParts.filter(sp => bundledParts.some(bp => bp.part_id === sp.id)),
-          interventions: [],
-          analysisType: 'contract_analysis',
-          contractDef,
-          bundledParts,
-          pricing: { baseFee, marginTarget, includedPartsCost, suggestedAnnualFee, tierComparison },
-        },
-      });
-      if (error) throw error;
+      const data = await invokeEdgeWithRetry<any>('after-sales-intelligence', {
+        assets, contracts,
+        spareParts: spareParts.filter(sp => bundledParts.some(bp => bp.part_id === sp.id)),
+        interventions: [],
+        analysisType: 'contract_analysis',
+        contractDef,
+        bundledParts,
+        pricing: { baseFee, marginTarget, includedPartsCost, suggestedAnnualFee, tierComparison },
+      }, { fallbackLabel: 'local contract analysis' });
       if (data?.analysis) {
         setAnalysis(data.analysis);
         setActiveTab('analysis');

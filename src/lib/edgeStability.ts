@@ -1,7 +1,10 @@
+import { supabase } from '@/integrations/supabase/client';
 import { buildPipelineMetrics, getProbabilityGuidance } from '@/lib/salesData';
 
 const fmt = (value: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value || 0);
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const day = (offset: number) => new Date(Date.now() + offset * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
@@ -13,6 +16,13 @@ export interface EdgeRuntimeErrorDetails {
   title: string;
   description: string;
   kind: 'temporary' | 'auth' | 'config' | 'unknown';
+}
+
+export interface InvokeEdgeWithRetryOptions {
+  retries?: number;
+  baseDelayMs?: number;
+  fallbackLabel?: string;
+  invoke?: (functionName: string, options: { body: unknown }) => Promise<{ data: any; error: any }>;
 }
 
 export function classifyEdgeRuntimeError(error: any, fallbackLabel = 'local fallback'): EdgeRuntimeErrorDetails {
@@ -41,8 +51,8 @@ export function classifyEdgeRuntimeError(error: any, fallbackLabel = 'local fall
       retryable: true,
       useFallback: true,
       kind: 'temporary',
-      title: 'AI service temporarily unavailable',
-      description: `The app switched to ${fallbackLabel} so you can keep working.`,
+      title: 'Remote AI delayed',
+      description: `The app retried automatically and switched to ${fallbackLabel} so you can keep working.`,
     };
   }
 
@@ -90,6 +100,43 @@ export function classifyEdgeRuntimeError(error: any, fallbackLabel = 'local fall
     title: 'AI service issue',
     description: `The remote AI response could not be completed, so the app used ${fallbackLabel}.`,
   };
+}
+
+export async function invokeEdgeWithRetry<T = any>(functionName: string, body: unknown, options: InvokeEdgeWithRetryOptions = {}): Promise<T> {
+  const retries = options.retries ?? 2;
+  const baseDelayMs = options.baseDelayMs ?? 700;
+  const invoke = options.invoke ?? ((name: string, payload: { body: unknown }) => supabase.functions.invoke(name, payload));
+
+  let lastError: any = null;
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      const { data, error } = await invoke(functionName, { body });
+
+      if (!error && !(data as any)?.error) {
+        return data as T;
+      }
+
+      const candidateError = error || new Error((data as any)?.error || 'Unknown remote AI error');
+      const details = classifyEdgeRuntimeError(candidateError, options.fallbackLabel);
+      lastError = candidateError;
+
+      if (!details.retryable || attempt === retries) {
+        throw candidateError;
+      }
+    } catch (error: any) {
+      const details = classifyEdgeRuntimeError(error, options.fallbackLabel);
+      lastError = error;
+
+      if (!details.retryable || attempt === retries) {
+        throw error;
+      }
+    }
+
+    await sleep(baseDelayMs * (attempt + 1));
+  }
+
+  throw lastError || new Error('Unknown remote AI error');
 }
 
 export function buildFallbackActionContent(input: { task?: any; companyProfile?: any; contextData?: any }) {

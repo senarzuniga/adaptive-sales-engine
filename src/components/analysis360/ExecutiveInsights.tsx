@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { groupBy, fmt } from './AnalysisUtils';
 import { buildPipelineMetrics, getActivePipelineOpportunities } from '@/lib/salesData';
-import { buildFallbackExecutiveInsights, classifyEdgeRuntimeError } from '@/lib/edgeStability';
+import { buildFallbackExecutiveInsights, classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
 import {
   Brain, Sparkles, AlertTriangle, TrendingUp, Shield, Lightbulb,
   Target, Zap, Clock, ArrowRight, ChevronDown, ChevronUp, Loader2
@@ -97,61 +97,58 @@ export const ExecutiveInsights = ({ orders, opportunities, products, strategy, c
 
       const totalPlanned = strategy.reduce((s, r) => s + r.estRevenue, 0);
 
-      const { data, error } = await supabase.functions.invoke('analyze-360', {
-        body: {
-          companyProfile: {
-            name: company.company_name,
-            industry: company.industry,
-            sub_sector: company.sub_sector,
-            description: company.business_description,
-            strategic_goals: company.strategic_goals,
-            objectives: company.objectives,
-            competitors: company.main_competitors,
-            segments: company.main_customer_segments,
-            regions: company.operating_regions,
-            main_products: company.main_products,
-            annual_revenue: company.annual_revenue,
-            sales_channels: company.sales_channels,
-            current_challenges: company.current_challenges,
-            market_context: company.market_context,
-            strategy_context: company.strategy_context,
-            additional_notes: company.additional_notes,
-            employee_count: company.employee_count,
-            headquarters: company.headquarters,
-            sales_team_size: company.sales_team_size,
-            kam_count: company.kam_count,
-          },
-          ordersSummary: {
-            totalRevenue, totalMargin,
-            marginPct: totalRevenue > 0 ? (totalMargin / totalRevenue * 100) : 0,
-            totalOrders: orders.length,
-            uniqueCustomers: new Set(orders.map(o => o.customerName)).size,
-            byYear, byProduct: byProduct.slice(0, 10),
-            topCustomers: byCustomer.slice(0, 10),
-            byRegion, byKam: byKam.slice(0, 10),
-            top3CustomerShare: byCustomer.slice(0, 3).reduce((s, c) => s + c.share, 0),
-          },
-          strategySummary: {
-            totalPlanned,
-            achievement: totalPlanned > 0 ? (totalRevenue / totalPlanned * 100) : 0,
-            gap: totalRevenue - totalPlanned,
-            hasStrategy: strategy.length > 0,
-          },
-          opportunitiesSummary: {
-            totalPipeline,
-            count: openOpportunities.length,
-            avgProbability: avgProb,
-            weightedPipeline: pipelineMetrics.weightedOpenRevenue,
-          },
-          productsSummary: {
-            count: products.length,
-            families: byProduct.length,
-            products: products.map(p => ({ name: p.name, type: p.type, avgValue: p.averageValue })),
-          },
+      const data = await invokeEdgeWithRetry<any>('analyze-360', {
+        companyProfile: {
+          name: company.company_name,
+          industry: company.industry,
+          sub_sector: company.sub_sector,
+          description: company.business_description,
+          strategic_goals: company.strategic_goals,
+          objectives: company.objectives,
+          competitors: company.main_competitors,
+          segments: company.main_customer_segments,
+          regions: company.operating_regions,
+          main_products: company.main_products,
+          annual_revenue: company.annual_revenue,
+          sales_channels: company.sales_channels,
+          current_challenges: company.current_challenges,
+          market_context: company.market_context,
+          strategy_context: company.strategy_context,
+          additional_notes: company.additional_notes,
+          employee_count: company.employee_count,
+          headquarters: company.headquarters,
+          sales_team_size: company.sales_team_size,
+          kam_count: company.kam_count,
         },
-      });
+        ordersSummary: {
+          totalRevenue, totalMargin,
+          marginPct: totalRevenue > 0 ? (totalMargin / totalRevenue * 100) : 0,
+          totalOrders: orders.length,
+          uniqueCustomers: new Set(orders.map(o => o.customerName)).size,
+          byYear, byProduct: byProduct.slice(0, 10),
+          topCustomers: byCustomer.slice(0, 10),
+          byRegion, byKam: byKam.slice(0, 10),
+          top3CustomerShare: byCustomer.slice(0, 3).reduce((s, c) => s + c.share, 0),
+        },
+        strategySummary: {
+          totalPlanned,
+          achievement: totalPlanned > 0 ? (totalRevenue / totalPlanned * 100) : 0,
+          gap: totalRevenue - totalPlanned,
+          hasStrategy: strategy.length > 0,
+        },
+        opportunitiesSummary: {
+          totalPipeline,
+          count: openOpportunities.length,
+          avgProbability: avgProb,
+          weightedPipeline: pipelineMetrics.weightedOpenRevenue,
+        },
+        productsSummary: {
+          count: products.length,
+          families: byProduct.length,
+          products: products.map(p => ({ name: p.name, type: p.type, avgValue: p.averageValue })),
+        },
+      }, { fallbackLabel: 'local executive insights' });
 
-      if (error) throw error;
       if (data?.insights) {
         setInsights(data.insights);
         toast({ title: "Executive insights generated", description: "AI analysis complete" });
