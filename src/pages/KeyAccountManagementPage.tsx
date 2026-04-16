@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Building2, Network, Target, TrendingUp, Users, ShieldCheck, Lightbulb } from 'lucide-react';
 import { fmt } from '@/components/analysis360/AnalysisUtils';
-import { isNeglectedStatus, isOpenOpportunityStatus } from '@/lib/salesData';
+import { isNeglectedStatus, isOpportunityCoveredByOrder, isOpenOpportunityStatus } from '@/lib/salesData';
 
 type AccountRecord = {
   customer: string;
@@ -60,7 +60,7 @@ const KeyAccountManagementPage = () => {
     opportunities.forEach((opp) => {
       const name = opp.customerName || 'Unknown account';
       const record = ensure(name);
-      if (isOpenOpportunityStatus(opp.status)) {
+      if (isOpenOpportunityStatus(opp.status) && !isOpportunityCoveredByOrder(opp, orders)) {
         record.pipeline += opp.estRevenue || 0;
         record.weightedPipeline += (opp.estRevenue || 0) * ((opp.contractProb || 0) / 100);
       }

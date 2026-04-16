@@ -33,6 +33,38 @@ describe('sales data normalization', () => {
     expect(metrics.weightedPipeline).toBe(530000);
   });
 
+  it('prefers confirmed order revenue when the matching opportunity estimate differs', () => {
+    const metrics = buildPipelineMetrics({
+      orders: [
+        { oppNumber: 'ASE-77', customerName: 'Ingecart', productFamily: 'Line Upgrade', region: 'Spain', sellingPrice: 98000 },
+      ],
+      opportunities: [
+        { oppNumber: 'ASE-77', customerName: 'Ingecart', productFamily: 'Line Upgrade', region: 'Spain', estRevenue: 120000, status: 'Order received', contractProb: 100 },
+        { oppNumber: 'ASE-88', customerName: 'Nova', productFamily: 'Retrofit', region: 'France', estRevenue: 50000, status: 'Open', contractProb: 60 },
+      ],
+    });
+
+    expect(metrics.soldRevenue).toBe(98000);
+    expect(metrics.openPipeline).toBe(50000);
+    expect(metrics.weightedOpenRevenue).toBe(30000);
+  });
+
+  it('removes already-booked deals from the pipeline even if the opportunity remains marked open', () => {
+    const metrics = buildPipelineMetrics({
+      orders: [
+        { oppNumber: 'OPP-9', customerName: 'Helios', productFamily: 'Service Pack', region: 'Germany', sellingPrice: 150000 },
+      ],
+      opportunities: [
+        { oppNumber: 'OPP-9', customerName: 'Helios', productFamily: 'Service Pack', region: 'Germany', estRevenue: 150000, status: 'Open', contractProb: 95 },
+        { oppNumber: 'OPP-10', customerName: 'Orion', productFamily: 'Retrofit', region: 'Italy', estRevenue: 40000, status: 'In progress', contractProb: 50 },
+      ],
+    });
+
+    expect(metrics.soldRevenue).toBe(150000);
+    expect(metrics.openPipeline).toBe(40000);
+    expect(metrics.weightedOpenRevenue).toBe(20000);
+  });
+
   it('treats probabilities below 75% as weak and 75% or more as confidence follow-up deals', () => {
     const weak = getProbabilityGuidance(74);
     const strong = getProbabilityGuidance(75);

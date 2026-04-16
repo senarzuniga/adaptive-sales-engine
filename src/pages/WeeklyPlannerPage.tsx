@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { isOpenOpportunityStatus } from '@/lib/salesData';
+import { getActivePipelineOpportunities } from '@/lib/salesData';
 import { buildFallbackActionContent, buildFallbackWeeklyPlan, classifyEdgeRuntimeError } from '@/lib/edgeStability';
 
 const PILLAR_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
@@ -74,13 +74,14 @@ const WeeklyPlannerPage = () => {
     const totalActual = data.orders.reduce((s, o) => s + o.sellingPrice, 0);
     const overallAchievement = totalTarget > 0 ? (totalActual / totalTarget) * 100 : 0;
     const totalGap = totalTarget - totalActual;
+    const activeOpportunities = getActivePipelineOpportunities(data.opportunities, data.orders);
 
     // Gaps by product family
     const productFamilies = [...new Set(data.strategy.map(s => s.productFamily).filter(Boolean))];
     const productGaps: BudgetGap[] = productFamilies.map(pf => {
       const target = data.strategy.filter(s => s.productFamily === pf).reduce((s, st) => s + st.estRevenue, 0);
       const actual = data.orders.filter(o => o.productFamily === pf).reduce((s, o) => s + o.sellingPrice, 0);
-      const pipeline = data.opportunities.filter(o => o.productFamily === pf && isOpenOpportunityStatus(o.status)).reduce((s, o) => s + o.estRevenue * (o.contractProb / 100), 0);
+      const pipeline = activeOpportunities.filter(o => o.productFamily === pf).reduce((s, o) => s + o.estRevenue * (o.contractProb / 100), 0);
       return { segment: pf, segmentType: 'product_family' as const, targetRevenue: target, actualRevenue: actual, gapAmount: target - actual, gapPct: target > 0 ? ((target - actual) / target) * 100 : 0, pipelineCoverage: pipeline };
     });
 
@@ -89,7 +90,7 @@ const WeeklyPlannerPage = () => {
     const regionGaps: BudgetGap[] = regions.map(r => {
       const target = data.strategy.filter(s => s.region === r).reduce((s, st) => s + st.estRevenue, 0);
       const actual = data.orders.filter(o => o.region === r).reduce((s, o) => s + o.sellingPrice, 0);
-      const pipeline = data.opportunities.filter(o => o.region === r && isOpenOpportunityStatus(o.status)).reduce((s, o) => s + o.estRevenue * (o.contractProb / 100), 0);
+      const pipeline = activeOpportunities.filter(o => o.region === r).reduce((s, o) => s + o.estRevenue * (o.contractProb / 100), 0);
       return { segment: r, segmentType: 'region' as const, targetRevenue: target, actualRevenue: actual, gapAmount: target - actual, gapPct: target > 0 ? ((target - actual) / target) * 100 : 0, pipelineCoverage: pipeline };
     });
 
@@ -98,7 +99,7 @@ const WeeklyPlannerPage = () => {
     const kamGaps: BudgetGap[] = kams.map(k => {
       const target = data.strategy.filter(s => s.kam === k).reduce((s, st) => s + st.estRevenue, 0);
       const actual = data.orders.filter(o => o.kam === k).reduce((s, o) => s + o.sellingPrice, 0);
-      const pipeline = data.opportunities.filter(o => o.kam === k && isOpenOpportunityStatus(o.status)).reduce((s, o) => s + o.estRevenue * (o.contractProb / 100), 0);
+      const pipeline = activeOpportunities.filter(o => o.kam === k).reduce((s, o) => s + o.estRevenue * (o.contractProb / 100), 0);
       return { segment: k, segmentType: 'kam' as const, targetRevenue: target, actualRevenue: actual, gapAmount: target - actual, gapPct: target > 0 ? ((target - actual) / target) * 100 : 0, pipelineCoverage: pipeline };
     });
 
@@ -126,7 +127,7 @@ TOP GAPS BY KAM: ${kamGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmou
 
     const oppData = data.opportunities.length > 0
       ? (() => {
-          const open = data.opportunities.filter(o => isOpenOpportunityStatus(o.status));
+          const open = getActivePipelineOpportunities(data.opportunities, data.orders);
           const totalPipeline = open.reduce((s, o) => s + o.estRevenue, 0);
           const highProb = open.filter(o => o.contractProb >= 75);
           return `Pipeline: €${totalPipeline.toLocaleString()}, ${open.length} open opps, ${highProb.length} strong-prob (≥75%). Stages: ${open.map(o => `${o.customerName}/${o.productFamily}/${o.status}`).slice(0, 10).join('; ')}`;

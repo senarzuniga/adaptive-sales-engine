@@ -12,7 +12,7 @@ import { Users, Globe, MapPin, Building2, AlertTriangle, CheckCircle2, TrendingU
 import { supabase } from '@/integrations/supabase/client';
 import { buildSalesArchitectureFallbackRecommendation } from '@/lib/salesArchitecture';
 import { buildSalesScenarioRecommendation, buildScenarioSynthesis } from '@/lib/salesScenario';
-import { dedupeOpportunities, dedupeOrders, isNeglectedStatus, isOpenOpportunityStatus, normalizeOpportunityStatus } from '@/lib/salesData';
+import { dedupeOpportunities, dedupeOrders, getActivePipelineOpportunities, isNeglectedStatus, isOpportunityCoveredByOrder, normalizeOpportunityStatus } from '@/lib/salesData';
 
 const COLORS = ['hsl(var(--primary))', 'hsl(35,90%,55%)', 'hsl(150,60%,45%)', 'hsl(280,60%,55%)', 'hsl(0,70%,55%)', 'hsl(200,70%,50%)'];
 
@@ -30,7 +30,8 @@ const SalesArchitecturePage = () => {
   const orders = useMemo(() => dedupeOrders(data.orders), [data.orders]);
   const strategy = data.strategy;
   const tasks = data.tasks;
-  const totalOpenPipelineValue = useMemo(() => opportunities.filter(o => isOpenOpportunityStatus(o.status)).reduce((s, o) => s + o.estRevenue, 0), [opportunities]);
+  const activePipelineOpportunities = useMemo(() => getActivePipelineOpportunities(opportunities, orders), [opportunities, orders]);
+  const totalOpenPipelineValue = useMemo(() => activePipelineOpportunities.reduce((s, o) => s + o.estRevenue, 0), [activePipelineOpportunities]);
   const totalNeglectedValue = useMemo(() => opportunities.filter(o => isNeglectedStatus(o.status)).reduce((s, o) => s + o.estRevenue, 0), [opportunities]);
   const totalNeglectedCount = useMemo(() => opportunities.filter(o => isNeglectedStatus(o.status)).length, [opportunities]);
 
@@ -66,18 +67,20 @@ const SalesArchitecturePage = () => {
       }
       return regionMap[region];
     };
-    const useWonOpportunitiesForSold = orders.length === 0;
 
     opportunities.forEach(o => {
       const region = o.region || 'Unknown';
       const bucket = ensureRegion(region);
       const status = normalizeOpportunityStatus(o.status);
+      const alreadyBooked = isOpportunityCoveredByOrder(o, orders);
 
       bucket.customers.add(o.customerName);
       if (o.kam) bucket.kams.add(o.kam);
 
+      if (alreadyBooked) return;
+
       if (status === 'won') {
-        if (useWonOpportunitiesForSold) bucket.sold += o.estRevenue;
+        bucket.sold += o.estRevenue;
         return;
       }
 
@@ -126,18 +129,20 @@ const SalesArchitecturePage = () => {
       }
       return kamMap[kam];
     };
-    const useWonOpportunitiesForSold = orders.length === 0;
 
     opportunities.forEach(o => {
       const kam = o.kam || 'Unassigned';
       const bucket = ensureKam(kam);
       const status = normalizeOpportunityStatus(o.status);
+      const alreadyBooked = isOpportunityCoveredByOrder(o, orders);
 
       if (o.region) bucket.regions.add(o.region);
       bucket.customers.add(o.customerName);
 
+      if (alreadyBooked) return;
+
       if (status === 'won') {
-        if (useWonOpportunitiesForSold) bucket.sold += o.estRevenue;
+        bucket.sold += o.estRevenue;
         return;
       }
 

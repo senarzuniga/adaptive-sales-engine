@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { isOpenOpportunityStatus } from '@/lib/salesData';
+import { getActivePipelineOpportunities } from '@/lib/salesData';
 import { buildFallbackActionContent, buildFallbackActionResultAnalysis, classifyEdgeRuntimeError } from '@/lib/edgeStability';
 
 const PILLAR_LABELS: Record<TaskPillar, string> = {
@@ -67,7 +67,7 @@ export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack
         contextData.topProducts = Object.entries(productRevenue).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([n, v]) => `${n} (€${v.toLocaleString()})`).join(', ');
       }
       if (data.opportunities.length > 0) {
-        const totalPipeline = data.opportunities.filter(o => isOpenOpportunityStatus(o.status)).reduce((s, o) => s + o.estRevenue, 0);
+        const totalPipeline = getActivePipelineOpportunities(data.opportunities, data.orders).reduce((s, o) => s + o.estRevenue, 0);
         contextData.pipelineValue = `€${totalPipeline.toLocaleString()}`;
       }
       if (data.strategy.length > 0) {

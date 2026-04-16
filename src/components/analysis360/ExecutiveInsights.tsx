@@ -8,7 +8,7 @@ import { OrderRecord, OpportunityRecord, ProductRecord, StrategyRecord, CompanyP
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { groupBy, fmt } from './AnalysisUtils';
-import { buildPipelineMetrics, isOpenOpportunityStatus } from '@/lib/salesData';
+import { buildPipelineMetrics, getActivePipelineOpportunities } from '@/lib/salesData';
 import { buildFallbackExecutiveInsights, classifyEdgeRuntimeError } from '@/lib/edgeStability';
 import {
   Brain, Sparkles, AlertTriangle, TrendingUp, Shield, Lightbulb,
@@ -89,7 +89,7 @@ export const ExecutiveInsights = ({ orders, opportunities, products, strategy, c
       })).sort((a, b) => b.revenue - a.revenue);
 
       const pipelineMetrics = buildPipelineMetrics({ opportunities, orders });
-      const openOpportunities = opportunities.filter((opportunity) => isOpenOpportunityStatus(opportunity.status));
+      const openOpportunities = getActivePipelineOpportunities(opportunities, orders);
       const totalPipeline = pipelineMetrics.openPipeline;
       const avgProb = openOpportunities.length > 0
         ? openOpportunities.reduce((sum, opportunity) => sum + (opportunity.contractProb || 0), 0) / openOpportunities.length

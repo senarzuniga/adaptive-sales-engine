@@ -2,6 +2,55 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { buildFallbackExtraction } from "../_shared/documentFallback.ts";
 
+const cleanText = (value: unknown) => String(value ?? "").trim();
+const parseFlexibleNumber = (value: unknown): number => {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+
+  let raw = cleanText(value);
+  if (!raw) return 0;
+
+  const negative = (raw.includes("(") && raw.includes(")")) || raw.startsWith("-");
+  raw = raw
+    .replace(/[()]/g, "")
+    .replace(/^[+-]/, "")
+    .replace(/\s+/g, "")
+    .replace(/[€$£¥]/g, "")
+    .replace(/%/g, "");
+
+  const commaCount = (raw.match(/,/g) || []).length;
+  const dotCount = (raw.match(/\./g) || []).length;
+
+  if (commaCount > 0 && dotCount > 0) {
+    if (raw.lastIndexOf(",") > raw.lastIndexOf(".")) raw = raw.replace(/\./g, "").replace(",", ".");
+    else raw = raw.replace(/,/g, "");
+  } else if (commaCount > 1) {
+    raw = raw.replace(/,/g, "");
+  } else if (dotCount > 1) {
+    raw = raw.replace(/\./g, "");
+  } else if (commaCount === 1) {
+    const [left, right] = raw.split(",");
+    raw = left !== "0" && right?.length === 3 ? `${left}${right}` : `${left}.${right ?? ""}`;
+  } else if (dotCount === 1) {
+    const [left, right] = raw.split(".");
+    if (left !== "0" && right?.length === 3) raw = `${left}${right}`;
+  }
+
+  const parsed = Number.parseFloat(raw);
+  if (!Number.isFinite(parsed)) return 0;
+  return negative ? -parsed : parsed;
+};
+
+const normalizeOpportunityStatus = (value: unknown): "won" | "lost" | "neglected" | "open" => {
+  const status = cleanText(value).toLowerCase();
+  if (!status) return "open";
+
+  if (["won", "ganado", "sold", "vendido", "closed won", "closedwon", "booked", "order received", "pedido recibido", "po received", "awarded", "facturado", "invoiced", "confirmed sale", "confirmed sold"].some((token) => status.includes(token))) return "won";
+  if (["lost", "perdido", "closed lost", "closedlost", "cancel", "cancelled", "canceled", "rejected", "declined", "no bid", "not won", "unsuccessful"].some((token) => status.includes(token))) return "lost";
+  if (["desatendido", "desatendida", "neglected", "unattended", "stalled", "abandoned", "sin seguimiento", "sin atencion", "sin atención", "no follow", "dormant"].some((token) => status.includes(token))) return "neglected";
+
+  return "open";
+};
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -153,21 +202,21 @@ serve(async (req) => {
             clean.region = r.region || "";
             clean.country = r.country || "";
             clean.segment = r.segment || "";
-            clean.selling_price = Number(r.selling_price || r.sellingPrice || 0) || 0;
-            clean.margin = Number(r.margin || 0) || 0;
+            clean.selling_price = parseFlexibleNumber(r.selling_price || r.sellingPrice || 0);
+            clean.margin = parseFlexibleNumber(r.margin || 0);
             clean.kam = r.kam || "";
             clean.purchasing_year = r.purchasing_year || r.purchasingYear || "";
             clean.purchasing_quarter = r.purchasing_quarter || r.purchasingQuarter || "";
             clean.scope = r.scope || "";
           } else if (table === "opportunities") {
             clean.opp_number = r.opp_number || r.oppNumber || "";
-            clean.status = r.status || "open";
+            clean.status = normalizeOpportunityStatus(r.status || "open");
             clean.customer_name = r.customer_name || r.customerName || "";
             clean.product_family = r.product_family || r.productFamily || "";
             clean.region = r.region || "";
-            clean.est_revenue = Number(r.est_revenue || r.estRevenue || 0) || 0;
-            clean.contract_prob = Number(r.contract_prob || r.contractProb || 0) || 0;
-            clean.margin = Number(r.margin || 0) || 0;
+            clean.est_revenue = parseFlexibleNumber(r.est_revenue || r.estRevenue || 0);
+            clean.contract_prob = parseFlexibleNumber(r.contract_prob || r.contractProb || 0);
+            clean.margin = parseFlexibleNumber(r.margin || 0);
             clean.kam = r.kam || "";
             clean.est_purchasing_year = r.est_purchasing_year || "";
           } else if (table === "strategy") {
@@ -175,12 +224,12 @@ serve(async (req) => {
             clean.number_of_segment = r.number_of_segment || r.numberOfSegment || "";
             clean.region = r.region || "";
             clean.est_purchasing_quarter = r.est_purchasing_quarter || "";
-            clean.est_revenue = Number(r.est_revenue || r.estRevenue || 0) || 0;
-            clean.margin = Number(r.margin || 0) || 0;
+            clean.est_revenue = parseFlexibleNumber(r.est_revenue || r.estRevenue || 0);
+            clean.margin = parseFlexibleNumber(r.margin || 0);
             clean.kam = r.kam || "";
           } else if (table === "products") {
             clean.name = r.name || "";
-            clean.average_value = Number(r.average_value || r.averageValue || 0) || 0;
+            clean.average_value = parseFlexibleNumber(r.average_value || r.averageValue || 0);
             clean.type = r.type || "";
             clean.comments = r.comments || "";
           } else if (table === "company_contacts") {
@@ -249,7 +298,7 @@ YOUR MISSION:
 
 TARGET DATABASE TABLE: ${targetTable}
 If the target table is "orders", structure extracted sales data with fields: po_date, customer_name, product_family, region, country, segment, selling_price, margin, kam, purchasing_year, purchasing_quarter.
-If the target table is "opportunities", structure with: opp_number, status, customer_name, product_family, region, est_revenue, contract_prob, margin, kam, est_purchasing_year.
+If the target table is "opportunities", structure with: opp_number, status, customer_name, product_family, region, est_revenue, contract_prob, margin, kam, est_purchasing_year. Normalize status strictly to one of: won, lost, neglected, open.
 If the target table is "strategy", structure with: product_family, number_of_segment, region, est_purchasing_quarter, est_revenue, margin, kam.
 If the target table is "products", structure with: name, average_value, type (innovation/commodity/decline), comments.
 If the target table is "company_contacts", structure with: name, email, role, department, notes.

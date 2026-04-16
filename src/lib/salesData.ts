@@ -22,6 +22,32 @@ type OrderLike = {
 const cleanText = (value: unknown) => String(value ?? '').trim();
 export const WEAK_PROBABILITY_THRESHOLD = 75;
 
+const normalizeIdentityToken = (value: unknown) => cleanText(value).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+const buildAccountReference = (record: OpportunityLike | OrderLike) => {
+  const customer = normalizeIdentityToken(record.customerName);
+  const productFamily = normalizeIdentityToken(record.productFamily);
+  const region = normalizeIdentityToken(record.region);
+  const parts = [customer, productFamily, region].filter(Boolean);
+  return parts.length >= 2 ? `acct:${parts.join('|')}` : '';
+};
+
+const buildPrimaryReference = (record: OpportunityLike | OrderLike) => {
+  const oppNumber = normalizeIdentityToken(record.oppNumber);
+  if (oppNumber) return `opp:${oppNumber}`;
+  return buildAccountReference(record);
+};
+
+const isComparableRevenue = (left: unknown, right: unknown) => {
+  const leftValue = parseFlexibleNumber(left);
+  const rightValue = parseFlexibleNumber(right);
+
+  if (leftValue <= 0 || rightValue <= 0) return false;
+
+  const delta = Math.abs(leftValue - rightValue);
+  return delta <= Math.max(5_000, Math.max(leftValue, rightValue) * 0.35);
+};
+
 export function parseFlexibleNumber(value: unknown): number {
   if (typeof value === 'number') {
     return Number.isFinite(value) ? value : 0;
@@ -71,19 +97,19 @@ export function normalizeOpportunityStatus(value: unknown): 'won' | 'lost' | 'ne
   if (!status) return 'open';
 
   if ([
-    'won', 'ganado', 'sold', 'vendido', 'closed won', 'closedwon', 'booked', 'order received', 'awarded',
+    'won', 'ganado', 'sold', 'vendido', 'closed won', 'closedwon', 'booked', 'order received', 'pedido recibido', 'po received', 'awarded', 'facturado', 'invoiced', 'confirmed sale', 'confirmed sold',
   ].some(token => status.includes(token))) {
     return 'won';
   }
 
   if ([
-    'lost', 'perdido', 'closed lost', 'closedlost', 'cancel', 'cancelled', 'canceled', 'rejected', 'declined',
+    'lost', 'perdido', 'closed lost', 'closedlost', 'cancel', 'cancelled', 'canceled', 'rejected', 'declined', 'no bid', 'not won', 'unsuccessful',
   ].some(token => status.includes(token))) {
     return 'lost';
   }
 
   if ([
-    'desatendido', 'neglected', 'unattended', 'stalled', 'abandoned', 'sin seguimiento', 'no follow', 'dormant',
+    'desatendido', 'desatendida', 'neglected', 'unattended', 'stalled', 'abandoned', 'sin seguimiento', 'sin atencion', 'sin atención', 'no follow', 'dormant',
   ].some(token => status.includes(token))) {
     return 'neglected';
   }
@@ -114,44 +140,44 @@ export function getProbabilityGuidance(value: unknown) {
   };
 }
 
-const buildOpportunityKey = (record: OpportunityLike) => [
-  cleanText(record.oppNumber) || cleanText(record.customerName),
-  cleanText(record.customerName),
-  cleanText(record.productFamily),
-  cleanText(record.region),
-  Math.round(parseFlexibleNumber(record.estRevenue ?? 0)),
-].join('|').toLowerCase();
+export function isOpportunityCoveredByOrder(opportunity: OpportunityLike, orders: OrderLike[] = []) {
+  const opportunityPrimaryRef = buildPrimaryReference(opportunity);
+  const opportunityAccountRef = buildAccountReference(opportunity);
 
-const buildOrderKey = (record: OrderLike) => [
-  cleanText(record.oppNumber) || cleanText(record.customerName),
-  cleanText(record.customerName),
-  cleanText(record.productFamily),
-  cleanText(record.region),
-  Math.round(parseFlexibleNumber(record.sellingPrice ?? 0)),
-].join('|').toLowerCase();
+  return orders.some((order) => {
+    const orderPrimaryRef = buildPrimaryReference(order);
+    if (opportunityPrimaryRef && orderPrimaryRef && opportunityPrimaryRef === orderPrimaryRef) {
+      return true;
+    }
+
+    const orderAccountRef = buildAccountReference(order);
+    if (!opportunityAccountRef || !orderAccountRef || opportunityAccountRef !== orderAccountRef) {
+      return false;
+    }
+
+    return isComparableRevenue(order.sellingPrice ?? 0, opportunity.estRevenue ?? 0);
+  });
+}
+
+export function getActivePipelineOpportunities<T extends OpportunityLike>(opportunities: T[], orders: OrderLike[] = []): T[] {
+  return opportunities.filter((opportunity) => (
+    isOpenOpportunityStatus(opportunity.status) && !isOpportunityCoveredByOrder(opportunity, orders)
+  ));
+}
 
 export function buildPipelineMetrics(input: { opportunities?: OpportunityLike[]; orders?: OrderLike[] } = {}) {
   const opportunities = input.opportunities || [];
   const orders = input.orders || [];
 
-  const bookedOrderKeys = new Set<string>();
-  let soldRevenue = 0;
-
-  orders.forEach((order) => {
-    soldRevenue += parseFlexibleNumber(order.sellingPrice ?? 0);
-    bookedOrderKeys.add(buildOrderKey(order));
-  });
+  let soldRevenue = orders.reduce((sum, order) => sum + parseFlexibleNumber(order.sellingPrice ?? 0), 0);
 
   opportunities
-    .filter((opportunity) => isWonStatus(opportunity.status))
+    .filter((opportunity) => isWonStatus(opportunity.status) && !isOpportunityCoveredByOrder(opportunity, orders))
     .forEach((opportunity) => {
-      const key = buildOpportunityKey(opportunity);
-      if (!bookedOrderKeys.has(key)) {
-        soldRevenue += parseFlexibleNumber(opportunity.estRevenue ?? 0);
-      }
+      soldRevenue += parseFlexibleNumber(opportunity.estRevenue ?? 0);
     });
 
-  const openOpportunities = opportunities.filter((opportunity) => isOpenOpportunityStatus(opportunity.status));
+  const openOpportunities = getActivePipelineOpportunities(opportunities, orders);
   const openPipeline = openOpportunities.reduce((sum, opportunity) => sum + parseFlexibleNumber(opportunity.estRevenue ?? 0), 0);
   const weightedOpenRevenue = openOpportunities.reduce((sum, opportunity) => {
     const revenue = parseFlexibleNumber(opportunity.estRevenue ?? 0);
