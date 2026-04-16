@@ -6,15 +6,15 @@ import { normalizeOpportunityStatus, parseFlexibleNumber, persistIngestionArtifa
 const categoryTableMapping: Record<string, string> = {
   contacts: "company_contacts",
   leads: "company_contacts",
-  customers: "company_contacts",
+  customers: "customers",
   sales: "orders",
-  offers: "opportunities",
+  offers: "offers",
   strategy: "strategy",
   products: "products",
   employees: "company_contacts",
   finance: "company_info_update",
   market: "company_info_update",
-  competitors: "company_info_update",
+  competitors: "competitors",
 };
 
 function uint8ToBase64(bytes: Uint8Array): string {
@@ -54,6 +54,49 @@ async function persistStructuredRecords(supabase: any, doc: any, table: string, 
   const records = extractedData.extracted_records || [];
   if (records.length === 0 || table === "none" || table === "company_info_update") return 0;
 
+  if (table === "offers") {
+    let insertedCount = 0;
+
+    for (const r of records) {
+      const offerPayload = {
+        company_id: doc.company_id,
+        offer_number: r.offer_number || r.opp_number || r.oppNumber || `OFF-${Date.now()}`,
+        title: r.title || r.scope || r.customer_name || r.customerName || "Commercial Offer",
+        customer_name: r.customer_name || r.customerName || "",
+        project_description: r.description || r.scope || "",
+        status: normalizeOpportunityStatus(r.status || (parseFlexibleNumber(r.contract_prob || r.contractProb || 0) >= 100 ? "won" : "open")),
+        total_value: parseFlexibleNumber(r.total_value || r.est_revenue || r.estRevenue || 0),
+        currency: r.currency || "EUR",
+        truth_source: "sales_document",
+      };
+
+      const { data: savedOffer, error: offerError } = await supabase.from("offers").insert(offerPayload).select("id").single();
+      if (offerError) {
+        console.error("Offer insert error:", offerError.message);
+        continue;
+      }
+
+      insertedCount += 1;
+      const items = [...(Array.isArray(r.items) ? r.items : []), ...(Array.isArray(r.products) ? r.products : [])];
+      if (savedOffer?.id && items.length > 0) {
+        const lineItems = items.map((item: any) => ({
+          offer_id: savedOffer.id,
+          external_product_name: item.name || item.product_name || item.description || "Unnamed item",
+          manufacturer_name: item.manufacturer || item.brand || "external",
+          line_type: item.type || "product",
+          quantity: parseFlexibleNumber(item.quantity || 1) || 1,
+          unit_price: parseFlexibleNumber(item.unit_price || item.price || 0),
+          total_price: parseFlexibleNumber(item.total_price || item.total || item.price || 0),
+          notes: item.notes || "",
+        }));
+        const { error: lineItemError } = await supabase.from("offer_products").insert(lineItems);
+        if (lineItemError) console.error("Offer line insert error:", lineItemError.message);
+      }
+    }
+
+    return insertedCount;
+  }
+
   const cleanRecords = records.map((r: any) => {
     const clean: any = { company_id: doc.company_id };
 
@@ -70,6 +113,7 @@ async function persistStructuredRecords(supabase: any, doc: any, table: string, 
       clean.purchasing_year = r.purchasing_year || r.purchasingYear || "";
       clean.purchasing_quarter = r.purchasing_quarter || r.purchasingQuarter || "";
       clean.scope = r.scope || "";
+      clean.truth_source = "sales_document";
     } else if (table === "opportunities") {
       clean.opp_number = r.opp_number || r.oppNumber || "";
       clean.status = normalizeOpportunityStatus(r.status || "open");
@@ -81,6 +125,7 @@ async function persistStructuredRecords(supabase: any, doc: any, table: string, 
       clean.margin = parseFlexibleNumber(r.margin || 0);
       clean.kam = r.kam || "";
       clean.est_purchasing_year = r.est_purchasing_year || "";
+      clean.truth_source = "sales_document";
     } else if (table === "strategy") {
       clean.product_family = r.product_family || r.productFamily || "";
       clean.number_of_segment = r.number_of_segment || r.numberOfSegment || "";
@@ -100,6 +145,24 @@ async function persistStructuredRecords(supabase: any, doc: any, table: string, 
       clean.role = r.role || r.job_title || "";
       clean.department = r.department || "";
       clean.notes = r.notes || r.phone || "";
+    } else if (table === "customers") {
+      clean.customer_name = r.customer_name || r.customerName || r.name || "";
+      clean.account_tier = r.account_tier || r.tier || "";
+      clean.strategic_importance = parseFlexibleNumber(r.strategic_importance || r.importance || 0);
+      clean.growth_potential = parseFlexibleNumber(r.growth_potential || r.growth || 0);
+      clean.relationship_strength = parseFlexibleNumber(r.relationship_strength || r.relationship || 0);
+      clean.operating_region = r.region || r.operating_region || "";
+      clean.sector = r.sector || r.segment || "";
+      clean.notes = r.notes || "";
+    } else if (table === "competitors") {
+      clean.competitor_name = r.competitor_name || r.name || "";
+      clean.product_family = r.product_family || r.productFamily || "";
+      clean.positioning = r.positioning || "";
+      clean.price_positioning = r.price_positioning || r.pricePositioning || "";
+      clean.value_proposition = r.value_proposition || r.valueProposition || "";
+      clean.strengths = r.strengths || [];
+      clean.weaknesses = r.weaknesses || [];
+      clean.evidence = r.evidence || {};
     }
 
     return clean;

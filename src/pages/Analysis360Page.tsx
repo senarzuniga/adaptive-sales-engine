@@ -17,6 +17,7 @@ import { KeyAccountMapping } from '@/components/analysis360/KeyAccountMapping';
 import { ProductPortfolioAnalysis } from '@/components/analysis360/ProductPortfolioAnalysis';
 import { BrandingVsStrategy } from '@/components/analysis360/BrandingVsStrategy';
 import { ExecutiveInsights } from '@/components/analysis360/ExecutiveInsights';
+import { CommercialIntelligencePanel } from '@/components/analysis360/CommercialIntelligencePanel';
 import { buildPipelineMetrics, getProbabilityGuidance, isNeglectedStatus, isOpenOpportunityStatus } from '@/lib/salesData';
 
 const Analysis360Page = () => {
@@ -432,6 +433,7 @@ const Analysis360Page = () => {
           <TabsTrigger value="kam" className="gap-1 text-xs"><Users className="h-3 w-3" /> Key Account Mapping</TabsTrigger>
           <TabsTrigger value="product-analysis" className="gap-1 text-xs"><Layers className="h-3 w-3" /> Product Portfolio</TabsTrigger>
           <TabsTrigger value="branding" className="gap-1 text-xs"><Eye className="h-3 w-3" /> Branding vs Strategy</TabsTrigger>
+          <TabsTrigger value="intelligence" className="gap-1 text-xs"><Activity className="h-3 w-3" /> Commercial Intelligence</TabsTrigger>
         </TabsList>
 
         <TabsContent value="5year">
@@ -452,6 +454,16 @@ const Analysis360Page = () => {
 
         <TabsContent value="branding">
           <BrandingVsStrategy orders={filtered} strategy={strategy} company={company} />
+        </TabsContent>
+
+        <TabsContent value="intelligence">
+          <CommercialIntelligencePanel
+            company={company}
+            orders={filtered}
+            opportunities={opportunities}
+            products={products}
+            strategy={strategy}
+          />
         </TabsContent>
       </Tabs>
     </div>

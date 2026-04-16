@@ -20,6 +20,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import { fmt, fmtAxis } from '@/components/analysis360/AnalysisUtils';
 import { buildFallbackActionPool } from '@/lib/aiSalesFallback';
+import { buildDeterministicActionPool } from '@/lib/commercialIntelligence';
 import { buildPipelineMetrics, getProbabilityGuidance, isNeglectedStatus, isOpenOpportunityStatus, isWonStatus } from '@/lib/salesData';
 
 const fmtEur = fmt;
@@ -144,6 +145,8 @@ const AiAugmentedSalesPage = () => {
         .filter((v, i, a) => a.indexOf(v) === i)
         .map(name => ({ name, role: 'KAM', department: 'Sales' }));
 
+      const deterministic = buildDeterministicActionPool({ company: companyProfile, opportunities, orders, strategy, products: data.products });
+
       const { data: result, error } = await supabase.functions.invoke('generate-action-pool', {
         body: {
           companyProfile, opportunities, orders, strategy, tasks,
@@ -152,17 +155,26 @@ const AiAugmentedSalesPage = () => {
       });
       if (error) throw error;
       if (result?.error) throw new Error(result.error);
-      setPoolPreview(result.actions || []);
-      setPoolSummary(result.summary || null);
+
+      const mergedActions = [...(result.actions || []), ...(deterministic.actions || [])]
+        .filter((action, index, array) => array.findIndex((candidate) => candidate.title === action.title) === index)
+        .slice(0, 25);
+
+      setPoolPreview(mergedActions);
+      setPoolSummary(result.summary || deterministic.summary || null);
       setActiveTab('pool');
-      toast({ title: '✅ Action Pool Generated', description: `${result.actions?.length || 0} actions ready for review` });
+      toast({ title: '✅ Action Pool Generated', description: `${mergedActions.length || 0} actions ready for review` });
     } catch (e: any) {
       console.error('generateActionPool fallback:', e);
+      const deterministic = buildDeterministicActionPool({ company: companyProfile, opportunities, orders, strategy, products: data.products });
       const fallback = buildFallbackActionPool({ companyProfile, opportunities, orders, strategy, tasks });
-      setPoolPreview(fallback.actions || []);
-      setPoolSummary(fallback.summary || null);
+      const mergedActions = [...(deterministic.actions || []), ...(fallback.actions || [])]
+        .filter((action, index, array) => array.findIndex((candidate) => candidate.title === action.title) === index)
+        .slice(0, 25);
+      setPoolPreview(mergedActions);
+      setPoolSummary(deterministic.summary || fallback.summary || null);
       setActiveTab('pool');
-      toast({ title: 'Action Pool Ready', description: 'Local AI fallback generated prioritized actions while the edge service was unavailable.' });
+      toast({ title: 'Action Pool Ready', description: 'Deterministic commercial intelligence generated prioritized actions while the edge service was unavailable.' });
     } finally {
       setGeneratingPool(false);
     }

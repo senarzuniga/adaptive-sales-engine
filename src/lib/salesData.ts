@@ -121,6 +121,7 @@ export const isWonStatus = (value: unknown) => normalizeOpportunityStatus(value)
 export const isLostStatus = (value: unknown) => normalizeOpportunityStatus(value) === 'lost';
 export const isNeglectedStatus = (value: unknown) => normalizeOpportunityStatus(value) === 'neglected';
 export const isOpenOpportunityStatus = (value: unknown) => normalizeOpportunityStatus(value) === 'open';
+export const isSoldByTruthRule = (opportunity: OpportunityLike) => isWonStatus(opportunity.status) || parseFlexibleNumber(opportunity.contractProb) >= 100;
 
 export function getProbabilityGuidance(value: unknown) {
   const probability = Math.max(0, Math.min(100, parseFlexibleNumber(value)));
@@ -161,7 +162,7 @@ export function isOpportunityCoveredByOrder(opportunity: OpportunityLike, orders
 
 export function getActivePipelineOpportunities<T extends OpportunityLike>(opportunities: T[], orders: OrderLike[] = []): T[] {
   return opportunities.filter((opportunity) => (
-    isOpenOpportunityStatus(opportunity.status) && !isOpportunityCoveredByOrder(opportunity, orders)
+    isOpenOpportunityStatus(opportunity.status) && !isSoldByTruthRule(opportunity) && !isOpportunityCoveredByOrder(opportunity, orders)
   ));
 }
 
@@ -172,7 +173,7 @@ export function buildPipelineMetrics(input: { opportunities?: OpportunityLike[];
   let soldRevenue = orders.reduce((sum, order) => sum + parseFlexibleNumber(order.sellingPrice ?? 0), 0);
 
   opportunities
-    .filter((opportunity) => isWonStatus(opportunity.status) && !isOpportunityCoveredByOrder(opportunity, orders))
+    .filter((opportunity) => isSoldByTruthRule(opportunity) && !isOpportunityCoveredByOrder(opportunity, orders))
     .forEach((opportunity) => {
       soldRevenue += parseFlexibleNumber(opportunity.estRevenue ?? 0);
     });

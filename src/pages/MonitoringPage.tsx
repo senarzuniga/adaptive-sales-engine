@@ -22,6 +22,7 @@ import { toast } from '@/hooks/use-toast';
 import { ActionContentPanel } from '@/components/ActionContentPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { buildFallbackActionPool } from '@/lib/aiSalesFallback';
+import { buildDeterministicActionPool } from '@/lib/commercialIntelligence';
 import { classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
 
 const PILLAR_LABELS: Record<TaskPillar, string> = {
@@ -110,6 +111,14 @@ const MonitoringPage = () => {
         teamMembers = contacts || [];
       }
 
+      const deterministic = buildDeterministicActionPool({
+        company: data.companyProfile,
+        opportunities: data.opportunities,
+        orders: data.orders,
+        strategy: data.strategy,
+        products: data.products,
+      });
+
       const result = await invokeEdgeWithRetry<any>('generate-action-pool', {
         companyProfile: data.companyProfile,
         opportunities: data.opportunities,
@@ -120,11 +129,21 @@ const MonitoringPage = () => {
       }, { fallbackLabel: 'local action pool' });
 
       if (result.error) throw new Error(result.error);
-      setPoolPreview(result.actions || []);
-      setPoolSummary(result.summary || null);
-      toast({ title: `${(result.actions || []).length} actions generated`, description: 'Review and accept the actions you want to add.' });
+      const mergedActions = [...(result.actions || []), ...(deterministic.actions || [])]
+        .filter((action, index, array) => array.findIndex((candidate) => candidate.title === action.title) === index)
+        .slice(0, 25);
+      setPoolPreview(mergedActions);
+      setPoolSummary(result.summary || deterministic.summary || null);
+      toast({ title: `${mergedActions.length} actions generated`, description: 'Review and accept the actions you want to add.' });
     } catch (e: any) {
       const details = classifyEdgeRuntimeError(e, 'local action pool');
+      const deterministic = buildDeterministicActionPool({
+        company: data.companyProfile,
+        opportunities: data.opportunities,
+        orders: data.orders,
+        strategy: data.strategy,
+        products: data.products,
+      });
       const fallback = buildFallbackActionPool({
         companyProfile: data.companyProfile,
         opportunities: data.opportunities,
@@ -132,8 +151,11 @@ const MonitoringPage = () => {
         strategy: data.strategy,
         tasks: data.tasks,
       });
-      setPoolPreview(fallback.actions || []);
-      setPoolSummary(fallback.summary || null);
+      const mergedActions = [...(deterministic.actions || []), ...(fallback.actions || [])]
+        .filter((action, index, array) => array.findIndex((candidate) => candidate.title === action.title) === index)
+        .slice(0, 25);
+      setPoolPreview(mergedActions);
+      setPoolSummary(deterministic.summary || fallback.summary || null);
       toast({ title: details.title, description: details.description });
     } finally {
       setGeneratingPool(false);
