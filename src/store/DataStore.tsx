@@ -1,8 +1,23 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import type { DatasetQualityReport, NormalizedEntityRegistries } from '@/agents/dataManagementAgent';
-import type { EnrichedCompanyProfile } from '@/agents/customerEnrichmentAgent';
+import { buildCommercialIntelligence, harmonizeCommercialRecords } from '@/lib/commercialIntelligence';
+import { dedupeOpportunities, dedupeOrders, normalizeOpportunityStatus, parseFlexibleNumber } from '@/lib/salesData';
+
+// ─── Offline / localStorage mode when Supabase is not configured ───
+const isSupabaseConfigured =
+  !!import.meta.env.VITE_SUPABASE_URL &&
+  import.meta.env.VITE_SUPABASE_URL !== 'https://placeholder.supabase.co';
+
+const LS = {
+  get: <T,>(key: string, fallback: T): T => {
+    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
+  },
+  set: <T,>(key: string, val: T) => {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch { /* storage full */ }
+  },
+  del: (key: string) => localStorage.removeItem(key),
+};
 
 // ─── Types ───
 export interface CompanyProfile {
@@ -34,6 +49,7 @@ export interface CompanyProfile {
 
 export interface OrderRecord {
   id?: string;
+  truthSource?: string;
   poDate: string;
   firstOfferDate: string;
   oppNumber: string;
@@ -52,6 +68,7 @@ export interface OrderRecord {
 }
 
 export interface OpportunityRecord {
+  truthSource?: string;
   oppNumber: string;
   status: string;
   region: string;
@@ -164,35 +181,37 @@ export interface UploadLogEntry {
 // ─── DB ↔ App mappers ───
 function dbToOrder(r: any): OrderRecord {
   return {
-    id: r.id, poDate: r.po_date || '', firstOfferDate: r.first_offer_date || '',
+    id: r.id, truthSource: r.truth_source || 'sales_document', poDate: r.po_date || '', firstOfferDate: r.first_offer_date || '',
     oppNumber: r.opp_number || '', region: r.region || '', country: r.country || '',
     customerName: r.customer_name || '', scope: r.scope || '', productFamily: r.product_family || '',
     segment: r.segment || '', purchasingYear: r.purchasing_year || '',
     purchasingQuarter: r.purchasing_quarter || '', purchasingMonth: r.purchasing_month || '',
-    sellingPrice: Number(r.selling_price) || 0, margin: Number(r.margin) || 0, kam: r.kam || '',
+    sellingPrice: parseFlexibleNumber(r.selling_price), margin: parseFlexibleNumber(r.margin), kam: r.kam || '',
   };
 }
 
 function dbToOpportunity(r: any): OpportunityRecord {
+  const contractProb = parseFlexibleNumber(r.contract_prob);
   return {
-    oppNumber: r.opp_number || '', status: r.status || '', region: r.region || '',
+    truthSource: r.truth_source || 'sales_document',
+    oppNumber: r.opp_number || '', status: contractProb >= 100 ? 'won' : normalizeOpportunityStatus(r.status), region: r.region || '',
     country: r.country || '', customerName: r.customer_name || '', scope: r.scope || '',
     productFamily: r.product_family || '', segment: r.segment || '',
     estPurchasingYear: r.est_purchasing_year || '', estPurchasingQuarter: r.est_purchasing_quarter || '',
-    estRevenue: Number(r.est_revenue) || 0, contractProb: Number(r.contract_prob) || 0,
-    margin: Number(r.margin) || 0, contact: r.contact || '', kam: r.kam || '',
+    estRevenue: parseFlexibleNumber(r.est_revenue), contractProb: parseFlexibleNumber(r.contract_prob),
+    margin: parseFlexibleNumber(r.margin), contact: r.contact || '', kam: r.kam || '',
   };
 }
 
 function dbToProduct(r: any): ProductRecord {
-  return { name: r.name || '', averageValue: Number(r.average_value) || 0, type: r.type || '', comments: r.comments || '' };
+  return { name: r.name || '', averageValue: parseFlexibleNumber(r.average_value), type: r.type || '', comments: r.comments || '' };
 }
 
 function dbToStrategy(r: any): StrategyRecord {
   return {
     productFamily: r.product_family || '', numberOfSegment: r.number_of_segment || '',
     region: r.region || '', estPurchasingQuarter: r.est_purchasing_quarter || '',
-    estRevenue: Number(r.est_revenue) || 0, margin: Number(r.margin) || 0, kam: r.kam || '',
+    estRevenue: parseFlexibleNumber(r.est_revenue), margin: parseFlexibleNumber(r.margin), kam: r.kam || '',
   };
 }
 
@@ -270,6 +289,7 @@ interface DataContextType {
   clearAll: () => void;
   hasData: boolean;
   loading: boolean;
+  commercialSnapshot: ReturnType<typeof buildCommercialIntelligence>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -295,8 +315,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
   );
   const [loading, setLoading] = useState(false);
 
+  const commercialSnapshot = useMemo(() => buildCommercialIntelligence({
+    company: data.companyProfile,
+    orders: data.orders,
+    opportunities: data.opportunities,
+    products: data.products,
+    strategy: data.strategy,
+  }), [data.companyProfile, data.orders, data.opportunities, data.products, data.strategy]);
+
   // ─── Load companies list ───
   const loadCompanies = useCallback(async () => {
+    if (!isSupabaseConfigured) {
+      setCompanies(LS.get<CompanyProfile[]>('acs_companies', []));
+      return;
+    }
     const { data: rows } = await supabase.from('companies').select('*').order('company_name');
     if (rows) {
       setCompanies(rows.map(r => ({
@@ -320,6 +352,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const loadCompanyData = useCallback(async (companyId: string) => {
     setLoading(true);
     try {
+      if (!isSupabaseConfigured) {
+        const companies = LS.get<CompanyProfile[]>('acs_companies', []);
+        const profile = companies.find(c => c.id === companyId) || emptyProfile;
+        setData({
+          orders: dedupeOrders(LS.get(`acs_orders_${companyId}`, [])),
+          opportunities: dedupeOpportunities(LS.get(`acs_opps_${companyId}`, [])),
+          products: LS.get(`acs_products_${companyId}`, []),
+          strategy: LS.get(`acs_strategy_${companyId}`, []),
+          tasks: LS.get(`acs_tasks_${companyId}`, []),
+          uploadLog: LS.get(`acs_log_${companyId}`, []),
+          companyProfile: profile,
+        });
+        return;
+      }
       const [ordersRes, oppsRes, prodsRes, stratRes, tasksRes, logRes, compRes] = await Promise.all([
         supabase.from('orders').select('*').eq('company_id', companyId),
         supabase.from('opportunities').select('*').eq('company_id', companyId),
@@ -331,8 +377,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ]);
 
       setData({
-        orders: (ordersRes.data || []).map(dbToOrder),
-        opportunities: (oppsRes.data || []).map(dbToOpportunity),
+        orders: dedupeOrders((ordersRes.data || []).map(dbToOrder)),
+        opportunities: dedupeOpportunities((oppsRes.data || []).map(dbToOpportunity)),
         products: (prodsRes.data || []).map(dbToProduct),
         strategy: (stratRes.data || []).map(dbToStrategy),
         leads: [],
@@ -394,6 +440,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // ─── Create company ───
   const createCompany = useCallback(async (name: string, websiteUrl?: string, linkedinUrl?: string, businessDescription?: string): Promise<string | null> => {
+    if (!isSupabaseConfigured) {
+      const newId = `local_${Date.now()}`;
+      const newCompany: CompanyProfile = {
+        ...emptyProfile, id: newId, company_name: name,
+        website_url: websiteUrl || '', linkedin_url: linkedinUrl || '',
+        business_description: businessDescription || '',
+      };
+      const existing = LS.get<CompanyProfile[]>('acs_companies', []);
+      LS.set('acs_companies', [...existing, newCompany]);
+      await loadCompanies();
+      return newId;
+    }
     const insertData: any = { company_name: name };
     if (websiteUrl) insertData.website_url = websiteUrl;
     if (linkedinUrl) insertData.linkedin_url = linkedinUrl;
@@ -422,6 +480,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // ─── Delete company ───
   const deleteCompany = useCallback(async (id: string) => {
+    if (!isSupabaseConfigured) {
+      const existing = LS.get<CompanyProfile[]>('acs_companies', []);
+      LS.set('acs_companies', existing.filter(c => c.id !== id));
+      ['orders', 'opps', 'products', 'strategy', 'tasks', 'log'].forEach(k => LS.del(`acs_${k}_${id}`));
+      if (activeCompanyId === id) setActiveCompany(null);
+      await loadCompanies();
+      return;
+    }
     await supabase.from('companies').delete().eq('id', id);
     if (activeCompanyId === id) setActiveCompany(null);
     await loadCompanies();
@@ -447,8 +513,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const importCompanyPack = useCallback(async (json: string) => {
     const pack = JSON.parse(json);
     const companyName = pack.companyProfile?.company_name || 'Imported Company';
-    const id = await createCompany(companyName);
+    const id = await createCompany(companyName,
+      pack.companyProfile?.website_url, pack.companyProfile?.linkedin_url,
+      pack.companyProfile?.business_description);
     if (!id) return;
+
+    if (!isSupabaseConfigured) {
+      // Merge all profile fields into the newly created local company
+      const existing = LS.get<CompanyProfile[]>('acs_companies', []);
+      LS.set('acs_companies', existing.map(c => c.id === id ? { ...c, ...pack.companyProfile, id } : c));
+      if (pack.orders?.length) LS.set(`acs_orders_${id}`, pack.orders);
+      if (pack.opportunities?.length) LS.set(`acs_opps_${id}`, pack.opportunities);
+      if (pack.products?.length) LS.set(`acs_products_${id}`, pack.products);
+      if (pack.strategy?.length) LS.set(`acs_strategy_${id}`, pack.strategy);
+      if (pack.tasks?.length) LS.set(`acs_tasks_${id}`, pack.tasks);
+      // Reload companies list so the full merged profile appears in the UI
+      await loadCompanies();
+      setActiveCompany(id);
+      toast({ title: 'Company pack imported successfully' });
+      return;
+    }
 
     // Save profile
     const p = pack.companyProfile || {};
@@ -493,7 +577,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
         est_revenue: s.estRevenue, margin: s.margin, kam: s.kam,
       })));
     }
+    // Also update extended profile fields not handled in createCompany
+    await supabase.from('companies').update({
+      objectives: p.objectives || '',
+      strategy_context: p.strategy_context || '',
+      market_context: p.market_context || '',
+      current_challenges: p.current_challenges || '',
+      strategic_goals: p.strategic_goals || '',
+      enrichment_status: p.enrichment_status || 'pending',
+    }).eq('id', id);
 
+    // Reload companies list so the new entry appears immediately in the UI
+    await loadCompanies();
     setActiveCompany(id);
     toast({ title: 'Company pack imported successfully' });
   }, [createCompany, setActiveCompany]);
@@ -501,37 +596,75 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // ─── CRUD operations (persist to Supabase) ───
   const setOrders = useCallback(async (records: OrderRecord[]) => {
     if (!activeCompanyId) return;
-    // Replace all orders for this company
+    const harmonized = harmonizeCommercialRecords({ orders: records, opportunities: data.opportunities });
+    const cleanRecords = dedupeOrders(harmonized.orders as OrderRecord[]);
+    const syncedOpportunities = dedupeOpportunities(harmonized.opportunities as OpportunityRecord[]);
+
+    if (!isSupabaseConfigured) {
+      LS.set(`acs_orders_${activeCompanyId}`, cleanRecords);
+      LS.set(`acs_opps_${activeCompanyId}`, syncedOpportunities);
+      setData(prev => ({ ...prev, orders: cleanRecords, opportunities: syncedOpportunities }));
+      return;
+    }
+
     await supabase.from('orders').delete().eq('company_id', activeCompanyId);
-    if (records.length > 0) {
-      await supabase.from('orders').insert(records.map(o => ({
+    if (cleanRecords.length > 0) {
+      await supabase.from('orders').insert(cleanRecords.map(o => ({
         company_id: activeCompanyId, po_date: o.poDate, first_offer_date: o.firstOfferDate,
         opp_number: o.oppNumber, region: o.region, country: o.country, customer_name: o.customerName,
         scope: o.scope, product_family: o.productFamily, segment: o.segment,
         purchasing_year: o.purchasingYear, purchasing_quarter: o.purchasingQuarter,
         purchasing_month: o.purchasingMonth, selling_price: o.sellingPrice, margin: o.margin, kam: o.kam,
+        truth_source: o.truthSource || 'sales_document',
       })));
     }
-    setData(prev => ({ ...prev, orders: records }));
-  }, [activeCompanyId]);
 
-  const setOpportunities = useCallback(async (records: OpportunityRecord[]) => {
-    if (!activeCompanyId) return;
     await supabase.from('opportunities').delete().eq('company_id', activeCompanyId);
-    if (records.length > 0) {
-      await supabase.from('opportunities').insert(records.map(o => ({
+    if (syncedOpportunities.length > 0) {
+      await supabase.from('opportunities').insert(syncedOpportunities.map(o => ({
         company_id: activeCompanyId, opp_number: o.oppNumber, status: o.status, region: o.region,
         country: o.country, customer_name: o.customerName, scope: o.scope,
         product_family: o.productFamily, segment: o.segment, est_purchasing_year: o.estPurchasingYear,
         est_purchasing_quarter: o.estPurchasingQuarter, est_revenue: o.estRevenue,
         contract_prob: o.contractProb, margin: o.margin, contact: o.contact, kam: o.kam,
+        truth_source: o.truthSource || 'sales_document',
       })));
     }
-    setData(prev => ({ ...prev, opportunities: records }));
-  }, [activeCompanyId]);
+
+    setData(prev => ({ ...prev, orders: cleanRecords, opportunities: syncedOpportunities }));
+  }, [activeCompanyId, data.opportunities]);
+
+  const setOpportunities = useCallback(async (records: OpportunityRecord[]) => {
+    if (!activeCompanyId) return;
+    const harmonized = harmonizeCommercialRecords({ orders: data.orders, opportunities: records.map((record) => ({ ...record, status: normalizeOpportunityStatus(record.status) })) });
+    const cleanRecords = dedupeOpportunities(harmonized.opportunities as OpportunityRecord[]);
+
+    if (!isSupabaseConfigured) {
+      LS.set(`acs_opps_${activeCompanyId}`, cleanRecords);
+      setData(prev => ({ ...prev, opportunities: cleanRecords }));
+      return;
+    }
+    await supabase.from('opportunities').delete().eq('company_id', activeCompanyId);
+    if (cleanRecords.length > 0) {
+      await supabase.from('opportunities').insert(cleanRecords.map(o => ({
+        company_id: activeCompanyId, opp_number: o.oppNumber, status: o.status, region: o.region,
+        country: o.country, customer_name: o.customerName, scope: o.scope,
+        product_family: o.productFamily, segment: o.segment, est_purchasing_year: o.estPurchasingYear,
+        est_purchasing_quarter: o.estPurchasingQuarter, est_revenue: o.estRevenue,
+        contract_prob: o.contractProb, margin: o.margin, contact: o.contact, kam: o.kam,
+        truth_source: o.truthSource || 'sales_document',
+      })));
+    }
+    setData(prev => ({ ...prev, opportunities: cleanRecords }));
+  }, [activeCompanyId, data.orders]);
 
   const setProducts = useCallback(async (records: ProductRecord[]) => {
     if (!activeCompanyId) return;
+    if (!isSupabaseConfigured) {
+      LS.set(`acs_products_${activeCompanyId}`, records);
+      setData(prev => ({ ...prev, products: records }));
+      return;
+    }
     await supabase.from('products').delete().eq('company_id', activeCompanyId);
     if (records.length > 0) {
       await supabase.from('products').insert(records.map(p => ({
@@ -543,6 +676,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const setStrategy = useCallback(async (records: StrategyRecord[]) => {
     if (!activeCompanyId) return;
+    if (!isSupabaseConfigured) {
+      LS.set(`acs_strategy_${activeCompanyId}`, records);
+      setData(prev => ({ ...prev, strategy: records }));
+      return;
+    }
     await supabase.from('strategy').delete().eq('company_id', activeCompanyId);
     if (records.length > 0) {
       await supabase.from('strategy').insert(records.map(s => ({
@@ -572,6 +710,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const setCompanyProfile = useCallback(async (profile: CompanyProfile) => {
     if (!activeCompanyId) return;
+    if (!isSupabaseConfigured) {
+      const existing = LS.get<CompanyProfile[]>('acs_companies', []);
+      LS.set('acs_companies', existing.map(c => c.id === activeCompanyId ? { ...c, ...profile } : c));
+      setData(prev => ({ ...prev, companyProfile: profile }));
+      await loadCompanies();
+      return;
+    }
     await supabase.from('companies').update({
       company_name: profile.company_name, industry: profile.industry, sub_sector: profile.sub_sector,
       headquarters: profile.headquarters, operating_regions: profile.operating_regions,
@@ -690,6 +835,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setOrders, setOpportunities, setProducts, setStrategy, setLeads, setContacts, setCompanyProfile,
       setDataManagementResults, setEnrichedProfiles,
       addUploadLog, addTask, updateTask, deleteTask, clearDataset, clearAll, hasData, loading,
+      commercialSnapshot,
     }}>
       {children}
     </DataContext.Provider>

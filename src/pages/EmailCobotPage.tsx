@@ -14,6 +14,7 @@ import {
   MessageSquare, Clock, Tag, UserPlus, FileText, Share2, Linkedin, Twitter, Instagram, Facebook, Globe
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { buildFallbackEmailResponse, buildFallbackGeneratedContent, classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
 
 interface CobotResponse {
   canAnswer: boolean;
@@ -120,14 +121,10 @@ const EmailCobotPage = () => {
         ? data.products.map(p => `${p.name} (${p.type}) - Avg value: €${p.averageValue}`).join('\n')
         : 'No product data';
 
-      const { data: result, error } = await supabase.functions.invoke('email-cobot', {
-        body: {
-          customerEmail, customerName, emailSubject, emailBody,
-          companyProfile: data.companyProfile, companyContacts: contacts, productsData: productsInfo,
-        },
-      });
-      if (error) throw error;
-      if (result?.error) throw new Error(result.error);
+      const result = await invokeEdgeWithRetry<any>('email-cobot', {
+        customerEmail, customerName, emailSubject, emailBody,
+        companyProfile: data.companyProfile, companyContacts: contacts, productsData: productsInfo,
+      }, { fallbackLabel: 'local email draft' });
 
       setResponse(result);
       setHistory(prev => [{
@@ -137,7 +134,10 @@ const EmailCobotPage = () => {
       toast({ title: result.canAnswer ? '✅ Response drafted' : '📨 Escalation drafted', description: `Confidence: ${result.confidence}%` });
     } catch (e: any) {
       console.error('Email cobot error:', e);
-      toast({ title: 'Processing failed', description: e.message, variant: 'destructive' });
+      const details = classifyEdgeRuntimeError(e, 'local email draft');
+      const fallback = buildFallbackEmailResponse({ customerName, emailSubject, emailBody, companyProfile: data.companyProfile });
+      setResponse(fallback);
+      toast({ title: details.title, description: details.description });
     } finally {
       setIsProcessing(false);
     }
@@ -155,22 +155,27 @@ const EmailCobotPage = () => {
 
       const platformAccount = socialAccounts.find(a => a.platform === targetPlatform);
 
-      const { data: result, error } = await supabase.functions.invoke('generate-content', {
-        body: {
-          contentType, topic: contentTopic, targetPlatform,
-          companyProfile: data.companyProfile, productsData: productsInfo,
-          brandGuidelines: platformAccount?.notes || '',
-          additionalContext,
-        },
-      });
-      if (error) throw error;
-      if (result?.error) throw new Error(result.error);
+      const result = await invokeEdgeWithRetry<any>('generate-content', {
+        contentType, topic: contentTopic, targetPlatform,
+        companyProfile: data.companyProfile, productsData: productsInfo,
+        brandGuidelines: platformAccount?.notes || '',
+        additionalContext,
+      }, { fallbackLabel: 'local content draft' });
 
       setGeneratedContent(result);
       toast({ title: '✅ Content generated', description: `${result.contentType} for ${result.platform}` });
     } catch (e: any) {
       console.error('Content generation error:', e);
-      toast({ title: 'Generation failed', description: e.message, variant: 'destructive' });
+      const details = classifyEdgeRuntimeError(e, 'local content draft');
+      const fallback = buildFallbackGeneratedContent({
+        topic: contentTopic,
+        targetPlatform,
+        contentType,
+        companyProfile: data.companyProfile,
+        additionalContext,
+      });
+      setGeneratedContent(fallback);
+      toast({ title: details.title, description: details.description });
     } finally {
       setIsGeneratingContent(false);
     }

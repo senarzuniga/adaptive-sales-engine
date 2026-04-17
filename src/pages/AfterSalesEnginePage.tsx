@@ -4,6 +4,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { useData } from '@/store/DataStore';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { buildFallbackServiceContractAnalysis, classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -216,10 +217,9 @@ export default function AfterSalesEnginePage() {
     setAnalyzing(true);
     try {
       const budgetGap = await computeBudgetGapForAfterSales();
-      const { data, error } = await supabase.functions.invoke('after-sales-intelligence', {
-        body: { assets, contracts, interventions, spareParts, analysisType: 'full_diagnostic', budgetGapAnalysis: budgetGap },
-      });
-      if (error) throw error;
+      const data = await invokeEdgeWithRetry<any>('after-sales-intelligence', {
+        assets, contracts, interventions, spareParts, analysisType: 'full_diagnostic', budgetGapAnalysis: budgetGap,
+      }, { fallbackLabel: 'local after-sales intelligence' });
       if (data?.analysis) {
         setDiagnosis(data.analysis);
         if (data.analysis.revenueOpportunities?.length > 0 && activeCompanyId) {
@@ -242,7 +242,10 @@ export default function AfterSalesEnginePage() {
         toast({ title: isEs ? 'Diagnóstico completado' : 'Diagnostic complete' });
       }
     } catch (e: any) {
-      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+      const details = classifyEdgeRuntimeError(e, 'local after-sales intelligence');
+      setDiagnosis(buildFallbackServiceContractAnalysis({ contractDef: { contract_name: 'After-sales diagnostic' }, suggestedAnnualFee: totalARR, includedPartsCost: totalPartsValue, marginTarget: 25 }));
+      setActiveTab('intelligence');
+      toast({ title: details.title, description: details.description });
     } finally {
       setAnalyzing(false);
     }

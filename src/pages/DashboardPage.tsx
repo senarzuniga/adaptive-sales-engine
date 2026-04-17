@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, DollarSign, Target, Percent, Package, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { isOpenOpportunityStatus, isWonStatus } from '@/lib/salesData';
 
 const DashboardPage = () => {
   const { t } = useLanguage();
@@ -13,14 +14,25 @@ const DashboardPage = () => {
   const totalRevenue = data.orders.reduce((s, o) => s + o.sellingPrice, 0);
   const totalMargin = data.orders.reduce((s, o) => s + o.margin, 0);
   const avgMargin = totalRevenue > 0 ? (totalMargin / totalRevenue * 100) : 0;
-  const openOpps = data.opportunities.filter(o => o.status.toLowerCase().includes('open')).length;
-  const wonOpps = data.opportunities.filter(o => o.status.toLowerCase().includes('won')).length;
+  const openOpps = data.opportunities.filter(o => isOpenOpportunityStatus(o.status)).length;
+  const wonOpps = data.opportunities.filter(o => isWonStatus(o.status)).length;
   const convRate = data.opportunities.length > 0 ? (wonOpps / data.opportunities.length * 100) : 0;
   const avgDeal = data.orders.length > 0 ? totalRevenue / data.orders.length : 0;
   const fmt = (n: number) => n >= 1000000 ? `${(n / 1000000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(0)}K` : n > 0 ? n.toFixed(0) : '—';
 
+  const parseRevenueText = (text: string): number | null => {
+    const m = text.replace(/,/g, '.').match(/(\d+(?:\.\d+)?)\s*([MmKkBb]?)/);
+    if (!m) return null;
+    const n = parseFloat(m[1]);
+    const s = m[2].toUpperCase();
+    if (isNaN(n)) return null;
+    return s === 'M' ? n * 1e6 : s === 'B' ? n * 1e9 : s === 'K' ? n * 1e3 : n;
+  };
+  const profileRevenue = parseRevenueText(data.companyProfile.annual_revenue ?? '');
+  const revenueDisplay = profileRevenue !== null ? `€${fmt(profileRevenue)}` : hasData ? `€${fmt(totalRevenue)}` : '—';
+
   const kpiCards = [
-    { label: t.dashboard.totalRevenue, value: hasData ? fmt(totalRevenue) : '—', icon: DollarSign },
+    { label: t.dashboard.totalRevenue, value: revenueDisplay, icon: DollarSign },
     { label: t.dashboard.activeOpportunities, value: hasData ? String(openOpps) : '—', icon: Target },
     { label: t.dashboard.conversionRate, value: hasData && data.opportunities.length > 0 ? `${convRate.toFixed(1)}%` : '—', icon: Percent },
     { label: t.dashboard.avgDealSize, value: hasData ? fmt(avgDeal) : '—', icon: Package },

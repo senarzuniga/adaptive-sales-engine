@@ -26,6 +26,7 @@ import {
   LayoutDashboard,
   Activity,
   CalendarDays,
+  Briefcase,
   Contact,
   Bot,
   Share2,
@@ -46,6 +47,7 @@ export function AppSidebar() {
   const location = useLocation();
 
   const pillars = [
+    { title: t.nav.savedCompanies, url: '/companies', icon: Briefcase },
     { title: t.nav.dashboard, url: '/', icon: LayoutDashboard },
     { title: t.nav.dataUpload, url: '/upload', icon: Upload },
     { title: t.nav.companyInfo, url: '/company-info', icon: Info },

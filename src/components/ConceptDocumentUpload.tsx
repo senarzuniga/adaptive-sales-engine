@@ -1,10 +1,12 @@
-import { useState, useCallback, useEffect } from 'react';
+﻿import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useData } from '@/store/DataStore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { classifyProcessingError } from '@/lib/documentProcessing';
+import { buildFallbackExtraction } from '@/lib/documentFallback';
 import {
   Upload, FileText, Trash2, Users, Target, ShoppingCart, Briefcase,
   Package, FileBarChart, Building2, UserCheck, DollarSign,
@@ -36,6 +38,7 @@ const DOCUMENT_CATEGORIES = [
 
 interface DocFile {
   id: string;
+  company_id?: string;
   category: string;
   file_name: string;
   file_size: number;
@@ -53,6 +56,31 @@ const statusConfig: Record<string, { icon: typeof CheckCircle; className: string
   failed: { icon: AlertCircle, className: 'text-destructive', label: 'Failed' },
 };
 
+const isTransientNetworkError = (msg: string) => {
+  const lower = (msg || '').toLowerCase();
+  return lower.includes('failed to fetch') || lower.includes('networkerror') || lower.includes('load failed');
+};
+
+const sanitizeFileName = (name: string) =>
+  name
+    .normalize('NFKD')
+    .replace(/[^\u0020-\u007E]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '_')
+    .replace(/_+/g, '_');
+
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const MAX_PROCESS_RETRIES = 3;
+const categoryTableMapping: Record<string, string> = {
+  contacts: 'company_contacts',
+  leads: 'company_contacts',
+  customers: 'company_contacts',
+  sales: 'orders',
+  offers: 'opportunities',
+  strategy: 'strategy',
+  products: 'products',
+  employees: 'company_contacts',
+};
+
 export function ConceptDocumentUpload() {
   const { activeCompanyId } = useData();
   const [documents, setDocuments] = useState<DocFile[]>([]);
@@ -62,12 +90,20 @@ export function ConceptDocumentUpload() {
 
   const loadDocuments = useCallback(async () => {
     if (!activeCompanyId) return;
-    const { data } = await supabase
-      .from('company_documents')
-      .select('*')
-      .eq('company_id', activeCompanyId)
-      .order('created_at', { ascending: false });
-    if (data) setDocuments(data as DocFile[]);
+    try {
+      const { data, error } = await supabase
+        .from('company_documents')
+        .select('*')
+        .eq('company_id', activeCompanyId)
+        .order('created_at', { ascending: false });
+      if (error) {
+        console.error('loadDocuments error:', error.message);
+        return;
+      }
+      if (data) setDocuments(data as DocFile[]);
+    } catch (err) {
+      console.error('loadDocuments request failed:', err);
+    }
   }, [activeCompanyId]);
 
   useEffect(() => {
@@ -86,12 +122,16 @@ export function ConceptDocumentUpload() {
             next.delete(d.id);
             if (d.processing_status === 'completed') {
               const ext = (d.extracted_data as any);
+              const semanticCounts = ext?.semantic_counts;
+              const semanticDetail = semanticCounts
+                ? `, ${semanticCounts.entities || 0} entities / ${semanticCounts.relationships || 0} relationships`
+                : '';
               toast({
-                title: `✅ ${d.file_name} processed`,
-                description: `${ext?.summary || 'Data extracted'} (${ext?.record_count || 0} records, confidence: ${ext?.confidence_score || 'N/A'}%)`,
+                title: `âœ… ${d.file_name} processed`,
+                description: `${ext?.summary || 'Data extracted'} (${ext?.record_count || 0} records${semanticDetail}, confidence: ${ext?.confidence_score || 'N/A'}%)`,
               });
             } else {
-              toast({ title: `❌ ${d.file_name} processing failed`, variant: 'destructive' });
+              toast({ title: `âŒ ${d.file_name} processing failed`, variant: 'destructive' });
             }
           }
         });
@@ -101,22 +141,176 @@ export function ConceptDocumentUpload() {
     return () => clearInterval(interval);
   }, [processingIds, documents, loadDocuments]);
 
+  const ensureDocumentRow = useCallback(async (filePath: string, file: File, category: string) => {
+    if (!activeCompanyId) return null;
+
+    const { data: existing, error: existingError } = await supabase
+      .from('company_documents')
+      .select('*')
+      .eq('company_id', activeCompanyId)
+      .eq('file_path', filePath)
+      .maybeSingle();
+
+    if (existingError) throw existingError;
+    if (existing) return existing;
+
+    const { data: created, error: dbError } = await supabase.from('company_documents').insert({
+      company_id: activeCompanyId,
+      category,
+      file_name: file.name,
+      file_path: filePath,
+      file_size: file.size,
+      mime_type: file.type || 'application/octet-stream',
+    }).select().single();
+
+    if (dbError) throw dbError;
+    return created;
+  }, [activeCompanyId]);
+
+  const recoverUpload = useCallback(async (filePath: string, file: File, category: string) => {
+    if (!activeCompanyId) return null;
+
+    const folder = `${activeCompanyId}/${category}`;
+    const storageName = filePath.split('/').pop() || '';
+
+    const { data: objects, error } = await supabase.storage
+      .from('company-documents')
+      .list(folder, { limit: 100 });
+
+    if (error) throw error;
+
+    const existsInStorage = (objects || []).some((obj: any) => obj.name === storageName);
+    if (!existsInStorage) return null;
+
+    return await ensureDocumentRow(filePath, file, category);
+  }, [activeCompanyId, ensureDocumentRow]);
+
+  const readFunctionError = useCallback(async (error: any) => {
+    const status = error?.context?.status ?? error?.status;
+    let message = error?.message || 'Unexpected processing error';
+
+    try {
+      const payload = await error?.context?.json?.();
+      if (payload?.error) {
+        message = payload.error;
+      }
+    } catch {
+      // Keep the original error message when no JSON body is available.
+    }
+
+    return { message, status };
+  }, []);
+
+  const applyLocalFallback = useCallback(async (docId: string, reason: string) => {
+    const existingDoc = documents.find((doc) => doc.id === docId);
+    const doc = existingDoc ?? await (async () => {
+      const { data } = await supabase.from('company_documents').select('*').eq('id', docId).maybeSingle();
+      return data as DocFile | null;
+    })();
+
+    if (!doc) return false;
+
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from('company-documents')
+      .download(doc.file_path);
+
+    if (downloadError || !fileData) {
+      console.error('Local fallback download failed:', downloadError);
+      return false;
+    }
+
+    const isTextFile = doc.mime_type?.includes('text') || /\.(csv|txt|json|md)$/i.test(doc.file_name);
+    const content = isTextFile ? await fileData.text() : await fileData.arrayBuffer();
+    const targetTable = categoryTableMapping[doc.category] || 'none';
+    const fallbackData = buildFallbackExtraction(
+      { category: doc.category, fileName: doc.file_name, targetTable },
+      content,
+    );
+
+    fallbackData.data_quality_notes = [...(fallbackData.data_quality_notes || []), reason];
+
+    const { error: updateError } = await supabase
+      .from('company_documents')
+      .update({ processing_status: 'completed', extracted_data: fallbackData as any })
+      .eq('id', doc.id);
+
+    if (updateError) {
+      console.error('Local fallback update failed:', updateError);
+      return false;
+    }
+
+    const companyId = doc.company_id || activeCompanyId;
+    if (companyId && fallbackData.extracted_records?.length > 0 && targetTable !== 'none') {
+      const payload = fallbackData.extracted_records.map((row: any) => ({ ...row, company_id: companyId }));
+      const uniquePayload = payload.filter((row: any, index: number, items: any[]) => {
+        const key = JSON.stringify(row);
+        return items.findIndex((candidate) => JSON.stringify(candidate) === key) === index;
+      });
+
+      const { error: insertError } = await supabase.from(targetTable).insert(uniquePayload as any);
+      if (insertError) {
+        console.error('Local fallback insert failed:', insertError.message);
+      }
+    }
+
+    await loadDocuments();
+    toast({
+      title: fallbackData.record_count > 0 ? 'Basic extraction complete' : 'Document saved for manual review',
+      description: fallbackData.summary,
+    });
+    return true;
+  }, [activeCompanyId, documents, loadDocuments]);
+
   const processDocument = useCallback(async (docId: string) => {
     setProcessingIds(prev => new Set(prev).add(docId));
     try {
-      const { data, error } = await supabase.functions.invoke('process-document', {
-        body: { documentId: docId },
-      });
-      if (error) throw error;
-      await loadDocuments();
-      if (data?.success) {
-        toast({
-          title: '🧠 AI Data Extraction Complete',
-          description: `${data.summary} — ${data.recordCount} records saved (confidence: ${data.confidence}%)`,
+      for (let attempt = 1; attempt <= MAX_PROCESS_RETRIES; attempt++) {
+        const { data, error } = await supabase.functions.invoke('process-document', {
+          body: { documentId: docId },
         });
+
+        if (!error) {
+          await loadDocuments();
+          if (data?.success) {
+            toast({
+              title: 'AI Data Extraction Complete',
+              description: `${data.summary} â€” ${data.recordCount} records saved (confidence: ${data.confidence}%)`,
+            });
+          }
+          return;
+        }
+
+        const details = classifyProcessingError(await readFunctionError(error));
+        if (details.retryable && attempt < MAX_PROCESS_RETRIES) {
+          toast({
+            title: 'Retrying AI processing...',
+            description: `${details.description} Retry ${attempt}/${MAX_PROCESS_RETRIES}.`,
+          });
+          await wait(1500 * attempt);
+          continue;
+        }
+
+        if (!details.retryable && await applyLocalFallback(docId, details.description)) {
+          return;
+        }
+
+        toast({
+          title: details.title,
+          description: details.description,
+          variant: details.retryable ? 'default' : 'destructive',
+        });
+        return;
       }
     } catch (err: any) {
-      toast({ title: 'Processing error', description: err.message, variant: 'destructive' });
+      const details = classifyProcessingError(await readFunctionError(err));
+      if (!details.retryable && await applyLocalFallback(docId, details.description)) {
+        return;
+      }
+      toast({
+        title: details.title,
+        description: details.description,
+        variant: details.retryable ? 'default' : 'destructive',
+      });
     } finally {
       setProcessingIds(prev => {
         const next = new Set(prev);
@@ -125,41 +319,86 @@ export function ConceptDocumentUpload() {
       });
       await loadDocuments();
     }
-  }, [loadDocuments]);
+  }, [applyLocalFallback, loadDocuments, readFunctionError]);
 
   const uploadFile = useCallback(async (file: File, category: string) => {
     if (!activeCompanyId) return;
     setUploading(category);
+    let uploadSaved = false;
+    const safeFileName = sanitizeFileName(file.name);
+    const filePath = `${activeCompanyId}/${category}/${Date.now()}_${safeFileName}`;
+
     try {
-      const filePath = `${activeCompanyId}/${category}/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from('company-documents')
-        .upload(filePath, file);
-      if (uploadError) throw uploadError;
+      let inserted: any = null;
+      let lastError: any = null;
 
-      const { data: inserted, error: dbError } = await supabase.from('company_documents').insert({
-        company_id: activeCompanyId,
-        category,
-        file_name: file.name,
-        file_path: filePath,
-        file_size: file.size,
-        mime_type: file.type || 'application/octet-stream',
-      }).select().single();
-      if (dbError) throw dbError;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const { error: uploadError } = await supabase.storage
+            .from('company-documents')
+            .upload(filePath, file, { upsert: true });
+          if (uploadError) throw uploadError;
 
-      toast({ title: `📄 ${file.name}`, description: `Uploaded → AI agent will now process it...` });
+          uploadSaved = true;
+          inserted = await ensureDocumentRow(filePath, file, category);
+          break;
+        } catch (err: any) {
+          lastError = err;
+          const msg = err?.message || 'Unexpected error';
+          if (attempt < 3 && isTransientNetworkError(msg)) {
+            toast({
+              title: 'Retrying upload...',
+              description: `${file.name} hit a temporary connection issue. Retrying automatically (${attempt}/3).`,
+            });
+            await wait(1000 * attempt);
+            continue;
+          }
+          throw err;
+        }
+      }
+
+      if (!inserted && lastError) throw lastError;
+
+      toast({ title: `ðŸ“„ ${file.name}`, description: `Uploaded â†’ AI agent will now process it...` });
       await loadDocuments();
 
-      // Auto-trigger AI processing
       if (inserted) {
-        processDocument(inserted.id);
+        await processDocument(inserted.id);
       }
     } catch (err: any) {
-      toast({ title: 'Upload failed', description: err.message, variant: 'destructive' });
+      const msg: string = err?.message || 'Unexpected error';
+      const isNetworkError = isTransientNetworkError(msg);
+
+      if (isNetworkError) {
+        try {
+          const recovered = await recoverUpload(filePath, file, category);
+          if (recovered) {
+            toast({
+              title: 'File uploaded successfully',
+              description: 'The connection briefly failed, but the file was recovered and saved.',
+            });
+            await loadDocuments();
+            await processDocument(recovered.id);
+            return;
+          }
+        } catch (recoveryErr) {
+          console.error('Upload recovery failed:', recoveryErr);
+        }
+      }
+
+      toast({
+        title: uploadSaved ? 'File uploaded â€” refresh delayed' : isNetworkError ? 'Connection issue during upload' : 'Upload failed',
+        description: uploadSaved
+          ? 'The file appears to be saved already. Refresh the page and check the document list in a moment.'
+          : isNetworkError
+            ? 'The file could not finish uploading after automatic retries. Please try once more.'
+            : msg,
+        variant: uploadSaved ? 'default' : 'destructive'
+      });
     } finally {
       setUploading(null);
     }
-  }, [activeCompanyId, loadDocuments, processDocument]);
+  }, [activeCompanyId, ensureDocumentRow, loadDocuments, processDocument, recoverUpload]);
 
   const deleteDocument = useCallback(async (doc: DocFile) => {
     await supabase.storage.from('company-documents').remove([doc.file_path]);
@@ -168,14 +407,18 @@ export function ConceptDocumentUpload() {
     await loadDocuments();
   }, [loadDocuments]);
 
-  const handleDrop = useCallback((e: React.DragEvent, category: string) => {
+  const handleDrop = useCallback(async (e: React.DragEvent, category: string) => {
     e.preventDefault();
     setDragOverCategory(null);
-    Array.from(e.dataTransfer.files).forEach(f => uploadFile(f, category));
+    for (const f of Array.from(e.dataTransfer.files)) {
+      await uploadFile(f, category);
+    }
   }, [uploadFile]);
 
-  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>, category: string) => {
-    Array.from(e.target.files || []).forEach(f => uploadFile(f, category));
+  const handleFileInput = useCallback(async (e: React.ChangeEvent<HTMLInputElement>, category: string) => {
+    for (const f of Array.from(e.target.files || [])) {
+      await uploadFile(f, category);
+    }
     e.target.value = '';
   }, [uploadFile]);
 

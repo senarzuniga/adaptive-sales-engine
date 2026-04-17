@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { getActivePipelineOpportunities } from '@/lib/salesData';
+import { buildFallbackActionContent, buildFallbackActionResultAnalysis, classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
 
 const PILLAR_LABELS: Record<TaskPillar, string> = {
   general: 'General', p0: '360º Analysis', p1: 'Sales Architecture', p2: 'KAM',
@@ -65,7 +67,7 @@ export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack
         contextData.topProducts = Object.entries(productRevenue).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([n, v]) => `${n} (€${v.toLocaleString()})`).join(', ');
       }
       if (data.opportunities.length > 0) {
-        const totalPipeline = data.opportunities.filter(o => o.status !== 'Won' && o.status !== 'Lost').reduce((s, o) => s + o.estRevenue, 0);
+        const totalPipeline = getActivePipelineOpportunities(data.opportunities, data.orders).reduce((s, o) => s + o.estRevenue, 0);
         contextData.pipelineValue = `€${totalPipeline.toLocaleString()}`;
       }
       if (data.strategy.length > 0) {
@@ -73,17 +75,12 @@ export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack
         contextData.strategyTargets = `Total target: €${totalTarget.toLocaleString()}`;
       }
 
-      const { data: result, error } = await supabase.functions.invoke('generate-action-content', {
-        body: {
-          type: 'generate',
-          task: { title: task.title, description: task.description, category: task.category, pillar: task.pillar, priority: task.priority, assignee: task.assignee },
-          companyProfile: data.companyProfile,
-          contextData,
-        },
-      });
-
-      if (error) throw error;
-      if (result?.error) throw new Error(result.error);
+      const result = await invokeEdgeWithRetry<any>('generate-action-content', {
+        type: 'generate',
+        task: { title: task.title, description: task.description, category: task.category, pillar: task.pillar, priority: task.priority, assignee: task.assignee },
+        companyProfile: data.companyProfile,
+        contextData,
+      }, { fallbackLabel: 'local action content' });
 
       const generated: ActionContent = {
         goal: result.goal || content.goal,
@@ -96,7 +93,14 @@ export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack
       toast({ title: 'AI content generated', description: 'Review and customize the generated content before saving.' });
     } catch (e: any) {
       console.error('AI generation error:', e);
-      toast({ title: 'AI generation failed', description: e.message || 'Please try again.', variant: 'destructive' });
+      const details = classifyEdgeRuntimeError(e, 'local action content');
+      const generated = buildFallbackActionContent({
+        task: { title: task.title, description: task.description, category: task.category, pillar: task.pillar, priority: task.priority },
+        companyProfile: data.companyProfile,
+      });
+      setContent(generated);
+      setDirty(true);
+      toast({ title: details.title, description: details.description });
     } finally {
       setIsGenerating(false);
     }
@@ -107,16 +111,11 @@ export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack
     if (!resultText.trim()) return;
     setIsAnalyzing(true);
     try {
-      const { data: result, error } = await supabase.functions.invoke('generate-action-content', {
-        body: {
-          type: 'analyze',
-          task: { ...task, resultText, actionContent: content },
-          companyProfile: data.companyProfile,
-        },
-      });
-
-      if (error) throw error;
-      if (result?.error) throw new Error(result.error);
+      const result = await invokeEdgeWithRetry<any>('generate-action-content', {
+        type: 'analyze',
+        task: { ...task, resultText, actionContent: content },
+        companyProfile: data.companyProfile,
+      }, { fallbackLabel: 'local result analysis' });
 
       const analysisResult: ActionResult = {
         outcome: resultText,
@@ -129,7 +128,9 @@ export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack
       toast({ title: 'Result analyzed and saved' });
     } catch (e: any) {
       console.error('AI analysis error:', e);
-      toast({ title: 'AI analysis failed', description: e.message || 'Please try again.', variant: 'destructive' });
+      const details = classifyEdgeRuntimeError(e, 'local result analysis');
+      onSaveResult(buildFallbackActionResultAnalysis({ task, resultText }));
+      toast({ title: details.title, description: details.description });
     } finally {
       setIsAnalyzing(false);
     }

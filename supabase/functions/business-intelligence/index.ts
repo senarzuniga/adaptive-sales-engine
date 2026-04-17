@@ -10,7 +10,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { reportId, targetCompanyName, targetCompanyWebsite, companyId, analysisType } = await req.json();
+    const { reportId, targetCompanyName, targetCompanyWebsite, companyId, analysisType, targetSubjectType, analysisBrief } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
@@ -28,7 +28,9 @@ serve(async (req) => {
     const systemPrompt = `You are a senior Strategic Business Intelligence Analyst operating at McKinsey/Bain consulting level.
 
 ## YOUR MISSION
-Generate a comprehensive business intelligence report for "${targetCompanyName}" ${targetCompanyWebsite ? `(website: ${targetCompanyWebsite})` : ''}.
+Generate a comprehensive business intelligence report for the target subject "${targetCompanyName}" ${targetCompanyWebsite ? `(source: ${targetCompanyWebsite})` : ''}.
+The target subject type is "${targetSubjectType || 'company'}".
+This subject may be a company, geographical region, industry sector, product domain, production process, trade show, or another strategic topic.
 
 ## HYPOTHESIS ENGINE (MANDATORY)
 For EVERY section of analysis, you MUST:
@@ -39,7 +41,8 @@ For EVERY section of analysis, you MUST:
 NEVER return a single conclusion without exploring alternatives.
 
 ## ANALYSIS CONTEXT
-You are analyzing this company from the perspective of "${company?.company_name || 'our company'}" which operates in ${company?.industry || 'industrial'} sector.
+You are analyzing this subject from the perspective of "${company?.company_name || 'our company'}" which operates in ${company?.industry || 'industrial'} sector.
+Adapt the report sections to the subject. For non-company topics, use the "company_profile" block as a generic subject profile and interpret valuation / sale propensity as strategic attractiveness and commercial potential.
 
 ## OUTPUT FORMAT
 Return a JSON object with these exact keys:
@@ -121,8 +124,8 @@ Return a JSON object with these exact keys:
 - Explore ALL sections thoroughly`;
 
     const userPrompt = analysisType === 'full'
-      ? `Generate a COMPLETE business intelligence report for "${targetCompanyName}". Cover ALL sections: company profile, financials, products, market, competition, strategy (SWOT), valuation, sale propensity, future scenarios (5yr & 10yr), and actionable recommendations. Use the hypothesis engine for every section.`
-      : `Generate a focused ${analysisType} analysis for "${targetCompanyName}". Apply the hypothesis engine and provide detailed, actionable insights.`;
+      ? `Generate a COMPLETE business intelligence report for the ${targetSubjectType || 'company'} "${targetCompanyName}". Cover ALL sections: profile, financial or value logic, products/processes, market, competition, strategy (SWOT), attractiveness, future scenarios, and actionable recommendations. Use the hypothesis engine for every section.${analysisBrief ? ` Additional brief: ${analysisBrief}` : ''}`
+      : `Generate a focused ${analysisType} analysis for the ${targetSubjectType || 'company'} "${targetCompanyName}". Apply the hypothesis engine and provide detailed, actionable insights.${analysisBrief ? ` Additional brief: ${analysisBrief}` : ''}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

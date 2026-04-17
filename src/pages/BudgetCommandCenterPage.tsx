@@ -13,6 +13,7 @@ import {
   ShieldAlert, ArrowRight, BarChart3, Wrench, FolderKanban,
   CheckCircle2, XCircle, Clock, Zap, RefreshCw
 } from 'lucide-react';
+import { getProbabilityGuidance, isOpenOpportunityStatus } from '@/lib/salesData';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 interface GapItem {
@@ -88,15 +89,15 @@ export default function BudgetCommandCenterPage() {
       });
     }
 
-    const lowProbOpps = salesData.opportunities.filter(o => (o.contract_prob || 0) < 30 && (o.est_revenue || 0) > 50000);
+    const lowProbOpps = salesData.opportunities.filter(o => isOpenOpportunityStatus(o.status) && getProbabilityGuidance(o.contract_prob || 0).band === 'weak' && (o.est_revenue || 0) > 50000);
     if (lowProbOpps.length > 0) {
       const totalAtRisk = lowProbOpps.reduce((s, o) => s + (o.est_revenue || 0), 0);
       items.push({
         id: 'sales-low-prob', module: 'sales', type: 'Low Conversion',
         severity: 'warning',
-        title: `${lowProbOpps.length} High-Value / Low-Probability Deals`,
-        detail: `Deals >€50K with <30% probability need attention`,
-        impact: totalAtRisk, action: 'Review qualification criteria and assign senior KAMs',
+        title: `${lowProbOpps.length} High-Value Weak Deals`,
+        detail: `Deals above €50K and below 75% probability need action to improve win rate`,
+        impact: totalAtRisk, action: 'Strengthen value messaging, qualification, and next-step discipline with senior KAM support',
         metric: `€${(totalAtRisk / 1000).toFixed(0)}K uncertain`
       });
     }

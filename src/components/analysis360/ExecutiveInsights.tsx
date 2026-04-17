@@ -8,6 +8,8 @@ import { OrderRecord, OpportunityRecord, ProductRecord, StrategyRecord, CompanyP
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { groupBy, fmt } from './AnalysisUtils';
+import { buildPipelineMetrics, getActivePipelineOpportunities } from '@/lib/salesData';
+import { buildFallbackExecutiveInsights, classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
 import {
   Brain, Sparkles, AlertTriangle, TrendingUp, Shield, Lightbulb,
   Target, Zap, Clock, ArrowRight, ChevronDown, ChevronUp, Loader2
@@ -86,67 +88,67 @@ export const ExecutiveInsights = ({ orders, opportunities, products, strategy, c
         customers: new Set(items.map(i => i.customerName)).size,
       })).sort((a, b) => b.revenue - a.revenue);
 
-      const totalPipeline = opportunities.reduce((s, o) => s + o.estRevenue, 0);
-      const avgProb = opportunities.length > 0
-        ? opportunities.reduce((s, o) => s + o.contractProb, 0) / opportunities.length : 0;
+      const pipelineMetrics = buildPipelineMetrics({ opportunities, orders });
+      const openOpportunities = getActivePipelineOpportunities(opportunities, orders);
+      const totalPipeline = pipelineMetrics.openPipeline;
+      const avgProb = openOpportunities.length > 0
+        ? openOpportunities.reduce((sum, opportunity) => sum + (opportunity.contractProb || 0), 0) / openOpportunities.length
+        : 0;
 
       const totalPlanned = strategy.reduce((s, r) => s + r.estRevenue, 0);
 
-      const { data, error } = await supabase.functions.invoke('analyze-360', {
-        body: {
-          companyProfile: {
-            name: company.company_name,
-            industry: company.industry,
-            sub_sector: company.sub_sector,
-            description: company.business_description,
-            strategic_goals: company.strategic_goals,
-            objectives: company.objectives,
-            competitors: company.main_competitors,
-            segments: company.main_customer_segments,
-            regions: company.operating_regions,
-            main_products: company.main_products,
-            annual_revenue: company.annual_revenue,
-            sales_channels: company.sales_channels,
-            current_challenges: company.current_challenges,
-            market_context: company.market_context,
-            strategy_context: company.strategy_context,
-            additional_notes: company.additional_notes,
-            employee_count: company.employee_count,
-            headquarters: company.headquarters,
-            sales_team_size: company.sales_team_size,
-            kam_count: company.kam_count,
-          },
-          ordersSummary: {
-            totalRevenue, totalMargin,
-            marginPct: totalRevenue > 0 ? (totalMargin / totalRevenue * 100) : 0,
-            totalOrders: orders.length,
-            uniqueCustomers: new Set(orders.map(o => o.customerName)).size,
-            byYear, byProduct: byProduct.slice(0, 10),
-            topCustomers: byCustomer.slice(0, 10),
-            byRegion, byKam: byKam.slice(0, 10),
-            top3CustomerShare: byCustomer.slice(0, 3).reduce((s, c) => s + c.share, 0),
-          },
-          strategySummary: {
-            totalPlanned,
-            achievement: totalPlanned > 0 ? (totalRevenue / totalPlanned * 100) : 0,
-            gap: totalRevenue - totalPlanned,
-            hasStrategy: strategy.length > 0,
-          },
-          opportunitiesSummary: {
-            totalPipeline,
-            count: opportunities.length,
-            avgProbability: avgProb,
-            weightedPipeline: opportunities.reduce((s, o) => s + o.estRevenue * (o.contractProb / 100), 0),
-          },
-          productsSummary: {
-            count: products.length,
-            families: byProduct.length,
-            products: products.map(p => ({ name: p.name, type: p.type, avgValue: p.averageValue })),
-          },
+      const data = await invokeEdgeWithRetry<any>('analyze-360', {
+        companyProfile: {
+          name: company.company_name,
+          industry: company.industry,
+          sub_sector: company.sub_sector,
+          description: company.business_description,
+          strategic_goals: company.strategic_goals,
+          objectives: company.objectives,
+          competitors: company.main_competitors,
+          segments: company.main_customer_segments,
+          regions: company.operating_regions,
+          main_products: company.main_products,
+          annual_revenue: company.annual_revenue,
+          sales_channels: company.sales_channels,
+          current_challenges: company.current_challenges,
+          market_context: company.market_context,
+          strategy_context: company.strategy_context,
+          additional_notes: company.additional_notes,
+          employee_count: company.employee_count,
+          headquarters: company.headquarters,
+          sales_team_size: company.sales_team_size,
+          kam_count: company.kam_count,
         },
-      });
+        ordersSummary: {
+          totalRevenue, totalMargin,
+          marginPct: totalRevenue > 0 ? (totalMargin / totalRevenue * 100) : 0,
+          totalOrders: orders.length,
+          uniqueCustomers: new Set(orders.map(o => o.customerName)).size,
+          byYear, byProduct: byProduct.slice(0, 10),
+          topCustomers: byCustomer.slice(0, 10),
+          byRegion, byKam: byKam.slice(0, 10),
+          top3CustomerShare: byCustomer.slice(0, 3).reduce((s, c) => s + c.share, 0),
+        },
+        strategySummary: {
+          totalPlanned,
+          achievement: totalPlanned > 0 ? (totalRevenue / totalPlanned * 100) : 0,
+          gap: totalRevenue - totalPlanned,
+          hasStrategy: strategy.length > 0,
+        },
+        opportunitiesSummary: {
+          totalPipeline,
+          count: openOpportunities.length,
+          avgProbability: avgProb,
+          weightedPipeline: pipelineMetrics.weightedOpenRevenue,
+        },
+        productsSummary: {
+          count: products.length,
+          families: byProduct.length,
+          products: products.map(p => ({ name: p.name, type: p.type, avgValue: p.averageValue })),
+        },
+      }, { fallbackLabel: 'local executive insights' });
 
-      if (error) throw error;
       if (data?.insights) {
         setInsights(data.insights);
         toast({ title: "Executive insights generated", description: "AI analysis complete" });
@@ -154,8 +156,10 @@ export const ExecutiveInsights = ({ orders, opportunities, products, strategy, c
         throw new Error(data?.error || "No insights returned");
       }
     } catch (e: any) {
-      console.error("Insight generation error:", e);
-      toast({ title: "Error generating insights", description: e.message, variant: "destructive" });
+      console.error('Insight generation error:', e);
+      const details = classifyEdgeRuntimeError(e, 'local executive insights');
+      setInsights(buildFallbackExecutiveInsights({ orders, opportunities, products, strategy, company }));
+      toast({ title: details.title, description: details.description });
     } finally {
       setLoading(false);
     }

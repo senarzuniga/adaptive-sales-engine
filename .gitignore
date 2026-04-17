@@ -39,3 +39,12 @@ __pycache__/
 *.njsproj
 *.sln
 *.sw?
+
+# Local exports and temp workspaces
+Adaptive Sales Engine - Lovable.html
+Adaptive Sales Engine - Lovable_files/
+adaptive-sales-engine/
+supabase/.temp/
+middleware.ts
+page.tsx
+src/utils/supabase/

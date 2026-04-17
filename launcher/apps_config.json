@@ -27,6 +27,13 @@
       "command": "docker compose --profile prod up --build app-prod",
       "port": 3000,
       "description": "Production nginx build via Docker"
+    },
+    {
+      "name": "Ingestion Monitor (Streamlit)",
+      "path": ".",
+      "command": "python -m streamlit run launcher/ingestion_monitor.py --server.port 8502",
+      "port": 8502,
+      "description": "Monitor parsed structure, entities, relationships, and stored ingestion records"
     }
   ]
 }

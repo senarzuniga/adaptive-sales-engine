@@ -19,6 +19,9 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import { fmt, fmtAxis } from '@/components/analysis360/AnalysisUtils';
+import { buildFallbackActionPool } from '@/lib/aiSalesFallback';
+import { buildDeterministicActionPool } from '@/lib/commercialIntelligence';
+import { buildPipelineMetrics, getProbabilityGuidance, isNeglectedStatus, isOpenOpportunityStatus, isWonStatus } from '@/lib/salesData';
 
 const fmtEur = fmt;
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
@@ -37,7 +40,8 @@ function scoreLead(o: any, strategyFamilies: Set<string>, strategyRegions: Set<s
   else if (o.estRevenue >= 100000) { score += 15; signals.push('Mid-value deal'); }
   else { score += 5; }
   score += Math.round(o.contractProb * 0.25);
-  if (o.contractProb >= 70) signals.push('High close probability');
+  if (o.contractProb >= 75) signals.push('High close probability');
+  else signals.push('Weak probability needs improvement');
   if (o.margin >= 30) { score += 20; signals.push('Strong margin'); }
   else if (o.margin >= 20) { score += 12; }
   else if (o.margin >= 10) { score += 6; }
@@ -45,10 +49,10 @@ function scoreLead(o: any, strategyFamilies: Set<string>, strategyRegions: Set<s
   if (strategyFamilies.has(o.productFamily)) { score += 10; signals.push('Strategic product'); }
   if (strategyRegions.has(o.region)) { score += 5; signals.push('Strategic region'); }
   const st = (o.status || '').toUpperCase();
-  if (st.includes('GANADO') || st.includes('WON')) { score += 15; signals.push('Won'); }
+  if (isWonStatus(o.status)) { score += 15; signals.push('Won'); }
   else if (st.includes('NEGOCIACION') || st.includes('NEGOTIATION')) { score += 10; signals.push('In negotiation'); }
   else if (st.includes('OFERTA') || st.includes('OFFER')) { score += 7; signals.push('Offer sent'); }
-  else if (st.includes('DESATENDIDO') || st.includes('NEGLECTED')) { score -= 10; signals.push('⚠ Neglected'); }
+  else if (isNeglectedStatus(o.status)) { score -= 10; signals.push('⚠ Neglected'); }
   const tier = score >= 70 ? 'A' : score >= 50 ? 'B' : score >= 30 ? 'C' : 'D';
   return {
     name: o.customerName || 'Unknown', revenue: o.estRevenue, probability: o.contractProb,
@@ -92,15 +96,15 @@ const AiAugmentedSalesPage = () => {
   );
 
   const forecast = useMemo(() => {
-    const totalPipeline = opportunities.reduce((s, o) => s + o.estRevenue, 0);
-    const weightedPipeline = opportunities.reduce((s, o) => s + o.estRevenue * (o.contractProb / 100), 0);
-    const wonRevenue = orders.reduce((s, o) => s + o.sellingPrice, 0);
+    const open = opportunities.filter((opportunity) => isOpenOpportunityStatus(opportunity.status));
+    const pipelineMetrics = buildPipelineMetrics({ opportunities, orders });
+    const totalPipeline = pipelineMetrics.openPipeline;
+    const weightedPipeline = pipelineMetrics.weightedOpenRevenue;
+    const wonRevenue = pipelineMetrics.soldRevenue;
     const strategyTarget = strategy.reduce((s, r) => s + r.estRevenue, 0);
     const achievement = strategyTarget > 0 ? ((wonRevenue + weightedPipeline) / strategyTarget) * 100 : 0;
-    const neglectedDeals = opportunities.filter(o =>
-      (o.status || '').toUpperCase().includes('DESATENDIDO') || (o.status || '').toUpperCase().includes('NEGLECTED')
-    ).length;
-    return { totalPipeline, weightedPipeline, wonRevenue, strategyTarget, achievement, neglectedDeals };
+    const neglectedDeals = opportunities.filter((opportunity) => isNeglectedStatus(opportunity.status)).length;
+    return { totalPipeline, weightedPipeline, wonRevenue, strategyTarget, achievement, neglectedDeals, open };
   }, [opportunities, orders, strategy]);
 
   // Active actions from tasks
@@ -141,6 +145,8 @@ const AiAugmentedSalesPage = () => {
         .filter((v, i, a) => a.indexOf(v) === i)
         .map(name => ({ name, role: 'KAM', department: 'Sales' }));
 
+      const deterministic = buildDeterministicActionPool({ company: companyProfile, opportunities, orders, strategy, products: data.products });
+
       const { data: result, error } = await supabase.functions.invoke('generate-action-pool', {
         body: {
           companyProfile, opportunities, orders, strategy, tasks,
@@ -149,11 +155,26 @@ const AiAugmentedSalesPage = () => {
       });
       if (error) throw error;
       if (result?.error) throw new Error(result.error);
-      setPoolPreview(result.actions || []);
-      setPoolSummary(result.summary || null);
-      toast({ title: '✅ Action Pool Generated', description: `${result.actions?.length || 0} actions ready for review` });
+
+      const mergedActions = [...(result.actions || []), ...(deterministic.actions || [])]
+        .filter((action, index, array) => array.findIndex((candidate) => candidate.title === action.title) === index)
+        .slice(0, 25);
+
+      setPoolPreview(mergedActions);
+      setPoolSummary(result.summary || deterministic.summary || null);
+      setActiveTab('pool');
+      toast({ title: '✅ Action Pool Generated', description: `${mergedActions.length || 0} actions ready for review` });
     } catch (e: any) {
-      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+      console.error('generateActionPool fallback:', e);
+      const deterministic = buildDeterministicActionPool({ company: companyProfile, opportunities, orders, strategy, products: data.products });
+      const fallback = buildFallbackActionPool({ companyProfile, opportunities, orders, strategy, tasks });
+      const mergedActions = [...(deterministic.actions || []), ...(fallback.actions || [])]
+        .filter((action, index, array) => array.findIndex((candidate) => candidate.title === action.title) === index)
+        .slice(0, 25);
+      setPoolPreview(mergedActions);
+      setPoolSummary(deterministic.summary || fallback.summary || null);
+      setActiveTab('pool');
+      toast({ title: 'Action Pool Ready', description: 'Deterministic commercial intelligence generated prioritized actions while the edge service was unavailable.' });
     } finally {
       setGeneratingPool(false);
     }

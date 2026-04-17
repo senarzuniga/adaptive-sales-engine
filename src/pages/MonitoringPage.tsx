@@ -21,6 +21,9 @@ import { useState, useMemo } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { ActionContentPanel } from '@/components/ActionContentPanel';
 import { supabase } from '@/integrations/supabase/client';
+import { buildFallbackActionPool } from '@/lib/aiSalesFallback';
+import { buildDeterministicActionPool } from '@/lib/commercialIntelligence';
+import { classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
 
 const PILLAR_LABELS: Record<TaskPillar, string> = {
   general: 'General', p0: '360º Analysis', p1: 'Sales Architecture', p2: 'KAM',
@@ -108,23 +111,52 @@ const MonitoringPage = () => {
         teamMembers = contacts || [];
       }
 
-      const { data: result, error } = await supabase.functions.invoke('generate-action-pool', {
-        body: {
-          companyProfile: data.companyProfile,
-          opportunities: data.opportunities,
-          orders: data.orders,
-          strategy: data.strategy,
-          tasks: data.tasks.map(t => ({ title: t.title, status: t.status, pillar: t.pillar })),
-          teamMembers,
-        },
+      const deterministic = buildDeterministicActionPool({
+        company: data.companyProfile,
+        opportunities: data.opportunities,
+        orders: data.orders,
+        strategy: data.strategy,
+        products: data.products,
       });
-      if (error) throw error;
+
+      const result = await invokeEdgeWithRetry<any>('generate-action-pool', {
+        companyProfile: data.companyProfile,
+        opportunities: data.opportunities,
+        orders: data.orders,
+        strategy: data.strategy,
+        tasks: data.tasks.map(t => ({ title: t.title, status: t.status, pillar: t.pillar })),
+        teamMembers,
+      }, { fallbackLabel: 'local action pool' });
+
       if (result.error) throw new Error(result.error);
-      setPoolPreview(result.actions || []);
-      setPoolSummary(result.summary || null);
-      toast({ title: `${(result.actions || []).length} actions generated`, description: 'Review and accept the actions you want to add.' });
+      const mergedActions = [...(result.actions || []), ...(deterministic.actions || [])]
+        .filter((action, index, array) => array.findIndex((candidate) => candidate.title === action.title) === index)
+        .slice(0, 25);
+      setPoolPreview(mergedActions);
+      setPoolSummary(result.summary || deterministic.summary || null);
+      toast({ title: `${mergedActions.length} actions generated`, description: 'Review and accept the actions you want to add.' });
     } catch (e: any) {
-      toast({ title: 'Error generating action pool', description: e.message, variant: 'destructive' });
+      const details = classifyEdgeRuntimeError(e, 'local action pool');
+      const deterministic = buildDeterministicActionPool({
+        company: data.companyProfile,
+        opportunities: data.opportunities,
+        orders: data.orders,
+        strategy: data.strategy,
+        products: data.products,
+      });
+      const fallback = buildFallbackActionPool({
+        companyProfile: data.companyProfile,
+        opportunities: data.opportunities,
+        orders: data.orders,
+        strategy: data.strategy,
+        tasks: data.tasks,
+      });
+      const mergedActions = [...(deterministic.actions || []), ...(fallback.actions || [])]
+        .filter((action, index, array) => array.findIndex((candidate) => candidate.title === action.title) === index)
+        .slice(0, 25);
+      setPoolPreview(mergedActions);
+      setPoolSummary(deterministic.summary || fallback.summary || null);
+      toast({ title: details.title, description: details.description });
     } finally {
       setGeneratingPool(false);
     }
