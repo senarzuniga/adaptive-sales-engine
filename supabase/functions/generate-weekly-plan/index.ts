@@ -32,6 +32,9 @@ Tasks that address the LARGEST GAPS with the HIGHEST probability of closing must
 - Each task MUST include a "budgetImpactScore" (0-100) indicating how much it contributes to closing the budget gap
 - Each task MUST include "targetSegment" identifying which product_family / region / KAM gap it addresses
 - Each task MUST include "estimatedRevenueImpact" — the € value this task could influence
+- Design tasks as part of an iterative agent loop: plan → act → evaluate → improve
+- Use stateful context from historical data, CRM state, and external signals in rationale
+- Include event-driven triggers where relevant (new lead, low health score, contract expiring, complaint)
 
 You MUST cover ALL 7 transformation pillars in your recommendations:
 - p0: 360º Analysis — results analysis, patterns, portfolio risk, strategic alignment
@@ -104,7 +107,8 @@ INSTRUCTIONS:
 4. Each task must quantify its expected revenue impact
 5. Cover ALL 7 pillars (p0-p6) — at least 1 task per pillar
 6. Sort tasks by budgetImpactScore descending
-7. Set realistic due dates (within the next 7 days from today: ${new Date().toISOString().split('T')[0]})`;
+7. Set realistic due dates (within the next 7 days from today: ${new Date().toISOString().split('T')[0]})
+8. Ensure explicit coordination outputs for Sales, Customer Success, Growth, RevOps, and Orchestrator responsibilities.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

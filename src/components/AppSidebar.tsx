@@ -36,6 +36,7 @@ import {
   Landmark,
   Settings2,
   SearchCheck,
+  Layers,
 } from 'lucide-react';
 
 export function AppSidebar() {
@@ -66,6 +67,7 @@ export function AppSidebar() {
     { title: 'Project Management', url: '/project-management', icon: FolderKanban },
     { title: 'Budget Command Center', url: '/budget-command-center', icon: Landmark },
     { title: language === 'es' ? 'Inteligencia Empresarial' : 'Business Intelligence', url: '/business-intelligence', icon: SearchCheck },
+    { title: language === 'es' ? 'Repositorio de Acciones Comerciales' : 'Commercial Actions Repository', url: '/commercial-actions-repository', icon: Layers },
     { title: t.nav.socialMedia, url: '/social-media', icon: Share2 },
   ];
 

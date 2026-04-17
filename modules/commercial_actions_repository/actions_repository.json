@@ -1,0 +1,213 @@
+{
+  "version": "v1.1",
+  "created_by": "system",
+  "modified_by": "system",
+  "timestamp": "2026-04-17T00:00:00Z",
+  "source_model": "Customer_Revenue_Engine_v1",
+  "lifecycle_stages": [
+    {
+      "stage": "LEAD_ACQUISITION",
+      "processes": ["Prospecting", "Lead qualification", "Outbound", "Inbound"],
+      "actions": [
+        {
+          "id": "IDENTIFICAR_NUEVO_LEAD",
+          "name": "Identify high-fit lead",
+          "description": "Detect new lead candidates from ICP and intent signals.",
+          "role": "Sales Agent",
+          "importance_score": 75,
+          "strategy_alignment": 82,
+          "estimated_hours": 2,
+          "inputs": ["market_signals", "crm_lead_history", "segment_priority"],
+          "outputs": ["qualified_lead", "lead_score"],
+          "triggers": [{ "event": "new_signal", "logic": "intent_score >= 70" }],
+          "kpis": [{ "name": "Lead-to-opportunity conversion", "target": 20, "unit": "%" }],
+          "ai_tags": ["lead_scoring", "prospecting", "event-driven"],
+          "goal": "Create qualified opportunities in strategic segments.",
+          "supportive_content": {
+            "call_script": "Opening + qualification script focused on business pain and urgency.",
+            "email_template": "Subject: Strategic fit conversation — {{company}}",
+            "presentation_notes": "ICP criteria, intent evidence, next-step CTA."
+          }
+        },
+        {
+          "id": "CALIFICAR_LEAD_IA",
+          "name": "AI lead qualification",
+          "description": "Enrich lead and score win probability using CRM + external signals.",
+          "role": "RevOps Agent",
+          "importance_score": 78,
+          "strategy_alignment": 80,
+          "estimated_hours": 1.5,
+          "inputs": ["lead_profile", "historical_conversion", "firmographics"],
+          "outputs": ["lead_tier", "next_step_recommendation"],
+          "triggers": [{ "event": "lead_created", "logic": "lead_profile != null" }],
+          "kpis": [{ "name": "Qualification accuracy", "target": 85, "unit": "%" }],
+          "ai_tags": ["ml_predictions", "stateful", "context-aware"]
+        }
+      ]
+    },
+    {
+      "stage": "PIPELINE_EXECUTION",
+      "processes": ["Opportunity management", "Negotiation", "Proposal"],
+      "actions": [
+        {
+          "id": "SEGUIMIENTO_OFERTA_CRITICA",
+          "name": "Critical offer follow-up",
+          "description": "Prioritized follow-up for high-value and high-probability offers.",
+          "role": "Sales Agent",
+          "importance_score": 96,
+          "strategy_alignment": 91,
+          "estimated_hours": 2.5,
+          "inputs": ["open_offer", "contract_probability", "deal_value"],
+          "outputs": ["meeting_scheduled", "objection_map"],
+          "triggers": [{ "event": "offer_pending", "logic": "contract_probability >= 70 AND deal_value > 50000" }],
+          "kpis": [{ "name": "Offer acceptance", "target": 35, "unit": "%" }],
+          "ai_tags": ["deal_closure", "proactive", "iterative"]
+        },
+        {
+          "id": "PLAN_MEJORA",
+          "name": "Health score improvement plan",
+          "description": "Launch recovery plan for low account health with root-cause actions.",
+          "role": "Customer Success Agent",
+          "importance_score": 92,
+          "strategy_alignment": 94,
+          "estimated_hours": 4,
+          "inputs": ["health_score", "nps", "support_tickets"],
+          "outputs": ["recovery_plan", "owner_commitments"],
+          "triggers": [{ "event": "health_score_updated", "logic": "health_score < 60" }],
+          "kpis": [{ "name": "Retention rate", "target": 95, "unit": "%" }],
+          "ai_tags": ["retention", "churn_prevention", "feedback-loop"]
+        },
+        {
+          "id": "IDENTIFICAR_UPSELL",
+          "name": "Detect upsell expansion",
+          "description": "Identify growth opportunities from usage, adoption, and account plans.",
+          "role": "Growth Agent",
+          "importance_score": 88,
+          "strategy_alignment": 90,
+          "estimated_hours": 3,
+          "inputs": ["usage_data", "account_plan", "product_adoption"],
+          "outputs": ["upsell_hypothesis", "target_offer"],
+          "triggers": [{ "event": "usage_updated", "logic": "usage_growth >= 20" }],
+          "kpis": [{ "name": "Expansion MRR", "target": 12, "unit": "%" }],
+          "ai_tags": ["upsell", "cross-sell", "growth"]
+        },
+        {
+          "id": "PRIORIZAR_POR_SCORE",
+          "name": "Prioritize by goal impact score",
+          "description": "Rank all executable actions by importance and strategy alignment score.",
+          "role": "Orchestrator Agent",
+          "importance_score": 89,
+          "strategy_alignment": 96,
+          "estimated_hours": 1,
+          "inputs": ["action_pool", "goal_weights", "resource_capacity"],
+          "outputs": ["ranked_action_list"],
+          "triggers": [{ "event": "planning_cycle", "logic": "resource_capacity >= 0" }],
+          "kpis": [{ "name": "Plan-to-goal alignment", "target": 90, "unit": "%" }],
+          "ai_tags": ["orchestration", "next-best-action", "resource-aware"]
+        }
+      ]
+    },
+    {
+      "stage": "CUSTOMER_SUCCESS",
+      "processes": ["Onboarding", "Adoption", "Retention", "Renewals"],
+      "actions": [
+        {
+          "id": "FIDELIZACION_NPS_RECOVERY",
+          "name": "NPS recovery action",
+          "description": "Create and execute plan to recover low NPS accounts.",
+          "role": "Customer Success Agent",
+          "importance_score": 90,
+          "strategy_alignment": 93,
+          "estimated_hours": 3.5,
+          "inputs": ["nps_score", "feedback_items", "service_history"],
+          "outputs": ["nps_recovery_plan", "follow_up_commitments"],
+          "triggers": [{ "event": "nps_updated", "logic": "nps_score < 30" }],
+          "kpis": [{ "name": "NPS improvement", "target": 20, "unit": "points" }],
+          "ai_tags": ["loyalty", "customer_success", "iterative"]
+        },
+        {
+          "id": "RENOVACION_CONTRATO",
+          "name": "Proactive renewal motion",
+          "description": "Drive renewal sequence before contract expiry.",
+          "role": "Customer Success Agent",
+          "importance_score": 94,
+          "strategy_alignment": 92,
+          "estimated_hours": 2,
+          "inputs": ["contract_end_date", "usage_data", "value_realization"],
+          "outputs": ["renewal_offer", "renewal_forecast"],
+          "triggers": [{ "event": "contract_expiring", "logic": "days_to_expiry <= 120" }],
+          "kpis": [{ "name": "Gross renewal rate", "target": 92, "unit": "%" }],
+          "ai_tags": ["renewal", "retention", "event-driven"]
+        }
+      ]
+    },
+    {
+      "stage": "ACCOUNT_GROWTH",
+      "processes": ["Cross-sell", "Upsell", "Strategic expansion"],
+      "actions": [
+        {
+          "id": "EXPANSION_PLAYBOOK",
+          "name": "Expansion playbook",
+          "description": "Coordinate multi-thread upsell and cross-sell within strategic accounts.",
+          "role": "Growth Agent",
+          "importance_score": 87,
+          "strategy_alignment": 90,
+          "estimated_hours": 4,
+          "inputs": ["stakeholder_map", "usage_data", "product_gaps"],
+          "outputs": ["expansion_plan", "exec_sponsor_plan"],
+          "triggers": [{ "event": "upsell_opportunity_detected", "logic": "opportunity_score >= 70" }],
+          "kpis": [{ "name": "Expansion revenue", "target": 15, "unit": "%" }],
+          "ai_tags": ["growth", "multi-thread", "proactive"]
+        },
+        {
+          "id": "CASO_EXITO_REFERENCIABLE",
+          "name": "Build referenceable success case",
+          "description": "Create customer success case to accelerate trust in expansion deals.",
+          "role": "Marketing Agent",
+          "importance_score": 70,
+          "strategy_alignment": 78,
+          "estimated_hours": 2,
+          "inputs": ["customer_outcomes", "roi_metrics"],
+          "outputs": ["case_study", "sales_enablement_asset"],
+          "triggers": [{ "event": "milestone_reached", "logic": "roi_metrics != null" }],
+          "kpis": [{ "name": "Win rate uplift", "target": 8, "unit": "%" }],
+          "ai_tags": ["brand", "enablement", "social_proof"]
+        }
+      ]
+    },
+    {
+      "stage": "REVOPS_INTELLIGENCE",
+      "processes": ["Data quality", "Forecasting", "Optimization", "Feedback loop"],
+      "actions": [
+        {
+          "id": "REVOPS_CASCADE_RECALC",
+          "name": "Cascade recalculation",
+          "description": "Recalculate priorities and forecasts after any event/input update.",
+          "role": "RevOps Agent",
+          "importance_score": 93,
+          "strategy_alignment": 98,
+          "estimated_hours": 1,
+          "inputs": ["event_payload", "historical_data", "crm_data", "external_signals"],
+          "outputs": ["updated_scores", "updated_forecast", "nba_queue"],
+          "triggers": [{ "event": "any_input_changed", "logic": "true" }],
+          "kpis": [{ "name": "Forecast error", "target": 10, "unit": "%" }],
+          "ai_tags": ["stateful", "context-aware", "continuous_optimization"]
+        },
+        {
+          "id": "CHURN_RISK_ALERT",
+          "name": "Churn risk alert",
+          "description": "Predict and escalate churn risk cases with mitigation recommendation.",
+          "role": "RevOps Agent",
+          "importance_score": 95,
+          "strategy_alignment": 95,
+          "estimated_hours": 1.5,
+          "inputs": ["churn_model_score", "usage_data", "nps"],
+          "outputs": ["risk_alert", "recommended_success_action"],
+          "triggers": [{ "event": "health_score_updated", "logic": "churn_model_score >= 0.7" }],
+          "kpis": [{ "name": "Churn rate", "target": 5, "unit": "%" }],
+          "ai_tags": ["ml_predictions", "risk_detection", "customer_success"]
+        }
+      ]
+    }
+  ]
+}
