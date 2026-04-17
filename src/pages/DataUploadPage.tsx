@@ -10,10 +10,25 @@ import { Upload, Download, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, D
 import { useState, useCallback } from 'react';
 import { toast } from '@/hooks/use-toast';
 import type { UploadLogEntry } from '@/store/DataStore';
+import { runDataManagementAgent } from '@/agents/dataManagementAgent';
+import { runCustomerEnrichmentAgent } from '@/agents/customerEnrichmentAgent';
 
 const DataUploadPage = () => {
   const { t } = useLanguage();
-  const { data, setOrders, setOpportunities, setProducts, setStrategy, addUploadLog, clearDataset, clearAll } = useData();
+  const {
+    data,
+    setOrders,
+    setOpportunities,
+    setProducts,
+    setStrategy,
+    setLeads,
+    setContacts,
+    setDataManagementResults,
+    setEnrichedProfiles,
+    addUploadLog,
+    clearDataset,
+    clearAll,
+  } = useData();
   const [processing, setProcessing] = useState<string[]>([]);
   const [dragOver, setDragOver] = useState(false);
 
@@ -22,6 +37,8 @@ const DataUploadPage = () => {
     { key: 'opportunities', title: t.upload.templates.opportunities, desc: t.upload.templates.opportunitiesDesc },
     { key: 'products', title: t.upload.templates.products, desc: t.upload.templates.productsDesc },
     { key: 'strategy', title: t.upload.templates.strategy, desc: t.upload.templates.strategyDesc },
+    { key: 'leads', title: 'Leads', desc: 'Leads and potential accounts with commercial qualification fields.' },
+    { key: 'contacts', title: 'Contacts', desc: 'Contact directory linked to companies, regions, and ownership.' },
   ];
 
   const processFile = useCallback(async (file: File) => {
@@ -43,6 +60,23 @@ const DataUploadPage = () => {
       if (result.type === 'opportunities' && result.opportunities) setOpportunities(result.opportunities);
       if (result.type === 'products' && result.products) setProducts(result.products);
       if (result.type === 'strategy' && result.strategy) setStrategy(result.strategy);
+      if (result.type === 'leads' && result.leads) setLeads(result.leads);
+      if (result.type === 'contacts' && result.contacts) setContacts(result.contacts);
+
+      if (result.type !== 'unknown') {
+        const snapshot = {
+          orders: result.type === 'orders' ? (result.orders || []) : data.orders,
+          opportunities: result.type === 'opportunities' ? (result.opportunities || []) : data.opportunities,
+          products: result.type === 'products' ? (result.products || []) : data.products,
+          strategy: result.type === 'strategy' ? (result.strategy || []) : data.strategy,
+          leads: result.type === 'leads' ? (result.leads || []) : data.leads,
+          contacts: result.type === 'contacts' ? (result.contacts || []) : data.contacts,
+        };
+        const management = runDataManagementAgent(snapshot);
+        const enrichment = runCustomerEnrichmentAgent({ ...snapshot, registries: management.registries });
+        setDataManagementResults(management.registries, management.quality);
+        setEnrichedProfiles(enrichment.profiles);
+      }
 
       if (result.type !== 'unknown') {
         toast({ title: `✅ ${file.name}`, description: `Detected as ${result.type} — ${result.rowCount} rows loaded and saved locally.` });
@@ -58,7 +92,7 @@ const DataUploadPage = () => {
     } finally {
       setProcessing(prev => prev.filter(n => n !== file.name));
     }
-  }, [setOrders, setOpportunities, setProducts, setStrategy, addUploadLog]);
+  }, [setOrders, setOpportunities, setProducts, setStrategy, setLeads, setContacts, setDataManagementResults, setEnrichedProfiles, addUploadLog, data]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -77,6 +111,8 @@ const DataUploadPage = () => {
       opportunities: ['Opp/Offer Number', 'Status', 'Geographical Area', 'Customer Country', 'Customer Name', 'Scope', 'Product Family', 'Segment', 'Est. Purchasing Year', 'Est. Purchasing Quarter', 'Est. Revenue', 'Contract Prob. %', 'Margin', 'Contact', 'KAM'],
       products: ['Name', 'Average Value', 'Commodity/Innovation', 'Comments'],
       strategy: ['Product Family', 'Number of Segment', 'Geographical Area', 'Est. Purchasing Quarter', 'Est. Revenue', 'Margin', 'KAM'],
+      leads: ['Lead Name', 'Company', 'Email', 'Phone', 'Region', 'Country', 'Sector', 'Status', 'Source', 'Owner', 'Estimated Value', 'Notes'],
+      contacts: ['Contact Name', 'Company', 'Email', 'Phone', 'Role', 'Department', 'Region', 'Country', 'KAM', 'Notes'],
     };
     const csvContent = headers[templateKey]?.join(',') || '';
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -88,12 +124,14 @@ const DataUploadPage = () => {
     URL.revokeObjectURL(url);
   };
 
-  const typeLabels: Record<string, string> = { orders: 'Orders', opportunities: 'Opportunities', products: 'Products', strategy: 'Strategy' };
+  const typeLabels: Record<string, string> = { orders: 'Orders', opportunities: 'Opportunities', products: 'Products', strategy: 'Strategy', leads: 'Leads', contacts: 'Contacts' };
   const datasets = [
     { key: 'orders' as const, label: 'Orders', count: data.orders.length },
     { key: 'opportunities' as const, label: 'Opportunities', count: data.opportunities.length },
     { key: 'products' as const, label: 'Products', count: data.products.length },
     { key: 'strategy' as const, label: 'Strategy', count: data.strategy.length },
+    { key: 'leads' as const, label: 'Leads', count: data.leads.length },
+    { key: 'contacts' as const, label: 'Contacts', count: data.contacts.length },
   ];
 
   return (
@@ -158,7 +196,7 @@ const DataUploadPage = () => {
                 <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
                 <p className="text-foreground font-medium mb-1">{t.upload.dragDrop}</p>
                 <p className="text-xs text-muted-foreground mb-1">{t.upload.maxSize}</p>
-                <p className="text-xs text-muted-foreground mb-4">Auto-detects: Orders, Opportunities, Products, Strategy</p>
+                <p className="text-xs text-muted-foreground mb-4">Auto-detects: Orders, Opportunities, Products, Strategy, Leads, Contacts</p>
                 <label>
                   <input type="file" className="hidden" accept=".xlsx,.xls,.csv" multiple onChange={handleFileInput} />
                   <Button variant="outline" className="cursor-pointer" asChild><span>{t.upload.browse}</span></Button>
@@ -182,6 +220,40 @@ const DataUploadPage = () => {
 
           {/* Data Preview */}
           <DataPreviewTables />
+
+          {(data.qualityReports.length > 0 || data.enrichedProfiles.length > 0) && (
+            <div className="grid md:grid-cols-2 gap-4">
+              <Card>
+                <CardContent className="pt-6 space-y-2">
+                  <h3 className="font-semibold text-foreground">Data Management Quality Report</h3>
+                  {data.qualityReports.map((report) => (
+                    <div key={report.dataset} className="text-xs border rounded-md p-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium uppercase">{report.dataset}</span>
+                        <span>{report.rowCount} rows · {report.nullPercentage}% nulls</span>
+                      </div>
+                      {report.issues.length > 0 && <p className="text-muted-foreground mt-1">{report.issues.join(' · ')}</p>}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6 space-y-2">
+                  <h3 className="font-semibold text-foreground">Entity Extraction & Enrichment</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Companies: {Object.keys(data.entityRegistries.companies).length} · Customers: {Object.keys(data.entityRegistries.customers).length} · Products: {Object.keys(data.entityRegistries.products).length} · Contacts: {Object.keys(data.entityRegistries.contacts).length}
+                  </p>
+                  {data.enrichedProfiles.slice(0, 5).map((profile) => (
+                    <div key={profile.id} className="text-xs border rounded-md p-2 flex items-center justify-between">
+                      <span className="font-medium">{profile.companyName}</span>
+                      <span>Score {profile.enrichmentScore} ({profile.completeness})</span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* Templates */}
           <div>
