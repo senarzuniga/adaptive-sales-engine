@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adaptive-sales-engine/modules/commercial_actions_repository/schema.json",
+  "type": "object",
+  "required": ["version", "created_by", "modified_by", "timestamp", "lifecycle_stages"],
+  "properties": {
+    "version": { "type": "string", "pattern": "^v1\\.[0-9]+$" },
+    "created_by": { "type": "string", "minLength": 1 },
+    "modified_by": { "type": "string", "minLength": 1 },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "lifecycle_stages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["stage", "processes", "actions"],
+        "properties": {
+          "stage": { "type": "string", "minLength": 1 },
+          "processes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "description",
+                "role",
+                "inputs",
+                "outputs",
+                "triggers",
+                "kpis",
+                "ai_tags"
+              ],
+              "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "name": { "type": "string" },
+                "description": { "type": "string", "minLength": 1 },
+                "role": { "type": "string", "minLength": 1 },
+                "importance_score": { "type": "number", "minimum": 0, "maximum": 100 },
+                "strategy_alignment": { "type": "number", "minimum": 0, "maximum": 100 },
+                "estimated_hours": { "type": "number", "minimum": 0 },
+                "inputs": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+                "outputs": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+                "triggers": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["event", "logic"],
+                    "properties": {
+                      "event": { "type": "string", "minLength": 1 },
+                      "logic": { "type": "string", "minLength": 1 },
+                      "depends_on": { "type": "array", "items": { "type": "string" } }
+                    }
+                  }
+                },
+                "kpis": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["name", "target"],
+                    "properties": {
+                      "name": { "type": "string", "minLength": 1 },
+                      "target": { "type": "number" },
+                      "unit": { "type": "string" }
+                    }
+                  }
+                },
+                "ai_tags": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+                "goal": { "type": "string" },
+                "supportive_content": {
+                  "type": "object",
+                  "properties": {
+                    "call_script": { "type": "string" },
+                    "email_template": { "type": "string" },
+                    "presentation_notes": { "type": "string" }
+                  }
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

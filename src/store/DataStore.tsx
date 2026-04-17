@@ -103,6 +103,34 @@ export interface StrategyRecord {
   kam: string;
 }
 
+export interface LeadRecord {
+  leadName: string;
+  companyName: string;
+  email: string;
+  phone: string;
+  region: string;
+  country: string;
+  sector: string;
+  status: string;
+  source: string;
+  owner: string;
+  estimatedValue: number;
+  notes: string;
+}
+
+export interface ContactRecord {
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  department: string;
+  companyName: string;
+  region: string;
+  country: string;
+  kam: string;
+  notes: string;
+}
+
 export type TaskPillar = 'p0' | 'p1' | 'p2' | 'p3' | 'p4' | 'p5' | 'p6' | 'general';
 export type TaskStatus = 'todo' | 'in_progress' | 'done';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
@@ -207,9 +235,14 @@ interface DataState {
   opportunities: OpportunityRecord[];
   products: ProductRecord[];
   strategy: StrategyRecord[];
+  leads: LeadRecord[];
+  contacts: ContactRecord[];
   companyProfile: CompanyProfile;
   uploadLog: UploadLogEntry[];
   tasks: MonitoringTask[];
+  entityRegistries: NormalizedEntityRegistries;
+  qualityReports: DatasetQualityReport[];
+  enrichedProfiles: EnrichedCompanyProfile[];
 }
 
 const emptyProfile: CompanyProfile = {
@@ -219,6 +252,13 @@ const emptyProfile: CompanyProfile = {
   sales_channels: '', current_challenges: '', strategic_goals: '', additional_notes: '',
   website_url: '', linkedin_url: '', business_description: '', objectives: '',
   strategy_context: '', market_context: '', enrichment_status: 'pending',
+};
+
+const emptyRegistries: NormalizedEntityRegistries = {
+  companies: {},
+  customers: {},
+  products: {},
+  contacts: {},
 };
 
 interface DataContextType {
@@ -236,12 +276,16 @@ interface DataContextType {
   setOpportunities: (records: OpportunityRecord[]) => void;
   setProducts: (records: ProductRecord[]) => void;
   setStrategy: (records: StrategyRecord[]) => void;
+  setLeads: (records: LeadRecord[]) => void;
+  setContacts: (records: ContactRecord[]) => void;
   setCompanyProfile: (profile: CompanyProfile) => void;
+  setDataManagementResults: (registries: NormalizedEntityRegistries, qualityReports: DatasetQualityReport[]) => void;
+  setEnrichedProfiles: (profiles: EnrichedCompanyProfile[]) => void;
   addUploadLog: (entry: UploadLogEntry) => void;
   addTask: (task: MonitoringTask) => void;
   updateTask: (id: string, updates: Partial<MonitoringTask>) => void;
   deleteTask: (id: string) => void;
-  clearDataset: (key: 'orders' | 'opportunities' | 'products' | 'strategy') => void;
+  clearDataset: (key: 'orders' | 'opportunities' | 'products' | 'strategy' | 'leads' | 'contacts') => void;
   clearAll: () => void;
   hasData: boolean;
   loading: boolean;
@@ -252,8 +296,18 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<DataState>({
-    orders: [], opportunities: [], products: [], strategy: [],
-    companyProfile: emptyProfile, uploadLog: [], tasks: [],
+    orders: [],
+    opportunities: [],
+    products: [],
+    strategy: [],
+    leads: [],
+    contacts: [],
+    companyProfile: emptyProfile,
+    uploadLog: [],
+    tasks: [],
+    entityRegistries: emptyRegistries,
+    qualityReports: [],
+    enrichedProfiles: [],
   });
   const [companies, setCompanies] = useState<CompanyProfile[]>([]);
   const [activeCompanyId, setActiveCompanyIdState] = useState<string | null>(
@@ -327,12 +381,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
         opportunities: dedupeOpportunities((oppsRes.data || []).map(dbToOpportunity)),
         products: (prodsRes.data || []).map(dbToProduct),
         strategy: (stratRes.data || []).map(dbToStrategy),
+        leads: [],
+        contacts: [],
         tasks: (tasksRes.data || []).map(dbToTask),
         uploadLog: (logRes.data || []).map(r => ({
           id: r.id, fileName: r.file_name, detectedType: r.detected_type,
           rowCount: r.row_count || 0, status: r.status as 'validated' | 'error',
           errors: (r.errors as string[]) || [], timestamp: r.created_at,
         })),
+        entityRegistries: emptyRegistries,
+        qualityReports: [],
+        enrichedProfiles: [],
         companyProfile: compRes.data ? {
           id: compRes.data.id, company_name: compRes.data.company_name,
           industry: compRes.data.industry || '', sub_sector: compRes.data.sub_sector || '',
@@ -362,7 +421,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
       loadCompanyData(id);
     } else {
       localStorage.removeItem('acs_active_company');
-      setData({ orders: [], opportunities: [], products: [], strategy: [], companyProfile: emptyProfile, uploadLog: [], tasks: [] });
+      setData({
+        orders: [],
+        opportunities: [],
+        products: [],
+        strategy: [],
+        leads: [],
+        contacts: [],
+        companyProfile: emptyProfile,
+        uploadLog: [],
+        tasks: [],
+        entityRegistries: emptyRegistries,
+        qualityReports: [],
+        enrichedProfiles: [],
+      });
     }
   }, [loadCompanyData]);
 
@@ -423,7 +495,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // ─── Export / Import ───
   const exportCompanyPack = useCallback(async (): Promise<string> => {
-    return JSON.stringify({ companyProfile: data.companyProfile, orders: data.orders, opportunities: data.opportunities, products: data.products, strategy: data.strategy, tasks: data.tasks }, null, 2);
+    return JSON.stringify({
+      companyProfile: data.companyProfile,
+      orders: data.orders,
+      opportunities: data.opportunities,
+      products: data.products,
+      strategy: data.strategy,
+      leads: data.leads,
+      contacts: data.contacts,
+      tasks: data.tasks,
+      entityRegistries: data.entityRegistries,
+      qualityReports: data.qualityReports,
+      enrichedProfiles: data.enrichedProfiles,
+    }, null, 2);
   }, [data]);
 
   const importCompanyPack = useCallback(async (json: string) => {
@@ -608,6 +692,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setData(prev => ({ ...prev, strategy: records }));
   }, [activeCompanyId]);
 
+  const setLeads = useCallback(async (records: LeadRecord[]) => {
+    setData(prev => ({ ...prev, leads: records }));
+  }, []);
+
+  const setContacts = useCallback(async (records: ContactRecord[]) => {
+    setData(prev => ({ ...prev, contacts: records }));
+  }, []);
+
+  const setDataManagementResults = useCallback((registries: NormalizedEntityRegistries, qualityReports: DatasetQualityReport[]) => {
+    setData(prev => ({ ...prev, entityRegistries: registries, qualityReports }));
+  }, []);
+
+  const setEnrichedProfiles = useCallback((profiles: EnrichedCompanyProfile[]) => {
+    setData(prev => ({ ...prev, enrichedProfiles: profiles }));
+  }, []);
+
   const setCompanyProfile = useCallback(async (profile: CompanyProfile) => {
     if (!activeCompanyId) return;
     if (!isSupabaseConfigured) {
@@ -678,9 +778,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setData(prev => ({ ...prev, tasks: prev.tasks.filter(t => t.id !== id) }));
   }, []);
 
-  const clearDataset = useCallback(async (key: 'orders' | 'opportunities' | 'products' | 'strategy') => {
+  const clearDataset = useCallback(async (key: 'orders' | 'opportunities' | 'products' | 'strategy' | 'leads' | 'contacts') => {
     if (!activeCompanyId) return;
-    await supabase.from(key).delete().eq('company_id', activeCompanyId);
+    if (key !== 'leads' && key !== 'contacts') {
+      await supabase.from(key).delete().eq('company_id', activeCompanyId);
+    }
     setData(prev => ({ ...prev, [key]: [] }));
   }, [activeCompanyId]);
 
@@ -694,8 +796,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
       supabase.from('tasks').delete().eq('company_id', activeCompanyId),
       supabase.from('upload_log').delete().eq('company_id', activeCompanyId),
     ]);
-    setData({ orders: [], opportunities: [], products: [], strategy: [], companyProfile: data.companyProfile, uploadLog: [], tasks: [] });
-  }, [activeCompanyId, data.companyProfile]);
+    setData(prev => ({
+      orders: [],
+      opportunities: [],
+      products: [],
+      strategy: [],
+      leads: [],
+      contacts: [],
+      companyProfile: prev.companyProfile,
+      uploadLog: [],
+      tasks: [],
+      entityRegistries: emptyRegistries,
+      qualityReports: [],
+      enrichedProfiles: [],
+    }));
+  }, [activeCompanyId]);
 
   // ─── Initial load ───
   useEffect(() => {
@@ -705,13 +820,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const hasData = data.orders.length > 0 || data.opportunities.length > 0 || data.strategy.length > 0 || data.products.length > 0;
+  const hasData =
+    data.orders.length > 0 ||
+    data.opportunities.length > 0 ||
+    data.strategy.length > 0 ||
+    data.products.length > 0 ||
+    data.leads.length > 0 ||
+    data.contacts.length > 0;
 
   return (
     <DataContext.Provider value={{
       data, companies, activeCompanyId, setActiveCompany, loadCompanies,
       createCompany, deleteCompany, exportCompanyPack, importCompanyPack, triggerEnrichment,
-      setOrders, setOpportunities, setProducts, setStrategy, setCompanyProfile,
+      setOrders, setOpportunities, setProducts, setStrategy, setLeads, setContacts, setCompanyProfile,
+      setDataManagementResults, setEnrichedProfiles,
       addUploadLog, addTask, updateTask, deleteTask, clearDataset, clearAll, hasData, loading,
       commercialSnapshot,
     }}>

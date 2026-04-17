@@ -14,12 +14,14 @@ function safeString(val: any): string {
   return val != null ? String(val).trim() : '';
 }
 
-type DetectedType = 'orders' | 'opportunities' | 'products' | 'strategy' | 'unknown';
+type DetectedType = 'orders' | 'opportunities' | 'products' | 'strategy' | 'leads' | 'contacts' | 'unknown';
 
 const ORDER_MARKERS = ['podate', 'sellingprice', 'purchasingyear', 'purchasingquarter'];
 const OPP_MARKERS = ['status', 'contractprob', 'estrevenue', 'estimatedpurchasingyear'];
 const PRODUCT_MARKERS = ['averagevalue', 'commodityinnovation', 'commodity'];
 const STRATEGY_MARKERS = ['numberofsegment', 'estrevenue', 'productfamily'];
+const LEAD_MARKERS = ['leadname', 'company', 'source', 'owner', 'valorestimado', 'sector'];
+const CONTACT_MARKERS = ['contactname', 'email', 'department', 'role', 'decisionmaker'];
 
 function detectType(headers: string[]): DetectedType {
   const normalized = headers.map(normalizeHeader);
@@ -30,6 +32,8 @@ function detectType(headers: string[]): DetectedType {
     ['opportunities', matchCount(OPP_MARKERS)],
     ['products', matchCount(PRODUCT_MARKERS)],
     ['strategy', matchCount(STRATEGY_MARKERS)],
+    ['leads', matchCount(LEAD_MARKERS)],
+    ['contacts', matchCount(CONTACT_MARKERS)],
   ];
   scores.sort((a, b) => b[1] - a[1]);
   return scores[0][1] >= 2 ? scores[0][0] : 'unknown';
@@ -58,6 +62,8 @@ export function parseExcelFile(file: File): Promise<{
   opportunities?: OpportunityRecord[];
   products?: ProductRecord[];
   strategy?: StrategyRecord[];
+  leads?: LeadRecord[];
+  contacts?: ContactRecord[];
   rowCount: number;
   errors: string[];
 }> {
@@ -162,6 +168,62 @@ export function parseExcelFile(file: File): Promise<{
             kam: getVal(r, cols.kam),
           }));
           resolve({ type, strategy, rowCount: strategy.length, errors });
+        } else if (type === 'leads') {
+          const cols = {
+            leadName: findCol(headers, 'Lead Name', 'Nombre Lead', 'Nombre', 'Contacto'),
+            companyName: findCol(headers, 'Company', 'Company Name', 'Empresa'),
+            email: findCol(headers, 'Email', 'Correo'),
+            phone: findCol(headers, 'Phone', 'Telefono', 'Teléfono', 'Mobile'),
+            region: findCol(headers, 'Region', 'Geographical Area', 'Zona', 'Area'),
+            country: findCol(headers, 'Country', 'Pais', 'País'),
+            sector: findCol(headers, 'Sector', 'Industry', 'Industria'),
+            status: findCol(headers, 'Status', 'Estado'),
+            source: findCol(headers, 'Source', 'Origen', 'Canal'),
+            owner: findCol(headers, 'Owner', 'KAM', 'Responsable'),
+            estimatedValue: findCol(headers, 'Estimated Value', 'Est Value', 'Valor Estimado'),
+            notes: findCol(headers, 'Notes', 'Comentario', 'Comentarios'),
+          };
+          const leads: LeadRecord[] = dataRows.map(r => ({
+            leadName: getVal(r, cols.leadName),
+            companyName: getVal(r, cols.companyName),
+            email: getVal(r, cols.email),
+            phone: getVal(r, cols.phone),
+            region: getVal(r, cols.region),
+            country: getVal(r, cols.country),
+            sector: getVal(r, cols.sector),
+            status: getVal(r, cols.status),
+            source: getVal(r, cols.source),
+            owner: getVal(r, cols.owner),
+            estimatedValue: getNum(r, cols.estimatedValue),
+            notes: getVal(r, cols.notes),
+          }));
+          resolve({ type, leads, rowCount: leads.length, errors });
+        } else if (type === 'contacts') {
+          const cols = {
+            name: findCol(headers, 'Contact Name', 'Name', 'Nombre'),
+            email: findCol(headers, 'Email', 'Correo'),
+            phone: findCol(headers, 'Phone', 'Telefono', 'Teléfono', 'Mobile'),
+            role: findCol(headers, 'Role', 'Cargo', 'Title'),
+            department: findCol(headers, 'Department', 'Departamento', 'Area'),
+            companyName: findCol(headers, 'Company', 'Company Name', 'Empresa'),
+            region: findCol(headers, 'Region', 'Geographical Area', 'Zona'),
+            country: findCol(headers, 'Country', 'Pais', 'País'),
+            kam: findCol(headers, 'KAM', 'Owner', 'Account Manager'),
+            notes: findCol(headers, 'Notes', 'Comentario', 'Comentarios'),
+          };
+          const contacts: ContactRecord[] = dataRows.map(r => ({
+            name: getVal(r, cols.name),
+            email: getVal(r, cols.email),
+            phone: getVal(r, cols.phone),
+            role: getVal(r, cols.role),
+            department: getVal(r, cols.department),
+            companyName: getVal(r, cols.companyName),
+            region: getVal(r, cols.region),
+            country: getVal(r, cols.country),
+            kam: getVal(r, cols.kam),
+            notes: getVal(r, cols.notes),
+          }));
+          resolve({ type, contacts, rowCount: contacts.length, errors });
         } else {
           errors.push('Could not auto-detect file type. Please ensure headers match one of the templates.');
           resolve({ type: 'unknown', rowCount: 0, errors });

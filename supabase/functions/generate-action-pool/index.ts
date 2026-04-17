@@ -47,6 +47,18 @@ CRITICAL RULES:
 5. Flag neglected/unattended opportunities as CRITICAL priority
 6. Consider team capacity — if team members are provided, suggest assignments
 7. Generate 15-25 actions covering ALL categories above
+8. Operate as a goal-driven multi-agent system:
+   - Stateful memory (use historical + current context)
+   - Context-aware decisions
+   - Iterative loop: plan → act → evaluate → improve
+   - Event-driven activation (new lead, low health score, contract expiring, complaint)
+9. Every action must include explicit score and effort to support capacity-based filtering
+10. Ensure cross-agent orchestration:
+   - Sales Agent closes deals
+   - Customer Success Agent protects retention
+   - Growth Agent drives upsell/cross-sell
+   - RevOps Agent analyzes and recalculates
+   - Orchestrator Agent coordinates next best action
 
 IMPORTANT — EACH ACTION MUST INCLUDE FULL SUPPORTIVE CONTENT:
 For EVERY action you generate, you MUST provide complete supportive material so the person executing the action has everything they need to succeed:
@@ -85,6 +97,9 @@ Output JSON with this structure:
       "dueDate": "ISO date string (within next 2 weeks for critical, 4 weeks for high, 6 weeks for medium)",
       "rationale": "Why this action matters for strategy achievement",
       "estimatedRevenue": 0,
+      "importanceScore": 0,
+      "strategyAlignmentScore": 0,
+      "estimatedHours": 0,
       "riskIfNotDone": "What happens if this action is not executed",
       "actionContent": {
         "goal": "Clear measurable objective with success criteria",
@@ -141,7 +156,13 @@ TODAY: ${new Date().toISOString().split('T')[0]}
 
 Generate the action pool now. Be specific with customer names, products, and amounts from the data. Prioritize: (1) Don't lose any good opportunity, (2) Strategic alignment, (3) After-sales profitability, (4) New business development.
 
-REMEMBER: Each action MUST include complete "actionContent" with goal, callScript, emailTemplate, and presentationNotes — all personalized with real data. The person executing the action should be able to pick up the phone or send the email immediately.`;
+REMEMBER: Each action MUST include complete "actionContent" with goal, callScript, emailTemplate, and presentationNotes — all personalized with real data. The person executing the action should be able to pick up the phone or send the email immediately.
+
+AGENT ENGINE REQUIREMENTS:
+- Include proactive event-driven actions for: new lead, low health score, contract expiring, and customer complaint.
+- Include actions that explicitly support iterative reasoning cycle: context understanding, planning, execution, evaluation, memory update, next best action selection.
+- Include at least one action where RevOps recalculates global priorities after new inputs/events.
+- Use structured-data intelligence (CRM + historical + external signals + model scores) in rationales.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -177,6 +198,9 @@ REMEMBER: Each action MUST include complete "actionContent" with goal, callScrip
                       dueDate: { type: "string" },
                       rationale: { type: "string" },
                       estimatedRevenue: { type: "number" },
+                      importanceScore: { type: "number" },
+                      strategyAlignmentScore: { type: "number" },
+                      estimatedHours: { type: "number" },
                       riskIfNotDone: { type: "string" },
                       actionContent: {
                         type: "object",
@@ -189,7 +213,7 @@ REMEMBER: Each action MUST include complete "actionContent" with goal, callScrip
                         required: ["goal", "callScript", "emailTemplate", "presentationNotes"],
                       },
                     },
-                    required: ["title", "description", "category", "pillar", "priority", "actionContent"],
+                    required: ["title", "description", "category", "pillar", "priority", "actionContent", "importanceScore", "strategyAlignmentScore", "estimatedHours"],
                   },
                 },
                 summary: {
