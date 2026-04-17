@@ -652,13 +652,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       supabase.from('upload_log').delete().eq('company_id', activeCompanyId),
     ]);
     setData(prev => ({
-      ...prev,
       orders: [],
       opportunities: [],
       products: [],
       strategy: [],
       leads: [],
       contacts: [],
+      companyProfile: prev.companyProfile,
       uploadLog: [],
       tasks: [],
       entityRegistries: emptyRegistries,
