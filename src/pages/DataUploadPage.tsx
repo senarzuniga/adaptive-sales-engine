@@ -3,6 +3,7 @@ import { useData } from '@/store/DataStore';
 import { parseExcelFile } from '@/lib/excelParser';
 import { DataPreviewTables } from '@/components/DataPreviewTables';
 import { ConceptDocumentUpload } from '@/components/ConceptDocumentUpload';
+import { DataPipelineStatusPanel } from '@/components/DataPipelineStatusPanel';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -151,6 +152,9 @@ const DataUploadPage = () => {
           <TabsTrigger value="documents" className="gap-1.5">
             <FolderOpen className="h-4 w-4" /> Document Library
           </TabsTrigger>
+          <TabsTrigger value="pipeline" className="gap-1.5">
+            <Database className="h-4 w-4" /> Pipeline Status
+          </TabsTrigger>
           <TabsTrigger value="structured" className="gap-1.5">
             <FileSpreadsheet className="h-4 w-4" /> Structured Data
           </TabsTrigger>
@@ -159,6 +163,11 @@ const DataUploadPage = () => {
         {/* ── Document Library Tab ── */}
         <TabsContent value="documents">
           <ConceptDocumentUpload />
+        </TabsContent>
+
+        {/* ── Pipeline Status Tab ── */}
+        <TabsContent value="pipeline">
+          <DataPipelineStatusPanel />
         </TabsContent>
 
         {/* ── Structured Data Tab ── */}
