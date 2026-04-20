@@ -47,6 +47,8 @@ function fuzzyScore(a: string, b: string): number {
 }
 
 const FUZZY_THRESHOLD = 0.82;
+// 0.82 was chosen empirically: it catches near-identical names (e.g. "Acme Corp" / "Acme Corporation")
+// while rejecting common-word matches (e.g. "Solutions" / "Solutions Group") that cause false positives.
 
 // ---------------------------------------------------------------------------
 // Log enrichment action

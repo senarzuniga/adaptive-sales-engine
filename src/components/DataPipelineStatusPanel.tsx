@@ -237,7 +237,7 @@ export function DataPipelineStatusPanel() {
               {t === 'conflicts' && <AlertTriangle className="h-3 w-3 mr-1" />}
               {t}
               {t === 'conflicts' && conflicts.length > 0 && (
-                <Badge variant="destructive" className="ml-1 text-[9px] px-1 py-0 h-4">{conflicts.length}</Badge>
+                <Badge variant="destructive" className="ml-1 text-[9px] px-1 py-0 h-4" aria-label={`${conflicts.length} conflicts`}>{conflicts.length}</Badge>
               )}
             </Button>
           ))}

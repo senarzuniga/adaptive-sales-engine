@@ -180,6 +180,11 @@ function buildMetaFields(
   };
 }
 
+/** Compute margin as a percentage: margin / revenue * 100, or null when revenue is 0. */
+function calcMarginPct(margin: number, revenue: number): number | null {
+  return revenue > 0 ? Number(((margin / revenue) * 100).toFixed(4)) : null;
+}
+
 async function persistValidatedCanonicalRecords(
   supabase: any,
   doc: any,
@@ -209,7 +214,7 @@ async function persistValidatedCanonicalRecords(
           total_value: sellingPrice,
           currency: r.currency ?? "EUR",
           truth_source: "sales_document",
-          margin_percentage: sellingPrice > 0 ? Number(((margin / sellingPrice) * 100).toFixed(4)) : null,
+          margin_percentage: calcMarginPct(margin, sellingPrice),
           source_document_id: doc.id,
           uploaded_section: doc.category,
           raw_extracted_id: rawExtractedId,
@@ -250,7 +255,7 @@ async function persistValidatedCanonicalRecords(
         clean.segment = r.segment ?? "";
         clean.selling_price = sellingPrice;
         clean.margin = margin;
-        clean.margin_percentage = sellingPrice > 0 ? Number(((margin / sellingPrice) * 100).toFixed(4)) : null;
+        clean.margin_percentage = calcMarginPct(margin, sellingPrice);
         clean.kam = r.kam ?? "";
         clean.purchasing_year = r.purchasing_year ?? r.purchasingYear ?? "";
         clean.purchasing_quarter = r.purchasing_quarter ?? r.purchasingQuarter ?? "";
@@ -267,7 +272,7 @@ async function persistValidatedCanonicalRecords(
         clean.est_revenue = estRevenue;
         clean.contract_prob = parseFlexibleNumber(r.contract_prob ?? r.contractProb ?? r.probability ?? 0);
         clean.margin = margin;
-        clean.margin_percentage = estRevenue > 0 ? Number(((margin / estRevenue) * 100).toFixed(4)) : null;
+        clean.margin_percentage = calcMarginPct(margin, estRevenue);
         clean.kam = r.kam ?? "";
         clean.est_purchasing_year = r.est_purchasing_year ?? "";
         clean.truth_source = "sales_document";
@@ -353,6 +358,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+/**
+ * Fallback batch result used when no section schema exists for a given category.
+ * Treats all records as flagged (not validated) to avoid blindly writing to canonical DB.
+ */
+function createFallbackBatchResult(records: Record<string, unknown>[]) {
+  const flaggedResult = { confidence_score: 0.5, completeness_score: 0.5, consistency_score: 0.5, status: "flagged" as const, valid: false, errors: [] as any[], warnings: [] as string[] };
+  return {
+    validated: [] as Array<{ record: Record<string, unknown>; result: typeof flaggedResult }>,
+    rejected: [] as Array<{ record: Record<string, unknown>; result: typeof flaggedResult }>,
+    flagged: records.map((r) => ({ record: r, result: { ...flaggedResult } })),
+    summary: { total: records.length, validated_count: 0, rejected_count: 0, flagged_count: records.length, avg_confidence: 0.5 },
+  };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -418,7 +437,7 @@ serve(async (req) => {
 
     const batchResult = sectionSchema
       ? validateBatch(candidateRecords, sectionSchema, sectionExtraction.confidence)
-      : { validated: candidateRecords.map((r) => ({ record: r, result: { confidence_score: 0.5, completeness_score: 0.5, consistency_score: 0.5, status: "flagged" as const, valid: false, errors: [], warnings: [] } })), rejected: [], flagged: [], summary: { total: candidateRecords.length, validated_count: candidateRecords.length, rejected_count: 0, flagged_count: 0, avg_confidence: 0.5 } };
+      : createFallbackBatchResult(candidateRecords);
 
     // Write ALL records (validated + rejected + flagged) to Layer 2
     const rawExtractedEntries = await persistRawExtracted(

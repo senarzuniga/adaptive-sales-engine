@@ -529,9 +529,9 @@ export function ConceptDocumentUpload() {
                             <Badge
                               variant="secondary"
                               className="text-[9px] px-1 py-0 h-4"
-                              aria-label={`${validatedCount} validated${rejectedCount != null && rejectedCount > 0 ? `, ${rejectedCount} rejected` : ''}`}
+                              aria-label={`${validatedCount} validated${rejectedCount !== null && rejectedCount > 0 ? `, ${rejectedCount} rejected` : ''}`}
                             >
-                              {validatedCount}✓{rejectedCount != null && rejectedCount > 0 ? ` ${rejectedCount}✗` : ''}
+                              {validatedCount}✓{rejectedCount !== null && rejectedCount > 0 ? ` ${rejectedCount}✗` : ''}
                             </Badge>
                           )}
                           {doc.processing_status === 'completed' && validatedCount === null && recordCount > 0 && (

@@ -32,16 +32,29 @@ export interface ValidationResult {
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$/;
 const CURRENCY_RE = /^-?[$€£¥]?\s*[\d,. ]+([MBKmbk])?$/;
 
+// Strips currency/percent symbols and converts parenthesised negatives to minus sign.
+// Used consistently by both isNumeric and toNumber.
+function normaliseNumericString(raw: string): { cleaned: string; negative: boolean } {
+  const negative = (raw.includes('(') && raw.includes(')')) || raw.startsWith('-');
+  const cleaned = raw
+    .replace(/[€$£¥,%\s]/g, '')
+    .replace(/[()]/g, '')
+    .replace(/^[+-]/, '');
+  return { cleaned, negative };
+}
+
 function isNumeric(v: unknown): boolean {
   if (typeof v === 'number') return Number.isFinite(v);
-  const n = Number(String(v).replace(/[€$£¥,%\s]/g, '').replace(/[()]/g, '-'));
+  const { cleaned } = normaliseNumericString(String(v));
+  const n = Number(cleaned);
   return Number.isFinite(n);
 }
 
 function toNumber(v: unknown): number {
   if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
-  let raw = String(v ?? '').replace(/[€$£¥,%\s]/g, '').replace(/[()]/g, '');
-  return Number.parseFloat(raw) || 0;
+  const { cleaned, negative } = normaliseNumericString(String(v ?? ''));
+  const parsed = Number.parseFloat(cleaned) || 0;
+  return negative ? -Math.abs(parsed) : parsed;
 }
 
 function isIsoDate(v: unknown): boolean {
@@ -183,13 +196,16 @@ export function validateRecord(
   const consistency_score = Number(Math.max(0, 1 - (errors.length * 0.15)).toFixed(4));
 
   // 8. Final confidence score formula (as per system spec §7.2.H):
-  //    confidence = (completeness * 0.3) + (consistency * 0.3) + (source_quality * 0.2) + (cross_validation * 0.2)
+  //    confidence = (completeness * 0.3) + (consistency * 0.3) + (source_quality * 0.2) + (extraction_confidence * 0.2)
   //
   //    Weights rationale:
-  //    - completeness (0.3): most important signal — missing required fields indicate low-quality records
-  //    - consistency (0.3): cross-field validity errors strongly indicate bad data
-  //    - source_quality (0.2): document uploads are reliable sources (fixed at 0.8); lower for OCR/inferred
-  //    - cross_validation (0.2): AI extraction confidence score from the LLM's own assessment
+  //    - completeness (0.3):            missing required fields are the strongest signal of bad data quality
+  //    - consistency (0.3):             cross-field validation errors also strongly indicate incorrect data
+  //    - source_quality (0.2):          reliability of the data source; document uploads score 0.8
+  //    - extraction_confidence (0.2):   AI extractor's own confidence score from its output JSON
+  //
+  //    Note: a record can still be rejected despite confidence ≥ MIN_CONFIDENCE_TO_STORE if it
+  //    has more than 2 validation errors, to prevent low-integrity records reaching canonical DB.
   const source_quality = 0.8; // document upload is a reliable source
   const confidence_score = Number((
     completeness_score * 0.3 +
