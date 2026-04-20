@@ -56,6 +56,17 @@ const statusConfig: Record<string, { icon: typeof CheckCircle; className: string
   failed: { icon: AlertCircle, className: 'text-destructive', label: 'Failed' },
 };
 
+const pipelineStageLabel: Record<string, string> = {
+  ingested: 'Ingested',
+  preprocessing: 'Preprocessing',
+  extracting: 'Extracting',
+  validating: 'Validating',
+  knowledge_extraction: 'Knowledge Graph',
+  storing: 'Storing',
+  completed: 'Completed',
+  failed: 'Failed',
+};
+
 const isTransientNetworkError = (msg: string) => {
   const lower = (msg || '').toLowerCase();
   return lower.includes('failed to fetch') || lower.includes('networkerror') || lower.includes('load failed');
@@ -499,6 +510,9 @@ export function ConceptDocumentUpload() {
                       const isProcessing = processingIds.has(doc.id) || doc.processing_status === 'processing';
                       const extracted = doc.extracted_data as any;
                       const recordCount = extracted?.record_count || extracted?.extracted_records?.length || 0;
+                      const validatedCount = extracted?.validation_summary?.validated_count ?? null;
+                      const rejectedCount = extracted?.validation_summary?.rejected_count ?? null;
+                      const pipelineStage = (doc as any).pipeline_stage as string | undefined;
 
                       return (
                         <div key={doc.id} className="flex items-center gap-1.5 group text-xs">
@@ -506,7 +520,17 @@ export function ConceptDocumentUpload() {
                           <span className="truncate flex-1 text-foreground" title={doc.file_name}>
                             {doc.file_name}
                           </span>
-                          {doc.processing_status === 'completed' && recordCount > 0 && (
+                          {doc.processing_status === 'processing' && pipelineStage && pipelineStage !== 'processing' && (
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-primary/40 text-primary">
+                              {pipelineStageLabel[pipelineStage] ?? pipelineStage}
+                            </Badge>
+                          )}
+                          {doc.processing_status === 'completed' && validatedCount !== null && (
+                            <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">
+                              {validatedCount}✓{rejectedCount != null && rejectedCount > 0 ? ` ${rejectedCount}✗` : ''}
+                            </Badge>
+                          )}
+                          {doc.processing_status === 'completed' && validatedCount === null && recordCount > 0 && (
                             <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">
                               {recordCount} rec
                             </Badge>
