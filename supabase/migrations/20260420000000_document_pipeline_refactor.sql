@@ -42,7 +42,7 @@ create table if not exists public.entities_raw_extracted (
   consistency_score   numeric(5,4) not null default 0,
 
   -- Pipeline outcome
-  validation_status   text    not null default 'raw',  -- raw|validated|rejected|flagged
+  validation_status   text    not null default 'raw',  -- raw|validated|rejected|flagged|enriched
   rejection_reason    text,
 
   -- Traceability
@@ -84,6 +84,7 @@ create index if not exists idx_enrichment_logs_run     on public.enrichment_logs
 
 -- ---------------------------------------------------------------------------
 -- LAYER 3: Universal meta columns on all canonical tables
+-- validation_status lifecycle: raw → validated → enriched (or rejected / flagged)
 -- ---------------------------------------------------------------------------
 
 -- orders
@@ -116,6 +117,7 @@ alter table public.opportunities
 
 -- offers
 alter table public.offers
+  add column if not exists source_document_id    uuid references public.company_documents(id) on delete set null,
   add column if not exists source_type           text not null default 'document',
   add column if not exists extraction_timestamp  timestamptz,
   add column if not exists uploaded_section      text,

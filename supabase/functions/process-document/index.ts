@@ -83,11 +83,12 @@ async function persistRawExtracted(
   aiConfidence: number,
   missingFields: string[],
   anomalies: string[],
-): Promise<Array<{ rawExtractedId: string; record: Record<string, unknown> }>> {
+): Promise<Map<Record<string, unknown>, string>> {
   const schema = getSectionSchema(category);
   const schemaVersion = schema?.schemaVersion ?? "1.0";
   const timestamp = nowIso();
-  const result: Array<{ rawExtractedId: string; record: Record<string, unknown> }> = [];
+  // Map: record object reference → rawExtractedId
+  const result = new Map<Record<string, unknown>, string>();
 
   const allRecords = [
     ...validatedBatch.validated.map((r) => ({ ...r, status: "validated" as const })),
@@ -114,7 +115,7 @@ async function persistRawExtracted(
     }).select("id").single();
 
     if (!error && data?.id) {
-      result.push({ rawExtractedId: data.id, record: item.record });
+      result.set(item.record, data.id);
     }
   }
 
@@ -431,9 +432,9 @@ serve(async (req) => {
       sectionExtraction.anomalies,
     );
 
-    // Map rawExtractedId back to validated items
-    const validatedWithIds = batchResult.validated.map((item, idx) => ({
-      rawExtractedId: rawExtractedEntries[idx]?.rawExtractedId ?? "",
+    // Map rawExtractedId back to validated items using the record object reference
+    const validatedWithIds = batchResult.validated.map((item) => ({
+      rawExtractedId: rawExtractedEntries.get(item.record) ?? "",
       record: item.record,
       validationResult: item.result,
     }));

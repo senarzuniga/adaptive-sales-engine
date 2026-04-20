@@ -182,8 +182,14 @@ export function validateRecord(
   // 7. Consistency score — penalise for each error
   const consistency_score = Number(Math.max(0, 1 - (errors.length * 0.15)).toFixed(4));
 
-  // 8. Final confidence =
-  //    (completeness * 0.3) + (consistency * 0.3) + (source_quality * 0.2) + (extraction * 0.2)
+  // 8. Final confidence score formula (as per system spec §7.2.H):
+  //    confidence = (completeness * 0.3) + (consistency * 0.3) + (source_quality * 0.2) + (cross_validation * 0.2)
+  //
+  //    Weights rationale:
+  //    - completeness (0.3): most important signal — missing required fields indicate low-quality records
+  //    - consistency (0.3): cross-field validity errors strongly indicate bad data
+  //    - source_quality (0.2): document uploads are reliable sources (fixed at 0.8); lower for OCR/inferred
+  //    - cross_validation (0.2): AI extraction confidence score from the LLM's own assessment
   const source_quality = 0.8; // document upload is a reliable source
   const confidence_score = Number((
     completeness_score * 0.3 +

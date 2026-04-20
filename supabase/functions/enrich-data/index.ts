@@ -300,7 +300,9 @@ async function completeContactFields(supabase: any, companyId: string, runId: st
 }
 
 // ---------------------------------------------------------------------------
-// Update validation_status on enriched canonical records
+// Mark all previously validated canonical records as enriched.
+// 'enriched' is the final state in the pipeline after enrichment runs.
+// Valid states: raw → validated → enriched (or rejected / flagged)
 // ---------------------------------------------------------------------------
 async function markEnrichedRecords(supabase: any, companyId: string) {
   const tables = ["orders", "opportunities", "offers", "customers", "company_contacts", "competitors", "products", "strategy"];

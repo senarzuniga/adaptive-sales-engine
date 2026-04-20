@@ -260,7 +260,9 @@ export const SECTION_SCHEMAS: Record<string, SectionSchema> = {
 };
 
 // Sections that should NOT have any records written to canonical DB
-// (their output goes to company_info_update which is handled separately)
+// (their output goes to company_info_update which is handled separately in persistCompanyUpdates).
+// Note: all sections listed here either have a schema in SECTION_SCHEMAS above (market, finance)
+// or are generic content sections that don't map to any canonical entity table.
 export const NON_CANONICAL_SECTIONS = new Set(['market', 'finance', 'general', 'reports', 'hierarchy', 'operations', 'contracts', 'logistics', 'compliance', 'investments']);
 
 export function getSectionSchema(category: string): SectionSchema | null {
