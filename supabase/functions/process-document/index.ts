@@ -353,6 +353,98 @@ function unique<T>(items: T[]): T[] {
   return [...new Set(items)];
 }
 
+async function triggerCascadeActionRefresh(supabase: any, companyId: string): Promise<number> {
+  const MILLISECONDS_PER_DAY = 86400000;
+  const STRONG_PROBABILITY_THRESHOLD = 75;
+  const CERTAIN_PROBABILITY = 100;
+  const HIGH_PRIORITY_DAYS = 7;
+  const MEDIUM_PRIORITY_DAYS = 14;
+  const CROSS_SELL_DUE_DAYS = 21;
+  const CROSS_SELL_REVENUE_MULTIPLIER = 0.1;
+
+  const [{ data: orders }, { data: opportunities }] = await Promise.all([
+    supabase.from("orders").select("opp_number,customer_name,product_family,region,selling_price,margin,kam").eq("company_id", companyId),
+    supabase.from("opportunities").select("opp_number,customer_name,product_family,region,est_revenue,contract_prob,status,margin,kam").eq("company_id", companyId),
+  ]);
+
+  if (!orders?.length && !opportunities?.length) return 0;
+
+  const today = new Date();
+  const actions: any[] = [];
+
+  const soldOppNumbers = new Set<string>(
+    (opportunities || []).filter((o: any) => {
+      const s = String(o.status || "").toLowerCase();
+      return s.includes("won") || s.includes("sold") || s.includes("booked") || parseFloat(o.contract_prob || 0) >= CERTAIN_PROBABILITY;
+    }).map((o: any) => o.opp_number).filter(Boolean)
+  );
+
+  const coveredByOrder = new Set<string>((orders || []).map((o: any) => o.opp_number).filter(Boolean));
+
+  const openOpps = (opportunities || []).filter((o: any) => {
+    const s = String(o.status || "").toLowerCase();
+    const isClosed = s.includes("lost") || s.includes("cancel") || s.includes("rejected");
+    const isSold = soldOppNumbers.has(o.opp_number) || coveredByOrder.has(o.opp_number);
+    return !isClosed && !isSold;
+  });
+
+  openOpps
+    .sort((a: any, b: any) => (b.contract_prob || 0) * (b.est_revenue || 0) - (a.contract_prob || 0) * (a.est_revenue || 0))
+    .slice(0, 8)
+    .forEach((opp: any, index: number) => {
+      const prob = parseFloat(opp.contract_prob || 0);
+      const isStrong = prob >= STRONG_PROBABILITY_THRESHOLD;
+      const dueDays = index < 3 ? HIGH_PRIORITY_DAYS : MEDIUM_PRIORITY_DAYS;
+      const dueDate = new Date(today.getTime() + dueDays * MILLISECONDS_PER_DAY).toISOString().slice(0, 10);
+      actions.push({
+        company_id: companyId,
+        title: isStrong
+          ? `Protect ${opp.customer_name || "account"} ${opp.product_family || ""}`.trim()
+          : `Qualify ${opp.customer_name || "account"} ${opp.product_family || ""}`.trim(),
+        description: isStrong
+          ? "High-probability deal: reinforce relationship, confirm timeline, and prevent late-stage risk."
+          : "Improve qualification and value framing to raise conversion probability above 75%.",
+        priority: isStrong ? "high" : "medium",
+        expected_impact: Math.round((opp.est_revenue || 0) * (prob / CERTAIN_PROBABILITY)),
+        required_effort: isStrong ? "medium" : "high",
+        status: "todo",
+        source_module: "cascade-analysis",
+        due_date: dueDate,
+        metadata: { opp_number: opp.opp_number, customer: opp.customer_name, product: opp.product_family, type: "pipeline" },
+      });
+    });
+
+  const soldCustomers = unique((orders || []).map((o: any) => o.customer_name).filter(Boolean));
+  const pipelineCustomers = new Set(openOpps.map((o: any) => o.customer_name).filter(Boolean));
+
+  soldCustomers
+    .filter((c: string) => !pipelineCustomers.has(c))
+    .slice(0, 3)
+    .forEach((customer: string) => {
+      const revenue = (orders || [])
+        .filter((o: any) => o.customer_name === customer)
+        .reduce((sum: number, o: any) => sum + parseFloat(o.selling_price || 0), 0);
+      actions.push({
+        company_id: companyId,
+        title: `Create cross-sell plan for ${customer}`,
+        description: "Existing revenue with no open pipeline indicates expansion whitespace for services or upgrades.",
+        priority: "medium",
+        expected_impact: Math.round(revenue * CROSS_SELL_REVENUE_MULTIPLIER),
+        required_effort: "medium",
+        status: "todo",
+        source_module: "cascade-analysis",
+        due_date: new Date(today.getTime() + CROSS_SELL_DUE_DAYS * MILLISECONDS_PER_DAY).toISOString().slice(0, 10),
+        metadata: { customer, type: "cross_sell" },
+      });
+    });
+
+  await supabase.from("actions").delete().eq("company_id", companyId).eq("source_module", "cascade-analysis");
+  if (actions.length > 0) {
+    await supabase.from("actions").insert(actions);
+  }
+  return actions.length;
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -577,6 +669,15 @@ serve(async (req) => {
       : await persistValidatedCanonicalRecords(supabase, doc, targetTable, validatedWithIds);
 
     await persistCompanyUpdates(supabase, doc, extractedData);
+
+    const commercialCategories = ["sales", "offers", "opportunities", "strategy", "customers"];
+    if (commercialCategories.includes(doc.category)) {
+      try {
+        await triggerCascadeActionRefresh(supabase, doc.company_id);
+      } catch (cascadeError: any) {
+        console.warn("Cascade action refresh failed:", cascadeError?.message || cascadeError);
+      }
+    }
 
     await supabase.from("company_documents").update({
       ...documentUpdatePayload,

@@ -132,15 +132,20 @@ export const AGENT_DEFINITIONS = {
     name: 'Knowledge Extractor Agent',
     responsibilities: ['extract entities, relationships, metrics, and claims', 'run interpretation pass', 'produce traceable evidence'],
   },
-  normalizer: {
-    id: 'normalizer-agent',
-    name: 'Normalizer Agent',
-    responsibilities: ['deduplicate entities', 'normalize naming', 'link aliases and related concepts'],
+  validator: {
+    id: 'validator-agent',
+    name: 'Validator Agent',
+    responsibilities: ['check numeric coherence', 'verify status consistency', 'detect source-vs-context conflicts', 'reprocess low-confidence outputs'],
   },
   router: {
     id: 'storage-router-agent',
     name: 'Storage Router Agent',
     responsibilities: ['route document store data', 'route relational knowledge data', 'route vector-ready chunk data'],
+  },
+  cascade: {
+    id: 'cascade-reanalysis-agent',
+    name: 'Cascade Re-Analysis Agent',
+    responsibilities: ['regenerate key-account tiers on new data', 'recompute market segments', 'refresh opportunity maps', 'refresh prioritized actions'],
   },
 } as const;
 
@@ -676,6 +681,7 @@ export async function persistIngestionArtifacts(supabase: any, params: {
     supabase.from('knowledge_relationships').delete().eq('document_id', params.documentId),
     supabase.from('knowledge_insights').delete().eq('document_id', params.documentId),
     supabase.from('knowledge_data_points').delete().eq('document_id', params.documentId),
+    supabase.from('insights').delete().eq('company_id', params.companyId).eq('source_module', 'document-ingestion').filter('metadata->>document_id', 'eq', params.documentId),
   ]);
 
   await supabase.from('document_ingestion_runs').insert({
@@ -767,6 +773,22 @@ export async function persistIngestionArtifacts(supabase: any, params: {
       confidence: insight.confidence,
       source_chunk_id: insight.sourceChunkId,
       semantic_context: insight.semanticContext,
+      created_at: timestamp,
+    })));
+
+    await supabase.from('insights').insert(params.knowledge.insights.map((insight) => ({
+      company_id: params.companyId,
+      insight_type: insight.insightType,
+      title: insight.summary.slice(0, 200),
+      summary: insight.summary,
+      confidence: insight.confidence,
+      source_module: 'document-ingestion',
+      metadata: {
+        document_id: params.documentId,
+        source_chunk_id: insight.sourceChunkId,
+        semantic_context: insight.semanticContext,
+        evidence: insight.evidence,
+      },
       created_at: timestamp,
     })));
   }
