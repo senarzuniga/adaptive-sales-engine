@@ -137,3 +137,14 @@ Every push and pull-request runs the `.github/workflows/ci.yml` pipeline:
 
 The workflow uses the Node version pinned in `.nvmrc` and caches npm for fast runs.
 
+---
+
+## 🧪 Testing
+
+Tests are located in the `tests` directory. To run tests, use the following command:
+
+```bash
+npm test
+```
+
+Ensure that all tests pass before committing changes.
