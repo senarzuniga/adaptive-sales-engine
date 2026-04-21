@@ -8,7 +8,7 @@ export interface ProductStrategicSignals {
   scenario: 'consultative selling' | 'efficiency and market coverage' | 'lifecycle value services' | 'repositioning and portfolio transformation';
 }
 
-export interface ProductCatalogSuggestion extends ProductRecord {}
+export type ProductCatalogSuggestion = ProductRecord;
 
 const toWords = (value?: string) => (value || '').toLowerCase();
 
