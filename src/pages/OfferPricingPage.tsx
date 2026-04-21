@@ -20,6 +20,7 @@ import {
   FolderKanban, ArrowRight, Settings2
 } from 'lucide-react';
 import { buildFallbackOfferAnalysis, classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
+import { inferProductCategory } from '@/lib/productCatalog';
 
 type CostLine = {
   id: string;
@@ -168,7 +169,7 @@ export default function OfferPricingPage() {
     const selected = data.products.find((product) => product.name === catalogSelection);
     if (!selected) return;
 
-    const category = selected.category || (selected.type.toLowerCase().includes('service') ? 'service' : 'product');
+    const category = inferProductCategory(selected.type, selected.category);
     const costCategory = category === 'service' ? 'engineering' : 'materials';
     const unitCost = Number(selected.estimatedCost || selected.averageValue || 0);
 

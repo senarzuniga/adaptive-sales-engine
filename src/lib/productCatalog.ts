@@ -11,6 +11,11 @@ export interface ProductCatalogMeta {
 
 const META_TOKEN = '[ASE_CATALOG_META]';
 
+export function inferProductCategory(type?: string, category?: ProductCategory): ProductCategory {
+  if (category === 'service' || category === 'product') return category;
+  return String(type || '').toLowerCase().includes('service') ? 'service' : 'product';
+}
+
 function safeParseMeta(raw: string): ProductCatalogMeta {
   try {
     const parsed = JSON.parse(raw);

@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { buildCommercialIntelligence, harmonizeCommercialRecords } from '@/lib/commercialIntelligence';
 import { dedupeOpportunities, dedupeOrders, normalizeOpportunityStatus, parseFlexibleNumber } from '@/lib/salesData';
-import { parseProductComments, serializeProductComments, type ProductCategory } from '@/lib/productCatalog';
+import { inferProductCategory, parseProductComments, serializeProductComments, type ProductCategory } from '@/lib/productCatalog';
 
 // ─── Offline / localStorage mode when Supabase is not configured ───
 const isSupabaseConfigured =
@@ -217,7 +217,7 @@ function dbToProduct(r: any): ProductRecord {
     averageValue: parseFlexibleNumber(r.average_value),
     type: r.type || '',
     comments: parsed.notes,
-    category: parsed.meta.category || (String(r.type || '').toLowerCase().includes('service') ? 'service' : 'product'),
+    category: inferProductCategory(r.type, parsed.meta.category),
     characteristics: parsed.meta.characteristics || [],
     estimatedCost: parseFlexibleNumber(parsed.meta.estimatedCost),
     repositories: parsed.meta.repositories || [],

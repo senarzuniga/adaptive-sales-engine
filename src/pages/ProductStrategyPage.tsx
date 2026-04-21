@@ -22,13 +22,17 @@ import {
   evaluateProductActionFeedback,
 } from '@/lib/productStrategy';
 import { runProductAnalysisAgent, runProductSearchAgent } from '@/agents/productCatalogAgents';
+import { inferProductCategory } from '@/lib/productCatalog';
 
 type CatalogDraft = ProductRecord & { draftId: string };
+let fallbackDraftIdCounter = 0;
+
+const getDraftId = () => globalThis.crypto?.randomUUID?.() || `draft-${Date.now()}-${Math.round(Math.random() * 1e6)}-${fallbackDraftIdCounter++}`;
 
 const toDraft = (product: ProductRecord): CatalogDraft => ({
   ...product,
-  draftId: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`,
-  category: product.category || (product.type.toLowerCase().includes('service') ? 'service' : 'product'),
+  draftId: getDraftId(),
+  category: inferProductCategory(product.type, product.category),
   characteristics: product.characteristics || [],
   estimatedCost: product.estimatedCost || 0,
   repositories: product.repositories || [],

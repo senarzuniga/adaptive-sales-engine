@@ -9,6 +9,13 @@ export interface ProductStrategicSignals {
 }
 
 export type ProductCatalogSuggestion = ProductRecord;
+const ESTIMATED_COST_REVENUE_DIVISOR = 12;
+const ESTIMATED_COST_PIPELINE_DIVISOR = 20;
+const AVERAGE_VALUE_REVENUE_DIVISOR = 8;
+const AVERAGE_VALUE_PIPELINE_DIVISOR = 14;
+
+const divisorByCommercialWeight = (revenue: number, divisors: { revenue: number; pipeline: number }) =>
+  Math.max(1, revenue > 0 ? divisors.revenue : divisors.pipeline);
 
 const toWords = (value?: string) => (value || '').toLowerCase();
 
@@ -75,10 +82,21 @@ export function runProductSearchAgent(input: {
     .slice(0, 8)
     .map(([name, metric]) => {
       const category = includesAny(name.toLowerCase(), ['service', 'support', 'maintenance']) ? 'service' : 'product';
-      const estimatedCost = Math.max(0, (metric.revenue + metric.pipeline) / Math.max(1, metric.revenue > 0 ? 12 : 20));
+      const estimatedCost = Math.max(
+        0,
+        (metric.revenue + metric.pipeline) / divisorByCommercialWeight(metric.revenue, {
+          revenue: ESTIMATED_COST_REVENUE_DIVISOR,
+          pipeline: ESTIMATED_COST_PIPELINE_DIVISOR,
+        }),
+      );
       return {
         name,
-        averageValue: Math.round((metric.revenue + metric.pipeline) / Math.max(1, metric.revenue > 0 ? 8 : 14)),
+        averageValue: Math.round(
+          (metric.revenue + metric.pipeline) / divisorByCommercialWeight(metric.revenue, {
+            revenue: AVERAGE_VALUE_REVENUE_DIVISOR,
+            pipeline: AVERAGE_VALUE_PIPELINE_DIVISOR,
+          }),
+        ),
         type: category === 'service' ? 'service model' : 'equipment line',
         category,
         characteristics: [
