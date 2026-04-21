@@ -18,7 +18,7 @@ type DetectedType = 'orders' | 'opportunities' | 'products' | 'strategy' | 'lead
 
 const ORDER_MARKERS = ['podate', 'sellingprice', 'purchasingyear', 'purchasingquarter'];
 const OPP_MARKERS = ['status', 'contractprob', 'estrevenue', 'estimatedpurchasingyear'];
-const PRODUCT_MARKERS = ['averagevalue', 'commodityinnovation', 'commodity'];
+const PRODUCT_MARKERS = ['averagevalue', 'commodityinnovation', 'commodity', 'characteristics', 'repositories', 'service'];
 const STRATEGY_MARKERS = ['numberofsegment', 'estrevenue', 'productfamily'];
 const LEAD_MARKERS = ['leadname', 'company', 'source', 'owner', 'valorestimado', 'sector'];
 const CONTACT_MARKERS = ['contactname', 'email', 'department', 'role', 'decisionmaker'];
@@ -144,11 +144,22 @@ export function parseExcelFile(file: File): Promise<{
             name: findCol(headers, 'Name'),
             avgValue: findCol(headers, 'Average Value', 'average', 'value'),
             type: findCol(headers, 'commodity/innovation', 'commodity', 'type'),
+            category: findCol(headers, 'Category', 'product/service', 'service', 'category'),
+            characteristics: findCol(headers, 'Characteristics', 'features', 'capabilities'),
+            estimatedCost: findCol(headers, 'Estimated Cost', 'cost', 'base cost'),
+            repositories: findCol(headers, 'Repositories', 'repository', 'docs', 'knowledge base'),
             comments: findCol(headers, 'Comments', 'comment'),
           };
           const products: ProductRecord[] = dataRows.map(r => ({
             name: getVal(r, cols.name), averageValue: getNum(r, cols.avgValue),
-            type: getVal(r, cols.type), comments: getVal(r, cols.comments),
+            type: getVal(r, cols.type),
+            category: getVal(r, cols.category).toLowerCase().includes('service') ? 'service' : 'product',
+            characteristics: getVal(r, cols.characteristics).split(/[;,|]/).map((value) => value.trim()).filter(Boolean),
+            estimatedCost: getNum(r, cols.estimatedCost),
+            repositories: getVal(r, cols.repositories).split(/[;,|]/).map((value) => value.trim()).filter(Boolean),
+            comments: getVal(r, cols.comments),
+            validated: false,
+            source: 'manual',
           }));
           resolve({ type, products, rowCount: products.length, errors });
         } else if (type === 'strategy') {
