@@ -151,21 +151,27 @@ export function DataPreviewTables() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader><TableRow>
-                    <TableHead className="text-xs">Name</TableHead>
-                    <TableHead className="text-xs text-right">Avg Value</TableHead>
-                    <TableHead className="text-xs">Type</TableHead>
-                    <TableHead className="text-xs">Comments</TableHead>
-                  </TableRow></TableHeader>
+                     <TableHead className="text-xs">Name</TableHead>
+                     <TableHead className="text-xs text-right">Avg Value</TableHead>
+                     <TableHead className="text-xs text-right">Est. Cost</TableHead>
+                     <TableHead className="text-xs">Type</TableHead>
+                     <TableHead className="text-xs">Category</TableHead>
+                     <TableHead className="text-xs">Repositories</TableHead>
+                     <TableHead className="text-xs">Comments</TableHead>
+                   </TableRow></TableHeader>
                   <TableBody>
                     {prods.rows.map((p, i) => (
                       <TableRow key={i}>
                         <TableCell className="text-xs font-medium">{p.name || '—'}</TableCell>
                         <TableCell className="text-xs text-right tabular-nums">{fmt(p.averageValue)}</TableCell>
+                        <TableCell className="text-xs text-right tabular-nums">{fmt(p.estimatedCost || 0)}</TableCell>
                         <TableCell className="text-xs">
                           <Badge variant={p.type.toLowerCase().includes('innov') ? 'default' : p.type.toLowerCase().includes('decline') ? 'destructive' : 'secondary'} className="text-[10px]">
                             {p.type || '—'}
                           </Badge>
                         </TableCell>
+                        <TableCell className="text-xs capitalize">{p.category || 'product'}</TableCell>
+                        <TableCell className="text-xs max-w-[200px] truncate">{(p.repositories || []).join(', ') || '—'}</TableCell>
                         <TableCell className="text-xs max-w-[200px] truncate">{p.comments || '—'}</TableCell>
                       </TableRow>
                     ))}

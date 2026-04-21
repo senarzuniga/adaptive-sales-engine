@@ -20,6 +20,7 @@ import {
   FolderKanban, ArrowRight, Settings2
 } from 'lucide-react';
 import { buildFallbackOfferAnalysis, classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
+import { inferProductCategory } from '@/lib/productCatalog';
 
 type CostLine = {
   id: string;
@@ -104,7 +105,7 @@ const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 export default function OfferPricingPage() {
   const navigate = useNavigate();
   const { language } = useLanguage();
-  const { activeCompanyId: selectedCompanyId } = useData();
+  const { activeCompanyId: selectedCompanyId, data } = useData();
   const isEs = language === 'es';
 
   const [offerTitle, setOfferTitle] = useState('');
@@ -126,6 +127,7 @@ export default function OfferPricingPage() {
   const [savedOffers, setSavedOffers] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('builder');
   const [companyRates, setCompanyRates] = useState<any[]>([]);
+  const [catalogSelection, setCatalogSelection] = useState('');
 
   useEffect(() => {
     if (selectedCompanyId) {
@@ -161,6 +163,30 @@ export default function OfferPricingPage() {
     };
     setItems(prev => [...prev, item]);
     setExpandedItems(prev => new Set(prev).add(item.id));
+  };
+
+  const addCatalogItem = () => {
+    const selected = data.products.find((product) => product.name === catalogSelection);
+    if (!selected) return;
+
+    const category = inferProductCategory(selected.type, selected.category);
+    const costCategory = category === 'service' ? 'engineering' : 'materials';
+    const unitCost = Number(selected.estimatedCost || selected.averageValue || 0);
+
+    const item: OfferItem = {
+      id: crypto.randomUUID(),
+      name: selected.name,
+      type: category,
+      quantity: 1,
+      description: [selected.characteristics?.join(', '), selected.comments].filter(Boolean).join(' · '),
+      costLines: CATEGORIES.map((cat) => cat.value === costCategory
+        ? { ...newCostLine(cat.value), lineItem: selected.name, quantity: 1, unitCost, totalCost: unitCost }
+        : newCostLine(cat.value)),
+    };
+
+    setItems((prev) => [...prev, item]);
+    setExpandedItems((prev) => new Set(prev).add(item.id));
+    setCatalogSelection('');
   };
 
   const removeItem = (id: string) => {
@@ -490,6 +516,35 @@ export default function OfferPricingPage() {
               </div>
             </CardContent>
           </Card>
+
+          {data.products.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">{isEs ? 'Catálogo de productos y servicios' : 'Product & service catalog'}</CardTitle>
+                <CardDescription>{isEs ? 'Selecciona un elemento validado para añadirlo a la oferta.' : 'Select a validated catalog item and add it to this offer.'}</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col md:flex-row gap-2">
+                <Select value={catalogSelection} onValueChange={setCatalogSelection}>
+                  <SelectTrigger className="md:flex-1">
+                    <SelectValue placeholder={isEs ? 'Seleccionar del catálogo' : 'Select from catalog'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {data.products
+                      .filter((product) => product.name && (product.validated ?? true))
+                      .map((product) => (
+                        <SelectItem key={`${product.name}-${product.type}`} value={product.name}>
+                          {product.name} · {(product.category || 'product')}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" onClick={addCatalogItem} disabled={!catalogSelection}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  {isEs ? 'Añadir del catálogo' : 'Add from catalog'}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Items */}
           {items.map((item, idx) => (

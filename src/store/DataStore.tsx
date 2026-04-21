@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { buildCommercialIntelligence, harmonizeCommercialRecords } from '@/lib/commercialIntelligence';
 import { dedupeOpportunities, dedupeOrders, normalizeOpportunityStatus, parseFlexibleNumber } from '@/lib/salesData';
+import { inferProductCategory, parseProductComments, serializeProductComments, type ProductCategory } from '@/lib/productCatalog';
 
 // ─── Offline / localStorage mode when Supabase is not configured ───
 const isSupabaseConfigured =
@@ -91,6 +92,12 @@ export interface ProductRecord {
   averageValue: number;
   type: string;
   comments: string;
+  category?: ProductCategory;
+  characteristics?: string[];
+  estimatedCost?: number;
+  repositories?: string[];
+  validated?: boolean;
+  source?: 'manual' | 'generated';
 }
 
 export interface StrategyRecord {
@@ -204,7 +211,19 @@ function dbToOpportunity(r: any): OpportunityRecord {
 }
 
 function dbToProduct(r: any): ProductRecord {
-  return { name: r.name || '', averageValue: parseFlexibleNumber(r.average_value), type: r.type || '', comments: r.comments || '' };
+  const parsed = parseProductComments(r.comments || '');
+  return {
+    name: r.name || '',
+    averageValue: parseFlexibleNumber(r.average_value),
+    type: r.type || '',
+    comments: parsed.notes,
+    category: inferProductCategory(r.type, parsed.meta.category),
+    characteristics: parsed.meta.characteristics || [],
+    estimatedCost: parseFlexibleNumber(parsed.meta.estimatedCost),
+    repositories: parsed.meta.repositories || [],
+    validated: Boolean(parsed.meta.validated),
+    source: parsed.meta.source || 'manual',
+  };
 }
 
 function dbToStrategy(r: any): StrategyRecord {
@@ -567,7 +586,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
     if (pack.products?.length) {
       await supabase.from('products').insert(pack.products.map((p: any) => ({
-        company_id: id, name: p.name, average_value: p.averageValue, type: p.type, comments: p.comments,
+        company_id: id,
+        name: p.name,
+        average_value: p.averageValue,
+        type: p.type,
+        comments: serializeProductComments(p.comments || '', {
+          category: p.category,
+          characteristics: p.characteristics,
+          estimatedCost: p.estimatedCost,
+          repositories: p.repositories,
+          validated: p.validated,
+          source: p.source,
+        }),
       })));
     }
     if (pack.strategy?.length) {
@@ -668,7 +698,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await supabase.from('products').delete().eq('company_id', activeCompanyId);
     if (records.length > 0) {
       await supabase.from('products').insert(records.map(p => ({
-        company_id: activeCompanyId, name: p.name, average_value: p.averageValue, type: p.type, comments: p.comments,
+        company_id: activeCompanyId,
+        name: p.name,
+        average_value: p.averageValue,
+        type: p.type,
+        comments: serializeProductComments(p.comments || '', {
+          category: p.category,
+          characteristics: p.characteristics,
+          estimatedCost: p.estimatedCost,
+          repositories: p.repositories,
+          validated: p.validated,
+          source: p.source,
+        }),
       })));
     }
     setData(prev => ({ ...prev, products: records }));

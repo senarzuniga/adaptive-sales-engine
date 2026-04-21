@@ -110,7 +110,7 @@ const DataUploadPage = () => {
     const headers: Record<string, string[]> = {
       orders: ['PO Date', 'First Offer Date', 'Opp Internal Number', 'Geographical Area', 'Customer Country', 'Customer Name', 'Scope', 'Product Family', 'Segment', 'Purchasing Year', 'Purchasing Quarter', 'Purchasing Month', 'Selling Price', 'Margin', 'KAM'],
       opportunities: ['Opp/Offer Number', 'Status', 'Geographical Area', 'Customer Country', 'Customer Name', 'Scope', 'Product Family', 'Segment', 'Est. Purchasing Year', 'Est. Purchasing Quarter', 'Est. Revenue', 'Contract Prob. %', 'Margin', 'Contact', 'KAM'],
-      products: ['Name', 'Average Value', 'Commodity/Innovation', 'Comments'],
+      products: ['Name', 'Average Value', 'Commodity/Innovation', 'Category', 'Characteristics', 'Estimated Cost', 'Repositories', 'Comments'],
       strategy: ['Product Family', 'Number of Segment', 'Geographical Area', 'Est. Purchasing Quarter', 'Est. Revenue', 'Margin', 'KAM'],
       leads: ['Lead Name', 'Company', 'Email', 'Phone', 'Region', 'Country', 'Sector', 'Status', 'Source', 'Owner', 'Estimated Value', 'Notes'],
       contacts: ['Contact Name', 'Company', 'Email', 'Phone', 'Role', 'Department', 'Region', 'Country', 'KAM', 'Notes'],
