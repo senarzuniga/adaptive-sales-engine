@@ -38,6 +38,7 @@ import {
   Settings2,
   SearchCheck,
   Layers,
+  RefreshCw,
 } from 'lucide-react';
 
 export function AppSidebar() {
@@ -58,6 +59,7 @@ export function AppSidebar() {
     { title: t.nav.afterSales, url: '/after-sales', icon: Wrench },
     { title: t.nav.aiSales, url: '/ai-sales', icon: Brain },
     { title: t.nav.behavioral, url: '/behavioral', icon: Heart },
+    { title: t.nav.productCatalog || 'Product Catalog', url: '/product-catalog', icon: Package },
     { title: t.nav.productStrategy, url: '/product-strategy', icon: Package },
     { title: t.nav.monitoring, url: '/monitoring', icon: Activity },
     { title: t.nav.weeklyPlanner, url: '/weekly-planner', icon: CalendarDays },
@@ -71,6 +73,7 @@ export function AppSidebar() {
     { title: language === 'es' ? 'Inteligencia Empresarial' : 'Business Intelligence', url: '/business-intelligence', icon: SearchCheck },
     { title: language === 'es' ? 'Repositorio de Acciones Comerciales' : 'Commercial Actions Repository', url: '/commercial-actions-repository', icon: Layers },
     { title: t.nav.socialMedia, url: '/social-media', icon: Share2 },
+    { title: language === 'es' ? 'Regenerar Datos' : 'Regenerate Data', url: '/regenerate', icon: RefreshCw },
   ];
 
   return (

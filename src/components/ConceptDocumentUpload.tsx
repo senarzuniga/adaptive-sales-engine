@@ -53,6 +53,7 @@ const statusConfig: Record<string, { icon: typeof CheckCircle; className: string
   pending: { icon: Brain, className: 'text-muted-foreground', label: 'Pending' },
   processing: { icon: Loader2, className: 'text-primary animate-spin', label: 'AI Processing...' },
   completed: { icon: CheckCircle, className: 'text-green-600', label: 'Processed' },
+  flagged: { icon: AlertCircle, className: 'text-amber-600', label: 'Needs review' },
   failed: { icon: AlertCircle, className: 'text-destructive', label: 'Failed' },
 };
 
@@ -73,12 +74,15 @@ const MAX_PROCESS_RETRIES = 3;
 const categoryTableMapping: Record<string, string> = {
   contacts: 'company_contacts',
   leads: 'company_contacts',
-  customers: 'company_contacts',
+  customers: 'customers',
   sales: 'orders',
-  offers: 'opportunities',
+  offers: 'offers',
   strategy: 'strategy',
   products: 'products',
   employees: 'company_contacts',
+  finance: 'company_info_update',
+  market: 'company_info_update',
+  competitors: 'competitors',
 };
 
 export function ConceptDocumentUpload() {
@@ -118,7 +122,7 @@ export function ConceptDocumentUpload() {
       setProcessingIds(prev => {
         const next = new Set(prev);
         documents.forEach(d => {
-          if (next.has(d.id) && (d.processing_status === 'completed' || d.processing_status === 'failed')) {
+          if (next.has(d.id) && (d.processing_status === 'completed' || d.processing_status === 'failed' || d.processing_status === 'flagged')) {
             next.delete(d.id);
             if (d.processing_status === 'completed') {
               const ext = (d.extracted_data as any);
@@ -128,7 +132,12 @@ export function ConceptDocumentUpload() {
                 : '';
               toast({
                 title: `âœ… ${d.file_name} processed`,
-                description: `${ext?.summary || 'Data extracted'} (${ext?.record_count || 0} records${semanticDetail}, confidence: ${ext?.confidence_score || 'N/A'}%)`,
+                description: `${ext?.summary || 'Validated canonical data created'} (${ext?.record_count || 0} records${semanticDetail}, confidence: ${ext?.confidence_score || 'N/A'}%)`,
+              });
+            } else if (d.processing_status === 'flagged') {
+              toast({
+                title: `âš ï¸ ${d.file_name} needs review`,
+                description: 'The document was stored, but low-confidence data was blocked from the canonical database.',
               });
             } else {
               toast({ title: `âŒ ${d.file_name} processing failed`, variant: 'destructive' });
@@ -231,7 +240,7 @@ export function ConceptDocumentUpload() {
 
     const { error: updateError } = await supabase
       .from('company_documents')
-      .update({ processing_status: 'completed', extracted_data: fallbackData as any })
+      .update({ processing_status: 'flagged', extracted_data: fallbackData as any })
       .eq('id', doc.id);
 
     if (updateError) {
@@ -239,24 +248,10 @@ export function ConceptDocumentUpload() {
       return false;
     }
 
-    const companyId = doc.company_id || activeCompanyId;
-    if (companyId && fallbackData.extracted_records?.length > 0 && targetTable !== 'none') {
-      const payload = fallbackData.extracted_records.map((row: any) => ({ ...row, company_id: companyId }));
-      const uniquePayload = payload.filter((row: any, index: number, items: any[]) => {
-        const key = JSON.stringify(row);
-        return items.findIndex((candidate) => JSON.stringify(candidate) === key) === index;
-      });
-
-      const { error: insertError } = await supabase.from(targetTable).insert(uniquePayload as any);
-      if (insertError) {
-        console.error('Local fallback insert failed:', insertError.message);
-      }
-    }
-
     await loadDocuments();
     toast({
-      title: fallbackData.record_count > 0 ? 'Basic extraction complete' : 'Document saved for manual review',
-      description: fallbackData.summary,
+      title: fallbackData.record_count > 0 ? 'Raw extraction stored for validation' : 'Document saved for manual review',
+      description: 'The file was preserved, but canonical data creation was intentionally blocked until validation and enrichment succeed.',
     });
     return true;
   }, [activeCompanyId, documents, loadDocuments]);
@@ -274,7 +269,14 @@ export function ConceptDocumentUpload() {
           if (data?.success) {
             toast({
               title: 'AI Data Extraction Complete',
-              description: `${data.summary} â€” ${data.recordCount} records saved (confidence: ${data.confidence}%)`,
+              description: `${data.summary} â€” ${data.recordCount} validated records saved (confidence: ${data.confidence}%)`,
+            });
+          } else {
+            toast({
+              title: 'Document stored for review',
+              description: data?.blockedFromCanonical
+                ? 'The raw document was preserved, but canonical data creation was blocked by validation rules.'
+                : (data?.summary || 'Processing completed with review flags.'),
             });
           }
           return;
@@ -446,7 +448,7 @@ export function ConceptDocumentUpload() {
           AI Document Library
         </h3>
         <p className="text-sm text-muted-foreground">
-          Drop any file into a category box. The AI Data Agent automatically interprets, extracts, and saves structured data to the company database.
+          Drop any file into a category box. The pipeline stores the raw document first and only promotes validated, enriched records into the company database.
         </p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -514,7 +516,7 @@ export function ConceptDocumentUpload() {
                           <span className="text-[10px] text-muted-foreground flex-shrink-0">
                             {formatSize(doc.file_size)}
                           </span>
-                          {doc.processing_status === 'failed' && (
+                          {(doc.processing_status === 'failed' || doc.processing_status === 'flagged') && (
                             <Button
                               variant="ghost" size="sm"
                               className="h-4 px-1 text-[9px] text-primary"

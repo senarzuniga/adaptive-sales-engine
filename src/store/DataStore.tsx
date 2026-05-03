@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { buildCommercialIntelligence, harmonizeCommercialRecords } from '@/lib/commercialIntelligence';
 import { dedupeOpportunities, dedupeOrders, normalizeOpportunityStatus, parseFlexibleNumber } from '@/lib/salesData';
+import type { EnrichedCompanyProfile } from '@/agents/customerEnrichmentAgent';
+import type { DatasetQualityReport, NormalizedEntityRegistries } from '@/agents/dataManagementAgent';
 
 // ─── Offline / localStorage mode when Supabase is not configured ───
 const isSupabaseConfigured =
@@ -45,6 +47,8 @@ export interface CompanyProfile {
   strategy_context: string;
   market_context: string;
   enrichment_status: string;
+  contradictions_resolved_at?: string;
+  contradiction_archive?: Record<string, unknown>;
 }
 
 export interface OrderRecord {
@@ -87,10 +91,37 @@ export interface OpportunityRecord {
 }
 
 export interface ProductRecord {
+  id?: string;
   name: string;
+  sku?: string;
+  category?: string;
+  subcategory?: string;
+  brand?: string;
+  description?: string;
+  currency?: string;
+  listPrice?: number;
+  unitCost?: number;
+  sellingPrice?: number;
   averageValue: number;
+  averageMargin?: number;
+  stockQuantity?: number;
+  stockUnit?: string;
+  leadTimeDays?: number;
+  moq?: number;
+  packaging?: string;
+  attributes?: Record<string, unknown>;
+  tags?: string[];
+  markets?: string[];
   type: string;
+  lifecycleStage?: string;
+  status?: string;
+  isActive?: boolean;
   comments: string;
+  sourceDocument?: string;
+  sourceSheet?: string;
+  sourceRow?: number;
+  confidence?: number;
+  lastSeenAt?: string;
 }
 
 export interface StrategyRecord {
@@ -204,7 +235,39 @@ function dbToOpportunity(r: any): OpportunityRecord {
 }
 
 function dbToProduct(r: any): ProductRecord {
-  return { name: r.name || '', averageValue: parseFlexibleNumber(r.average_value), type: r.type || '', comments: r.comments || '' };
+  return {
+    id: r.id,
+    name: r.name || '',
+    sku: r.sku || '',
+    category: r.category || '',
+    subcategory: r.subcategory || '',
+    brand: r.brand || '',
+    description: r.description || '',
+    currency: r.currency || 'EUR',
+    listPrice: parseFlexibleNumber(r.list_price),
+    unitCost: parseFlexibleNumber(r.unit_cost),
+    sellingPrice: parseFlexibleNumber(r.selling_price),
+    averageValue: parseFlexibleNumber(r.average_value),
+    averageMargin: parseFlexibleNumber(r.average_margin),
+    stockQuantity: parseFlexibleNumber(r.stock_quantity),
+    stockUnit: r.stock_unit || '',
+    leadTimeDays: parseFlexibleNumber(r.lead_time_days),
+    moq: parseFlexibleNumber(r.moq),
+    packaging: r.packaging || '',
+    attributes: (r.attributes as Record<string, unknown>) || {},
+    tags: (r.tags as string[]) || [],
+    markets: (r.markets as string[]) || [],
+    type: r.type || '',
+    lifecycleStage: r.lifecycle_stage || '',
+    status: r.status || 'active',
+    isActive: r.is_active ?? true,
+    comments: r.comments || '',
+    sourceDocument: r.source_document || '',
+    sourceSheet: r.source_sheet || '',
+    sourceRow: parseFlexibleNumber(r.source_row),
+    confidence: parseFlexibleNumber(r.confidence_score || r.confidence),
+    lastSeenAt: r.last_seen_at || '',
+  };
 }
 
 function dbToStrategy(r: any): StrategyRecord {
@@ -252,6 +315,8 @@ const emptyProfile: CompanyProfile = {
   sales_channels: '', current_challenges: '', strategic_goals: '', additional_notes: '',
   website_url: '', linkedin_url: '', business_description: '', objectives: '',
   strategy_context: '', market_context: '', enrichment_status: 'pending',
+  contradictions_resolved_at: '',
+  contradiction_archive: {},
 };
 
 const emptyRegistries: NormalizedEntityRegistries = {
@@ -344,6 +409,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         business_description: r.business_description || '', objectives: r.objectives || '',
         strategy_context: r.strategy_context || '', market_context: r.market_context || '',
         enrichment_status: r.enrichment_status || 'pending',
+        contradictions_resolved_at: r.contradictions_resolved_at || '',
+        contradiction_archive: (r.contradiction_archive as Record<string, unknown>) || {},
       })));
     }
   }, []);
@@ -406,6 +473,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
           business_description: compRes.data.business_description || '', objectives: compRes.data.objectives || '',
           strategy_context: compRes.data.strategy_context || '', market_context: compRes.data.market_context || '',
           enrichment_status: compRes.data.enrichment_status || 'pending',
+          contradictions_resolved_at: compRes.data.contradictions_resolved_at || '',
+          contradiction_archive: (compRes.data.contradiction_archive as Record<string, unknown>) || {},
         } : emptyProfile,
       });
     } finally {
@@ -567,8 +636,38 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
     if (pack.products?.length) {
       await supabase.from('products').insert(pack.products.map((p: any) => ({
-        company_id: id, name: p.name, average_value: p.averageValue, type: p.type, comments: p.comments,
-      })));
+        company_id: id,
+        name: p.name,
+        sku: p.sku || null,
+        category: p.category || null,
+        subcategory: p.subcategory || null,
+        brand: p.brand || null,
+        description: p.description || null,
+        currency: p.currency || 'EUR',
+        list_price: p.listPrice ?? 0,
+        unit_cost: p.unitCost ?? 0,
+        selling_price: p.sellingPrice ?? 0,
+        average_value: p.averageValue ?? 0,
+        average_margin: p.averageMargin ?? 0,
+        stock_quantity: p.stockQuantity ?? 0,
+        stock_unit: p.stockUnit || null,
+        lead_time_days: p.leadTimeDays ?? null,
+        moq: p.moq ?? null,
+        packaging: p.packaging || null,
+        attributes: p.attributes || {},
+        tags: p.tags || [],
+        markets: p.markets || [],
+        type: p.type,
+        lifecycle_stage: p.lifecycleStage || null,
+        status: p.status || 'active',
+        is_active: p.isActive ?? true,
+        comments: p.comments,
+        source_document: p.sourceDocument || null,
+        source_sheet: p.sourceSheet || null,
+        source_row: p.sourceRow ?? null,
+        confidence_score: p.confidence ?? 0,
+        last_seen_at: p.lastSeenAt || new Date().toISOString(),
+      })) as any);
     }
     if (pack.strategy?.length) {
       await supabase.from('strategy').insert(pack.strategy.map((s: any) => ({
@@ -616,7 +715,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         purchasing_year: o.purchasingYear, purchasing_quarter: o.purchasingQuarter,
         purchasing_month: o.purchasingMonth, selling_price: o.sellingPrice, margin: o.margin, kam: o.kam,
         truth_source: o.truthSource || 'sales_document',
-      })));
+      })) as any);
     }
 
     await supabase.from('opportunities').delete().eq('company_id', activeCompanyId);
@@ -628,7 +727,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         est_purchasing_quarter: o.estPurchasingQuarter, est_revenue: o.estRevenue,
         contract_prob: o.contractProb, margin: o.margin, contact: o.contact, kam: o.kam,
         truth_source: o.truthSource || 'sales_document',
-      })));
+      })) as any);
     }
 
     setData(prev => ({ ...prev, orders: cleanRecords, opportunities: syncedOpportunities }));
@@ -653,7 +752,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         est_purchasing_quarter: o.estPurchasingQuarter, est_revenue: o.estRevenue,
         contract_prob: o.contractProb, margin: o.margin, contact: o.contact, kam: o.kam,
         truth_source: o.truthSource || 'sales_document',
-      })));
+      })) as any);
     }
     setData(prev => ({ ...prev, opportunities: cleanRecords }));
   }, [activeCompanyId, data.orders]);
@@ -667,9 +766,39 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
     await supabase.from('products').delete().eq('company_id', activeCompanyId);
     if (records.length > 0) {
-      await supabase.from('products').insert(records.map(p => ({
-        company_id: activeCompanyId, name: p.name, average_value: p.averageValue, type: p.type, comments: p.comments,
-      })));
+      await supabase.from('products').insert(records.map((p) => ({
+        company_id: activeCompanyId,
+        name: p.name,
+        sku: p.sku || null,
+        category: p.category || null,
+        subcategory: p.subcategory || null,
+        brand: p.brand || null,
+        description: p.description || null,
+        currency: p.currency || 'EUR',
+        list_price: p.listPrice ?? 0,
+        unit_cost: p.unitCost ?? 0,
+        selling_price: p.sellingPrice ?? 0,
+        average_value: p.averageValue ?? 0,
+        average_margin: p.averageMargin ?? 0,
+        stock_quantity: p.stockQuantity ?? 0,
+        stock_unit: p.stockUnit || null,
+        lead_time_days: p.leadTimeDays ?? null,
+        moq: p.moq ?? null,
+        packaging: p.packaging || null,
+        attributes: p.attributes || {},
+        tags: p.tags || [],
+        markets: p.markets || [],
+        type: p.type,
+        lifecycle_stage: p.lifecycleStage || null,
+        status: p.status || 'active',
+        is_active: p.isActive ?? true,
+        comments: p.comments,
+        source_document: p.sourceDocument || null,
+        source_sheet: p.sourceSheet || null,
+        source_row: p.sourceRow ?? null,
+        confidence_score: p.confidence ?? 0,
+        last_seen_at: p.lastSeenAt || new Date().toISOString(),
+      })) as any);
     }
     setData(prev => ({ ...prev, products: records }));
   }, [activeCompanyId]);
@@ -729,6 +858,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       website_url: profile.website_url, linkedin_url: profile.linkedin_url,
       business_description: profile.business_description, objectives: profile.objectives,
       strategy_context: profile.strategy_context, market_context: profile.market_context,
+      contradictions_resolved_at: profile.contradictions_resolved_at || null,
+      contradiction_archive: profile.contradiction_archive || {},
     }).eq('id', activeCompanyId);
     setData(prev => ({ ...prev, companyProfile: profile }));
     await loadCompanies(); // refresh company list
@@ -819,6 +950,38 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (saved) loadCompanyData(saved);
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !activeCompanyId) return;
+
+    const channel = supabase
+      .channel(`regeneration-${activeCompanyId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'regeneration_logs',
+          filter: `company_id=eq.${activeCompanyId}`,
+        },
+        (payload) => {
+          const row = payload.new as any;
+          const status = String(row?.status || '').toLowerCase();
+          if (status === 'completed' || status === 'rolled_back') {
+            loadCompanyData(activeCompanyId);
+            toast({
+              title: status === 'completed' ? 'Data regeneration completed' : 'Regeneration rollback completed',
+              description: 'Company data has been refreshed automatically.',
+            });
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeCompanyId, loadCompanyData]);
 
   const hasData =
     data.orders.length > 0 ||

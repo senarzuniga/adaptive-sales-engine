@@ -58,6 +58,8 @@ Write-Host "`n[4/4] Deploying Edge Functions..." -ForegroundColor Cyan
 $functions = @(
     "process-document",
     "enrich-company",
+    "data-api",
+    "rebuild-canonical-data",
     "analyze-360",
     "analyze-offer",
     "analyze-portfolio",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildCommercialIntelligence, harmonizeCommercialRecords } from '@/lib/commercialIntelligence';
+import { buildCommercialIntelligence, buildStrategyDiagnostic, harmonizeCommercialRecords } from '@/lib/commercialIntelligence';
 
 describe('commercial intelligence engine', () => {
   it('enforces sales truth so probability 100 offers become sold and do not inflate open pipeline', () => {
@@ -38,6 +38,65 @@ describe('commercial intelligence engine', () => {
     expect(result.opportunities.find((item) => item.oppNumber === 'SO-20')?.status).toBe('won');
     expect(result.metrics.soldRevenue).toBe(210000);
     expect(result.metrics.openPipeline).toBe(50000);
+  });
+
+  it('measures strategy achievement against actual revenue and exposes the real gap to the strategic plan', () => {
+    const intelligence = buildCommercialIntelligence({
+      company: {
+        company_name: 'Ingecart',
+        industry: 'Packaging Automation',
+        annual_revenue: 'Targeting €3.5M within 3 years',
+        strategy_context: 'Three-pillar growth model: Standard Products target €2.8M, Custom Projects €0.5M/year, Services growing from €0.2M to €1.1M+ at scale.',
+        strategic_goals: 'Reach the three-pillar commercial model with strong service growth.',
+        business_description: 'Provider of packaging automation and services.',
+        main_products: 'AMR, Easy Pack, Retal, Palletizer, Services',
+      },
+      orders: [
+        { customerName: 'Client A', productFamily: 'AMR', region: 'Spain', sellingPrice: 220000, margin: 25, kam: 'Ana' },
+        { customerName: 'Client B', productFamily: 'Service', region: 'Spain', sellingPrice: 180000, margin: 30, kam: 'Ana' },
+      ],
+      opportunities: [
+        { customerName: 'Client C', productFamily: 'Retal', region: 'Spain', estRevenue: 300000, contractProb: 60, status: 'open', kam: 'Ana' },
+      ],
+      products: [
+        { name: 'AMR', type: 'innovation', averageValue: 120000, comments: 'Strategic product' },
+        { name: 'Service Contract', type: 'commodity', averageValue: 40000, comments: 'Recurring revenue' },
+      ],
+      strategy: [],
+    });
+
+    expect(intelligence.strategyDiagnostic.targetRevenue).toBe(3500000);
+    expect(intelligence.strategyDiagnostic.currentRevenue).toBe(400000);
+    expect(intelligence.strategyDiagnostic.revenueGap).toBe(3100000);
+    expect(intelligence.strategyDiagnostic.currentAchievementPct).toBeLessThan(20);
+    expect(intelligence.strategyDiagnostic.pipelineCoveragePct).toBeLessThan(30);
+    expect(intelligence.rootCauseMap.length).toBeGreaterThan(0);
+    expect(intelligence.bridgePlan.length).toBeGreaterThan(0);
+  });
+
+  it('prefers the trusted company target when strategy rows are suspiciously inflated', () => {
+    const diagnostic = buildStrategyDiagnostic({
+      company: {
+        company_name: 'Ingecart',
+        annual_revenue: 'Current Revenue €2.0M · Target Revenue (3 years) €3.5M',
+        strategy_context: 'Current Model 85% Custom Projects · Target Model 80% Standard Products',
+      },
+      orders: [
+        { customerName: 'Client A', productFamily: 'AMR', region: 'Spain', sellingPrice: 400000, margin: 25, kam: 'Ana' },
+      ],
+      opportunities: [],
+      strategy: Array.from({ length: 13 }, (_, idx) => ({
+        productFamily: idx % 2 === 0 ? 'Standard Products' : 'Custom Projects',
+        region: 'Europe',
+        estRevenue: 3500000,
+        margin: 25,
+        kam: 'Ana',
+      })),
+    });
+
+    expect(diagnostic.targetRevenue).toBe(3500000);
+    expect(diagnostic.targetSource).toBe('Company Profile Target');
+    expect(diagnostic.validationWarnings.length).toBeGreaterThan(0);
   });
 
   it('builds multi-layer commercial intelligence with competitors, segmentation, opportunities, and actions', () => {

@@ -20,6 +20,7 @@ import {
   FolderKanban, ArrowRight, Settings2
 } from 'lucide-react';
 import { buildFallbackOfferAnalysis, classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
+import { OfferCreationPanel } from '@/components/offers/OfferCreationPanel';
 
 type CostLine = {
   id: string;
@@ -442,12 +443,17 @@ export default function OfferPricingPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="create-offer">{isEs ? 'Crear Oferta' : 'Create Offer'}</TabsTrigger>
           <TabsTrigger value="builder">{isEs ? 'Constructor' : 'Builder'}</TabsTrigger>
           <TabsTrigger value="analysis">{isEs ? 'Análisis' : 'Analysis'}</TabsTrigger>
           <TabsTrigger value="history">{isEs ? 'Historial' : 'History'}</TabsTrigger>
           <TabsTrigger value="summary">{isEs ? 'Resumen' : 'Summary'}</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="create-offer" className="space-y-4">
+          <OfferCreationPanel />
+        </TabsContent>
 
         {/* BUILDER TAB */}
         <TabsContent value="builder" className="space-y-4">

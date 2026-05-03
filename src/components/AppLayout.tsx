@@ -1,6 +1,7 @@
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { CompanySelector } from '@/components/CompanySelector';
+import { PanelPromptBox } from '@/components/PanelPromptBox';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -21,6 +22,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           <main className="flex-1 overflow-auto">
             {children}
           </main>
+          <PanelPromptBox />
         </div>
       </div>
     </SidebarProvider>

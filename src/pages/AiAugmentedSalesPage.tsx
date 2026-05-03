@@ -20,7 +20,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import { fmt, fmtAxis } from '@/components/analysis360/AnalysisUtils';
 import { buildFallbackActionPool } from '@/lib/aiSalesFallback';
-import { buildDeterministicActionPool } from '@/lib/commercialIntelligence';
+import { buildDeterministicActionPool, buildStrategyDiagnostic } from '@/lib/commercialIntelligence';
 import { buildPipelineMetrics, getProbabilityGuidance, isNeglectedStatus, isOpenOpportunityStatus, isWonStatus } from '@/lib/salesData';
 
 const fmtEur = fmt;
@@ -101,11 +101,13 @@ const AiAugmentedSalesPage = () => {
     const totalPipeline = pipelineMetrics.openPipeline;
     const weightedPipeline = pipelineMetrics.weightedOpenRevenue;
     const wonRevenue = pipelineMetrics.soldRevenue;
-    const strategyTarget = strategy.reduce((s, r) => s + r.estRevenue, 0);
-    const achievement = strategyTarget > 0 ? ((wonRevenue + weightedPipeline) / strategyTarget) * 100 : 0;
+    const strategyDiagnostic = buildStrategyDiagnostic({ company: companyProfile, orders, opportunities, strategy });
+    const strategyTarget = strategyDiagnostic.targetRevenue;
+    const achievement = strategyDiagnostic.currentAchievementPct;
+    const coverage = strategyDiagnostic.pipelineCoveragePct;
     const neglectedDeals = opportunities.filter((opportunity) => isNeglectedStatus(opportunity.status)).length;
-    return { totalPipeline, weightedPipeline, wonRevenue, strategyTarget, achievement, neglectedDeals, open };
-  }, [opportunities, orders, strategy]);
+    return { totalPipeline, weightedPipeline, wonRevenue, strategyTarget, achievement, coverage, neglectedDeals, open };
+  }, [companyProfile, opportunities, orders, strategy]);
 
   // Active actions from tasks
   const activeActions = useMemo(() =>

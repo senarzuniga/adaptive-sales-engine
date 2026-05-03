@@ -13,6 +13,7 @@ export const translations = {
       afterSales: 'After-Sales Engine',
       aiSales: 'AI-Augmented Sales',
       behavioral: 'Behavioral Transform',
+      productCatalog: 'Product Catalog',
       productStrategy: 'Product Strategy',
       dataUpload: 'Data Upload',
       companyInfo: 'Company Info',
@@ -24,6 +25,7 @@ export const translations = {
       offerPricing: 'Offer & Pricing',
       socialMedia: 'Social Media',
       savedCompanies: 'Saved Companies',
+      regenerate: 'Regenerate Data',
     },
     dashboard: {
       title: 'Dashboard Overview',
@@ -130,6 +132,7 @@ export const translations = {
       afterSales: 'Motor Post-Venta',
       aiSales: 'Ventas con IA',
       behavioral: 'Transformación Conductual',
+      productCatalog: 'Catálogo de Productos',
       productStrategy: 'Estrategia de Producto',
       dataUpload: 'Carga de Datos',
       companyInfo: 'Info de Empresa',
@@ -141,6 +144,7 @@ export const translations = {
       offerPricing: 'Costes y Pricing',
       socialMedia: 'Redes Sociales',
       savedCompanies: 'Empresas Guardadas',
+      regenerate: 'Regenerar Datos',
     },
     dashboard: {
       title: 'Panel General',

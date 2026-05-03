@@ -5,6 +5,8 @@ describe('sales data normalization', () => {
   it('parses European-formatted revenue safely', () => {
     expect(parseFlexibleNumber('30.000.000,00 €')).toBe(30000000);
     expect(parseFlexibleNumber('1,250,500.75')).toBe(1250500.75);
+    expect(parseFlexibleNumber('€3.5M')).toBe(3500000);
+    expect(parseFlexibleNumber('2.0M')).toBe(2000000);
     expect(parseFlexibleNumber('85%')).toBe(85);
   });
 

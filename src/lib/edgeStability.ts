@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { buildCommercialIntelligence, buildStrategyDiagnostic } from '@/lib/commercialIntelligence';
 import { buildPipelineMetrics, getProbabilityGuidance } from '@/lib/salesData';
 
 const fmt = (value: number) =>
@@ -180,8 +181,10 @@ export function buildFallbackExecutiveInsights(input: { orders?: any[]; opportun
 
   const bookedRevenue = orders.reduce((sum, order) => sum + (order.sellingPrice || 0), 0);
   const pipelineMetrics = buildPipelineMetrics({ opportunities, orders });
-  const strategyTarget = strategy.reduce((sum, row) => sum + (row.estRevenue || 0), 0);
-  const achievement = strategyTarget > 0 ? (pipelineMetrics.weightedPipeline / strategyTarget) * 100 : 0;
+  const strategyDiagnostic = buildStrategyDiagnostic({ company: input.company, orders, opportunities, strategy });
+  const intelligence = buildCommercialIntelligence({ company: input.company, orders, opportunities, products, strategy });
+  const achievement = strategyDiagnostic.currentAchievementPct;
+  const coverage = strategyDiagnostic.pipelineCoveragePct;
   const weakDeals = opportunities.filter((opportunity) => getProbabilityGuidance(opportunity.contractProb || 0).band === 'weak');
   const topCustomerMap = orders.reduce((acc: Record<string, number>, order) => {
     const key = order.customerName || 'Unknown';
@@ -193,16 +196,16 @@ export function buildFallbackExecutiveInsights(input: { orders?: any[]; opportun
   const healthScore = Math.max(35, Math.min(92, Math.round((achievement || 55) - weakDeals.length * 2 + (products.length > 0 ? 8 : 0))));
 
   return {
-    executive_summary: `Local executive analysis generated because the remote AI service is unavailable. ${companyName} currently shows confirmed sales of ${fmt(bookedRevenue)}, a weighted pipeline of ${fmt(pipelineMetrics.weightedPipeline)}, and ${weakDeals.length} weak open offers below the 75% success threshold.`,
+    executive_summary: `Local executive analysis generated because the remote AI service is unavailable. ${companyName} currently shows current achieved revenue of ${fmt(strategyDiagnostic.currentRevenue)} against a strategic target of ${fmt(strategyDiagnostic.targetRevenue)}, with weighted coverage reaching ${coverage.toFixed(0)}% and ${weakDeals.length} weak open offers below the 75% success threshold.`,
     health_score: healthScore,
     health_label: healthScore >= 75 ? 'Solid' : healthScore >= 55 ? 'Watchlist' : 'At Risk',
     critical_insights: [
       {
-        title: 'Weighted pipeline reality check',
+        title: 'Current-vs-target reality check',
         type: 'pattern',
-        severity: 'medium',
-        description: `Confirmed sold revenue plus weighted open pipeline currently totals ${fmt(pipelineMetrics.weightedPipeline)}.`,
-        data_point: `${achievement.toFixed(0)}% of target`,
+        severity: achievement < 50 ? 'high' : 'medium',
+        description: `Current confirmed revenue is ${fmt(strategyDiagnostic.currentRevenue)} versus a strategic target of ${fmt(strategyDiagnostic.targetRevenue)}.`,
+        data_point: `${achievement.toFixed(0)}% achieved · ${coverage.toFixed(0)}% covered incl. pipeline`,
       },
       {
         title: 'Weak offer attention needed',
@@ -221,33 +224,22 @@ export function buildFallbackExecutiveInsights(input: { orders?: any[]; opportun
           : 'Customer concentration will become visible as more booked sales data is loaded.',
       },
     ],
-    recommendations: [
-      {
-        priority: 'immediate',
-        action: 'Upgrade the weak pipeline offers',
-        expected_impact: 'Improves probability quality and forecast reliability.',
-        effort: 'medium',
-      },
-      {
-        priority: 'short_term',
-        action: 'Protect strong deals with confidence-focused follow-up',
-        expected_impact: 'Increases conversion on opportunities already above 75% probability.',
-        effort: 'low',
-      },
-      {
-        priority: 'medium_term',
-        action: 'Diversify revenue sources and reduce portfolio concentration',
-        expected_impact: 'Reduces dependence on a small number of accounts or products.',
-        effort: 'high',
-      },
-    ],
+    recommendations: intelligence.bridgePlan.slice(0, 3).map((item, index) => ({
+      priority: index === 0 ? 'immediate' : index === 1 ? 'short_term' : 'medium_term',
+      action: item.title,
+      expected_impact: item.rationale,
+      effort: item.priority === 'critical' ? 'high' : item.priority === 'high' ? 'medium' : 'low',
+    })),
     portfolio_diagnosis: `Current portfolio health is driven by ${products.length} tracked products, ${orders.length} booked orders, and ${opportunities.length} opportunities in the commercial funnel.`,
     growth_outlook: achievement >= 100
-      ? 'Current pipeline coverage is sufficient to sustain the strategic plan if execution remains disciplined.'
-      : 'Growth outlook depends on raising the quality of weak opportunities and accelerating the strongest open deals.',
-    key_risks: weakDeals.length > 0
-      ? ['Weak opportunity quality below 75%', 'Need for stronger next-step discipline']
-      : ['Continue protecting confidence and relationship momentum on strong deals'],
+      ? 'Current confirmed performance is already aligned with the strategic plan.'
+      : coverage >= 100
+        ? 'The target is still open, but the weighted funnel could close it if execution quality stays high.'
+        : 'Growth outlook depends on building more qualified pipeline in the under-covered strategic pillars and accelerating the strongest open deals.',
+    key_risks: [
+      ...intelligence.rootCauseMap.slice(0, 3).map((cause) => cause.title),
+      ...(weakDeals.length > 0 ? ['Weak opportunity quality below 75%'] : []),
+    ],
   };
 }
 

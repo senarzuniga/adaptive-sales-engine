@@ -1,0 +1,341 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\title{Adaptive Sales Engine\\Deep Technical Explanation of Data Collecting Agents}
+\author{Engineering Architecture Notes}
+\date{May 2026}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Purpose and Scope}
+This document explains how the platform data collecting agents transform uploaded documents into reliable, reusable data for downstream agents. It is grounded in the implemented pipeline, especially:
+\begin{itemize}[leftmargin=*]
+  \item \texttt{supabase/functions/process-document/index.ts}
+  \item \texttt{supabase/functions/\_shared/ingestionPipeline.ts}
+  \item \texttt{supabase/functions/\_shared/canonicalPipeline.ts}
+  \item \texttt{src/agents/dataManagementAgent.ts}
+  \item \texttt{supabase/functions/data-api/index.ts}
+\end{itemize}
+
+The core goal is to provide deterministic screening, validation, and storage so later agents consume data with traceability, confidence signals, and explicit rejection paths.
+
+\section{High-Level Agent Architecture}
+The ingestion architecture is split into specialized responsibilities instead of one monolithic extractor.
+
+\subsection{Specialized agent roles}
+The implemented roles are:
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Document Parser Agent}: clean text and segment structural sections.
+  \item \textbf{Semantic Chunker Agent}: create meaning-based chunks, not only line-based slices.
+  \item \textbf{Knowledge Extractor Agent}: derive entities, relationships, insights, and data points.
+  \item \textbf{Normalizer Agent}: deduplicate and normalize outputs.
+  \item \textbf{Storage Router Agent}: persist to semantic knowledge tables and canonical business tables.
+\end{enumerate}
+
+This split is intentionally designed to isolate failure modes and improve observability.
+
+\subsection{Dual extraction tracks}
+The pipeline runs two complementary tracks in parallel:
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Semantic track} (section/chunk/knowledge graph style artifacts).
+  \item \textbf{Canonical business track} (orders, offers, products, strategy, contacts, customers, etc.).
+\end{itemize}
+
+Both tracks must converge before data is considered reusable by downstream agents.
+
+\section{Data Collection Flow}
+\subsection{Step 1: Document acquisition and normalization}
+\texttt{process-document}:
+\begin{itemize}[leftmargin=*]
+  \item downloads the file from Supabase storage bucket \texttt{company-documents};
+  \item reads text directly for text-like files;
+  \item transforms binary office formats into bounded textual representation;
+  \item truncates oversized content for safe processing;
+  \item preprocesses with line deduplication and language heuristic detection.
+\end{itemize}
+
+This creates \texttt{preparedText}, reducing repeated noise before extraction.
+
+\subsection{Step 2: Raw immutable intake record}
+Before deeper extraction, a raw intake record is written through \texttt{DocumentIngestionService.buildRawDocumentRecord} into \texttt{documents\_raw}. This preserves:
+\begin{itemize}[leftmargin=*]
+  \item document identity and source path,
+  \item upload section/category,
+  \item metadata such as language and duplicate-line count.
+\end{itemize}
+
+This is important for replayability and audit.
+
+\subsection{Step 3: Section-scoped canonical candidate extraction}
+A fallback extractor emits coarse \texttt{extracted\_records}, then \texttt{SectionBasedExtractionService.extract} maps those rows into category-aware candidates. Category routing includes:
+\begin{itemize}[leftmargin=*]
+  \item sales $\rightarrow$ orders,
+  \item offers $\rightarrow$ offers,
+  \item products $\rightarrow$ products,
+  \item strategy $\rightarrow$ strategy,
+  \item contacts/leads/employees $\rightarrow$ company contacts,
+  \item customers $\rightarrow$ customers.
+\end{itemize}
+
+This creates a typed candidate set before validation.
+
+\section{Screening and Quality Gates}
+\subsection{Semantic quality gate}
+The semantic pipeline computes a strict acceptance gate using structural and knowledge criteria:
+\begin{itemize}[leftmargin=*]
+  \item document must be structurally segmented,
+  \item entities must exist,
+  \item relationships must exist,
+  \item reusable insights must exist.
+\end{itemize}
+
+If not accepted, a strict second pass is executed (\texttt{strictMode=true}) before final decision.
+
+\subsection{Quality score model (semantic track)}
+The semantic quality score is a bounded weighted accumulation of evidence volume:
+\begin{itemize}[leftmargin=*]
+  \item section presence,
+  \item chunk density,
+  \item entity count,
+  \item relationship count,
+  \item data point count.
+\end{itemize}
+
+A failed gate marks the document \texttt{flagged} for canonical write blocking.
+
+\subsection{Canonical threshold screening}
+Canonical records are screened with a hard confidence floor. Any candidate below threshold is rejected with explicit issues. Core threshold:
+\[
+\text{confidence} < 0.75 \Rightarrow \text{reject}
+\]
+
+This rule prevents low-confidence rows from contaminating core business tables.
+
+\section{Validation Pipeline (Canonical Track)}
+Validation is deterministic and rule-based in \texttt{validateExtractedRecords}.
+
+\subsection{Normalization checks}
+The validator applies:
+\begin{itemize}[leftmargin=*]
+  \item date normalization to ISO format,
+  \item locale-tolerant numeric parsing,
+  \item currency normalization,
+  \item probability clamping to $[0,100]$,
+  \item opportunity status canonicalization to \texttt{won/lost/neglected/open}.
+\end{itemize}
+
+\subsection{Business consistency checks}
+The validator enforces:
+\begin{itemize}[leftmargin=*]
+  \item revenue $\ge 0$,
+  \item margin $\ge 0$,
+  \item margin $\le$ revenue,
+  \item chronological validity windows when both bounds exist.
+\end{itemize}
+
+Each failure is stored as a human-readable issue string. Output is split into:
+\begin{itemize}[leftmargin=*]
+  \item \texttt{validated} records,
+  \item \texttt{rejected} records with issue lists.
+\end{itemize}
+
+\section{Enrichment, Deduplication, and Confidence Rebuild}
+Validated records enter \texttt{enrichValidatedRecords}.
+
+\subsection{Entity linking and derived metrics}
+The enricher generates:
+\begin{itemize}[leftmargin=*]
+  \item linked refs (customer/contact keys),
+  \item derived metrics (for example margin percentage, win rate, proxy lifetime value),
+  \item AI insight tags (segmentation, risk indicator, propensity score).
+\end{itemize}
+
+\subsection{Deterministic confidence formula}
+Confidence is recomputed as:
+\[
+C = 0.3 \cdot \text{completeness} + 0.3 \cdot \text{consistency} + 0.2 \cdot \text{sourceQuality} + 0.2 \cdot \text{crossValidation}
+\]
+
+where:
+\begin{itemize}[leftmargin=*]
+  \item \texttt{sourceQuality} is bounded to at least 0.75,
+  \item \texttt{crossValidation} is higher when linked entities are found.
+\end{itemize}
+
+\subsection{Winner selection and alternatives}
+Records are deduplicated by semantic key. Highest-confidence record wins; non-winners are preserved in \texttt{alternative\_values}. This is critical for explainability and later contradiction analysis.
+
+\section{Storage Strategy and Data Contracts}
+\subsection{Semantic storage (knowledge layer)}
+\texttt{persistIngestionArtifacts} refreshes and writes:
+\begin{itemize}[leftmargin=*]
+  \item \texttt{document\_ingestion\_runs},
+  \item \texttt{document\_sections},
+  \item \texttt{document\_chunks},
+  \item \texttt{knowledge\_entities},
+  \item \texttt{knowledge\_relationships},
+  \item \texttt{knowledge\_insights},
+  \item \texttt{knowledge\_data\_points}.
+\end{itemize}
+
+It also updates \texttt{company\_documents} with raw text, cleaned text, parsed structure, semantic summary, quality score, and processing trace.
+
+\subsection{Canonical operational storage}
+\texttt{persistStructuredRecords} writes only screened and enriched canonical records into operational tables. Examples:
+\begin{itemize}[leftmargin=*]
+  \item orders,
+  \item offers (plus \texttt{offer\_products} line items),
+  \item products,
+  \item strategy,
+  \item customers,
+  \item company contacts.
+\end{itemize}
+
+The write includes metadata contract fields such as:
+\begin{itemize}[leftmargin=*]
+  \item \texttt{source\_document\_id},
+  \item \texttt{source\_type},
+  \item \texttt{confidence\_score},
+  \item \texttt{validation\_status},
+  \item \texttt{data\_maturity},
+  \item \texttt{ai\_insights},
+  \item \texttt{derived\_metrics},
+  \item \texttt{historical\_tracking}.
+\end{itemize}
+
+This metadata is a strict contract for downstream agents.
+
+\section{Contradiction Management and Screening Beyond Single Documents}
+\texttt{dataManagementAgent} performs cross-dataset contradiction detection over orders, opportunities, leads, and contacts.
+
+\subsection{How contradiction screening works}
+\begin{itemize}[leftmargin=*]
+  \item Candidate fields are normalized by semantic type (email, phone, revenue, generic text).
+  \item Values are grouped by \texttt{entity\_hash + field\_name}.
+  \item If multiple conflicting normalized values exist, a \texttt{pending} contradiction is emitted with evidence sources.
+\end{itemize}
+
+These contradictions are persisted and later resolved through explicit user/API resolution paths, not silently auto-merged.
+
+\section{Concept-Driven Context Layer (New Integration)}
+To improve data capture and contextual understanding, the ingestion flow now includes a concept intelligence layer in:
+\begin{itemize}[leftmargin=*]
+  \item \texttt{supabase/functions/\_shared/conceptIntelligence.ts}
+  \item integrated into \texttt{supabase/functions/process-document/index.ts}
+\end{itemize}
+
+\subsection{What was added}
+The layer introduces four structural capabilities:
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Semantic concept ontology}: formal definitions for concepts such as customers, leads, strategy, products, market, offers, and sales.
+  \item \textbf{Concept contextualizer}: maps validated records into concept-specific fields, normalizes them by semantic type, and generates contextual notes.
+  \item \textbf{Cross-concept linker}: builds relationships between concept records (for example offer $\rightarrow$ customer, lead $\rightarrow$ sales) with confidence.
+  \item \textbf{Concept memory}: stores concept records with versioning semantics to maintain contextual continuity over time.
+\end{enumerate}
+
+\subsection{How it improves capture and understanding}
+The previous ingestion path was category-aware, but concept logic was implicit. The new layer makes concept interpretation explicit and reusable:
+\begin{itemize}[leftmargin=*]
+  \item concept IDs are resolved from category and detected from textual patterns;
+  \item validated records are reinterpreted through concept field mappings;
+  \item concept-level validation errors are preserved instead of discarded;
+  \item concept links and orphan nodes are produced for graph-level diagnostics;
+  \item memory snapshots expose accumulated context per concept.
+\end{itemize}
+
+\subsection{Runtime outputs now attached to ingestion}
+\texttt{process-document} now attaches concept intelligence into document outputs:
+\begin{itemize}[leftmargin=*]
+  \item \texttt{extracted\_data.concept\_intelligence}
+  \item \texttt{company\_documents.processing\_trace.conceptIntelligence}
+  \item semantic summary fields: \texttt{primary\_concept} and \texttt{concepts\_detected}
+\end{itemize}
+
+This means downstream agents can consume not only validated data, but also a concept graph and concept memory context.
+
+\subsection{Hypothesis-driven iteration model}
+The integration supports iterative quality improvement by testing hypotheses directly on concept artifacts:
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Hypothesis H1}: stronger concept mapping reduces rejected records for domain-specific fields.
+  \item \textbf{Hypothesis H2}: cross-concept links reduce orphan business records and improve explainability.
+  \item \textbf{Hypothesis H3}: concept memory increases consistency across re-ingestions of similar entities.
+\end{itemize}
+
+Each hypothesis can be validated through existing processing trace, validation reports, and concept intelligence outputs.
+
+\section{Reliability Mechanisms}
+The system includes multiple reliability controls:
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Graceful degradation}: if semantic table persistence fails, document-level extraction still updates with \texttt{semantic\_storage\_mode=document-only}.
+  \item \textbf{Canonical write blocking}: if semantic quality gate fails or no enriched records exist, canonical writes are blocked and status becomes \texttt{flagged}.
+  \item \textbf{Raw and rejected retention}: rejected records and validation issues are stored for diagnosis.
+  \item \textbf{Traceability}: every stage emits processing trace, quality notes, and enrichment logs.
+  \item \textbf{Compatibility path}: older schema failures do not silently crash ingestion; they degrade with notes.
+\end{enumerate}
+
+\section{How Data Becomes Ready for Other Agents}
+Downstream agents consume reliable data because they read from canonical operational tables after screening and validation, not directly from raw uploads.
+
+\subsection{Readiness characteristics}
+A record is effectively ``agent-ready'' when it has:
+\begin{itemize}[leftmargin=*]
+  \item canonical schema mapping,
+  \item normalized numeric/date/status formats,
+  \item confidence and validation state,
+  \item lineage to source document,
+  \item optional derived metrics and relationship references.
+\end{itemize}
+
+\subsection{Downstream orchestration}
+Regeneration and cascade orchestration in \texttt{data-api} can re-run document processing and then trigger higher-level agents such as:
+\begin{itemize}[leftmargin=*]
+  \item portfolio analysis,
+  \item 360 analysis,
+  \item action pool generation,
+  \item content generation,
+  \item business intelligence refresh.
+\end{itemize}
+
+This enforces a deterministic order: \textit{ingest $\rightarrow$ validate $\rightarrow$ persist $\rightarrow$ analyze}.
+
+\section{Operational Sequence Summary}
+\begin{enumerate}[leftmargin=*]
+  \item File upload event identifies document and category.
+  \item Text is extracted and preprocessed.
+  \item Raw intake record is persisted.
+  \item Section-scoped canonical candidates are extracted.
+  \item Canonical validation separates accepted vs rejected rows.
+  \item Enrichment computes links, metrics, confidence rebuild, and dedup winner.
+  \item Semantic pipeline parses sections, chunks meaning, extracts knowledge, and runs quality gate.
+  \item If needed, strict re-run attempts semantic rescue.
+  \item Semantic artifacts are persisted.
+  \item Canonical records are persisted (or blocked if quality gates fail).
+  \item Document status is set to completed/flagged with full trace.
+  \item Downstream agents consume canonical tables and confidence-aware metadata.
+\end{enumerate}
+
+\section{Practical Implications for Agent Developers}
+When building new agents that consume this data, follow these rules:
+\begin{itemize}[leftmargin=*]
+  \item Use canonical tables as primary source, not raw extraction payloads.
+  \item Respect \texttt{validation\_status} and \texttt{confidence\_score} filters.
+  \item Use lineage fields (for example \texttt{source\_document\_id}) for explainability.
+  \item Treat contradictions as first-class workflow states.
+  \item Keep deterministic fallback behavior when remote AI enrichment is unavailable.
+\end{itemize}
+
+\section{Conclusion}
+The data collecting architecture is not just an extractor. It is a controlled reliability pipeline with explicit screening, deterministic validation, confidence reconstruction, semantic persistence, canonical storage contracts, and contradiction governance. This is what allows other agents to reason over data safely and repeatedly, rather than over raw, unstable ingestion artifacts.
+
+\end{document}

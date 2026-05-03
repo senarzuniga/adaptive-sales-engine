@@ -1,4 +1,5 @@
 import type { ContactRecord, LeadRecord, OpportunityRecord, OrderRecord, ProductRecord, StrategyRecord } from '@/store/DataStore';
+import { runEliteLoop, type EliteLoopStep } from '@/lib/eliteAgentCore';
 
 export interface EntityCompany {
   id: string;
@@ -69,6 +70,11 @@ export interface DataManagementInput {
 export interface DataManagementResult {
   registries: NormalizedEntityRegistries;
   quality: DatasetQualityReport[];
+  contradictions: IngestionContradiction[];
+}
+
+export interface DataManagementEliteResult extends DataManagementResult {
+  loop: EliteLoopStep<{ datasets: number; rows: number }>;
 }
 
 const EMPTY_REGISTRY: NormalizedEntityRegistries = {
@@ -78,8 +84,35 @@ const EMPTY_REGISTRY: NormalizedEntityRegistries = {
   contacts: {},
 };
 
+export type ContradictionStatus = 'pending' | 'resolved';
+
+export interface IngestionContradiction {
+  id: string;
+  entity_hash: string;
+  entity_name: string;
+  field_name: 'company_name' | 'VAT' | 'address' | 'revenue' | 'employee_count' | 'industry_code' | 'contact_email' | 'phone';
+  value_a: string;
+  value_b: string;
+  source_a: string;
+  source_b: string;
+  source_doc_ids: string[];
+  status: ContradictionStatus;
+  resolved_value?: string;
+  resolved_by_user_id?: string;
+  timestamp: string;
+  low_confidence?: boolean;
+  confidence_score?: number;
+}
+
 const clean = (value?: string) => (value || '').trim();
 const normalize = (value?: string) => clean(value).toLowerCase().replace(/[^a-z0-9]/g, '');
+const normalizeEmail = (value?: string) => clean(value).toLowerCase();
+const nowIso = () => new Date().toISOString();
+
+const randomId = () => {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  return `ctr_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+};
 
 const hashId = (prefix: string, value: string) => {
   const raw = normalize(value);
@@ -100,6 +133,140 @@ const mergeString = (current?: string, incoming?: string) => {
 };
 
 const mergeSource = (existing: string[], source: string) => (existing.includes(source) ? existing : [...existing, source]);
+
+type ContradictionField = IngestionContradiction['field_name'];
+
+interface FieldCandidate {
+  entityHash: string;
+  entityName: string;
+  fieldName: ContradictionField;
+  value: string;
+  normalizedValue: string;
+  source: string;
+  sourceDocId: string;
+}
+
+const normalizeByField = (field: ContradictionField, value: string) => {
+  if (field === 'contact_email') return normalizeEmail(value);
+  if (field === 'phone') return value.replace(/[^0-9]/g, '');
+  if (field === 'revenue') return `${Number(value || 0).toFixed(2)}`;
+  return normalize(value);
+};
+
+const sourceDocForRow = (row: Record<string, unknown>, fallback: string) => {
+  const explicit = String(row.sourceDocument || row.source_document || row.sourceDocId || row.source_doc_id || '').trim();
+  if (explicit) return explicit;
+  const synthetic = String(row.id || row.oppNumber || row.opp_number || row.email || '').trim();
+  return synthetic ? `${fallback}:${synthetic}` : `${fallback}:unknown`;
+};
+
+const collectContradictionCandidates = (input: DataManagementInput): FieldCandidate[] => {
+  const candidates: FieldCandidate[] = [];
+  const push = (
+    companyName: string,
+    fieldName: ContradictionField,
+    value: unknown,
+    source: string,
+    sourceDocId: string,
+  ) => {
+    const entityName = clean(companyName);
+    const candidate = clean(String(value || ''));
+    if (!entityName || !candidate) return;
+    const entityHash = hashId('cmp', entityName);
+    candidates.push({
+      entityHash,
+      entityName,
+      fieldName,
+      value: candidate,
+      normalizedValue: normalizeByField(fieldName, candidate),
+      source,
+      sourceDocId,
+    });
+  };
+
+  input.orders.forEach((row) => {
+    const sourceDocId = sourceDocForRow(row as unknown as Record<string, unknown>, 'orders');
+    push(row.customerName, 'company_name', row.customerName, 'orders', sourceDocId);
+    push(row.customerName, 'address', (row as unknown as Record<string, unknown>).address, 'orders', sourceDocId);
+    push(row.customerName, 'VAT', (row as unknown as Record<string, unknown>).vat || (row as unknown as Record<string, unknown>).taxId, 'orders', sourceDocId);
+    push(row.customerName, 'industry_code', (row as unknown as Record<string, unknown>).industryCode || (row as unknown as Record<string, unknown>).industry_code, 'orders', sourceDocId);
+  });
+
+  input.opportunities.forEach((row) => {
+    const sourceDocId = sourceDocForRow(row as unknown as Record<string, unknown>, 'opportunities');
+    push(row.customerName, 'company_name', row.customerName, 'opportunities', sourceDocId);
+    push(row.customerName, 'revenue', row.estRevenue, 'opportunities', sourceDocId);
+    push(row.customerName, 'contact_email', (row as unknown as Record<string, unknown>).contactEmail || (row as unknown as Record<string, unknown>).contact_email, 'opportunities', sourceDocId);
+    push(row.customerName, 'phone', (row as unknown as Record<string, unknown>).phone, 'opportunities', sourceDocId);
+  });
+
+  input.leads.forEach((row) => {
+    const sourceDocId = sourceDocForRow(row as unknown as Record<string, unknown>, 'leads');
+    push(row.companyName, 'company_name', row.companyName, 'leads', sourceDocId);
+    push(row.companyName, 'industry_code', row.sector, 'leads', sourceDocId);
+    push(row.companyName, 'contact_email', row.email, 'leads', sourceDocId);
+    push(row.companyName, 'phone', row.phone, 'leads', sourceDocId);
+    push(row.companyName, 'revenue', row.estimatedValue, 'leads', sourceDocId);
+    push(row.companyName, 'VAT', (row as unknown as Record<string, unknown>).vat || (row as unknown as Record<string, unknown>).taxId, 'leads', sourceDocId);
+    push(row.companyName, 'address', (row as unknown as Record<string, unknown>).address, 'leads', sourceDocId);
+  });
+
+  input.contacts.forEach((row) => {
+    const sourceDocId = sourceDocForRow(row as unknown as Record<string, unknown>, 'contacts');
+    push(row.companyName, 'company_name', row.companyName, 'contacts', sourceDocId);
+    push(row.companyName, 'contact_email', row.email, 'contacts', sourceDocId);
+    push(row.companyName, 'phone', row.phone, 'contacts', sourceDocId);
+    push(row.companyName, 'address', (row as unknown as Record<string, unknown>).address, 'contacts', sourceDocId);
+    push(row.companyName, 'industry_code', (row as unknown as Record<string, unknown>).industryCode || (row as unknown as Record<string, unknown>).industry_code, 'contacts', sourceDocId);
+  });
+
+  return candidates;
+};
+
+const detectContradictions = (input: DataManagementInput): IngestionContradiction[] => {
+  const grouped = new Map<string, FieldCandidate[]>();
+  collectContradictionCandidates(input).forEach((candidate) => {
+    const key = `${candidate.entityHash}:${candidate.fieldName}`;
+    const bucket = grouped.get(key) || [];
+    bucket.push(candidate);
+    grouped.set(key, bucket);
+  });
+
+  const contradictions: IngestionContradiction[] = [];
+
+  grouped.forEach((bucket) => {
+    const byValue = new Map<string, FieldCandidate[]>();
+    bucket.forEach((entry) => {
+      const key = entry.normalizedValue;
+      if (!key) return;
+      const values = byValue.get(key) || [];
+      values.push(entry);
+      byValue.set(key, values);
+    });
+
+    if (byValue.size < 2) return;
+    const sortedGroups = [...byValue.values()].sort((a, b) => b.length - a.length);
+    const first = sortedGroups[0][0];
+    const second = sortedGroups[1][0];
+
+    const sourceDocIds = [...new Set([...sortedGroups[0].map((e) => e.sourceDocId), ...sortedGroups[1].map((e) => e.sourceDocId)])];
+    contradictions.push({
+      id: randomId(),
+      entity_hash: first.entityHash,
+      entity_name: first.entityName,
+      field_name: first.fieldName,
+      value_a: first.value,
+      value_b: second.value,
+      source_a: sortedGroups[0].map((e) => e.source).join(', '),
+      source_b: sortedGroups[1].map((e) => e.source).join(', '),
+      source_doc_ids: sourceDocIds,
+      status: 'pending',
+      timestamp: nowIso(),
+    });
+  });
+
+  return contradictions;
+};
 
 const upsertCompany = (
   companies: Record<string, EntityCompany>,
@@ -342,5 +509,32 @@ export function runDataManagementAgent(input: DataManagementInput): DataManageme
     qualityForDataset('contacts', input.contacts as unknown as Record<string, unknown>[], ['companyName', 'name'], (r) => String(r.email || r.name || '')),
   ];
 
-  return { registries, quality };
+  const contradictions = detectContradictions(input);
+
+  return { registries, quality, contradictions };
+}
+
+export function runDataManagementEliteAgent(input: DataManagementInput): DataManagementEliteResult {
+  const result = runDataManagementAgent(input);
+  const rowCount = input.orders.length + input.opportunities.length + input.products.length + input.strategy.length + input.leads.length + input.contacts.length;
+  const issueCount = result.quality.reduce((sum, q) => sum + q.issues.length, 0);
+  const qualityScore = Math.max(0, Number((1 - (issueCount / Math.max(1, rowCount))).toFixed(3)));
+
+  return {
+    ...result,
+    loop: runEliteLoop({
+      observation: { datasets: 6, rows: rowCount },
+      understand: 'Data quality and normalization drive downstream agent precision.',
+      hypotheses: [
+        'Reducing duplicate entity keys improves account matching quality.',
+        'Higher completeness improves enrichment and scoring confidence.',
+      ],
+      action: 'Normalized entities and generated quality diagnostics across all datasets.',
+      expectedOutcome: 0.82,
+      realOutcome: qualityScore,
+      reason: 'Standardized and deduplicated source data before analytics and orchestration.',
+      dataUsed: ['orders', 'opportunities', 'products', 'strategy', 'leads', 'contacts'],
+      expectedImpact: 'Higher accuracy in targeting, enrichment, and recommendation engines.',
+    }),
+  };
 }

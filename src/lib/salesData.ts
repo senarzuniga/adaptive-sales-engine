@@ -64,6 +64,20 @@ export function parseFlexibleNumber(value: unknown): number {
     .replace(/[€$£¥]/g, '')
     .replace(/%/g, '');
 
+  const multiplierMatch = raw.match(/(million|mln|mn|[kmb])$/i);
+  let multiplier = 1;
+  if (multiplierMatch) {
+    const suffix = multiplierMatch[1].toLowerCase();
+    multiplier = suffix === 'k'
+      ? 1_000
+      : suffix === 'm' || suffix === 'mn' || suffix === 'mln' || suffix === 'million'
+        ? 1_000_000
+        : suffix === 'b'
+          ? 1_000_000_000
+          : 1;
+    raw = raw.slice(0, raw.length - multiplierMatch[1].length).trim();
+  }
+
   const commaCount = (raw.match(/,/g) || []).length;
   const dotCount = (raw.match(/\./g) || []).length;
 
@@ -89,7 +103,8 @@ export function parseFlexibleNumber(value: unknown): number {
 
   const parsed = Number.parseFloat(raw);
   if (!Number.isFinite(parsed)) return 0;
-  return negative ? -parsed : parsed;
+  const scaled = parsed * multiplier;
+  return negative ? -scaled : scaled;
 }
 
 export function normalizeOpportunityStatus(value: unknown): 'won' | 'lost' | 'neglected' | 'open' {

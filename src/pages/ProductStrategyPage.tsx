@@ -17,12 +17,30 @@ import {
   buildProductStrategySnapshot,
   evaluateProductActionFeedback,
 } from '@/lib/productStrategy';
+import {
+  buildCompetitiveLandscapes,
+  buildPortfolioAnalysis,
+  buildProductPositioningModel,
+  buildStrategyRoadmaps,
+} from '@/lib/positioningEngine';
 
 const ProductStrategyPage = () => {
   const { data, addTask, updateTask } = useData();
   const [feedbackByAction, setFeedbackByAction] = useState<Record<string, string>>({});
   const [evaluations, setEvaluations] = useState<Record<string, ProductActionEvaluation>>({});
   const [taskIdsByAction, setTaskIdsByAction] = useState<Record<string, string>>({});
+
+  const positioning = useMemo(() => buildProductPositioningModel({
+    company: data.companyProfile,
+    products: data.products,
+    orders: data.orders,
+    opportunities: data.opportunities,
+    strategy: data.strategy,
+  }), [data.companyProfile, data.products, data.orders, data.opportunities, data.strategy]);
+
+  const portfolio = useMemo(() => buildPortfolioAnalysis(positioning, data.orders), [positioning, data.orders]);
+  const landscapes = useMemo(() => buildCompetitiveLandscapes(positioning, data.companyProfile), [positioning, data.companyProfile]);
+  const roadmaps = useMemo(() => buildStrategyRoadmaps(positioning), [positioning]);
 
   const snapshot = useMemo(() => buildProductStrategySnapshot({
     products: data.products,
@@ -154,6 +172,7 @@ const ProductStrategyPage = () => {
           <TabsList>
             <TabsTrigger value="portfolio" className="gap-1"><Package className="h-3.5 w-3.5" /> Portfolio</TabsTrigger>
             <TabsTrigger value="fit" className="gap-1"><Target className="h-3.5 w-3.5" /> Market Fit</TabsTrigger>
+            <TabsTrigger value="positioning" className="gap-1"><TrendingUp className="h-3.5 w-3.5" /> Positioning Intelligence</TabsTrigger>
             <TabsTrigger value="actions" className="gap-1"><Lightbulb className="h-3.5 w-3.5" /> Action Playbook</TabsTrigger>
           </TabsList>
 
@@ -208,6 +227,84 @@ const ProductStrategyPage = () => {
                 </Card>
               ))}
             </div>
+          </TabsContent>
+
+          <TabsContent value="positioning" className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card><CardContent className="pt-5 pb-4"><p className="text-xs text-muted-foreground">Portfolio Health</p><p className="text-2xl font-bold">{(portfolio.portfolioHealthScore * 100).toFixed(0)}%</p></CardContent></Card>
+              <Card><CardContent className="pt-5 pb-4"><p className="text-xs text-muted-foreground">Innovation Ratio</p><p className="text-2xl font-bold text-primary">{(portfolio.innovationRatio * 100).toFixed(0)}%</p></CardContent></Card>
+              <Card><CardContent className="pt-5 pb-4"><p className="text-xs text-muted-foreground">Decline Exposure</p><p className="text-2xl font-bold text-amber-600">{(portfolio.declineExposure * 100).toFixed(0)}%</p></CardContent></Card>
+              <Card><CardContent className="pt-5 pb-4"><p className="text-xs text-muted-foreground">Revenue Concentration</p><p className="text-2xl font-bold">{(portfolio.revenueConcentration * 100).toFixed(0)}%</p></CardContent></Card>
+            </div>
+
+            <Card>
+              <CardHeader><CardTitle className="text-base">Product Positioning Matrix</CardTitle></CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Product</TableHead>
+                      <TableHead className="text-xs">Lifecycle</TableHead>
+                      <TableHead className="text-xs">Competitive Position</TableHead>
+                      <TableHead className="text-xs">Pricing Power</TableHead>
+                      <TableHead className="text-xs text-right">Differentiation</TableHead>
+                      <TableHead className="text-xs text-right">Commoditization Risk</TableHead>
+                      <TableHead className="text-xs">Sales Approach</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {positioning.map((row) => (
+                      <TableRow key={row.productId}>
+                        <TableCell className="text-xs font-medium">{row.name}</TableCell>
+                        <TableCell className="text-xs">{row.lifecycleStage}</TableCell>
+                        <TableCell className="text-xs">{row.competitivePosition}</TableCell>
+                        <TableCell className="text-xs">{row.pricingPower}</TableCell>
+                        <TableCell className="text-xs text-right">{(row.differentiationScore * 100).toFixed(0)}%</TableCell>
+                        <TableCell className="text-xs text-right">{(row.commoditizationRisk * 100).toFixed(0)}%</TableCell>
+                        <TableCell className="text-xs">{row.recommendedSalesApproach}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            <div className="grid lg:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader><CardTitle className="text-base">Strategic Recommendations</CardTitle></CardHeader>
+                <CardContent className="space-y-2 text-xs text-muted-foreground">
+                  {portfolio.strategicRecommendations.map((item) => (<p key={item}>• {item}</p>))}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader><CardTitle className="text-base">Competitive Signals</CardTitle></CardHeader>
+                <CardContent className="space-y-3 text-xs">
+                  {landscapes.slice(0, 3).map((entry) => (
+                    <div key={entry.productId} className="border rounded-md p-2">
+                      <p className="font-medium text-foreground">{positioning.find((item) => item.productId === entry.productId)?.name || entry.productId}</p>
+                      <p className="text-muted-foreground">Intensity: {entry.competitiveIntensity} · Barrier to entry: {entry.barrierToEntry} · Price position: {entry.pricePosition}</p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader><CardTitle className="text-base">Execution Roadmap Preview</CardTitle></CardHeader>
+              <CardContent className="space-y-3 text-xs">
+                {roadmaps.slice(0, 3).map((roadmap) => {
+                  const productName = positioning.find((item) => item.productId === roadmap.productId)?.name || roadmap.productId;
+                  return (
+                    <div key={roadmap.productId} className="border rounded-md p-3 space-y-1">
+                      <p className="font-semibold text-foreground">{productName}</p>
+                      <p className="text-muted-foreground">Short-term: {roadmap.shortTermActions[0]?.title || 'n/a'}</p>
+                      <p className="text-muted-foreground">Medium-term: {roadmap.mediumTermInitiatives[0]?.title || 'n/a'}</p>
+                      <p className="text-muted-foreground">Long-term: {roadmap.longTermStrategicMoves[0]?.title || 'n/a'}</p>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="actions" className="space-y-4">

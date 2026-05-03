@@ -63,6 +63,65 @@ export const CommercialIntelligencePanel = ({ company, orders, opportunities, pr
         </Card>
       )}
 
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="pt-5 pb-4">
+            <p className="text-xs text-muted-foreground mb-1">Current vs target</p>
+            <p className="text-2xl font-bold text-foreground">{intelligence.strategyDiagnostic.currentAchievementPct.toFixed(0)}%</p>
+            <p className="text-xs text-muted-foreground mt-1">{fmt(intelligence.strategyDiagnostic.currentRevenue)} of {fmt(intelligence.strategyDiagnostic.targetRevenue)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5 pb-4">
+            <p className="text-xs text-muted-foreground mb-1">Coverage incl. pipeline</p>
+            <p className="text-2xl font-bold text-foreground">{intelligence.strategyDiagnostic.pipelineCoveragePct.toFixed(0)}%</p>
+            <p className="text-xs text-muted-foreground mt-1">Gap still open: {fmt(intelligence.strategyDiagnostic.coverageGap)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5 pb-4">
+            <p className="text-xs text-muted-foreground mb-1">Mix alignment</p>
+            <p className="text-2xl font-bold text-foreground">{intelligence.strategyDiagnostic.mixAlignmentPct.toFixed(0)}%</p>
+            <p className="text-xs text-muted-foreground mt-1">Target source: {intelligence.strategyDiagnostic.targetSource}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {(intelligence.rootCauseMap.length > 0 || intelligence.bridgePlan.length > 0) && (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader><CardTitle className="text-base">Root-cause map</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {intelligence.rootCauseMap.map((cause) => (
+                <div key={cause.title} className="border rounded-lg p-3">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <p className="font-medium text-sm text-foreground">{cause.title}</p>
+                    <Badge variant={cause.severity === 'high' ? 'destructive' : cause.severity === 'medium' ? 'secondary' : 'outline'} className="text-[10px]">{cause.severity}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{cause.description}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle className="text-base">Bridge plan</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {intelligence.bridgePlan.map((item) => (
+                <div key={item.title} className="border rounded-lg p-3">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <p className="font-medium text-sm text-foreground">{item.title}</p>
+                    <Badge variant={item.priority === 'critical' ? 'destructive' : item.priority === 'high' ? 'default' : 'secondary'} className="text-[10px]">{item.priority}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{item.rationale}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Expected impact: {fmt(item.expectedImpact)}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <Card>
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><Workflow className="h-4 w-4" /> Cascade system status</CardTitle></CardHeader>
         <CardContent>

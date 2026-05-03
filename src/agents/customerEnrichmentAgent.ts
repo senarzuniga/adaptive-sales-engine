@@ -1,5 +1,6 @@
 import type { ContactRecord, LeadRecord, OpportunityRecord, OrderRecord } from '@/store/DataStore';
 import type { DataManagementInput, NormalizedEntityRegistries } from './dataManagementAgent';
+import { runEliteLoop, type EliteLoopStep } from '@/lib/eliteAgentCore';
 
 export interface EnrichedCompanyProfile {
   id: string;
@@ -23,6 +24,10 @@ export interface CustomerEnrichmentInput extends DataManagementInput {
 
 export interface CustomerEnrichmentResult {
   profiles: EnrichedCompanyProfile[];
+}
+
+export interface CustomerEnrichmentEliteResult extends CustomerEnrichmentResult {
+  loop: EliteLoopStep<{ profiles: number }>;
 }
 
 const clean = (value?: string) => (value || '').trim();
@@ -129,4 +134,29 @@ export function runCustomerEnrichmentAgent(input: CustomerEnrichmentInput): Cust
 
   profiles.sort((a, b) => b.enrichmentScore - a.enrichmentScore);
   return { profiles };
+}
+
+export function runCustomerEnrichmentEliteAgent(input: CustomerEnrichmentInput): CustomerEnrichmentEliteResult {
+  const result = runCustomerEnrichmentAgent(input);
+  const avg = result.profiles.length
+    ? Number((result.profiles.reduce((s, p) => s + p.enrichmentScore, 0) / result.profiles.length / 100).toFixed(3))
+    : 0;
+
+  return {
+    ...result,
+    loop: runEliteLoop({
+      observation: { profiles: result.profiles.length },
+      understand: 'Profile completeness and enrichment quality are predictors of targeting performance.',
+      hypotheses: [
+        'Higher enrichment score yields better account prioritization decisions.',
+        'Contact completeness increases conversion probability for event and pipeline plays.',
+      ],
+      action: 'Generated enriched company profiles and ranked them by enrichment score.',
+      expectedOutcome: 0.76,
+      realOutcome: avg,
+      reason: 'Built unified account views for proactive planning and autonomous recommendations.',
+      dataUsed: ['orders', 'opportunities', 'leads', 'contacts', 'entity registries'],
+      expectedImpact: 'Improved account strategy, segmentation, and follow-up effectiveness.',
+    }),
+  };
 }

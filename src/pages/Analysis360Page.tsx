@@ -18,6 +18,7 @@ import { ProductPortfolioAnalysis } from '@/components/analysis360/ProductPortfo
 import { BrandingVsStrategy } from '@/components/analysis360/BrandingVsStrategy';
 import { ExecutiveInsights } from '@/components/analysis360/ExecutiveInsights';
 import { CommercialIntelligencePanel } from '@/components/analysis360/CommercialIntelligencePanel';
+import { buildStrategyDiagnostic } from '@/lib/commercialIntelligence';
 import { buildPipelineMetrics, getProbabilityGuidance, isNeglectedStatus, isOpenOpportunityStatus } from '@/lib/salesData';
 
 const Analysis360Page = () => {
@@ -128,49 +129,13 @@ const Analysis360Page = () => {
     })).sort((a, b) => b.revenue - a.revenue);
   }, [filtered]);
 
-  // Strategy achievement: use consultant target if available, deduplicate strategy rows
-  const { strategyTarget, weightedPipeline, soldRevenue, strategyAchievement, strategySource } = useMemo(() => {
-    // Parse consultant's target from company profile (e.g. "targeting €3.5M within 3 years")
-    const desc = company?.business_description || '';
-    const annualRev = company?.annual_revenue || '';
-    const notes = company?.additional_notes || '';
-    
-    let consultantTarget = 0;
-    // Try "targeting €X.XM" pattern
-    const targetMatch = (annualRev + ' ' + desc + ' ' + notes).match(/target(?:ing)?\s*[~€]?\s*([0-9.,]+)\s*(m|million|mln)/i);
-    if (targetMatch) {
-      consultantTarget = parseFloat(targetMatch[1].replace(',', '.')) * 1_000_000;
-    }
-
-    // Deduplicate strategy rows by product_family (take unique families, sum once)
-    const uniqueFamilies = new Map<string, number>();
-    strategy.forEach(s => {
-      const key = s.productFamily.trim().toLowerCase();
-      if (!uniqueFamilies.has(key)) {
-        uniqueFamilies.set(key, s.estRevenue);
-      }
-    });
-    const deduplicatedStrategyTotal = Array.from(uniqueFamilies.values()).reduce((s, v) => s + v, 0);
-
-    // Use consultant target if available, otherwise deduplicated strategy
-    const finalTarget = consultantTarget > 0 ? consultantTarget : deduplicatedStrategyTotal;
-    const source = consultantTarget > 0 ? 'Company Profile Target' : 'Strategy Data';
-
-    const pipelineMetrics = buildPipelineMetrics({ opportunities, orders: rawOrders });
-    const sold = pipelineMetrics.soldRevenue;
-    const openWeighted = pipelineMetrics.weightedOpenRevenue;
-    const weighted = pipelineMetrics.weightedPipeline;
-
-    const achievement = finalTarget > 0 ? (weighted / finalTarget * 100) : 0;
-
-    return {
-      strategyTarget: finalTarget,
-      weightedPipeline: weighted,
-      soldRevenue: sold,
-      strategyAchievement: achievement,
-      strategySource: source,
-    };
-  }, [strategy, opportunities, company]);
+  const strategyDiagnostic = useMemo(() => buildStrategyDiagnostic({ company, strategy, orders: rawOrders, opportunities }), [company, strategy, rawOrders, opportunities]);
+  const strategyTarget = strategyDiagnostic.targetRevenue;
+  const weightedPipeline = strategyDiagnostic.currentRevenue + strategyDiagnostic.weightedPipeline;
+  const currentRevenueForTarget = strategyDiagnostic.currentRevenue;
+  const strategyAchievement = strategyDiagnostic.currentAchievementPct;
+  const strategyCoverage = strategyDiagnostic.pipelineCoveragePct;
+  const strategySource = strategyDiagnostic.targetSource;
 
   // Task accomplishment KPIs
   const taskStats = useMemo(() => {
@@ -196,13 +161,13 @@ const Analysis360Page = () => {
       risks.push({
         level: 'critical',
         title: 'Strategy Achievement Critical',
-        description: `Weighted pipeline covers only ${strategyAchievement.toFixed(0)}% of the ${fmt(strategyTarget)} target. Gap: ${fmt(strategyTarget - weightedPipeline)}. Urgent pipeline building needed.`,
+        description: `Current actual revenue delivers only ${strategyAchievement.toFixed(0)}% of the ${fmt(strategyTarget)} target, and total weighted coverage reaches ${strategyCoverage.toFixed(0)}%. Urgent bridge actions are needed.`,
       });
     } else if (strategyTarget > 0 && strategyAchievement < 75) {
       risks.push({
         level: 'warning',
         title: 'Strategy Achievement Below Target',
-        description: `Weighted pipeline at ${strategyAchievement.toFixed(0)}% of target. Gap of ${fmt(strategyTarget - weightedPipeline)} requires attention.`,
+        description: `Actual performance is at ${strategyAchievement.toFixed(0)}% of target and weighted coverage is ${strategyCoverage.toFixed(0)}%. The strategic gap still requires attention.`,
       });
     }
 
@@ -246,7 +211,7 @@ const Analysis360Page = () => {
     }
 
     return risks;
-  }, [strategyTarget, strategyAchievement, weightedPipeline, opportunities, taskStats]);
+  }, [strategyTarget, strategyAchievement, strategyCoverage, opportunities, taskStats]);
 
   // Pareto risk
   const paretoData = useMemo(() => {
@@ -317,6 +282,21 @@ const Analysis360Page = () => {
         </Card>
       )}
 
+      {strategyDiagnostic.validationWarnings.length > 0 && (
+        <Card className="mb-6 border-l-4 border-l-destructive bg-destructive/5">
+          <CardContent className="pt-4 pb-3 flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-foreground text-sm">Output data check</p>
+              <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
+                {strategyDiagnostic.validationWarnings.map((warning) => (
+                  <li key={warning}>• {warning}</li>
+                ))}
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* KPI Summary - Row 1: Revenue & Pipeline */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
@@ -328,7 +308,7 @@ const Analysis360Page = () => {
         <Card><CardContent className="pt-6">
           <div className="flex items-center gap-2 mb-1"><TrendingUp className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Weighted Pipeline</span></div>
           <p className="text-2xl font-bold text-foreground">{fmt(weightedPipeline)}</p>
-          <p className="text-xs text-muted-foreground mt-1">Confirmed sold: {fmt(soldRevenue)} + weighted open offers</p>
+          <p className="text-xs text-muted-foreground mt-1">Current actual: {fmt(currentRevenueForTarget)} + weighted open offers</p>
         </CardContent></Card>
         <Card><CardContent className="pt-6">
           <div className="flex items-center gap-2 mb-1"><Target className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Strategy Achievement</span></div>
@@ -337,7 +317,7 @@ const Analysis360Page = () => {
           </p>
           <div className="mt-1">
             <Progress value={Math.min(strategyAchievement, 100)} className="h-1.5" />
-            <p className="text-xs text-muted-foreground mt-1">Target: {fmt(strategyTarget)} · {strategySource}</p>
+            <p className="text-xs text-muted-foreground mt-1">Target: {fmt(strategyTarget)} · {strategySource} · Coverage incl. pipeline: {strategyCoverage.toFixed(0)}%</p>
           </div>
         </CardContent></Card>
         <Card><CardContent className="pt-6">

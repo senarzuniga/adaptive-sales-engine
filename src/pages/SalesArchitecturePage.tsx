@@ -18,6 +18,34 @@ const COLORS = ['hsl(var(--primary))', 'hsl(35,90%,55%)', 'hsl(150,60%,45%)', 'h
 
 const fmt = (v: number) => v >= 1_000_000 ? `€${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `€${(v / 1_000).toFixed(0)}K` : `€${v.toFixed(0)}`;
 
+const formatEuroAxisTick = (value: number) => {
+  if (Math.abs(value) >= 1_000_000) {
+    const millions = value / 1_000_000;
+    return Number.isInteger(millions) ? `€${millions.toFixed(0)}M` : `€${millions.toFixed(1).replace(/\.0$/, '')}M`;
+  }
+
+  if (Math.abs(value) >= 1_000) {
+    const thousands = value / 1_000;
+    return Number.isInteger(thousands) ? `€${thousands.toFixed(0)}K` : `€${thousands.toFixed(1).replace(/\.0$/, '')}K`;
+  }
+
+  return `€${value.toFixed(0)}`;
+};
+
+const getNiceAxisStep = (maxValue: number, tickCount = 4) => {
+  if (maxValue <= 0) return 1;
+
+  const roughStep = maxValue / tickCount;
+  const magnitude = 10 ** Math.floor(Math.log10(roughStep));
+  const normalizedStep = roughStep / magnitude;
+
+  if (normalizedStep <= 1) return magnitude;
+  if (normalizedStep <= 2) return 2 * magnitude;
+  if (normalizedStep <= 2.5) return 2.5 * magnitude;
+  if (normalizedStep <= 5) return 5 * magnitude;
+  return 10 * magnitude;
+};
+
 const SalesArchitecturePage = () => {
   const { data } = useData();
   const [aiRecommendation, setAiRecommendation] = useState<string | null>(null);
@@ -434,6 +462,19 @@ const SalesArchitecturePage = () => {
     neglected: r.neglectedValue,
   }));
 
+  const regionAxisConfig = useMemo(() => {
+    const maxStackValue = regionChartData.reduce((maxValue, region) => {
+      const total = region.pipeline + region.sold + region.neglected;
+      return Math.max(maxValue, total);
+    }, 0);
+
+    const step = getNiceAxisStep(maxStackValue || 1);
+    const max = Math.max(step, Math.ceil(maxStackValue / step) * step);
+    const ticks = Array.from({ length: Math.round(max / step) + 1 }, (_, index) => index * step);
+
+    return { max, ticks };
+  }, [regionChartData]);
+
   const coverageData = regionalAnalysis.map(r => ({
     name: r.region,
     value: r.pipeline,
@@ -541,7 +582,13 @@ const SalesArchitecturePage = () => {
                   <BarChart data={regionChartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <YAxis tickFormatter={(v) => v >= 1_000_000 ? `€${(v / 1_000_000).toFixed(0)}M` : `€${(v / 1_000).toFixed(0)}K`} stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                    <YAxis
+                      domain={[0, regionAxisConfig.max]}
+                      ticks={regionAxisConfig.ticks}
+                      tickFormatter={formatEuroAxisTick}
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={11}
+                    />
                     <Tooltip formatter={(v: number) => fmt(v)} />
                     <Legend />
                     <Bar dataKey="sold" fill="hsl(150,60%,45%)" name="Sold" stackId="total" radius={[0, 0, 0, 0]} />

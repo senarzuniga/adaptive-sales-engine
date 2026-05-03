@@ -8,6 +8,7 @@ import { OrderRecord, OpportunityRecord, ProductRecord, StrategyRecord, CompanyP
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { groupBy, fmt } from './AnalysisUtils';
+import { buildCommercialIntelligence, buildStrategyDiagnostic } from '@/lib/commercialIntelligence';
 import { buildPipelineMetrics, getActivePipelineOpportunities } from '@/lib/salesData';
 import { buildFallbackExecutiveInsights, classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
 import {
@@ -95,7 +96,8 @@ export const ExecutiveInsights = ({ orders, opportunities, products, strategy, c
         ? openOpportunities.reduce((sum, opportunity) => sum + (opportunity.contractProb || 0), 0) / openOpportunities.length
         : 0;
 
-      const totalPlanned = strategy.reduce((s, r) => s + r.estRevenue, 0);
+      const strategyDiagnostic = buildStrategyDiagnostic({ company, orders, opportunities, strategy });
+      const commercialIntelligence = buildCommercialIntelligence({ company, orders, opportunities, products, strategy });
 
       const data = await invokeEdgeWithRetry<any>('analyze-360', {
         companyProfile: {
@@ -131,10 +133,21 @@ export const ExecutiveInsights = ({ orders, opportunities, products, strategy, c
           top3CustomerShare: byCustomer.slice(0, 3).reduce((s, c) => s + c.share, 0),
         },
         strategySummary: {
-          totalPlanned,
-          achievement: totalPlanned > 0 ? (totalRevenue / totalPlanned * 100) : 0,
-          gap: totalRevenue - totalPlanned,
-          hasStrategy: strategy.length > 0,
+          totalPlanned: strategyDiagnostic.targetRevenue,
+          achievement: strategyDiagnostic.currentAchievementPct,
+          pipelineCoverage: strategyDiagnostic.pipelineCoveragePct,
+          gap: strategyDiagnostic.revenueGap,
+          coverageGap: strategyDiagnostic.coverageGap,
+          mixAlignment: strategyDiagnostic.mixAlignmentPct,
+          currentRevenue: strategyDiagnostic.currentRevenue,
+          targetSource: strategyDiagnostic.targetSource,
+          validationStatus: strategyDiagnostic.validationStatus,
+          validationWarnings: strategyDiagnostic.validationWarnings,
+          targetCandidates: strategyDiagnostic.targetCandidates,
+          byPillar: strategyDiagnostic.byPillar,
+          rootCauses: commercialIntelligence.rootCauseMap,
+          bridgePlan: commercialIntelligence.bridgePlan,
+          hasStrategy: strategy.length > 0 || strategyDiagnostic.targetRevenue > 0,
         },
         opportunitiesSummary: {
           totalPipeline,

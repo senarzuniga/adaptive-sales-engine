@@ -22,6 +22,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { isOpenOpportunityStatus } from '@/lib/salesData';
 import { buildFallbackMarketingContent } from '@/lib/marketingContentFallback';
+import { TradeShowsHub } from '@/components/tradeShows/TradeShowsHub';
 
 interface ContentResponse {
   title: string;
@@ -406,10 +407,11 @@ const MarketingContentPage = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="create" className="gap-2"><Sparkles className="h-4 w-4" /> Create</TabsTrigger>
           <TabsTrigger value="library" className="gap-2"><FileText className="h-4 w-4" /> Library ({savedContents.length})</TabsTrigger>
           <TabsTrigger value="calendar" className="gap-2"><CalendarDays className="h-4 w-4" /> Calendar</TabsTrigger>
+          <TabsTrigger value="trade-shows" className="gap-2"><Building2 className="h-4 w-4" /> Trade Shows</TabsTrigger>
         </TabsList>
 
         {/* CREATE TAB */}
@@ -857,6 +859,11 @@ const MarketingContentPage = () => {
               </Card>
             </div>
           </div>
+        </TabsContent>
+
+        {/* TRADE SHOWS TAB */}
+        <TabsContent value="trade-shows">
+          <TradeShowsHub />
         </TabsContent>
       </Tabs>
     </div>

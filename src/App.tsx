@@ -16,6 +16,7 @@ import SalesArchitecturePage from "./pages/SalesArchitecturePage";
 import KeyAccountManagementPage from "./pages/KeyAccountManagementPage";
 import BehavioralTransformationPage from "./pages/BehavioralTransformationPage";
 import ProductStrategyPage from "./pages/ProductStrategyPage";
+import ProductCatalogPage from "./pages/ProductCatalogPage";
 import AfterSalesEnginePage from "./pages/AfterSalesEnginePage";
 import MonitoringPage from "./pages/MonitoringPage";
 import WeeklyPlannerPage from "./pages/WeeklyPlannerPage";
@@ -31,6 +32,7 @@ import BudgetCommandCenterPage from "./pages/BudgetCommandCenterPage";
 import CostRatesPage from "./pages/CostRatesPage";
 import BusinessIntelligencePage from "./pages/BusinessIntelligencePage";
 import SavedCompaniesPage from "./pages/SavedCompaniesPage";
+import RegeneratePage from "./pages/RegeneratePage";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -55,6 +57,7 @@ const App = () => (
                 <Route path="/ai-sales" element={<AiAugmentedSalesPage />} />
                 <Route path="/behavioral" element={<BehavioralTransformationPage />} />
                 <Route path="/product-strategy" element={<ProductStrategyPage />} />
+                <Route path="/product-catalog" element={<ProductCatalogPage />} />
                 <Route path="/monitoring" element={<MonitoringPage />} />
                 <Route path="/weekly-planner" element={<WeeklyPlannerPage />} />
                 <Route path="/team-directory" element={<CompanyContactsPage />} />
@@ -69,6 +72,7 @@ const App = () => (
                 <Route path="/cost-rates" element={<CostRatesPage />} />
                 <Route path="/business-intelligence" element={<BusinessIntelligencePage />} />
                 <Route path="/companies" element={<SavedCompaniesPage />} />
+                <Route path="/regenerate" element={<RegeneratePage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AppLayout>

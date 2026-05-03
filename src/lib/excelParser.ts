@@ -1,6 +1,14 @@
 import * as XLSX from 'xlsx';
-import type { OrderRecord, OpportunityRecord, ProductRecord, StrategyRecord } from '@/store/DataStore';
+import type {
+  ContactRecord,
+  LeadRecord,
+  OpportunityRecord,
+  OrderRecord,
+  ProductRecord,
+  StrategyRecord,
+} from '@/store/DataStore';
 import { normalizeOpportunityStatus, parseFlexibleNumber } from '@/lib/salesData';
+import { parseProductsFromWorkbookWithDiagnostics } from '@/lib/productDocumentParser';
 
 function normalizeHeader(h: string): string {
   return (h || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -69,9 +77,15 @@ export function parseExcelFile(file: File): Promise<{
 }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const wb = XLSX.read(e.target?.result, { type: 'array' });
+        const sheetNames = wb.SheetNames || [];
+        if (sheetNames.length === 0) {
+          resolve({ type: 'unknown', rowCount: 0, errors: ['Workbook has no sheets'] });
+          return;
+        }
+
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const raw: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
         if (raw.length < 2) { resolve({ type: 'unknown', rowCount: 0, errors: ['File is empty or has no data rows'] }); return; }
@@ -80,6 +94,23 @@ export function parseExcelFile(file: File): Promise<{
         const type = detectType(headers);
         const dataRows = raw.slice(1).filter(r => r.some(cell => cell != null && cell !== ''));
         const errors: string[] = [];
+
+        // Multi-sheet product workbooks are common in this module: one product per sheet.
+        if (type === 'products' || type === 'unknown') {
+          const parsed = await parseProductsFromWorkbookWithDiagnostics(file, file.name);
+          if (parsed.products.length > 0) {
+            errors.push(`Workbook sheets: ${sheetNames.length}`);
+            parsed.diagnostics.forEach((diag) => {
+              const headerText = diag.headers.slice(0, 8).join(' | ');
+              errors.push(
+                `Sheet '${diag.sheetName}': ${diag.rowCount} rows x ${diag.columnCount} cols${diag.skipped ? ` (skipped: ${diag.reason || 'n/a'})` : ''}${headerText ? ` | headers: ${headerText}` : ''}`,
+              );
+            });
+            parsed.errors.forEach((item) => errors.push(`Sheet '${item.sheetName}' parse error: ${item.message}`));
+            resolve({ type: 'products', products: parsed.products, rowCount: parsed.products.length, errors });
+            return;
+          }
+        }
 
         if (type === 'orders') {
           const cols = {
@@ -167,6 +198,19 @@ export function parseExcelFile(file: File): Promise<{
             estRevenue: getNum(r, cols.revenue), margin: getNum(r, cols.margin),
             kam: getVal(r, cols.kam),
           }));
+
+          const revenueValues = strategy.map(row => row.estRevenue).filter(value => value > 0);
+          const totalRevenue = revenueValues.reduce((sum, value) => sum + value, 0);
+          const maxRevenue = revenueValues.length > 0 ? Math.max(...revenueValues) : 0;
+
+          if (strategy.length > 4 && maxRevenue > 0 && totalRevenue > maxRevenue * 4) {
+            errors.push('Output data check: strategy totals look duplicated or inflated. Please verify the goal rows and Est. Revenue column.');
+          }
+
+          if (revenueValues.some(value => value >= 100_000_000)) {
+            errors.push('Output data check: at least one strategy revenue value is unusually high and should be reviewed.');
+          }
+
           resolve({ type, strategy, rowCount: strategy.length, errors });
         } else if (type === 'leads') {
           const cols = {
