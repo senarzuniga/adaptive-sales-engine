@@ -22,8 +22,21 @@ alter table public.offers
   add column if not exists client_entity_hash text;
 
 update public.offers
-set serial_number = coalesce(nullif(offer_number, ''), concat('OFF-', extract(year from created_at)::int, '-', lpad((row_number() over (order by created_at))::text, 3, '0')))
-where serial_number is null;
+set serial_number = nullif(offer_number, '')
+where serial_number is null
+  and nullif(offer_number, '') is not null;
+
+with ranked as (
+  select
+    id,
+    row_number() over (order by created_at, id) as rn
+  from public.offers
+  where serial_number is null
+)
+update public.offers o
+set serial_number = concat('OFF-', extract(year from o.created_at)::int, '-', lpad(r.rn::text, 3, '0'))
+from ranked r
+where o.id = r.id;
 
 alter table public.offers
   alter column serial_number set not null;
