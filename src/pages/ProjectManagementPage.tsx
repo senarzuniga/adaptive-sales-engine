@@ -1,26 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useData } from '@/store/DataStore';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Progress } from '@/components/ui/progress';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import {
-  FolderKanban, Plus, Trash2, Brain, TrendingUp, AlertTriangle, Shield, Settings,
-  DollarSign, BarChart3, Lightbulb, Save, Loader2, Target, Calendar, Users,
-  Activity, Zap, Eye, CheckCircle, Clock, FileText, ArrowRight, Gauge, GitBranch, Edit
-} from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { fmt, fmtPct, PROJECT_TYPES, COMPLEXITY_LEVELS, RISK_LEVELS, DURATION_CATS, PROJECT_STATUSES, PHASE_STATUSES, COST_CATEGORIES, GATE_DEFINITIONS, HEALTH_COLOR, STATUS_VARIANT } from './ProjectManagementPageConstants';
-import DelaySimulation from './DelaySimulation';
 
 // --- Delay Impact Simulation ---
 function DelaySimulation({ phases, milestones, gates, project }: { phases: any[]; milestones: any[]; gates: any[]; project: any }) {
