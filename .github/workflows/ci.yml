@@ -32,6 +32,9 @@ jobs:
       - name: Run Flake8
         run: flake8 .
 
+      - name: Check Python syntax
+        run: python -m compileall .
+
       - name: Run tests
         run: npm test
 
