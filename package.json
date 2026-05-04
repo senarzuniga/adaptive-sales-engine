@@ -14,7 +14,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "jest",
-    "test:watch": "vitest",
+    "test:watch": "jest --watch",
     "supabase:check": "npx --yes supabase --version",
     "supabase:link": "npx --yes supabase link --project-ref vrrwvqbnuvkzrlpaejbf",
     "supabase:sync": "powershell -ExecutionPolicy Bypass -File ./seeds/share_supabase_env.ps1",
