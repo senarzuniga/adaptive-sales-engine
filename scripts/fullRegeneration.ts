@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import { createInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
@@ -50,47 +51,83 @@ function requireEnv(name: string) {
   return value;
 }
 
-async function startRegeneration(baseUrl: string, apiKey: string, payload: Record<string, unknown>) {
-  const response = await fetch(`${baseUrl}/functions/v1/data-api`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      apikey: apiKey,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      action: 'admin.regenerate.start',
-      ...payload,
-    }),
-  });
-
-  const json = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(json?.error || `Regeneration start failed (${response.status})`);
+function requireAnyEnv(names: string[], description: string) {
+  for (const name of names) {
+    const value = process.env[name];
+    if (value) {
+      return value;
+    }
   }
 
-  return json as StartResult;
+  throw new Error(`Missing ${description}. Tried: ${names.join(', ')}`);
+}
+
+async function startRegeneration(baseUrl: string, apiKey: string, payload: Record<string, unknown>) {
+  const endpoints = [
+    `${baseUrl}/functions/v1/data-api/api/admin/regenerate/start`,
+    `${baseUrl}/functions/v1/data-api`,
+  ];
+
+  let lastError = 'Regeneration start failed';
+  for (const endpoint of endpoints) {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        apikey: apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'admin.regenerate.start',
+        ...payload,
+      }),
+    });
+
+    const json = await response.json().catch(() => ({}));
+    if (response.ok) {
+      return json as StartResult;
+    }
+
+    lastError = json?.error || `Regeneration start failed (${response.status})`;
+    if (String(lastError).toLowerCase().includes('unknown endpoint')) {
+      continue;
+    }
+    throw new Error(lastError);
+  }
+
+  throw new Error(lastError);
 }
 
 async function fetchStatus(baseUrl: string, apiKey: string, regenerationId: string) {
-  const response = await fetch(
+  const endpoints = [
     `${baseUrl}/functions/v1/data-api/api/admin/regenerate/status?action=admin.regenerate.status&regenerationId=${encodeURIComponent(regenerationId)}`,
-    {
+    `${baseUrl}/functions/v1/data-api?action=admin.regenerate.status&regenerationId=${encodeURIComponent(regenerationId)}`,
+  ];
+
+  let lastError = 'Status request failed';
+  for (const endpoint of endpoints) {
+    const response = await fetch(endpoint, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${apiKey}`,
         apikey: apiKey,
         'Content-Type': 'application/json',
       },
-    },
-  );
+    });
 
-  const json = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(json?.error || `Status request failed (${response.status})`);
+    const json = await response.json().catch(() => ({}));
+    if (response.ok) {
+      return json as RegenerationStatusPayload;
+    }
+
+    lastError = json?.error || `Status request failed (${response.status})`;
+    if (String(lastError).toLowerCase().includes('unknown endpoint')) {
+      continue;
+    }
+    throw new Error(lastError);
   }
 
-  return json as RegenerationStatusPayload;
+  throw new Error(lastError);
 }
 
 async function resolveContradiction(baseUrl: string, apiKey: string, contradictionId: string, resolvedValue: string) {
@@ -112,8 +149,14 @@ async function resolveContradiction(baseUrl: string, apiKey: string, contradicti
 
 async function run() {
   const args = parseArgs();
-  const supabaseUrl = requireEnv('SUPABASE_URL');
-  const serviceKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
+  const supabaseUrl = requireAnyEnv(
+    ['SUPABASE_URL', 'VITE_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL'],
+    'Supabase URL environment variable',
+  );
+  const serviceKey = requireAnyEnv(
+    ['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SECRET_KEY'],
+    'Supabase service role key environment variable',
+  );
 
   if (!args.dryRun && !args.confirm) {
     throw new Error('This command is destructive. Re-run with --confirm.');

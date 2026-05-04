@@ -1,0 +1,244 @@
+﻿====================================================================================================
+CONSOLIDATED DUAL REPOSITORY ANALYSIS: AI-FACTORY-v2 + ADAPTIVE-SALES-ENGINE
+====================================================================================================
+Generated: 2026-05-04 08:10:52
+Execution context: adaptive-sales-engine
+
+
+====================================================================================================
+PART 1: AI-FACTORY-v2 (AGENT ORCHESTRATION)
+====================================================================================================
+
+Repository found: C:\Users\Inaki Senar\Documents\GitHub\AI-FACTORY-v2
+Repository Structure
+------------------------------------------------------------------------
+  - .forge/ (39 files)
+  - .github/ (1 files)
+  - .venv/ (3894 files)
+  - agents/ (16 files)
+  - ai-factory-v2/ (217 files)
+  - api/ (3 files)
+  - config/ (1 files)
+  - context/ (4 files)
+  - dashboard/ (3 files)
+  - docs/ (3 files)
+  - gnap/ (3 files)
+  - logs/ (0 files)
+  - orchestrator/ (42 files)
+  - tests/ (4 files)
+  - __pycache__/ (1 files)
+
+Detected Python Agent Files
+------------------------------------------------------------------------
+  - analysis_agent.py
+    type: AnalysisAgent
+    capabilities: async, processing
+  - data_intelligence_agent.py
+    type: DataIntelligenceAgent
+    capabilities: async
+  - delivery_agent.py
+    type: DeliveryAgent
+    capabilities: async
+  - generation_agent.py
+    type: GenerationAgent
+    capabilities: async
+  - judge_agent.py
+    type: JudgeAgent
+    capabilities: async
+  - memory_agent.py
+    type: MemoryAgent
+    capabilities: async
+  - supervisor_agent.py
+    type: SupervisorAgent
+    capabilities: generic
+  - validation_agent.py
+    type: ValidationAgent
+    capabilities: async, validation
+  - __init__.py
+    type: Unknown
+    capabilities: generic
+  - critic_agent.py
+    type: Critic Agent
+    capabilities: async, validation
+  - grounding_agent.py
+    type: Grounding Agent
+    capabilities: async, validation
+  - optimizer_agent.py
+    type: Optimizer Agent
+    capabilities: async
+  - planning_agent.py
+    type: Planning Agent
+    capabilities: async
+  - __init__.py
+    type: Unknown
+    capabilities: generic
+  - experience_replay.py
+    type: Unknown
+    capabilities: generic
+  - vector_store.py
+    type: Unknown
+    capabilities: generic
+
+Orchestrator and Memory Evidence
+------------------------------------------------------------------------
+  - hybrid_orchestrator.py: orchestration-signals=yes
+  - main.py: orchestration-signals=yes
+  - __init__.py: orchestration-signals=yes
+  - memory path found: orchestrator\memory
+
+====================================================================================================
+PART 2: ADAPTIVE-SALES-ENGINE (PRIMARY BUSINESS APP)
+====================================================================================================
+
+Repository found: C:\Users\Inaki Senar\Documents\GitHub\adaptive-sales-engine
+Repository Structure
+------------------------------------------------------------------------
+  - .ai/ (3 files)
+  - .devcontainer/ (1 files)
+  - .forge/ (37 files)
+  - .github/ (3 files)
+  - Adaptive Sales Engine - Lovable_files/ (193 files)
+  - adaptive-sales-engine/ (155 files)
+  - api/ (3 files)
+  - dist/ (6 files)
+  - docs/ (3 files)
+  - launcher/ (6 files)
+  - migrations/ (4 files)
+  - modules/ (5 files)
+  - node_modules/ (23108 files)
+  - public/ (3 files)
+  - scripts/ (9 files)
+  - seeds/ (5 files)
+  - src/ (198 files)
+  - supabase/ (65 files)
+
+Business-Cycle Coverage (keyword scan)
+------------------------------------------------------------------------
+  - OK  Promotion/Lead Generation -> addLeadingZeros.d.ts, addLeadingZeros.js, Funnel.js, FunnelChart.js, marketingContentFallback.ts, MarketingContentPage.tsx
+  - OK  Offering/Quoting -> blockquoteRole.js, BudgetCommandCenterPage.tsx, docPullquoteRole.js, index.ts, OfferPricingPage.tsx
+  - OK  Negotiation -> migrate-payment-terms.ts, ServiceContractBuilderPage.tsx
+  - OK  Selling/Closing -> member-ordering.d.ts, member-ordering.js, payment-milestones.routes.ts, payment-request.js
+  - OK  Project Management -> index.ts, milestone.js, payment-milestones.routes.ts, ProjectManagementPage.tsx, tasks.d.ts, tasks.d-CkscK4of.d.ts, WeeklyPlannerPage.tsx
+  - OK  Purchasing/Procurement -> AnalysisUtils.ts, BrandingVsStrategy.tsx, d3-array.js, vendor.js
+  - OK  Assembly/Production -> client.ts, index.js, ServiceContractBuilderPage.tsx, types.ts
+  - OK  Delivery/Logistics -> setupTrackingContext.js, ship.js, ship-wheel.js, stricttransportsecurity.js, webtransport.js
+  - OK  Installation/Commissioning -> configurePlugins.js, install.js, postinstall.js, setup.ts, setupContextUtils.js
+  - OK  Warranty/Claims -> baggage-claim.js, possibleConstructorReturn.js
+  - OK  Loyalty/Retention -> background-repeat-round-space.js, no-repeated-options.js
+  - OK  Aftersales/Support -> AfterSalesEnginePage.tsx, createProjectService.d.ts, ServiceContractBuilderPage.tsx, ticket-check.js, ticket-minus.js, unsupportedIterableToArray.js
+  - OK  New Equipment Selling -> eslint-recommended.d.ts, eslint-recommended.js, upgradeinsecurerequests.js
+
+API, DB, and Model Evidence
+------------------------------------------------------------------------
+  - api: .\adaptive-sales-engine\supabase\functions\after-sales-intelligence\index.ts
+  - api: .\adaptive-sales-engine\supabase\functions\analyze-360\index.ts
+  - api: .\adaptive-sales-engine\supabase\functions\analyze-offer\index.ts
+  - api: .\adaptive-sales-engine\supabase\functions\analyze-portfolio\index.ts
+  - api: .\adaptive-sales-engine\supabase\functions\business-intelligence\index.ts
+  - api: .\adaptive-sales-engine\supabase\functions\email-cobot\index.ts
+  - api: .\adaptive-sales-engine\supabase\functions\enrich-company\index.ts
+  - api: .\adaptive-sales-engine\supabase\functions\generate-action-content\index.ts
+  - api: .\adaptive-sales-engine\supabase\functions\generate-action-pool\index.ts
+  - api: .\adaptive-sales-engine\supabase\functions\generate-content\index.ts
+  - api: .\adaptive-sales-engine\supabase\functions\generate-weekly-plan\index.ts
+  - api: .\adaptive-sales-engine\supabase\functions\process-document\index.ts
+  - api: .\adaptive-sales-engine\supabase\functions\project-intelligence\index.ts
+  - api: .\adaptive-sales-engine\supabase\functions\summarize-notes\index.ts
+  - api: .\api\routes\cash-flow.routes.ts
+  - api: .\api\routes\offers.routes.ts
+  - api: .\api\routes\payment-milestones.routes.ts
+  - api: .\node_modules\@supabase\functions-js\src\index.ts
+  - api: .\supabase\functions\after-sales-intelligence\index.ts
+  - api: .\supabase\functions\analyze-360\index.ts
+  - data: .\adaptive-sales-engine\supabase\migrations\20260412082828_4535fa22-ac4c-4b85-b735-adbdf82a2433.sql
+  - data: .\adaptive-sales-engine\supabase\migrations\20260412091848_11df5ffc-fe36-4896-a1fc-cf496ba9903e.sql
+  - data: .\adaptive-sales-engine\supabase\migrations\20260412130851_869c04a1-089b-42ae-af2d-39d28caae1a1.sql
+  - data: .\adaptive-sales-engine\supabase\migrations\20260412133022_6636f830-6e24-4e84-b084-837c740dfb8c.sql
+  - data: .\adaptive-sales-engine\supabase\migrations\20260412145806_57b3ae77-b9ce-43f7-ad74-64392b7a5252.sql
+  - data: .\adaptive-sales-engine\supabase\migrations\20260412150439_d3fc3194-0f3b-4143-a48f-50235800086a.sql
+  - data: .\adaptive-sales-engine\supabase\migrations\20260412151540_60da72a1-dd93-4f33-83f7-1e32957c8fc6.sql
+  - data: .\adaptive-sales-engine\supabase\migrations\20260412152437_5765da41-9dc5-46ae-ab15-61e1ec448cd1.sql
+  - data: .\adaptive-sales-engine\supabase\migrations\20260413052923_78d45aad-efc9-44e7-818f-e83adca09bdf.sql
+  - data: .\adaptive-sales-engine\supabase\migrations\20260413054235_20ced9c9-036f-4f7c-b618-252c819862f9.sql
+  - data: .\adaptive-sales-engine\supabase\migrations\20260413063714_c1290f14-8735-42eb-8595-de7dfc504bff.sql
+  - data: .\adaptive-sales-engine\supabase\migrations\20260413064628_11427d4c-20ef-4c9e-880f-886393a1ac21.sql
+  - data: .\adaptive-sales-engine\supabase\migrations\20260413070354_816d0624-416e-4bfb-b472-0270a32eac2e.sql
+  - data: .\adaptive-sales-engine\supabase\migrations\20260413073637_8fc3d32f-67a2-47e5-be0f-2111cb6bc809.sql
+  - data: .\adaptive-sales-engine\supabase\migrations\20260413073906_fd90d3d2-7a6e-4a26-a596-c9fd1c78a44a.sql
+  - data: .\migrations\001_create_offers_tables.sql
+  - data: .\migrations\002_seed_offer_templates.sql
+  - data: .\migrations\003_create_cost_concepts_tables.sql
+  - data: .\migrations\004_create_payment_milestones_tables.sql
+  - data: .\seeds\apply_all_migrations.sql
+
+====================================================================================================
+PART 3: CROSS-REPOSITORY CONNECTIONS, GAPS, AND INTEGRATION
+====================================================================================================
+
+Potential Integration Points
+------------------------------------------------------------------------
+1) AI-FACTORY-v2 to adaptive-sales-engine
+  - Use AI-FACTORY agents as external orchestrators for sales workflows via HTTP endpoints.
+  - Feed adaptive-sales-engine document events into agent planning queues.
+
+2) adaptive-sales-engine to AI-FACTORY-v2
+  - Trigger specialized agents on ingestion completion and contradiction detection.
+  - Publish canonical records for agent memory/context enrichment.
+
+3) Suggested phased integration
+  - Phase 1: shared API contract + auth and service account model.
+  - Phase 2: event bus (ingestion complete, contradiction created, regeneration requested).
+  - Phase 3: shared semantic memory index for high-value entities.
+  - Phase 4: unified orchestration and human-in-loop governance.
+
+Capability Gap Matrix (consolidated)
+------------------------------------------------------------------------
+| Capability | AI-FACTORY-v2 | adaptive-sales-engine | Gap / Action |
+|---|---|---|---|
+| Multi-agent orchestration | Present | Partial | Connect via service contracts |
+| Sales operational workflows | Partial | Present | Add event-driven bridge |
+| Vector/long-term memory | Present/Partial | Partial | Define shared context schema |
+| Negotiation intelligence | Partial | Partial | Implement dedicated negotiation agent |
+| Dynamic pricing intelligence | Partial | Partial | Add pricing optimization service |
+| Human-in-loop controls | Partial | Partial | Add approval gates and audit UX |
+| Unified observability | Partial | Partial | Add end-to-end traces and KPIs |
+
+Prioritized 4-Week Action Plan
+------------------------------------------------------------------------
+Week 1: Foundation
+  - Define integration API (ingestion status, task request, action result).
+  - Establish message schema and broker topic naming.
+  - Define shared identity/entity keys.
+
+Week 2: Critical agents
+  - Negotiation support agent.
+  - Dynamic pricing optimization agent.
+  - Cross-sell/upsell recommendation agent.
+
+Week 3: Operational automation
+  - Logistics and delivery workflow assistants.
+  - Warranty/claims triage automation.
+  - Full orchestration with fallback paths.
+
+Week 4: Optimization and governance
+  - KPI dashboard for agent performance.
+  - Human-in-loop approval and exception workflows.
+  - Reliability tests and integration hardening.
+
+Suggested KPIs
+------------------------------------------------------------------------
+| KPI | Baseline | Target |
+|---|---:|---:|
+| Sales automation rate | 20% | 70%+ |
+| Time-to-close (days) | 15 | 5 |
+| Win rate | 25% | 40%+ |
+| Post-sale resolution (hours) | 48 | 12 |
+| Coverage of agent-supported tasks | 15% | 70% |
+
+====================================================================================================
+FINAL CONCLUSION
+====================================================================================================
+
+Current state: both repositories have valuable but partially isolated capabilities.
+Main recommendation: integrate using API contracts + events + shared context memory + human-in-loop controls.
+Immediate next step: execute Week 1 foundations and validate with one end-to-end workflow.
