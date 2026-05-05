@@ -547,13 +547,11 @@ def show_sidebar() -> str:
             "Dashboard": "dashboard",
             "📋 Actions": "actions",
             "📄 Offers": "offers",
+            "📥 Request Pool": "requests",
+            "💰 Cost Modules": "cost_modules",
         }
 
-        if department == "Commercial":
-            pages["📥 Request Pool"] = "requests"
-
         if role == "admin":
-            pages["💰 Cost Modules"] = "cost_modules"
             pages["👥 Users"] = "users"
             pages["📧 User Invites"] = "invites"
 
@@ -577,8 +575,6 @@ def page_dashboard() -> None:
 
     def _fetch_actions():
         query = supabase.table("actions").select("*")
-        if profile.get("role") != "admin":
-            query = query.eq("department", department)
         return query.execute().data or []
 
     actions = safe_execute(_fetch_actions, [])
@@ -663,8 +659,6 @@ def page_actions() -> None:
         if st.button("Exportar acciones a Excel", use_container_width=True):
             try:
                 query = supabase.table("actions").select("*")
-                if profile.get("role") != "admin":
-                    query = query.eq("department", department)
                 rows = query.order("created_at", desc=True).execute().data or []
                 df = pd.DataFrame(rows)
                 buffer = io.BytesIO()
@@ -711,8 +705,6 @@ def page_actions() -> None:
 
     try:
         query = supabase.table("actions").select("*")
-        if profile.get("role") != "admin":
-            query = query.eq("department", department)
         if status_filter != "Todas":
             query = query.eq("status", status_filter)
         rows = query.order("created_at", desc=True).execute().data or []
@@ -1209,11 +1201,6 @@ def page_users() -> None:
 
 
 def page_cost_modules() -> None:
-    profile = st.session_state.profile
-    if profile.get("role") != "admin":
-        st.warning("Acceso restringido")
-        return
-
     st.title("💰 Cost Modules")
     st.caption("Referencia de módulos y tasas base")
 
