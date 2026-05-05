@@ -1,0 +1,101 @@
+﻿ADAPTIVE SALES ENGINE - GUIA RAPIDA DE ACCESO (STREAMLIT)
+
+Objetivo:
+Entrar a la aplicacion Streamlit y empezar a trabajar en pocos minutos.
+
+============================================================
+1) QUE NECESITA EL USUARIO
+============================================================
+1. Navegador web (Chrome, Edge, Firefox)
+2. URL de la app (la entrega el admin)
+3. Email y contrasena
+
+NOTA:
+- GitHub Desktop NO es necesario para usuarios finales.
+- No hay una base nueva: Streamlit usa la MISMA base Supabase del sistema actual.
+
+============================================================
+2) PRIMER ACCESO (USUARIO)
+============================================================
+1. Abrir la URL de la aplicacion Streamlit
+2. Click en "Registrarse" (si no tiene cuenta)
+3. Completar:
+   - Email corporativo
+   - Nombre
+   - Departamento
+   - Contrasena
+4. Iniciar sesion en "Iniciar Sesion"
+
+Si no puede ver sus pantallas correctas:
+- Pedir al admin que revise su perfil (rol/departamento).
+
+============================================================
+3) PRIMER ACCESO (ADMIN)
+============================================================
+1. Entrar a la app
+2. Ir a "Users"
+3. Asignar:
+   - Departamento correcto
+   - Rol (user/admin)
+4. Pedir al usuario cerrar sesion y volver a entrar
+
+============================================================
+4) QUE VE CADA USUARIO
+============================================================
+Todos:
+- Dashboard
+- Actions
+- Offers
+
+Solo Commercial:
+- Request Pool
+
+Solo Admin:
+- Users
+- Cost Modules
+
+============================================================
+5) FLUJO MINIMO DE TRABAJO
+============================================================
+1. Ir a Actions y crear/actualizar acciones
+2. (Commercial) Revisar Request Pool por deadline
+3. Crear ofertas en Offers:
+   - Manual
+   - Desde Request
+   - Desde Upload
+4. Guardar cambios (todo queda en Supabase compartido con React)
+
+============================================================
+6) SI ALGO FALLA
+============================================================
+Error de login:
+- Verificar email/contrasena
+- Confirmar que exista perfil en tabla profiles
+
+No aparecen datos:
+- Verificar rol/departamento
+- Verificar permisos/policies en Supabase
+
+No abre la app:
+- Confirmar URL correcta
+- Confirmar que la app esta desplegada o encendida
+
+============================================================
+7) MENSAJE LISTO PARA ENVIAR A USUARIOS
+============================================================
+Copia y envia esto:
+
+"La plataforma Adaptive Sales Engine ya esta disponible.
+URL: <PON_AQUI_LA_URL_STREAMLIT>
+
+Pasos:
+1) Registrate con tu email corporativo
+2) Inicia sesion
+3) Si no ves tus modulos correctos, avisa al admin para asignar tu rol/departamento
+
+Modulos base: Dashboard, Actions, Offers.
+Commercial adicional: Request Pool."
+
+============================================================
+FIN
+============================================================
