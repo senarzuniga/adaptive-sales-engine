@@ -232,12 +232,32 @@ def init_session_state() -> None:
             st.session_state[key] = value
 
 
-def _get_profile(user_id: str) -> Optional[Dict[str, Any]]:
+def _build_fallback_profile(user: Any) -> Optional[Dict[str, Any]]:
+    if not user:
+        return None
+
+    metadata = getattr(user, "user_metadata", None) or {}
+    email = getattr(user, "email", "") or ""
+    department = metadata.get("department") or ("Administration" if email.lower().startswith("administracion") else "Commercial")
+    role = metadata.get("role") or ("admin" if email.lower().startswith("administracion") else "user")
+    name = metadata.get("name") or email.split("@")[0] or "Usuario"
+
+    return {
+        "id": getattr(user, "id", ""),
+        "email": email,
+        "name": name,
+        "department": department,
+        "role": role,
+        "created_at": datetime.now().isoformat(),
+    }
+
+
+def _get_profile(user_id: str, user: Any | None = None) -> Optional[Dict[str, Any]]:
     try:
         res = supabase.table("profiles").select("*").eq("id", user_id).maybe_single().execute()
-        return res.data
+        return res.data or _build_fallback_profile(user)
     except Exception:
-        return None
+        return _build_fallback_profile(user)
 
 
 def refresh_auth_from_supabase() -> None:
@@ -247,7 +267,7 @@ def refresh_auth_from_supabase() -> None:
         user = session.user if session else None
         st.session_state.session = session
         st.session_state.user = user
-        st.session_state.profile = _get_profile(user.id) if user else None
+        st.session_state.profile = _get_profile(user.id, user) if user else None
     except Exception:
         st.session_state.user = None
         st.session_state.session = None
@@ -274,7 +294,7 @@ def login_form() -> None:
                         try:
                             response = supabase.auth.sign_in_with_password({"email": email, "password": password})
                             user = response.user
-                            profile = _get_profile(user.id) if user else None
+                            profile = _get_profile(user.id, user) if user else None
                             if not user:
                                 st.error("No se pudo iniciar sesión")
                             elif not profile:
@@ -309,20 +329,29 @@ def login_form() -> None:
                         st.error("Completa email y nombre")
                     else:
                         try:
-                            response = supabase.auth.sign_up({"email": email, "password": password})
+                            response = supabase.auth.sign_up(
+                                {
+                                    "email": email,
+                                    "password": password,
+                                    "options": {"data": {"name": name, "department": department, "role": "user"}},
+                                }
+                            )
                             user = response.user
                             if not user:
                                 st.error("No se pudo crear usuario")
                             else:
-                                supabase.table("profiles").upsert(
-                                    {
-                                        "id": user.id,
-                                        "email": email,
-                                        "name": name,
-                                        "department": department,
-                                        "role": "user",
-                                    }
-                                ).execute()
+                                try:
+                                    supabase.table("profiles").upsert(
+                                        {
+                                            "id": user.id,
+                                            "email": email,
+                                            "name": name,
+                                            "department": department,
+                                            "role": "user",
+                                        }
+                                    ).execute()
+                                except Exception:
+                                    pass
                                 st.success("Registro exitoso. Si hay confirmación por email, actívala y luego inicia sesión.")
                         except Exception as exc:
                             st.error(f"Error al registrar: {exc}")
