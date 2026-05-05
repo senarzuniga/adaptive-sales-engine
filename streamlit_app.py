@@ -7,7 +7,11 @@ from __future__ import annotations
 
 import io
 import os
+import re
+import smtplib
 from datetime import datetime, timedelta
+from email.message import EmailMessage
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -66,6 +70,11 @@ SUPABASE_KEY = _get_secret(
     "VITE_SUPABASE_PUBLISHABLE_KEY",
     "VITE_SUPABASE_ANON_KEY",
 )
+SUPABASE_SERVICE_ROLE_KEY = _get_secret("SUPABASE_SERVICE_ROLE_KEY")
+
+GMAIL_ADDRESS = _get_secret("GMAIL_ADDRESS")
+GMAIL_APP_PASSWORD = _get_secret("GMAIL_APP_PASSWORD")
+STREAMLIT_APP_URL = _get_secret("STREAMLIT_APP_URL")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     st.error("Faltan credenciales de Supabase (SUPABASE_URL + SUPABASE_KEY/SUPABASE_ANON_KEY).")
@@ -77,7 +86,18 @@ def get_supabase() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
+@st.cache_resource
+def get_supabase_admin() -> Optional[Client]:
+    if not SUPABASE_SERVICE_ROLE_KEY:
+        return None
+    try:
+        return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    except Exception:
+        return None
+
+
 supabase = get_supabase()
+supabase_admin = get_supabase_admin()
 
 
 # ──────────────────────────────────────────────────────────────
@@ -350,6 +370,130 @@ def safe_execute(fetcher, fallback: Any):
         return fallback
 
 
+def _parse_users_credentials_file(path: Path) -> List[Dict[str, str]]:
+    if not path.exists():
+        return []
+
+    content = path.read_text(encoding="utf-8", errors="ignore")
+    users: List[Dict[str, str]] = []
+    current: Dict[str, str] = {}
+
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+
+        user_match = re.match(r"^\d+\)\s*User:\s*(.+)$", line)
+        email_match = re.match(r"^Email:\s*(.+)$", line)
+        pass_match = re.match(r"^Temporary Password:\s*(.+)$", line)
+
+        if user_match:
+            if current.get("email") and current.get("password"):
+                users.append(current)
+            current = {"name": user_match.group(1).strip()}
+        elif email_match:
+            current["email"] = email_match.group(1).strip()
+        elif pass_match:
+            current["password"] = pass_match.group(1).strip()
+
+    if current.get("email") and current.get("password"):
+        users.append(current)
+
+    return users
+
+
+def _default_department_for_email(email: str) -> str:
+    if email.lower().startswith("administracion"):
+        return "Administration"
+    return "Commercial"
+
+
+def _default_role_for_email(email: str) -> str:
+    if email.lower().startswith("administracion"):
+        return "admin"
+    return "user"
+
+
+def _send_gmail_invite(recipient_email: str, recipient_name: str, temporary_password: str, app_url: str) -> None:
+    if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
+        raise ValueError("Falta GMAIL_ADDRESS o GMAIL_APP_PASSWORD en secrets")
+
+    subject = "Welcome to Adaptive Sales Engine - INGECART Access"
+    safe_name = recipient_name or "Team Member"
+    body = f"""Hello {safe_name},
+
+Welcome to Adaptive Sales Engine.
+We are pleased to invite you to join the application.
+
+Access URL: {app_url}
+Email: {recipient_email}
+Temporary password: {temporary_password}
+
+Please sign in and change your password on first access.
+
+Best regards,
+INGECART Team
+"""
+
+    msg = EmailMessage()
+    msg["From"] = GMAIL_ADDRESS
+    msg["To"] = recipient_email
+    msg["Subject"] = subject
+    msg.set_content(body)
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        smtp.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
+        smtp.send_message(msg)
+
+
+def _ensure_user_access(email: str, password: str, name: str, department: str, role: str) -> str:
+    if supabase_admin is None:
+        raise ValueError("SUPABASE_SERVICE_ROLE_KEY no está configurada. No se puede crear acceso automáticamente.")
+
+    target_user = None
+    users_page = supabase_admin.auth.admin.list_users()
+    all_users = getattr(users_page, "users", []) or []
+    for user in all_users:
+        user_email = getattr(user, "email", "") or ""
+        if user_email.lower() == email.lower():
+            target_user = user
+            break
+
+    if target_user is None:
+        created = supabase_admin.auth.admin.create_user(
+            {
+                "email": email,
+                "password": password,
+                "email_confirm": True,
+                "user_metadata": {"name": name},
+            }
+        )
+        target_user = getattr(created, "user", None)
+    else:
+        supabase_admin.auth.admin.update_user_by_id(
+            target_user.id,
+            {
+                "password": password,
+                "user_metadata": {"name": name},
+            },
+        )
+
+    if target_user is None:
+        raise ValueError(f"No se pudo crear/actualizar usuario para {email}")
+
+    supabase_admin.table("profiles").upsert(
+        {
+            "id": target_user.id,
+            "email": email,
+            "name": name,
+            "department": department,
+            "role": role,
+        }
+    ).execute()
+
+    return str(target_user.id)
+
+
 # ──────────────────────────────────────────────────────────────
 # Sidebar / navigation
 # ──────────────────────────────────────────────────────────────
@@ -382,6 +526,7 @@ def show_sidebar() -> str:
         if role == "admin":
             pages["💰 Cost Modules"] = "cost_modules"
             pages["👥 Users"] = "users"
+            pages["📧 User Invites"] = "invites"
 
         selected = st.radio("Navegación", list(pages.keys()), key="main_nav")
         st.divider()
@@ -1060,6 +1205,86 @@ def page_cost_modules() -> None:
     st.metric("Total", f"€ {result['total']:,.2f}")
 
 
+def page_invites() -> None:
+    profile = st.session_state.profile
+    if profile.get("role") != "admin":
+        st.warning("Acceso restringido")
+        return
+
+    st.title("📧 User Invites (Gmail)")
+    st.caption("Provisiona acceso en Supabase y envía email de bienvenida con contraseña temporal")
+
+    credentials_path = Path(__file__).resolve().parent / "user_access_credentials.txt"
+    users = _parse_users_credentials_file(credentials_path)
+
+    app_url = st.text_input("Streamlit access URL", value=STREAMLIT_APP_URL or "https://your-app.streamlit.app")
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Users loaded", len(users))
+    c2.metric("Gmail configured", "Yes" if GMAIL_ADDRESS and GMAIL_APP_PASSWORD else "No")
+    c3.metric("Supabase admin", "Yes" if supabase_admin else "No")
+
+    if not users:
+        st.error("No se encontraron usuarios en user_access_credentials.txt")
+        return
+
+    if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
+        st.warning("Configura GMAIL_ADDRESS y GMAIL_APP_PASSWORD en Streamlit secrets antes de enviar")
+
+    if supabase_admin is None:
+        st.warning("Configura SUPABASE_SERVICE_ROLE_KEY para crear/actualizar accesos automáticamente")
+
+    st.subheader("Preview")
+    preview_rows = []
+    for u in users:
+        preview_rows.append(
+            {
+                "name": u.get("name", ""),
+                "email": u.get("email", ""),
+                "department": _default_department_for_email(u.get("email", "")),
+                "role": _default_role_for_email(u.get("email", "")),
+            }
+        )
+    st.dataframe(pd.DataFrame(preview_rows), use_container_width=True)
+
+    if st.button("🚀 Provision access + send all invites", type="primary", use_container_width=True):
+        if not app_url:
+            st.error("Define la URL de acceso")
+            return
+        if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
+            st.error("Falta configuración de Gmail en secrets")
+            return
+        if supabase_admin is None:
+            st.error("Falta SUPABASE_SERVICE_ROLE_KEY en secrets")
+            return
+
+        sent_ok = 0
+        sent_fail = 0
+
+        for user in users:
+            email = user.get("email", "").strip()
+            name = user.get("name", "").strip()
+            password = user.get("password", "").strip()
+            dep = _default_department_for_email(email)
+            role = _default_role_for_email(email)
+
+            if not email or not password:
+                sent_fail += 1
+                st.error(f"Datos incompletos para usuario: {name or email}")
+                continue
+
+            try:
+                _ensure_user_access(email, password, name, dep, role)
+                _send_gmail_invite(email, name, password, app_url)
+                sent_ok += 1
+                st.success(f"Enviado: {email}")
+            except Exception as exc:
+                sent_fail += 1
+                st.error(f"Error con {email}: {exc}")
+
+        st.info(f"Proceso finalizado. OK: {sent_ok} | Error: {sent_fail}")
+
+
 # ──────────────────────────────────────────────────────────────
 # Main
 # ──────────────────────────────────────────────────────────────
@@ -1088,6 +1313,8 @@ def main() -> None:
         page_users()
     elif page == "cost_modules":
         page_cost_modules()
+    elif page == "invites":
+        page_invites()
 
 
 if __name__ == "__main__":
