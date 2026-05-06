@@ -876,19 +876,27 @@ def parse_file_to_df(file_name: str, file_bytes: bytes) -> Optional[pd.DataFrame
         elif fname.endswith((".db", ".sqlite")):
             import sqlite3
             import tempfile
-            with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
-                tmp.write(file_bytes)
-                tmp_path = tmp.name
-            conn = sqlite3.connect(tmp_path)
-            tables = pd.read_sql(
-                "SELECT name FROM sqlite_master WHERE type='table'", conn
-            )
-            if not tables.empty:
-                first_table = tables.iloc[0]["name"]
-                df = pd.read_sql(f"SELECT * FROM '{first_table}'", conn)
-                df["_tabla_origen"] = first_table
-            conn.close()
-            os.unlink(tmp_path)
+            tmp_path = None
+            try:
+                with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+                    tmp.write(file_bytes)
+                    tmp_path = tmp.name
+                conn = sqlite3.connect(tmp_path)
+                tables = pd.read_sql(
+                    "SELECT name FROM sqlite_master WHERE type='table'", conn
+                )
+                if not tables.empty:
+                    first_table = str(tables.iloc[0]["name"])
+                    # Validate table name is a safe identifier before using in SQL
+                    if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', first_table):
+                        raise ValueError(f"Unsafe table name: {first_table!r}")
+                    # Double-quote is standard SQLite identifier quoting
+                    df = pd.read_sql(f'SELECT * FROM "{first_table}"', conn)
+                    df["_tabla_origen"] = first_table
+                conn.close()
+            finally:
+                if tmp_path and os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
     except Exception as exc:
         df = pd.DataFrame({"error": [str(exc)], "archivo": [file_name]})
 
@@ -915,9 +923,15 @@ def list_agents_from_folder() -> List[str]:
 
 
 def run_agent(agent_path: str, data: Optional[pd.DataFrame] = None) -> str:
-    full_path = APP_ROOT / agent_path
+    # Validate agent path is within an allowed directory to prevent path traversal
+    _allowed_roots = [APP_ROOT / "agents", APP_ROOT / "ai-factory-v2", APP_ROOT / "scripts"]
+    full_path = (APP_ROOT / agent_path).resolve()
+    if not any(str(full_path).startswith(str(r)) for r in _allowed_roots):
+        return f"❌ Ruta de agente no permitida: {agent_path}"
     if not full_path.exists():
         return f"❌ Agente no encontrado: {agent_path}"
+    if full_path.suffix != ".py":
+        return f"❌ Solo se permiten scripts Python (.py): {agent_path}"
     outputs_dir = APP_ROOT / "outputs"
     outputs_dir.mkdir(exist_ok=True)
     env = os.environ.copy()
@@ -937,7 +951,7 @@ def run_agent(agent_path: str, data: Optional[pd.DataFrame] = None) -> str:
             output += f"\n[stderr]: {result.stderr[:500]}"
         if not output.strip():
             output = f"✅ Ejecutado sin salida (exit code {result.returncode})"
-        out_file = outputs_dir / f"{Path(agent_path).stem}_output.txt"
+        out_file = outputs_dir / f"{full_path.stem}_output.txt"
         out_file.write_text(output, encoding="utf-8")
         return output
     except subprocess.TimeoutExpired:
@@ -1058,27 +1072,33 @@ def page_data_upload() -> None:
         key="data_url_input",
     )
     if st.button("Cargar desde URL", key="load_url_btn") and url_input:
-        try:
-            import requests as _requests
-            resp = _requests.get(url_input, timeout=15)
-            resp.raise_for_status()
-            url_fname = url_input.split("?")[0].split("/")[-1] or "data.json"
-            df = parse_file_to_df(url_fname, resp.content)
-            if df is None:
-                import json as _json
-                try:
-                    data = _json.loads(resp.text)
-                    df = pd.DataFrame(data if isinstance(data, list) else [data])
-                except Exception:
-                    df = pd.DataFrame({"linea": resp.text.splitlines()})
-            if df is not None:
-                st.session_state.uploaded_data_universal = df
-                st.success(f"✅ URL cargada: {df.shape[0]:,} filas, {df.shape[1]} columnas")
-                st.dataframe(df.head(5))
-            else:
-                st.error("No se pudo interpretar la respuesta de la URL")
-        except Exception as exc:
-            st.error(f"Error cargando URL: {exc}")
+        # Validate URL scheme to prevent SSRF (only http/https allowed)
+        from urllib.parse import urlparse
+        _parsed = urlparse(url_input)
+        if _parsed.scheme not in ("http", "https"):
+            st.error("Solo se permiten URLs http:// o https://")
+        else:
+            try:
+                import requests as _requests
+                resp = _requests.get(url_input, timeout=15)
+                resp.raise_for_status()
+                url_fname = url_input.split("?")[0].split("/")[-1] or "data.json"
+                df = parse_file_to_df(url_fname, resp.content)
+                if df is None:
+                    import json as _json
+                    try:
+                        data = _json.loads(resp.text)
+                        df = pd.DataFrame(data if isinstance(data, list) else [data])
+                    except Exception:
+                        df = pd.DataFrame({"linea": resp.text.splitlines()})
+                if df is not None:
+                    st.session_state.uploaded_data_universal = df
+                    st.success(f"✅ URL cargada: {df.shape[0]:,} filas, {df.shape[1]} columnas")
+                    st.dataframe(df.head(5))
+                else:
+                    st.error("No se pudo interpretar la respuesta de la URL")
+            except Exception as exc:
+                st.error(f"Error cargando URL: {exc}")
 
     st.subheader("2️⃣ Subir archivo")
     uploaded_file = st.file_uploader(
