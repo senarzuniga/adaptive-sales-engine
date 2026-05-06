@@ -24,8 +24,13 @@ logger = logging.getLogger(__name__)
 
 
 def _file_hash(path: Path) -> str:
-    """Return an MD5 digest of the file's content (fast, ~4 KB blocks)."""
-    h = hashlib.md5()
+    """Return a BLAKE2b digest of the file's content (fast, ~4 KB blocks).
+
+    BLAKE2b is used instead of MD5/SHA because it is faster and
+    collision-resistant.  This hash is only a cache key – it is never
+    used for security purposes.
+    """
+    h = hashlib.blake2b(digest_size=20)
     with path.open("rb") as fh:
         for chunk in iter(lambda: fh.read(4096), b""):
             h.update(chunk)
@@ -201,6 +206,10 @@ class UltimateDataLoader:
             return None
         try:
             with cache_file.open("rb") as fh:
+                # pickle is used only for caching DataFrames/objects locally.
+                # The cache directory should be writable only by the app user.
+                # Treat the cache as a trusted local store – never load cache
+                # files received from external sources.
                 return pickle.load(fh)  # noqa: S301
         except Exception:  # noqa: BLE001
             return None

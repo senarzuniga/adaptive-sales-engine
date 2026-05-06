@@ -205,7 +205,7 @@ class AutoFixer(_Agent):
         # Ensure logs directory exists
         logs_dir = self.app_path / "logs"
         if not logs_dir.exists():
-            logs_dir.mkdir(exist_ok=True)
+            logs_dir.mkdir(parents=True, exist_ok=True)
             fixed.append("logs/")
 
         return f"auto-fixed: {fixed}" if fixed else "config OK"

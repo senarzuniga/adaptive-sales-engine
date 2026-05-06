@@ -114,9 +114,7 @@ class ProfessionalWebScraper:
         title = _text_from(soup.find("title"))
         description = ""
         meta_desc = soup.find("meta", attrs={"name": "description"})
-        if meta_desc and isinstance(meta_desc, dict):
-            description = meta_desc.get("content", "")
-        elif meta_desc:
+        if meta_desc:
             description = meta_desc.get("content", "")  # type: ignore[arg-type]
 
         headings = [

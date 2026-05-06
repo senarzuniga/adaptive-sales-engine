@@ -36,7 +36,7 @@ _NEGATIVE_WORDS = frozenset(
         "bad", "poor", "terrible", "negative", "weak", "decline", "loss",
         "fail", "problem", "risk", "issue", "delay", "reject", "cancel",
         "dispute", "complaint", "defect", "error", "miss", "overdue",
-        "costly", "expensive", "penalty", "block", "dispute", "uncertain",
+        "costly", "expensive", "penalty", "block", "uncertain",
         "concern", "dissatisfied", "unhappy", "denied", "withdrawn",
         "withdraw", "critical", "severe", "damage", "claim", "lawsuit",
     }
