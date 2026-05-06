@@ -48,3 +48,9 @@ supabase/.temp/
 middleware.ts
 page.tsx
 src/utils/supabase/
+
+# Runtime artefacts – not tracked by git
+cache/
+uploads/
+data/web_scraped/
+

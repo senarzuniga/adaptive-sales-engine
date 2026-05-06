@@ -1,0 +1,54 @@
+name: Deploy – Streamlit Cloud
+
+# Streamlit Community Cloud watches this repository and re-deploys
+# automatically on every push to main.  This workflow validates the
+# Python layer *before* that happens so broken deployments are caught
+# in CI first.
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  validate-python:
+    name: Validate Python / Streamlit app
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Streamlit dependencies
+        run: pip install -r requirements_streamlit.txt
+
+      - name: Syntax check
+        run: python -m compileall streamlit_app.py modules/ agents/
+
+      - name: Lint (flake8)
+        run: |
+          pip install flake8 -q
+          flake8 streamlit_app.py modules/ agents/
+
+      - name: Import smoke-test
+        run: |
+          python - <<'EOF'
+          import importlib, sys
+          for mod in [
+              "modules.ultimate_data_loader",
+              "modules.web_scraper",
+              "modules.content_analyzer",
+              "agents.self_improving_orchestrator",
+          ]:
+              importlib.import_module(mod)
+              print(f"  ✅ {mod}")
+          EOF
+
+      - name: Notify deployment ready
+        run: |
+          echo "✅ All checks passed – Streamlit Cloud will auto-deploy from main."
