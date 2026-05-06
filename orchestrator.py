@@ -9,6 +9,7 @@ import concurrent.futures
 import importlib.util
 import inspect
 import logging
+import os
 import traceback
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -105,11 +106,7 @@ class MaximumOrchestrator:
 
             if run_fn is None:
                 # Provide a stub so the agent still appears in results
-                run_fn = lambda ctx=None: {  # noqa: E731
-                    "status": "no_run",
-                    "output": f"Agente {stem} no tiene función run().",
-                    "insights": [],
-                }
+                run_fn = _make_stub_run(stem)
 
             return {
                 "name": stem,
@@ -124,12 +121,7 @@ class MaximumOrchestrator:
             logger.warning("Error cargando agente %s: %s", stem, err_msg)
             return {
                 "name": stem,
-                "run": lambda ctx=None, _e=err_msg: {  # noqa: E731
-                    "status": "load_error",
-                    "error": f"Error de carga: {_e}",
-                    "output": f"No se pudo cargar el agente: {_e}",
-                    "insights": [],
-                },
+                "run": _make_stub_run(stem, err_msg),
                 "folder": folder_label,
                 "file": str(py_file),
                 "load_error": err_msg,
@@ -171,7 +163,7 @@ class MaximumOrchestrator:
         results: Dict[str, Any] = {}
 
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=min(len(self.agents), 32)
+            max_workers=min(len(self.agents), (os.cpu_count() or 4) * 4, 32)
         ) as executor:
             future_to_agent = {
                 executor.submit(self._safe_run_agent, agent, context): agent
@@ -301,7 +293,24 @@ class MaximumOrchestrator:
 # ------------------------------------------------------------------
 
 
-@st.cache_resource
+def _make_stub_run(stem: str, error_msg: str = "") -> Any:
+    """Return a callable that returns a minimal agent result (no lambdas with closures)."""
+
+    def _stub(context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        if error_msg:
+            return {
+                "status": "load_error",
+                "error": f"Error de carga: {error_msg}",
+                "output": f"No se pudo cargar el agente {stem}: {error_msg}",
+                "insights": [],
+            }
+        return {
+            "status": "no_run",
+            "output": f"Agente {stem} no tiene función run().",
+            "insights": [],
+        }
+
+    return _stub
 def get_max_orchestrator() -> MaximumOrchestrator:
     """Returns (and caches) the single MaximumOrchestrator instance."""
     return MaximumOrchestrator()

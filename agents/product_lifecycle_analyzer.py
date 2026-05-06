@@ -17,7 +17,7 @@ _LIFECYCLE_RULES = {
         "action": "Escalar ventas — diferenciar en propuesta de valor",
     },
     "commodity": {
-        "keywords": ["standard", "estándar", "basic", "basic", "regular", "generic", "genérico"],
+        "keywords": ["standard", "estándar", "basic", "regular", "generic", "genérico"],
         "margin_threshold": 15.0,
         "label": "📦 Commodity",
         "action": "Defender margen — bundle con servicios / soluciones",

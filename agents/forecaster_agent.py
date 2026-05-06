@@ -69,7 +69,9 @@ def run(context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
             "confidence": "N/A",
         }
 
-    # Simple linear regression on index
+    # Simple linear regression on data point index.
+    # Assumes evenly-spaced observations (each row = one time period of equal length).
+    # The quality of the forecast improves with consistent, evenly-spaced data.
     x = np.arange(n, dtype=float)
     y = series.values.astype(float)
     x_mean = x.mean()

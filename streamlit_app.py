@@ -1008,6 +1008,13 @@ def run_agent(agent_path: str, data: Optional[pd.DataFrame] = None) -> str:
 # Maximum Orchestration helper (used by every page)
 # ──────────────────────────────────────────────────────────────
 
+# Maximum number of agent tabs to show in the UI (Streamlit has soft tab limits)
+_MAX_AGENT_TABS = 12
+# Max characters to display for agent text output preview
+_MAX_AGENT_OUTPUT_PREVIEW = 500
+# Average after-sales opportunities per installed-base account (heuristic)
+_AVG_OPPS_PER_ACCOUNT = 3
+
 
 def _build_context(action: str, extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Build a standard context dict for the orchestrator."""
@@ -1075,10 +1082,10 @@ def _render_orchestration_results(results: Dict[str, Any]) -> None:
         return
 
     st.subheader("📁 Outputs detallados por agente")
-    # Limit to 12 tabs to avoid Streamlit tab overflow
-    display_names = agent_names[:12]
-    if len(agent_names) > 12:
-        st.caption(f"Mostrando 12 de {len(agent_names)} agentes. Ver Agent Hub para todos.")
+    # Limit to _MAX_AGENT_TABS tabs to avoid Streamlit tab overflow
+    display_names = agent_names[:_MAX_AGENT_TABS]
+    if len(agent_names) > _MAX_AGENT_TABS:
+        st.caption(f"Mostrando {_MAX_AGENT_TABS} de {len(agent_names)} agentes. Ver Agent Hub para todos.")
 
     tabs = st.tabs(display_names)
     for tab, name in zip(tabs, display_names):
@@ -1091,7 +1098,7 @@ def _render_orchestration_results(results: Dict[str, Any]) -> None:
                 else:
                     agent_out = output.get("output")
                     if agent_out:
-                        st.success(str(agent_out)[:500])
+                        st.success(str(agent_out)[:_MAX_AGENT_OUTPUT_PREVIEW])
                     insights = output.get("insights") or []
                     if insights:
                         for ins in insights[:5]:
@@ -1327,7 +1334,7 @@ def page_after_sales_engine() -> None:
             st.metric("🏢 Cuentas en base instalada", n_accounts)
             st.info(
                 f"Potencial: {n_accounts} cuentas × avg. 2.5 oportunidades = "
-                f"~{n_accounts * 3} oportunidades post-venta identificables"
+                f"~{n_accounts * _AVG_OPPS_PER_ACCOUNT} oportunidades post-venta identificables"
             )
     st.divider()
     _render_orchestrator_panel(action="after_sales_engine")
