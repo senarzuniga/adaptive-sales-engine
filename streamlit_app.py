@@ -1113,10 +1113,12 @@ def page_data_upload() -> None:
                 resp = _requests.get(
                     url_input, timeout=15, allow_redirects=False
                 )
-                # Follow only one redirect (if any) to a safe destination
-                if resp.is_redirect and resp.headers.get("Location"):
-                    loc = resp.headers["Location"]
-                    if _is_safe_url(loc):
+                # Follow only one redirect (if any) to a safe destination.
+                # Check explicit HTTP redirect status codes (301/302/303/307/308)
+                # rather than relying on requests.is_redirect which may miss some codes.
+                if resp.status_code in (301, 302, 303, 307, 308):
+                    loc = resp.headers.get("Location", "")
+                    if loc and _is_safe_url(loc):
                         resp = _requests.get(loc, timeout=15, allow_redirects=False)
                     else:
                         st.error("Redirección bloqueada: destino no permitido")
