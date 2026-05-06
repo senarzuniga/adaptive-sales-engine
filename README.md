@@ -1,6 +1,37 @@
 # Adaptive Sales Engine
 
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://adaptive-sales-engine-nirorezuxa2w4fz5nkvkbt.streamlit.app/)
+
 A Vite + React + TypeScript application connected to Supabase, compatible with **local development**, **VS Code Dev Containers**, **Docker**, and the **Lovable** platform.
+Also deployed as a **Streamlit** multi-user CRM at https://adaptive-sales-engine-nirorezuxa2w4fz5nkvkbt.streamlit.app/
+
+> ✅ App completamente funcional desde 2026-05-06. Side bar reorganizado. Gestión de datos operativa.
+
+---
+
+## 🌐 Streamlit Cloud deployment
+
+### Quick start
+
+1. Push code changes to `main`
+2. Streamlit Cloud auto-deploys from `streamlit_app.py`
+3. Force redeploy: https://share.streamlit.io/senarzuniga/adaptive-sales-engine/main/streamlit_app.py
+
+### Required Secrets (Streamlit Cloud → Settings → Secrets)
+
+```toml
+SUPABASE_URL       = "https://your-project-ref.supabase.co"
+SUPABASE_KEY       = "your-anon-key"
+SUPABASE_SERVICE_ROLE_KEY = "your-service-role-key"
+GMAIL_ADDRESS      = "your@gmail.com"
+GMAIL_APP_PASSWORD = "your-app-password"
+STREAMLIT_APP_URL  = "https://adaptive-sales-engine-nirorezuxa2w4fz5nkvkbt.streamlit.app"
+QUICK_ACCESS_ENABLED    = false
+FULL_ACCESS_ALL_USERS   = false
+```
+
+> **Without Supabase secrets** the app runs in demo mode — data upload and agent hub
+> are fully functional, but actions/offers/user management require Supabase.
 
 ---
 

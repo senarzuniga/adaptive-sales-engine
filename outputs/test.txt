@@ -1,0 +1,9 @@
+=== Test Agent Summary ===
+Rows: 5
+Columns: empresa, contacto, telefono, email, producto, importe, estado, fecha
+
+First 3 rows:
+              empresa     contacto         telefono           email                producto  importe      estado       fecha
+0           ACME Corp  Juan García  +34 612 345 678    juan@acme.es  Sistema automatización    45000      activo  2024-01-15
+1      Industrias XYZ  María López  +34 634 567 890    maria@xyz.es           Línea montaje   120000  en_proceso  2024-02-01
+2  Beta Manufacturing  Carlos Ruiz  +34 678 901 234  carlos@beta.es      Robot colaborativo    85000      activo  2024-02-15
