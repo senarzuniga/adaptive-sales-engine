@@ -159,7 +159,7 @@ SUPABASE_CONFIGURED = bool(SUPABASE_URL and SUPABASE_KEY and _SUPABASE_LIB)
 _logger = logging.getLogger(__name__)
 _logger.info("=== Adaptive Sales Engine startup ===")
 _logger.info("SUPABASE_CONFIGURED=%s", SUPABASE_CONFIGURED)
-_logger.info("Feature flags: quick_access=%s full_access=%s", QUICK_ACCESS_ENABLED, FULL_ACCESS_ALL_USERS)
+_logger.info("Feature flags: quick_access_enabled=%s full_access_all=%s", bool(QUICK_ACCESS_ENABLED), bool(FULL_ACCESS_ALL_USERS))
 _logger.info("Gmail configured=%s", bool(GMAIL_ADDRESS and GMAIL_APP_PASSWORD))
 try:
     _secrets_count = len(list(st.secrets.keys())) if hasattr(st, "secrets") else 0
@@ -504,7 +504,11 @@ def login_form() -> None:
                 else:
                     reg_password = ""
                     reg_confirm = ""
-                    st.caption("Se generará una contraseña temporal y se enviará a tu email.")
+                    st.caption(
+                        "Se generará una contraseña temporal. "
+                        "Si GMAIL_ADDRESS y GMAIL_APP_PASSWORD están configurados, "
+                        "se enviará a tu email; en caso contrario, se mostrará en pantalla."
+                    )
                 reg_submitted = st.form_submit_button("Registrarse", use_container_width=True)
                 if reg_submitted:
                     if not reg_email or not reg_name:
@@ -562,8 +566,18 @@ def login_form() -> None:
                             if email_sent:
                                 st.success(f"✅ Credenciales enviadas a {reg_email}. Revisa tu bandeja de entrada.")
                             else:
-                                st.warning("No se pudo enviar el email. Guarda estas credenciales:")
-                                st.code(f"Email: {reg_email}\nContraseña temporal: {tmp_password}")
+                                st.warning(
+                                    "⚠️ No se pudo enviar el email (Gmail no configurado). "
+                                    "Guarda tu contraseña temporal en un lugar seguro:"
+                                )
+                                with st.expander("🔑 Ver contraseña temporal (haz clic para revelar)", expanded=False):
+                                    st.text_input(
+                                        "Contraseña temporal",
+                                        value=tmp_password,
+                                        type="default",
+                                        key="tmp_pw_reveal",
+                                        help="Cópiala y cámbiala tras el primer acceso",
+                                    )
                             st.info("Inicia sesión con las credenciales recibidas.")
 
 
