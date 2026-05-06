@@ -90,7 +90,7 @@ def page_key_account_management() -> None:
     st.download_button(
         "⬇️ Exportar cuentas clave",
         data=df.to_csv(index=False),
-        file_name=f"key_accounts_{datetime.utcnow().strftime('%Y%m%d')}.csv",
+        file_name=f"key_accounts_{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv",
         mime="text/csv",
         use_container_width=True,
     )

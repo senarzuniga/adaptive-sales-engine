@@ -12,7 +12,7 @@ Produces MATURITY_REPORT.md with scores for:
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 # ── Scoring rules ──────────────────────────────────────────────────────────────
@@ -426,7 +426,7 @@ def assess(source_path: Path) -> list[dict]:
 
 
 def render_report(results: list[dict]) -> str:
-    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     lines = [
         "# MATURITY REPORT",
         f"_Generated: {now}_",

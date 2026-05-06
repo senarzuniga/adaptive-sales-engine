@@ -1633,7 +1633,7 @@ def page_budget_command_center() -> None:
     st.download_button(
         "⬇️ Descargar escenario como CSV",
         data=df_sim.to_csv(index=False),
-        file_name=f"budget_scenario_{datetime.utcnow().strftime('%Y%m%d_%H%M')}.csv",
+        file_name=f"budget_scenario_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.csv",
         mime="text/csv",
         use_container_width=True,
     )
@@ -1727,7 +1727,7 @@ def page_key_account_management() -> None:
     st.download_button(
         "⬇️ Exportar cuentas clave",
         data=df_kam.to_csv(index=False),
-        file_name=f"key_accounts_{datetime.utcnow().strftime('%Y%m%d')}.csv",
+        file_name=f"key_accounts_{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv",
         mime="text/csv",
         use_container_width=True,
     )

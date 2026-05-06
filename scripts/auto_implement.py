@@ -25,7 +25,7 @@ import re
 import shutil
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 # ── Constants ──────────────────────────────────────────────────────────────────
@@ -102,7 +102,7 @@ TEMPLATED_IMPROVEMENTS: list[dict] = [
 
 def _backup(source: Path) -> Path:
     BACKUP_DIR.mkdir(exist_ok=True)
-    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     dest = BACKUP_DIR / f"{source.stem}_{ts}{source.suffix}"
     shutil.copy2(source, dest)
     return dest
@@ -222,7 +222,7 @@ def implement_improvement(imp: dict, dry_run: bool = False, confidence: int = 80
         print(f"  ✅ {imp['module']}: page_{imp['page_key']} injected and verified.")
 
         # Update records
-        date_str = datetime.utcnow().strftime("%Y-%m-%d")
+        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         _update_changelog(imp, date_str)
         _update_maturity_report(imp)
 

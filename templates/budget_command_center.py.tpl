@@ -92,7 +92,7 @@ def page_budget_command_center() -> None:
     st.download_button(
         "⬇️ Descargar escenario como CSV",
         data=csv,
-        file_name=f"budget_scenario_{datetime.utcnow().strftime('%Y%m%d_%H%M')}.csv",
+        file_name=f"budget_scenario_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.csv",
         mime="text/csv",
         use_container_width=True,
     )

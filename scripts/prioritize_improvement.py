@@ -15,7 +15,7 @@ Heuristic scoring:
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 # ── Improvement catalogue ──────────────────────────────────────────────────────
@@ -177,7 +177,7 @@ def prioritize(source_path: Path, report_path: Path) -> list[dict]:
 
 
 def render_plan(ranked: list[dict]) -> str:
-    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     lines = [
         "# IMPROVEMENT PLAN",
         f"_Generated: {now}_",
