@@ -1,6 +1,7 @@
 """
 ADAPTIVE SALES ENGINE - STREAMLIT INTERFACE
-Multi-user access with Supabase Auth + shared Supabase DB
+Multi-user access with Supabase Auth + shared Supabase DB.
+Sidebar reorganized per spec. Universal data upload. Agent integration.
 """
 
 from __future__ import annotations
@@ -10,6 +11,9 @@ import logging
 import os
 import re
 import smtplib
+import subprocess
+import sys
+import zipfile
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 from pathlib import Path
@@ -21,7 +25,33 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 from dotenv import load_dotenv
-from supabase import Client, create_client
+
+# ── Optional heavy imports ────────────────────────────────────────
+try:
+    from supabase import Client, create_client
+    _SUPABASE_LIB = True
+except ImportError:
+    _SUPABASE_LIB = False
+    Client = None  # type: ignore[assignment,misc]
+
+try:
+    import pytesseract
+    from PIL import Image as _PILImage
+    OCR_AVAILABLE = True
+except ImportError:
+    OCR_AVAILABLE = False
+
+try:
+    from docx import Document as _DocxDocument
+    DOCX_AVAILABLE = True
+except ImportError:
+    DOCX_AVAILABLE = False
+
+try:
+    from pypdf import PdfReader as _PdfReader
+    PDF_AVAILABLE = True
+except ImportError:
+    PDF_AVAILABLE = False
 
 
 # ──────────────────────────────────────────────────────────────
@@ -38,9 +68,12 @@ st.set_page_config(
 st.markdown(
     """
 <style>
-  .priority-danger { border-left: 4px solid #ff4b4b; padding-left: 10px; margin: 8px 0; }
+  .priority-danger  { border-left: 4px solid #ff4b4b; padding-left: 10px; margin: 8px 0; }
   .priority-warning { border-left: 4px solid #ffa500; padding-left: 10px; margin: 8px 0; }
   .priority-success { border-left: 4px solid #00cc66; padding-left: 10px; margin: 8px 0; }
+  .nav-section { font-size: 0.72rem; font-weight: 700; color: #888;
+                 text-transform: uppercase; letter-spacing: 0.08em;
+                 margin: 10px 0 3px 0; }
 </style>
 """,
     unsafe_allow_html=True,
@@ -102,10 +135,13 @@ STREAMLIT_APP_URL = _get_secret("STREAMLIT_APP_URL")
 QUICK_ACCESS_ENABLED = get_bool_secret("QUICK_ACCESS_ENABLED")
 FULL_ACCESS_ALL_USERS = get_bool_secret("FULL_ACCESS_ALL_USERS")
 
+# Whether Supabase is fully operational (library + credentials)
+SUPABASE_CONFIGURED = bool(SUPABASE_URL and SUPABASE_KEY and _SUPABASE_LIB)
+
 # ── Startup logging ───────────────────────────────────────────
 _logger = logging.getLogger(__name__)
 _logger.info("=== Adaptive Sales Engine startup ===")
-_logger.info("Environment: SUPABASE_URL configured=%s", bool(SUPABASE_URL))
+_logger.info("SUPABASE_CONFIGURED=%s", SUPABASE_CONFIGURED)
 _logger.info("Feature flags: quick_access=%s full_access=%s", QUICK_ACCESS_ENABLED, FULL_ACCESS_ALL_USERS)
 _logger.info("Gmail configured=%s", bool(GMAIL_ADDRESS and GMAIL_APP_PASSWORD))
 try:
@@ -114,22 +150,24 @@ try:
 except Exception as _e:
     _logger.warning("Could not access st.secrets: %s", _e)
 
-if not SUPABASE_URL or not SUPABASE_KEY:
-    st.error("Faltan credenciales de Supabase (SUPABASE_URL + SUPABASE_KEY/SUPABASE_ANON_KEY).")
-    st.stop()
+# NOTE: We no longer call st.stop() when Supabase is not configured.
+# The app runs in "demo mode" — features requiring Supabase display a warning
+# instead of blocking the entire application.
 
 
 @st.cache_resource
-def get_supabase() -> Client:
-    return create_client(SUPABASE_URL, SUPABASE_KEY)
+def get_supabase():
+    if not SUPABASE_CONFIGURED:
+        return None
+    return create_client(SUPABASE_URL, SUPABASE_KEY)  # type: ignore[name-defined]
 
 
 @st.cache_resource
-def get_supabase_admin() -> Optional[Client]:
-    if not SUPABASE_SERVICE_ROLE_KEY:
+def get_supabase_admin():
+    if not SUPABASE_CONFIGURED or not SUPABASE_SERVICE_ROLE_KEY:
         return None
     try:
-        return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+        return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)  # type: ignore[name-defined]
     except Exception:
         return None
 
@@ -257,7 +295,7 @@ def calculate_total_cost(lines: List[Dict[str, Any]], material_cost: float, frei
 
 
 def init_session_state() -> None:
-    defaults = {
+    defaults: Dict[str, Any] = {
         "user": None,
         "session": None,
         "profile": None,
@@ -265,6 +303,10 @@ def init_session_state() -> None:
         "offer_mode": None,
         "show_offer_builder": False,
         "is_quick_access": False,
+        "active_page": "Dashboard",
+        "uploaded_data_universal": None,
+        "agent_output": None,
+        "manual_offer_draft": None,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -291,7 +333,9 @@ def _build_fallback_profile(user: Any) -> Optional[Dict[str, Any]]:
     }
 
 
-def _get_profile(user_id: str, user: Any | None = None) -> Optional[Dict[str, Any]]:
+def _get_profile(user_id: str, user: Any = None) -> Optional[Dict[str, Any]]:
+    if supabase is None:
+        return _build_fallback_profile(user)
     try:
         res = supabase.table("profiles").select("*").eq("id", user_id).maybe_single().execute()
         return res.data or _build_fallback_profile(user)
@@ -300,6 +344,8 @@ def _get_profile(user_id: str, user: Any | None = None) -> Optional[Dict[str, An
 
 
 def refresh_auth_from_supabase() -> None:
+    if supabase is None:
+        return
     try:
         session_res = supabase.auth.get_session()
         session = session_res.session
@@ -315,14 +361,16 @@ def refresh_auth_from_supabase() -> None:
 
 def login_form() -> None:
     st.title("⚙️ Adaptive Sales Engine")
-    st.caption("Sistema de gestión comercial multi-usuario")
-
-    # Failsafe warnings for missing secrets
-    if not SUPABASE_URL or not SUPABASE_KEY:
-        st.warning("⚠️ Credenciales de Supabase no configuradas. Comprueba los secrets.")
+    st.caption("Sistema de gestión comercial multi-usuario — INGECART")
 
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
+        if not SUPABASE_CONFIGURED:
+            st.warning(
+                "⚠️ Supabase no configurado. "
+                "Usa **Quick Access** para acceder en modo demo."
+            )
+
         t1, t2 = st.tabs(["🔐 Iniciar Sesión", "📝 Registrarse"])
 
         with t1:
@@ -333,9 +381,13 @@ def login_form() -> None:
                 if submitted:
                     if not email or not password:
                         st.error("Por favor completa todos los campos")
+                    elif not SUPABASE_CONFIGURED or supabase is None:
+                        st.error("Supabase no configurado. Usa Quick Access.")
                     else:
                         try:
-                            response = supabase.auth.sign_in_with_password({"email": email, "password": password})
+                            response = supabase.auth.sign_in_with_password(
+                                {"email": email, "password": password}
+                            )
                             user = response.user
                             profile = _get_profile(user.id, user) if user else None
                             if not user:
@@ -350,43 +402,49 @@ def login_form() -> None:
                         except Exception as exc:
                             st.error(f"Error al iniciar sesión: {exc}")
 
-            # Quick Access button — rendered outside the form so it always shows
-            if QUICK_ACCESS_ENABLED:
-                st.divider()
+            # Quick Access — shown when Supabase is missing or flag is enabled
+            st.divider()
+            if QUICK_ACCESS_ENABLED or not SUPABASE_CONFIGURED:
                 st.caption("⚡ Acceso rápido habilitado")
                 if st.button("⚡ Quick Access (invitado)", use_container_width=True, key="quick_access_btn"):
                     _quick_access_login()
             else:
-                # Show a subtle warning so admins know the flag is not set
                 st.caption("ℹ️ Quick Access no está habilitado (QUICK_ACCESS_ENABLED no configurado)")
 
         with t2:
             with st.form("register_form", clear_on_submit=False):
-                email = st.text_input("Email", key="reg_email")
-                name = st.text_input("Nombre completo", key="reg_name")
-                department = st.selectbox(
+                reg_email = st.text_input("Email", key="reg_email")
+                reg_name = st.text_input("Nombre completo", key="reg_name")
+                reg_department = st.selectbox(
                     "Departamento",
                     ["Commercial", "Engineering", "Project Management", "Service", "Administration"],
                     key="reg_department",
                 )
-                password = st.text_input("Contraseña", type="password", key="reg_password")
-                confirm = st.text_input("Confirmar contraseña", type="password", key="reg_confirm")
-                submitted = st.form_submit_button("Registrarse", use_container_width=True)
-
-                if submitted:
-                    if password != confirm:
+                reg_password = st.text_input("Contraseña", type="password", key="reg_password")
+                reg_confirm = st.text_input("Confirmar contraseña", type="password", key="reg_confirm")
+                reg_submitted = st.form_submit_button("Registrarse", use_container_width=True)
+                if reg_submitted:
+                    if not SUPABASE_CONFIGURED or supabase is None:
+                        st.error("Supabase no configurado.")
+                    elif reg_password != reg_confirm:
                         st.error("Las contraseñas no coinciden")
-                    elif len(password) < 6:
+                    elif len(reg_password) < 6:
                         st.error("La contraseña debe tener al menos 6 caracteres")
-                    elif not email or not name:
+                    elif not reg_email or not reg_name:
                         st.error("Completa email y nombre")
                     else:
                         try:
                             response = supabase.auth.sign_up(
                                 {
-                                    "email": email,
-                                    "password": password,
-                                    "options": {"data": {"name": name, "department": department, "role": "user"}},
+                                    "email": reg_email,
+                                    "password": reg_password,
+                                    "options": {
+                                        "data": {
+                                            "name": reg_name,
+                                            "department": reg_department,
+                                            "role": "user",
+                                        }
+                                    },
                                 }
                             )
                             user = response.user
@@ -397,27 +455,30 @@ def login_form() -> None:
                                     supabase.table("profiles").upsert(
                                         {
                                             "id": user.id,
-                                            "email": email,
-                                            "name": name,
-                                            "department": department,
+                                            "email": reg_email,
+                                            "name": reg_name,
+                                            "department": reg_department,
                                             "role": "user",
                                         }
                                     ).execute()
                                 except Exception:
                                     pass
-                                st.success("Registro exitoso. Si hay confirmación por email, actívala y luego inicia sesión.")
+                                st.success(
+                                    "Registro exitoso. "
+                                    "Si hay confirmación por email, actívala y luego inicia sesión."
+                                )
                         except Exception as exc:
                             st.error(f"Error al registrar: {exc}")
 
 
 def logout() -> None:
-    if not st.session_state.get("is_quick_access"):
+    if not st.session_state.get("is_quick_access") and supabase:
         try:
             supabase.auth.sign_out()
         except Exception:
             pass
     for k in ["user", "session", "profile", "current_request", "offer_mode", "show_offer_builder", "is_quick_access"]:
-        st.session_state[k] = None if k in ["user", "session", "profile", "current_request", "offer_mode"] else False
+        st.session_state[k] = None if k not in ("show_offer_builder", "is_quick_access") else False
     st.rerun()
 
 
@@ -456,31 +517,19 @@ def _quick_access_login() -> None:
 
 
 def show_debug_panel() -> None:
-    """Render a collapsible debug panel showing secrets / flag state.
-
-    Visible to admin users via the sidebar and to anyone who appends
-    ``?debug=1`` to the URL (useful during initial setup).
-    """
+    """Render a collapsible debug panel showing secrets / flag state."""
     with st.expander("🛠️ Debug Panel", expanded=False):
         st.markdown("### Feature flags")
         st.json(
             {
                 "QUICK_ACCESS_ENABLED": QUICK_ACCESS_ENABLED,
                 "FULL_ACCESS_ALL_USERS": FULL_ACCESS_ALL_USERS,
+                "SUPABASE_CONFIGURED": SUPABASE_CONFIGURED,
+                "OCR_AVAILABLE": OCR_AVAILABLE,
+                "DOCX_AVAILABLE": DOCX_AVAILABLE,
+                "PDF_AVAILABLE": PDF_AVAILABLE,
             }
         )
-
-        st.markdown("### Secrets availability")
-        secrets_status: Dict[str, bool] = {}
-        for key in ("SUPABASE_URL", "SUPABASE_KEY", "SUPABASE_SERVICE_ROLE_KEY",
-                    "QUICK_ACCESS_ENABLED", "FULL_ACCESS_ALL_USERS",
-                    "GMAIL_ADDRESS", "STREAMLIT_APP_URL"):
-            try:
-                secrets_status[key] = bool(st.secrets.get(key))
-            except Exception:
-                secrets_status[key] = bool(os.getenv(key))
-        st.json(secrets_status)
-
         st.markdown("### Current session")
         profile = st.session_state.get("profile") or {}
         st.json(
@@ -490,6 +539,8 @@ def show_debug_panel() -> None:
                 "role": profile.get("role"),
                 "department": profile.get("department"),
                 "is_quick_access": st.session_state.get("is_quick_access", False),
+                "active_page": st.session_state.get("active_page"),
+                "data_loaded": st.session_state.get("uploaded_data_universal") is not None,
             }
         )
 
@@ -499,7 +550,7 @@ def show_debug_panel() -> None:
 # ──────────────────────────────────────────────────────────────
 
 
-def get_deadline_priority(deadline_text: str) -> tuple[str, str, int]:
+def get_deadline_priority(deadline_text: str) -> tuple:
     try:
         deadline = datetime.fromisoformat(deadline_text.replace("Z", ""))
     except Exception:
@@ -651,58 +702,97 @@ def _ensure_user_access(email: str, password: str, name: str, department: str, r
 
 
 # ──────────────────────────────────────────────────────────────
-# Sidebar / navigation
+# Sidebar / navigation  (reorganized per spec)
 # ──────────────────────────────────────────────────────────────
 
+APP_ROOT = Path(__file__).resolve().parent
 
-def show_sidebar() -> str:
+_NAV_STRUCTURE: List[tuple] = [
+    ("📈 Intelligence & Planning", [
+        ("Dashboard",               "📊"),
+        ("Business Intelligence",   "🔍"),
+        ("Budget Command Center",   "💰"),
+        ("Portfolio Analysis",      "📁"),
+        ("Weekly Planner",          "📅"),
+    ]),
+    ("🎯 Core Sales Execution", [
+        ("Saved Companies",                 "🏢"),
+        ("Company Info",                    "ℹ️"),
+        ("360º Analysis",                   "🔄"),
+        ("Sales Architecture",              "🏗️"),
+        ("Key Account Management",          "🔑"),
+        ("Commercial Actions Repository",   "📋"),
+    ]),
+    ("⚙️ Sales Support & Enablement", [
+        ("AI-Augmented Sales",   "🤖"),
+        ("Behavioral Transform", "🧠"),
+        ("Product Strategy",     "📦"),
+        ("Monitoring",           "📡"),
+        ("Offer & Pricing",      "💼"),
+        ("Data Upload",          "📤"),
+    ]),
+    ("🔄 After Sales", [
+        ("After-Sales Engine", "🔧"),
+    ]),
+    ("🏢 Backoffice & Operations", [
+        ("Team Directory",    "👥"),
+        ("Email Cobot",       "📧"),
+        ("Marketing Content", "📰"),
+        ("Social Media",      "📱"),
+        ("Project Management","🗂️"),
+        ("Cost & Rates",      "💲"),
+    ]),
+    ("🤖 Autonomous Agents", [
+        ("Agent Hub", "⚡"),
+    ]),
+]
+
+
+def show_sidebar() -> None:
     profile = st.session_state.profile or {}
     name = profile.get("name", "Usuario")
     department = profile.get("department", "Unknown")
     role = profile.get("role", "user")
     is_quick = st.session_state.get("is_quick_access", False)
-
-    # FULL_ACCESS_ALL_USERS: treat every logged-in user as admin for navigation
     effective_role = "admin" if FULL_ACCESS_ALL_USERS else role
 
     with st.sidebar:
-        st.title("Adaptive Sales")
+        st.title("⚙️ Sales Engine")
         st.caption("INGECART CRM")
         st.divider()
         st.write(f"**👤 {name}**")
         st.write(f"🏢 {department}")
-        st.write(f"🔐 Rol: {role}")
         if is_quick:
-            st.warning("⚡ Sesión de invitado (Quick Access)")
-        if FULL_ACCESS_ALL_USERS and role != "admin":
-            st.info("🔓 Acceso completo habilitado (FULL_ACCESS_ALL_USERS)")
+            st.warning("⚡ Sesión de invitado")
+        if not SUPABASE_CONFIGURED:
+            st.info("🔵 Modo demo")
         st.divider()
 
-        pages = {
-            "Dashboard": "dashboard",
-            "📋 Actions": "actions",
-            "📄 Offers": "offers",
-            "📥 Request Pool": "requests",
-            "💰 Cost Modules": "cost_modules",
-            # ── PROFESSIONAL_MODULES_START ──
-            "📊 Business Intelligence": "business_intelligence",
-            "💰 Budget Command Center": "budget_command_center",
-            "🏆 Key Account Management": "key_account_management",
-            # ── PROFESSIONAL_MODULES_END ──
-        }
+        current = st.session_state.get("active_page", "Dashboard")
 
-        if effective_role == "admin":
-            pages["👥 Users"] = "users"
-            pages["📧 User Invites"] = "invites"
+        for section_label, pages in _NAV_STRUCTURE:
+            st.markdown(
+                f"<div class='nav-section'>{section_label}</div>",
+                unsafe_allow_html=True,
+            )
+            for page_name, icon in pages:
+                if page_name in ("Team Directory", "Email Cobot") and effective_role != "admin":
+                    continue
+                label = f"{icon} {page_name}"
+                btn_type = "primary" if current == page_name else "secondary"
+                if st.button(
+                    label,
+                    key=f"nav_{page_name}",
+                    use_container_width=True,
+                    type=btn_type,
+                ):
+                    st.session_state.active_page = page_name
+                    st.rerun()
 
-        selected = st.radio("Navegación", list(pages.keys()), key="main_nav")
         st.divider()
         if st.button("🚪 Cerrar sesión", use_container_width=True):
             logout()
 
-        _show_professional_mode_sidebar()
-
-        # Debug panel: visible to admins or when ?debug=1 is in the URL
         try:
             _debug_param = st.query_params.get("debug", "0")
         except Exception:
@@ -710,7 +800,192 @@ def show_sidebar() -> str:
         if effective_role == "admin" or str(_debug_param) == "1":
             show_debug_panel()
 
-        return pages[selected]
+
+# ──────────────────────────────────────────────────────────────
+# Universal data parser
+# ──────────────────────────────────────────────────────────────
+
+MAX_DATAFRAME_ROWS = 100_000
+
+
+def _is_safe_url(url: str) -> bool:
+    """Return True only for http/https URLs pointing to non-private hosts."""
+    import ipaddress
+    import socket
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return False
+    hostname = parsed.hostname or ""
+    if not hostname:
+        return False
+    # Reject obviously local hostnames
+    if hostname in ("localhost", "0.0.0.0"):
+        return False
+    try:
+        # Resolve hostname to IP and check if it is private / loopback / link-local
+        addr = ipaddress.ip_address(socket.gethostbyname(hostname))
+        if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
+            return False
+    except Exception:
+        # If we cannot resolve, err on the side of caution
+        return False
+    return True
+
+
+def parse_file_to_df(file_name: str, file_bytes: bytes) -> Optional[pd.DataFrame]:
+    """Convert virtually ANY uploaded file to a pandas DataFrame."""
+    fname = file_name.lower()
+    df: Optional[pd.DataFrame] = None
+    try:
+        if fname.endswith(".csv"):
+            df = pd.read_csv(io.BytesIO(file_bytes))
+        elif fname.endswith((".xls", ".xlsx")):
+            df = pd.read_excel(io.BytesIO(file_bytes))
+        elif fname.endswith(".tsv"):
+            df = pd.read_csv(io.BytesIO(file_bytes), sep="\t")
+        elif fname.endswith(".parquet"):
+            df = pd.read_parquet(io.BytesIO(file_bytes))
+        elif fname.endswith(".feather"):
+            df = pd.read_feather(io.BytesIO(file_bytes))
+        elif fname.endswith(".json"):
+            df = pd.read_json(io.BytesIO(file_bytes))
+        elif fname.endswith(".jsonl"):
+            df = pd.read_json(io.BytesIO(file_bytes), lines=True)
+        elif fname.endswith(".txt"):
+            text = file_bytes.decode("utf-8", errors="replace")
+            lines = text.splitlines()
+            df = pd.DataFrame({"linea": lines, "longitud": [len(ln) for ln in lines]})
+        elif fname.endswith(".md"):
+            text = file_bytes.decode("utf-8", errors="replace")
+            df = pd.DataFrame({"linea_markdown": text.splitlines()})
+        elif fname.endswith((".html", ".xml")):
+            text = file_bytes.decode("utf-8", errors="replace")
+            df = pd.DataFrame({"linea": text.splitlines()})
+        elif fname.endswith(".pdf"):
+            if PDF_AVAILABLE:
+                reader = _PdfReader(io.BytesIO(file_bytes))
+                texts = [page.extract_text() or "" for page in reader.pages]
+                df = pd.DataFrame({"pagina": range(1, len(texts) + 1), "texto": texts})
+            else:
+                df = pd.DataFrame({"error": ["pypdf not installed — pip install pypdf"]})
+        elif fname.endswith(".docx"):
+            if DOCX_AVAILABLE:
+                doc = _DocxDocument(io.BytesIO(file_bytes))
+                paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+                df = pd.DataFrame({"parrafo": paragraphs})
+            else:
+                df = pd.DataFrame({"error": ["python-docx not installed"]})
+        elif fname.endswith((".png", ".jpg", ".jpeg", ".bmp", ".tiff")):
+            if OCR_AVAILABLE:
+                image = _PILImage.open(io.BytesIO(file_bytes))
+                text = pytesseract.image_to_string(image)
+                df = pd.DataFrame({"texto_extraido": text.splitlines()})
+            else:
+                df = pd.DataFrame(
+                    {"info": ["Imagen recibida (OCR no disponible)"],
+                     "nombre_archivo": [file_name]}
+                )
+        elif fname.endswith(".zip"):
+            with zipfile.ZipFile(io.BytesIO(file_bytes)) as z:
+                all_dfs: List[pd.DataFrame] = []
+                for inner_name in z.namelist():
+                    if inner_name.endswith("/"):
+                        continue
+                    with z.open(inner_name) as inner_file:
+                        inner_bytes = inner_file.read()
+                        inner_df = parse_file_to_df(inner_name, inner_bytes)
+                        if inner_df is not None:
+                            inner_df["archivo_origen"] = inner_name
+                            all_dfs.append(inner_df)
+                if all_dfs:
+                    df = pd.concat(all_dfs, ignore_index=True)
+        elif fname.endswith((".db", ".sqlite")):
+            import sqlite3
+            import tempfile
+            tmp_path = None
+            try:
+                with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+                    tmp.write(file_bytes)
+                    tmp_path = tmp.name
+                conn = sqlite3.connect(tmp_path)
+                tables = pd.read_sql(
+                    "SELECT name FROM sqlite_master WHERE type='table'", conn
+                )
+                if not tables.empty:
+                    first_table = str(tables.iloc[0]["name"])
+                    # Validate table name is a safe identifier before using in SQL
+                    if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', first_table):
+                        raise ValueError(f"Unsafe table name: {first_table!r}")
+                    # Double-quote is standard SQLite identifier quoting
+                    df = pd.read_sql(f'SELECT * FROM "{first_table}"', conn)
+                    df["_tabla_origen"] = first_table
+                conn.close()
+            finally:
+                if tmp_path and os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+    except Exception as exc:
+        df = pd.DataFrame({"error": [str(exc)], "archivo": [file_name]})
+
+    if df is not None and len(df) > MAX_DATAFRAME_ROWS:
+        st.warning(f"⚠️ El archivo tiene {len(df):,} filas. Truncado a {MAX_DATAFRAME_ROWS:,}.")
+        df = df.head(MAX_DATAFRAME_ROWS)
+    return df
+
+
+# ──────────────────────────────────────────────────────────────
+# Agent helpers
+# ──────────────────────────────────────────────────────────────
+
+
+def list_agents_from_folder() -> List[str]:
+    agent_files: List[str] = []
+    for folder in ("agents", "ai-factory-v2"):
+        folder_path = APP_ROOT / folder
+        if folder_path.exists():
+            for py_file in sorted(folder_path.glob("*.py")):
+                if py_file.name != "__init__.py":
+                    agent_files.append(f"{folder}/{py_file.name}")
+    return agent_files
+
+
+def run_agent(agent_path: str, data: Optional[pd.DataFrame] = None) -> str:
+    # Validate agent path is within an allowed directory to prevent path traversal
+    _allowed_roots = [APP_ROOT / "agents", APP_ROOT / "ai-factory-v2", APP_ROOT / "scripts"]
+    full_path = (APP_ROOT / agent_path).resolve()
+    # Use is_relative_to for robust path traversal prevention (Python 3.9+)
+    if not any(full_path.is_relative_to(r.resolve()) for r in _allowed_roots):
+        return f"❌ Ruta de agente no permitida: {agent_path}"
+    if not full_path.exists():
+        return f"❌ Agente no encontrado: {agent_path}"
+    if full_path.suffix != ".py":
+        return f"❌ Solo se permiten scripts Python (.py): {agent_path}"
+    outputs_dir = APP_ROOT / "outputs"
+    outputs_dir.mkdir(exist_ok=True)
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(APP_ROOT)
+    if data is not None:
+        tmp_csv = outputs_dir / "agent_input.csv"
+        data.to_csv(tmp_csv, index=False)
+        env["AGENT_INPUT_FILE"] = str(tmp_csv)
+    try:
+        result = subprocess.run(
+            [sys.executable, str(full_path)],
+            capture_output=True, text=True, timeout=30,
+            env=env, cwd=str(APP_ROOT),
+        )
+        output = result.stdout or ""
+        if result.stderr:
+            output += f"\n[stderr]: {result.stderr[:500]}"
+        if not output.strip():
+            output = f"✅ Ejecutado sin salida (exit code {result.returncode})"
+        out_file = outputs_dir / f"{full_path.stem}_output.txt"
+        out_file.write_text(output, encoding="utf-8")
+        return output
+    except subprocess.TimeoutExpired:
+        return "⏱️ Timeout: el agente tardó más de 30 segundos"
+    except Exception as exc:
+        return f"❌ Error ejecutando agente: {exc}"
 
 
 # ──────────────────────────────────────────────────────────────
@@ -719,27 +994,33 @@ def show_sidebar() -> str:
 
 
 def page_dashboard() -> None:
-    profile = st.session_state.profile
-    department = profile.get("department")
+    profile = st.session_state.profile or {}
+    department = profile.get("department", "")
+    st.title(f"📊 Dashboard — {department}")
 
-    st.title(f"📊 Dashboard - {department}")
+    if not SUPABASE_CONFIGURED or supabase is None:
+        st.info("ℹ️ Supabase no configurado. Mostrando datos de demostración.")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Total Actions", 0)
+        c2.metric("Open", 0)
+        c3.metric("On Going", 0)
+        c4.metric("Close", 0)
+        df_loaded = st.session_state.get("uploaded_data_universal")
+        if df_loaded is not None:
+            st.subheader("Datos cargados en memoria")
+            st.dataframe(df_loaded.head(10), use_container_width=True)
+        return
 
     def _fetch_actions():
-        query = supabase.table("actions").select("*")
-        return query.execute().data or []
+        return supabase.table("actions").select("*").execute().data or []
 
     actions = safe_execute(_fetch_actions, [])
 
     c1, c2, c3, c4 = st.columns(4)
-    total = len(actions)
-    open_count = len([a for a in actions if _field(a, "status") == "open"])
-    on_going_count = len([a for a in actions if _field(a, "status") == "on-going"])
-    close_count = len([a for a in actions if _field(a, "status") == "close"])
-
-    c1.metric("Total Actions", total)
-    c2.metric("Open", open_count)
-    c3.metric("On Going", on_going_count)
-    c4.metric("Close", close_count)
+    c1.metric("Total Actions", len(actions))
+    c2.metric("Open",     len([a for a in actions if _field(a, "status") == "open"]))
+    c3.metric("On Going", len([a for a in actions if _field(a, "status") == "on-going"]))
+    c4.metric("Close",    len([a for a in actions if _field(a, "status") == "close"]))
 
     if actions:
         df = pd.DataFrame(actions)
@@ -747,11 +1028,224 @@ def page_dashboard() -> None:
             st.plotly_chart(px.pie(df, names="status", title="Actions by status"), use_container_width=True)
 
     st.subheader("Últimas acciones")
-    recent = sorted(actions, key=lambda x: _field(x, "last_modified", "created_at", default=""), reverse=True)[:8]
+    recent = sorted(
+        actions,
+        key=lambda x: _field(x, "last_modified", "created_at", default=""),
+        reverse=True,
+    )[:8]
     for row in recent:
         status = _field(row, "status", default="open")
         emoji = "🔴" if status == "open" else "🟡" if status == "on-going" else "✅"
-        st.write(f"{emoji} **{_field(row, 'name', default='(sin nombre)')}** — {_field(row, 'goal', default='')}")
+        st.write(
+            f"{emoji} **{_field(row, 'name', default='(sin nombre)')}** — "
+            f"{_field(row, 'goal', default='')}"
+        )
+
+
+# ──────────────────────────────────────────────────────────────
+# Portfolio Analysis
+# ──────────────────────────────────────────────────────────────
+
+
+def page_portfolio_analysis() -> None:
+    st.title("📁 Portfolio Analysis")
+    df = st.session_state.get("uploaded_data_universal")
+    if df is not None and isinstance(df, pd.DataFrame) and not df.empty:
+        st.success(f"Datos cargados: {df.shape[0]:,} filas × {df.shape[1]} columnas")
+        numeric_cols = df.select_dtypes(include="number").columns.tolist()
+        cat_cols = df.select_dtypes(exclude="number").columns.tolist()
+        if numeric_cols:
+            col_x = st.selectbox("Eje X", numeric_cols, key="pa_x")
+            col_y = st.selectbox("Eje Y", numeric_cols, key="pa_y")
+            col_color = st.selectbox("Color (opcional)", ["Ninguno"] + cat_cols, key="pa_color")
+            color_col = None if col_color == "Ninguno" else col_color
+            st.plotly_chart(
+                px.scatter(df, x=col_x, y=col_y, color=color_col, title=f"{col_x} vs {col_y}"),
+                use_container_width=True,
+            )
+        if cat_cols and numeric_cols:
+            st.plotly_chart(
+                px.bar(df, x=cat_cols[0], y=numeric_cols[0],
+                       title=f"Bar: {cat_cols[0]} / {numeric_cols[0]}"),
+                use_container_width=True,
+            )
+    else:
+        st.info("Sube datos en **Data Upload** para visualizarlos aquí.")
+
+
+def page_placeholder(title: str, icon: str = "🚧") -> None:
+    st.title(f"{icon} {title}")
+    st.info(f"Módulo **{title}** en construcción. Disponible en próximas versiones.")
+    df = st.session_state.get("uploaded_data_universal")
+    if df is not None:
+        st.subheader("Datos actualmente cargados")
+        st.dataframe(df.head(10), use_container_width=True)
+
+
+# ──────────────────────────────────────────────────────────────
+# Data Upload (universal)
+# ──────────────────────────────────────────────────────────────
+
+
+def page_data_upload() -> None:
+    st.title("📤 Data Upload — Carga Universal")
+    st.markdown(
+        "**Formatos soportados**: CSV, Excel, TSV, Parquet, Feather, JSON, JSONL, "
+        "TXT, Markdown, HTML, XML, PDF, DOCX, ZIP, Imágenes (OCR), SQLite."
+    )
+
+    st.subheader("1️⃣ Desde URL")
+    url_input = st.text_input(
+        "URL de datos (JSON/CSV/XML)", placeholder="https://ejemplo.com/data.csv",
+        key="data_url_input",
+    )
+    if st.button("Cargar desde URL", key="load_url_btn") and url_input:
+        # Validate URL to prevent SSRF attacks (scheme + private IP check)
+        if not _is_safe_url(url_input):
+            st.error(
+                "URL no permitida. Solo se aceptan URLs https:// / http:// "
+                "hacia hosts públicos (no IPs privadas ni localhost)."
+            )
+        else:
+            try:
+                import requests as _requests
+                import json as _json
+                resp = _requests.get(
+                    url_input, timeout=15, allow_redirects=False
+                )
+                # Follow only one redirect (if any) to a safe destination.
+                # Check explicit HTTP redirect status codes (301/302/303/307/308)
+                # rather than relying on requests.is_redirect which may miss some codes.
+                if resp.status_code in (301, 302, 303, 307, 308):
+                    loc = resp.headers.get("Location", "")
+                    if loc and _is_safe_url(loc):
+                        resp = _requests.get(loc, timeout=15, allow_redirects=False)
+                    else:
+                        st.error("Redirección bloqueada: destino no permitido")
+                        resp = None
+                if resp is not None:
+                    resp.raise_for_status()
+                    url_fname = url_input.split("?")[0].split("/")[-1] or "data.json"
+                    df = parse_file_to_df(url_fname, resp.content)
+                    if df is None:
+                        try:
+                            data = _json.loads(resp.text)
+                            df = pd.DataFrame(data if isinstance(data, list) else [data])
+                        except Exception:
+                            df = pd.DataFrame({"linea": resp.text.splitlines()})
+                    if df is not None:
+                        st.session_state.uploaded_data_universal = df
+                        st.success(f"✅ URL cargada: {df.shape[0]:,} filas, {df.shape[1]} columnas")
+                        st.dataframe(df.head(5))
+                    else:
+                        st.error("No se pudo interpretar la respuesta de la URL")
+            except Exception as exc:
+                st.error(f"Error cargando URL: {exc}")
+
+    st.subheader("2️⃣ Subir archivo")
+    uploaded_file = st.file_uploader(
+        "Selecciona o arrastra cualquier archivo", type=None, key="universal_uploader"
+    )
+    if uploaded_file is not None:
+        file_bytes = uploaded_file.read()
+        with st.spinner(f"Procesando {uploaded_file.name}…"):
+            df = parse_file_to_df(uploaded_file.name, file_bytes)
+        if df is not None:
+            st.session_state.uploaded_data_universal = df
+            st.success(
+                f"✅ **{uploaded_file.name}** — {df.shape[0]:,} filas, {df.shape[1]} columnas"
+            )
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Filas", f"{df.shape[0]:,}")
+            col2.metric("Columnas", df.shape[1])
+            col3.metric("Valores nulos", int(df.isnull().sum().sum()))
+            st.subheader("Vista previa")
+            st.dataframe(df.head(10), use_container_width=True)
+            type_df = pd.DataFrame(
+                {"Columna": df.dtypes.index, "Tipo": df.dtypes.values.astype(str)}
+            )
+            st.dataframe(type_df, use_container_width=True)
+            st.download_button(
+                "📥 Descargar como CSV",
+                df.to_csv(index=False).encode("utf-8"),
+                "datos_procesados.csv",
+                "text/csv",
+            )
+        else:
+            st.error("No se pudo procesar el archivo. Formato no reconocido.")
+
+    df_current = st.session_state.get("uploaded_data_universal")
+    if df_current is not None:
+        st.divider()
+        st.subheader("📊 Datos actualmente en memoria")
+        st.info(f"{df_current.shape[0]:,} filas × {df_current.shape[1]} columnas")
+        if st.button("🗑️ Limpiar datos cargados", key="clear_data_btn"):
+            st.session_state.uploaded_data_universal = None
+            st.rerun()
+
+
+# ──────────────────────────────────────────────────────────────
+# Agent Hub
+# ──────────────────────────────────────────────────────────────
+
+
+def page_agent_hub() -> None:
+    st.title("⚡ Agent Hub — Agentes Autónomos")
+    agents = list_agents_from_folder()
+
+    if not agents:
+        st.warning("No se encontraron agentes en /agents o /ai-factory-v2")
+        st.info("Los agentes deben ser archivos `.py` dentro de `agents/` o `ai-factory-v2/`")
+    else:
+        st.subheader("Agentes disponibles")
+        selected_agent = st.selectbox(
+            "Selecciona un agente",
+            ["— Seleccionar —"] + agents,
+            key="agent_selector",
+        )
+        df = st.session_state.get("uploaded_data_universal")
+        if df is not None:
+            st.success(f"✅ Datos disponibles: {df.shape[0]:,} filas × {df.shape[1]} columnas")
+        else:
+            st.info("ℹ️ Carga datos en **Data Upload** para pasarlos al agente.")
+
+        if selected_agent != "— Seleccionar —":
+            st.markdown(f"**Agente:** `{selected_agent}`")
+            agent_path_full = APP_ROOT / selected_agent
+            if agent_path_full.exists():
+                with st.expander("Ver código del agente", expanded=False):
+                    code = agent_path_full.read_text(encoding="utf-8", errors="replace")
+                    st.code(code[:3000] + ("…" if len(code) > 3000 else ""), language="python")
+            if st.button("▶️ Ejecutar agente", type="primary", key="run_agent_btn"):
+                with st.spinner(f"Ejecutando {selected_agent}…"):
+                    output = run_agent(selected_agent, df)
+                st.session_state.agent_output = output
+                st.success("✅ Ejecución completada")
+
+    if st.session_state.get("agent_output"):
+        st.subheader("Resultado del agente")
+        st.text_area(
+            "Output", st.session_state.agent_output, height=300, key="agent_output_display"
+        )
+        st.download_button(
+            "📥 Descargar resultado",
+            st.session_state.agent_output.encode("utf-8"),
+            "agent_output.txt", "text/plain",
+        )
+        if st.button("🗑️ Limpiar resultado", key="clear_agent_output"):
+            st.session_state.agent_output = None
+            st.rerun()
+
+    st.divider()
+    st.subheader("Estado del orquestador")
+    try:
+        from agents.self_improving_orchestrator import get_orchestrator
+        orch = get_orchestrator()
+        if not orch.is_running:
+            orch.start()
+        st.json(orch.get_status_report())
+    except Exception as exc:
+        st.caption(f"Orquestador no disponible: {exc}")
 
 
 # ──────────────────────────────────────────────────────────────
@@ -760,10 +1254,14 @@ def page_dashboard() -> None:
 
 
 def page_actions() -> None:
-    profile = st.session_state.profile
-    department = profile.get("department")
+    profile = st.session_state.profile or {}
+    department = profile.get("department", "")
 
-    st.title("📋 Actions")
+    st.title("📋 Commercial Actions Repository")
+
+    if not SUPABASE_CONFIGURED or supabase is None:
+        st.warning("Esta sección requiere conexión a Supabase.")
+        return
 
     with st.expander("➕ Crear acción", expanded=False):
         with st.form("action_create"):
@@ -905,12 +1403,15 @@ def page_actions() -> None:
 
 
 def page_requests() -> None:
-    profile = st.session_state.profile
+    profile = st.session_state.profile or {}
+    if not SUPABASE_CONFIGURED or supabase is None:
+        st.warning("Esta sección requiere conexión a Supabase.")
+        return
     if profile.get("department") != "Commercial":
-        st.warning("Esta vista es solo para Commercial")
+        st.warning("Esta vista es solo para el departamento Commercial")
         return
 
-    st.title("📥 Request Pool")
+    st.subheader("📥 Request Pool")
 
     with st.expander("➕ Nueva solicitud", expanded=False):
         with st.form("request_create"):
@@ -1296,7 +1797,13 @@ def page_list_offers() -> None:
 
 
 def page_offers() -> None:
-    st.title("📄 Offers")
+    st.title("💼 Offer & Pricing")
+
+    if not SUPABASE_CONFIGURED or supabase is None:
+        st.warning("Funcionalidad completa requiere Supabase.")
+        st.subheader("💰 Calculadora de costes (modo demo)")
+        page_cost_engine_block()
+        return
 
     m1, m2, m3 = st.columns(3)
     if m1.button("📝 Crear manual", use_container_width=True):
@@ -1326,33 +1833,44 @@ def page_offers() -> None:
 
 
 def page_users() -> None:
-    profile = st.session_state.profile
-    if profile.get("role") != "admin":
-        st.warning("Acceso restringido")
+    profile = st.session_state.profile or {}
+    if profile.get("role") != "admin" and not FULL_ACCESS_ALL_USERS:
+        st.warning("Acceso restringido a administradores")
         return
 
-    st.title("👥 Gestión de usuarios")
+    st.title("👥 Team Directory")
 
-    rows = safe_execute(lambda: supabase.table("profiles").select("*").order("created_at", desc=True).execute().data or [], [])
+    if not SUPABASE_CONFIGURED or supabase is None:
+        st.warning("Supabase no configurado.")
+        return
 
+    rows = safe_execute(
+        lambda: supabase.table("profiles").select("*").order("created_at", desc=True).execute().data or [],
+        [],
+    )
     departments = ["Commercial", "Engineering", "Project Management", "Service", "Administration"]
-
     for row in rows:
         with st.expander(f"{_field(row, 'name')} · {_field(row, 'email')}"):
             c1, c2, c3 = st.columns(3)
-            dep = c1.selectbox("Departamento", departments, index=departments.index(_field(row, "department", default="Commercial")), key=f"usr_dep_{row['id']}")
-            role = c2.selectbox("Rol", ["user", "admin"], index=0 if _field(row, "role", default="user") == "user" else 1, key=f"usr_role_{row['id']}")
+            dep = c1.selectbox("Departamento", departments,
+                index=departments.index(_field(row, "department", default="Commercial")),
+                key=f"usr_dep_{row['id']}")
+            role_val = c2.selectbox("Rol", ["user", "admin"],
+                index=0 if _field(row, "role", default="user") == "user" else 1,
+                key=f"usr_role_{row['id']}")
             if c3.button("Actualizar", key=f"usr_save_{row['id']}", use_container_width=True):
                 try:
-                    supabase.table("profiles").update({"department": dep, "role": role}).eq("id", row["id"]).execute()
+                    supabase.table("profiles").update({"department": dep, "role": role_val}).eq(
+                        "id", row["id"]
+                    ).execute()
                     st.success("Actualizado")
                     st.rerun()
                 except Exception as exc:
-                    st.error(f"Error actualizando: {exc}")
+                    st.error(f"Error: {exc}")
 
 
 def page_cost_modules() -> None:
-    st.title("💰 Cost Modules")
+    st.title("💲 Cost & Rates")
     st.caption("Referencia de módulos y tasas base")
 
     df = pd.DataFrame(PREDEFINED_COST_MODULES)
@@ -1360,26 +1878,30 @@ def page_cost_modules() -> None:
 
     st.subheader("Simulador rápido")
     material = st.number_input("Materiales", min_value=0.0, value=10000.0)
-    line_count = st.number_input("Número de líneas no porcentuales", min_value=0, max_value=10, value=2)
-    lines = []
+    line_count = st.number_input("Número de líneas", min_value=0, max_value=10, value=2)
+    lines: List[Dict[str, Any]] = []
     ids = [m["id"] for m in PREDEFINED_COST_MODULES]
     for i in range(int(line_count)):
         c1, c2 = st.columns(2)
-        mid = c1.selectbox(f"Módulo {i+1}", ids, key=f"sim_mod_{i}")
-        qty = c2.number_input(f"Cantidad {i+1}", min_value=0.0, value=1.0, key=f"sim_qty_{i}")
+        mid = c1.selectbox(f"Módulo {i + 1}", ids, key=f"sim_mod_{i}")
+        qty = c2.number_input(f"Cantidad {i + 1}", min_value=0.0, value=1.0, key=f"sim_qty_{i}")
         lines.append({"module_id": mid, "quantity": qty})
-    result = calculate_total_cost(lines, material, 0, 0)
+    result = calculate_total_cost(lines, material, 0.0, 0.0)
     st.metric("Total", f"€ {result['total']:,.2f}")
 
 
 def page_invites() -> None:
-    profile = st.session_state.profile
-    if profile.get("role") != "admin":
+    profile = st.session_state.profile or {}
+    if profile.get("role") != "admin" and not FULL_ACCESS_ALL_USERS:
         st.warning("Acceso restringido")
         return
 
-    st.title("📧 User Invites (Gmail)")
+    st.title("📧 Email Cobot — User Invites (Gmail)")
     st.caption("Provisiona acceso en Supabase y envía email de bienvenida con contraseña temporal")
+
+    if not SUPABASE_CONFIGURED or supabase is None:
+        st.warning("Supabase no configurado.")
+        return
 
     credentials_path = Path(__file__).resolve().parent / "user_access_credentials.txt"
     users = _parse_users_credentials_file(credentials_path)
@@ -1453,414 +1975,36 @@ def page_invites() -> None:
 
 
 # ──────────────────────────────────────────────────────────────
-# Professional Mode sidebar
+# Page routing map
 # ──────────────────────────────────────────────────────────────
 
-_DEFAULT_MATURITY: Dict[str, int] = {
-    "Dashboard": 55,
-    "Actions": 60,
-    "Offers": 65,
-    "Request Pool": 50,
-    "Cost Modules": 70,
-    "Business Intelligence": 62,
-    "Budget Command Center": 68,
-    "Key Account Management": 65,
-    "Pipeline Manager": 0,
-    "Market Intelligence": 0,
-    "Competitive Analysis": 0,
-    "Customer Success": 0,
-    "Revenue Forecasting": 0,
-    "Portfolio Analysis": 0,
-    "Weekly Planner": 0,
-    "Saved Companies": 0,
-    "Sales Analytics": 0,
-    "Territory Management": 0,
-    "Campaign Manager": 0,
-    "Contract Management": 0,
-    "Product Catalog": 0,
-    "Team Management": 0,
+_PAGE_MAP: Dict[str, Any] = {
+    "Dashboard":                        page_dashboard,
+    "Business Intelligence":            lambda: page_placeholder("Business Intelligence", "🔍"),
+    "Budget Command Center":            lambda: page_placeholder("Budget Command Center", "💰"),
+    "Portfolio Analysis":               page_portfolio_analysis,
+    "Weekly Planner":                   lambda: page_placeholder("Weekly Planner", "📅"),
+    "Saved Companies":                  lambda: page_placeholder("Saved Companies", "🏢"),
+    "Company Info":                     lambda: page_placeholder("Company Info", "ℹ️"),
+    "360º Analysis":                    lambda: page_placeholder("360º Analysis", "🔄"),
+    "Sales Architecture":               lambda: page_placeholder("Sales Architecture", "🏗️"),
+    "Key Account Management":           lambda: page_placeholder("Key Account Management", "🔑"),
+    "Commercial Actions Repository":    page_actions,
+    "AI-Augmented Sales":               lambda: page_placeholder("AI-Augmented Sales", "🤖"),
+    "Behavioral Transform":             lambda: page_placeholder("Behavioral Transform", "🧠"),
+    "Product Strategy":                 lambda: page_placeholder("Product Strategy", "📦"),
+    "Monitoring":                       lambda: page_placeholder("Monitoring", "📡"),
+    "Offer & Pricing":                  page_offers,
+    "Data Upload":                      page_data_upload,
+    "After-Sales Engine":               lambda: page_placeholder("After-Sales Engine", "🔧"),
+    "Team Directory":                   page_users,
+    "Email Cobot":                      page_invites,
+    "Marketing Content":                lambda: page_placeholder("Marketing Content", "📰"),
+    "Social Media":                     lambda: page_placeholder("Social Media", "📱"),
+    "Project Management":               lambda: page_placeholder("Project Management", "🗂️"),
+    "Cost & Rates":                     page_cost_modules,
+    "Agent Hub":                        page_agent_hub,
 }
-
-
-def _load_maturity_scores() -> Dict[str, int]:
-    """Load maturity scores from MATURITY_REPORT.md if it exists, otherwise return defaults."""
-    report_path = Path("MATURITY_REPORT.md")
-    scores: Dict[str, int] = dict(_DEFAULT_MATURITY)
-    if not report_path.exists():
-        return scores
-    try:
-        content = report_path.read_text(encoding="utf-8")
-        for line in content.splitlines():
-            if line.startswith("- overall:"):
-                pass  # handled below
-            if "| " in line and "%" in line:
-                parts = [p.strip() for p in line.split("|") if p.strip()]
-                if len(parts) >= 3:
-                    module_name = parts[0]
-                    pct_str = parts[2].replace("%", "").strip()
-                    try:
-                        scores[module_name] = int(float(pct_str))
-                    except ValueError:
-                        pass
-    except Exception:
-        pass
-    return scores
-
-
-def _show_professional_mode_sidebar() -> None:
-    with st.expander("🚀 Modo Profesional", expanded=False):
-        scores = _load_maturity_scores()
-        st.caption("Índice de madurez por módulo")
-        implemented = {k: v for k, v in scores.items() if v > 0}
-        pending = {k: v for k, v in scores.items() if v == 0}
-        for module, score in sorted(implemented.items(), key=lambda x: -x[1]):
-            color = "🟢" if score >= 70 else "🟡" if score >= 40 else "🔴"
-            st.progress(score / 100, text=f"{color} {module}: {score}%")
-        if pending:
-            st.caption(f"⬜ {len(pending)} módulos pendientes de implementar")
-        overall = sum(implemented.values()) // max(len(implemented), 1)
-        st.divider()
-        st.metric("Madurez global", f"{overall}%", help="Promedio de módulos implementados")
-
-        st.caption("📅 Próximas mejoras planificadas")
-        st.markdown(
-            "- **Pipeline Manager**: Vista kanban + forecast ponderado\n"
-            "- **Revenue Forecasting**: Escenarios predictivos\n"
-            "- **Customer Success**: Health score en tiempo real"
-        )
-
-        vote_options = [k for k in pending.keys()][:5] or list(implemented.keys())[:5]
-        if vote_options:
-            voted = st.selectbox("🗳️ ¿Qué módulo mejorar primero?", vote_options, key="pro_vote")
-            if st.button("Votar", key="pro_vote_btn"):
-                st.success(f"Voto registrado: **{voted}**. ¡Gracias!")
-
-
-# ── AUTO_IMPLEMENT_PAGES_START ──
-
-
-def page_budget_command_center() -> None:
-    st.header("💰 Budget Command Center")
-    st.caption("Referencia: Anaplan · Vareto · Cube")
-
-    with st.expander("📋 Protocolo profesional (Anaplan-style)", expanded=False):
-        protocol = [
-            "1. Definir supuestos del período (inflación, crecimiento, inversiones)",
-            "2. Cargar presupuesto base por departamento / línea de producto",
-            "3. Simular escenarios optimista / base / pesimista",
-            "4. Revisar y aprobar con flujo multi-rol",
-            "5. Activar tracking mensual real vs. presupuestado",
-            "6. Re-forecast trimestral con datos acumulados",
-        ]
-        for step in protocol:
-            st.checkbox(step, key=f"bcc_proto_{step[:20]}")
-
-    if "bcc_data" not in st.session_state:
-        st.session_state.bcc_data = pd.DataFrame(
-            {
-                "Producto": ["Automatización Industrial", "Servicios de Campo", "Componentes Eléctricos"],
-                "Presupuesto_inicial": [300000, 180000, 220000],
-                "Real_actual": [285000, 195000, 210000],
-            }
-        )
-
-    df = st.session_state.bcc_data.copy()
-
-    st.subheader("📊 Escenario What-If")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        ajuste_a = st.slider(f"Ajuste {df.iloc[0]['Producto']} (%)", -30, 30, 0, key="bcc_adj_a")
-    with col2:
-        ajuste_b = st.slider(f"Ajuste {df.iloc[1]['Producto']} (%)", -30, 30, 0, key="bcc_adj_b")
-    with col3:
-        ajuste_c = st.slider(f"Ajuste {df.iloc[2]['Producto']} (%)", -30, 30, 0, key="bcc_adj_c")
-
-    df_sim = df.copy()
-    df_sim.loc[0, "Presupuesto_inicial"] *= 1 + ajuste_a / 100
-    df_sim.loc[1, "Presupuesto_inicial"] *= 1 + ajuste_b / 100
-    df_sim.loc[2, "Presupuesto_inicial"] *= 1 + ajuste_c / 100
-    df_sim["Desviación_€"] = df_sim["Real_actual"] - df_sim["Presupuesto_inicial"]
-    df_sim["Desviación_%"] = (df_sim["Desviación_€"] / df_sim["Presupuesto_inicial"] * 100).round(1)
-
-    st.dataframe(
-        df_sim.style.format(
-            {
-                "Presupuesto_inicial": "€{:,.0f}",
-                "Real_actual": "€{:,.0f}",
-                "Desviación_€": "€{:,.0f}",
-                "Desviación_%": "{:+.1f}%",
-            }
-        ).bar(subset=["Desviación_€"], color=["#ff9999", "#00cc66"]),
-        use_container_width=True,
-    )
-
-    total_presupuestado = df_sim["Presupuesto_inicial"].sum()
-    total_real = df_sim["Real_actual"].sum()
-    desviacion_total = total_real - total_presupuestado
-
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Total Presupuestado", f"€{total_presupuestado:,.0f}")
-    m2.metric("Total Real", f"€{total_real:,.0f}")
-    m3.metric(
-        "Desviación Global",
-        f"€{desviacion_total:,.0f}",
-        delta=f"{desviacion_total / total_presupuestado * 100:+.1f}%",
-    )
-
-    desviaciones_criticas = df_sim[abs(df_sim["Desviación_%"]) > 10]
-    if not desviaciones_criticas.empty:
-        st.warning(
-            f"⚠️ **Alerta de desviación >10%** en: {', '.join(desviaciones_criticas['Producto'].tolist())}. "
-            "Revisar y actualizar el forecast."
-        )
-    else:
-        st.success("✅ Todas las líneas dentro del umbral de desviación (<10%)")
-
-    with st.expander("📈 Gráfico de desviaciones"):
-        fig_bcc = px.bar(
-            df_sim,
-            x="Producto",
-            y="Desviación_%",
-            color="Desviación_%",
-            color_continuous_scale=["#ff4b4b", "#ffa500", "#00cc66"],
-            title="Desviación presupuestaria por línea (%)",
-            labels={"Desviación_%": "Desviación (%)"},
-        )
-        fig_bcc.add_hline(y=10, line_dash="dash", line_color="red", annotation_text="Umbral +10%")
-        fig_bcc.add_hline(y=-10, line_dash="dash", line_color="red", annotation_text="Umbral -10%")
-        st.plotly_chart(fig_bcc, use_container_width=True)
-
-    st.download_button(
-        "⬇️ Descargar escenario como CSV",
-        data=df_sim.to_csv(index=False),
-        file_name=f"budget_scenario_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.csv",
-        mime="text/csv",
-        use_container_width=True,
-    )
-
-
-def page_key_account_management() -> None:
-    st.header("🏆 Key Account Management")
-    st.caption("Referencia: Gainsight · Salesforce CRM · HubSpot Sales Hub")
-
-    with st.expander("📋 Protocolo KAM estándar (referencia: Gainsight + Salesforce)", expanded=False):
-        protocol_steps = [
-            "1. Identificar cuentas estratégicas (Top 20% de ingresos)",
-            "2. Mapear stakeholders y niveles de influencia",
-            "3. Evaluar Customer Health Score (NPS, frecuencia de contacto, satisfacción)",
-            "4. Crear Joint Business Plan con objetivos compartidos",
-            "5. Planificar acciones: meetings trimestrales, follow-ups mensuales, upselling",
-            "6. Revisión periódica del plan y activar alertas de riesgo",
-        ]
-        for step in protocol_steps:
-            st.checkbox(step, key=f"kam_proto_{step[:30]}")
-
-    if "kam_accounts" not in st.session_state:
-        st.session_state.kam_accounts = pd.DataFrame(
-            {
-                "Cuenta": ["Volkswagen Group", "Siemens AG", "SEAT S.A.", "Schneider Electric", "ABB Ltd"],
-                "Ingreso_anual_€": [420000, 310000, 280000, 195000, 160000],
-                "Health_Score": [82, 71, 45, 90, 63],
-                "NPS": [8, 6, -2, 9, 4],
-                "Días_sin_contacto": [12, 8, 35, 5, 42],
-                "Responsable": ["Ana García", "Carlos López", "Ana García", "Pedro Martín", "Carlos López"],
-            }
-        )
-
-    df_kam = st.session_state.kam_accounts.copy()
-
-    st.subheader("📊 Mis cuentas clave")
-    col_a, col_b, col_c = st.columns(3)
-    col_a.metric("Cuentas gestionadas", len(df_kam))
-    col_b.metric("Ingreso total gestionado", f"€{df_kam['Ingreso_anual_€'].sum():,.0f}")
-    col_c.metric("Health Score promedio", f"{df_kam['Health_Score'].mean():.0f}/100")
-
-    def _health_color(score: int) -> str:
-        if score >= 75:
-            return "🟢"
-        if score >= 55:
-            return "🟡"
-        return "🔴"
-
-    df_kam["Estado"] = df_kam["Health_Score"].apply(_health_color)
-    st.dataframe(
-        df_kam[["Estado", "Cuenta", "Ingreso_anual_€", "Health_Score", "NPS", "Días_sin_contacto", "Responsable"]].style.format(
-            {"Ingreso_anual_€": "€{:,.0f}"}
-        ).background_gradient(subset=["Health_Score"], cmap="RdYlGn"),
-        use_container_width=True,
-    )
-
-    st.subheader("🚨 Alertas automáticas")
-    alertas_kam: List[str] = []
-    for _, row in df_kam.iterrows():
-        if row["NPS"] < 0:
-            alertas_kam.append(f"🔴 **{row['Cuenta']}**: NPS negativo ({row['NPS']}). Reunión de recuperación urgente.")
-        if row["Días_sin_contacto"] > 30:
-            alertas_kam.append(
-                f"🟡 **{row['Cuenta']}**: Sin contacto hace {row['Días_sin_contacto']} días. Sugerir follow-up."
-            )
-        if row["Health_Score"] < 55:
-            alertas_kam.append(
-                f"🔴 **{row['Cuenta']}**: Health Score crítico ({row['Health_Score']}/100). Activar plan de recuperación."
-            )
-
-    if alertas_kam:
-        for alerta in alertas_kam:
-            st.warning(alerta)
-    else:
-        st.success("✅ Todas las cuentas clave están dentro de parámetros saludables.")
-
-    with st.expander("📈 Visualización de health scores"):
-        fig_kam = px.bar(
-            df_kam.sort_values("Health_Score"),
-            x="Health_Score",
-            y="Cuenta",
-            orientation="h",
-            color="Health_Score",
-            color_continuous_scale=["#ff4b4b", "#ffa500", "#00cc66"],
-            range_color=[0, 100],
-            title="Customer Health Score por cuenta clave",
-        )
-        fig_kam.add_vline(x=60, line_dash="dash", line_color="red", annotation_text="Umbral crítico: 60")
-        st.plotly_chart(fig_kam, use_container_width=True)
-
-    st.download_button(
-        "⬇️ Exportar cuentas clave",
-        data=df_kam.to_csv(index=False),
-        file_name=f"key_accounts_{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv",
-        mime="text/csv",
-        use_container_width=True,
-    )
-
-
-def page_business_intelligence() -> None:
-    import numpy as np  # noqa: PLC0415
-
-    st.header("📊 Business Intelligence")
-    st.caption("Referencia: Looker · Domo · ThoughtSpot")
-
-    with st.expander("📋 Protocolo BI estándar (referencia: Looker + Domo)", expanded=False):
-        protocol_steps_bi = [
-            "1. Conectar fuentes de datos (CRM, ERP, base de datos propia)",
-            "2. Definir métricas y KPIs con definición única acordada",
-            "3. Segmentar dashboards por audiencia (dirección, comercial, operaciones)",
-            "4. Configurar alertas sobre umbrales críticos",
-            "5. Programar distribución automática de informes",
-            "6. Capacitar al equipo en exploración autoservicio",
-        ]
-        for step in protocol_steps_bi:
-            st.checkbox(step, key=f"bi_proto_{step[:30]}")
-
-    period = st.selectbox(
-        "Período de análisis",
-        ["Últimos 7 días", "Últimos 30 días", "Trimestre actual", "Año actual"],
-        key="bi_period",
-    )
-
-    period_multiplier: Dict[str, float] = {
-        "Últimos 7 días": 0.25,
-        "Últimos 30 días": 1.0,
-        "Trimestre actual": 3.0,
-        "Año actual": 12.0,
-    }
-    mult = period_multiplier.get(period, 1.0)
-
-    base_revenue = 487000 * mult
-    base_offers = int(23 * mult)
-    base_win_rate = 34.8
-    base_avg_deal = 21200
-
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Revenue generado", f"€{base_revenue:,.0f}", delta=f"+{base_revenue * 0.08:,.0f} vs período anterior")
-    m2.metric("Ofertas enviadas", base_offers, delta=f"+{int(base_offers * 0.12)} vs período anterior")
-    m3.metric("Win rate", f"{base_win_rate:.1f}%", delta="+2.3pp vs período anterior")
-    m4.metric("Ticket medio", f"€{base_avg_deal:,.0f}", delta=f"+€{int(base_avg_deal * 0.05):,} vs período anterior")
-
-    st.subheader("📈 Tendencias por segmento")
-    months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun"]
-    rng = np.random.default_rng(42)
-    df_trend = pd.DataFrame(
-        {
-            "Mes": months,
-            "Automatización": rng.integers(60000, 120000, 6).tolist(),
-            "Servicios": rng.integers(40000, 90000, 6).tolist(),
-            "Componentes": rng.integers(30000, 70000, 6).tolist(),
-        }
-    )
-    df_melted = df_trend.melt(id_vars="Mes", var_name="Segmento", value_name="Revenue")
-    fig_trend = px.line(
-        df_melted,
-        x="Mes",
-        y="Revenue",
-        color="Segmento",
-        markers=True,
-        title="Evolución del revenue por segmento de producto",
-        labels={"Revenue": "Revenue (€)"},
-    )
-    st.plotly_chart(fig_trend, use_container_width=True)
-
-    col_left, col_right = st.columns(2)
-    with col_left:
-        st.subheader("🏆 Top 5 cuentas por revenue")
-        rng2 = np.random.default_rng(7)
-        df_top = pd.DataFrame(
-            {
-                "Cuenta": ["Volkswagen", "Siemens", "SEAT", "Schneider", "ABB"],
-                "Revenue_€": sorted(rng2.integers(80000, 250000, 5).tolist(), reverse=True),
-            }
-        )
-        fig_top = px.bar(
-            df_top,
-            x="Revenue_€",
-            y="Cuenta",
-            orientation="h",
-            color="Revenue_€",
-            color_continuous_scale="Blues",
-            title="Top 5 cuentas",
-        )
-        st.plotly_chart(fig_top, use_container_width=True)
-
-    with col_right:
-        st.subheader("📊 Distribución de estados de ofertas")
-        df_status = pd.DataFrame(
-            {"Estado": ["Ganadas", "En negociación", "Perdidas", "Expiradas"], "Cantidad": [8, 7, 4, 4]}
-        )
-        fig_pie = px.pie(
-            df_status,
-            values="Cantidad",
-            names="Estado",
-            color_discrete_sequence=["#00cc66", "#ffa500", "#ff4b4b", "#999999"],
-            title="Pipeline de ofertas",
-        )
-        st.plotly_chart(fig_pie, use_container_width=True)
-
-    st.subheader("⏰ Informes programados")
-    with st.expander("Configurar informe automático"):
-        report_freq = st.selectbox(
-            "Frecuencia", ["Diario", "Semanal (lunes)", "Mensual (día 1)"], key="bi_report_freq"
-        )
-        report_recipients = st.text_input(
-            "Destinatarios (emails separados por coma)", key="bi_report_recipients"
-        )
-        if st.button("💾 Guardar configuración de informe", key="bi_save_report"):
-            st.success(f"✅ Informe {report_freq} configurado para: {report_recipients or '(ninguno)'}")
-
-    st.subheader("🔍 Exploración de datos")
-    query_example = st.selectbox(
-        "Consulta rápida",
-        [
-            "¿Cuáles son mis 5 clientes con más revenue este mes?",
-            "¿Qué segmento tiene la mayor tasa de crecimiento?",
-            "¿Cuántas ofertas están en riesgo de expirar esta semana?",
-            "¿Cuál es el win rate por comercial?",
-        ],
-        key="bi_query",
-    )
-    if st.button("▶️ Ejecutar consulta", key="bi_run_query"):
-        st.info(
-            f"💡 Consulta: *{query_example}* — "
-            "Integra tu fuente de datos real para obtener respuestas en tiempo real."
-        )
 
 
 # ──────────────────────────────────────────────────────────────
@@ -1872,35 +2016,20 @@ def main() -> None:
     init_session_state()
 
     if st.session_state.user is None:
-        refresh_auth_from_supabase()
+        if SUPABASE_CONFIGURED:
+            refresh_auth_from_supabase()
+        if st.session_state.user is None or st.session_state.profile is None:
+            login_form()
+            return
 
-    if not st.session_state.user or not st.session_state.profile:
-        login_form()
-        return
+    show_sidebar()
 
-    page = show_sidebar()
-    if page == "dashboard":
-        page_dashboard()
-    elif page == "actions":
-        page_actions()
-    elif page == "requests":
-        page_requests()
-    elif page == "offers":
-        page_offers()
-    elif page == "users":
-        page_users()
-    elif page == "cost_modules":
-        page_cost_modules()
-    elif page == "invites":
-        page_invites()
-    # ── PROFESSIONAL_ROUTING_START ──
-    elif page == "business_intelligence":
-        page_business_intelligence()
-    elif page == "budget_command_center":
-        page_budget_command_center()
-    elif page == "key_account_management":
-        page_key_account_management()
-    # ── PROFESSIONAL_ROUTING_END ──
+    active = st.session_state.get("active_page", "Dashboard")
+    page_fn = _PAGE_MAP.get(active)
+    if page_fn:
+        page_fn()
+    else:
+        page_placeholder(active)
 
 
 if __name__ == "__main__":

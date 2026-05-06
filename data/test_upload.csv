@@ -1,0 +1,6 @@
+empresa,contacto,telefono,email,producto,importe,estado,fecha
+ACME Corp,Juan García,+34 612 345 678,juan@acme.es,Sistema automatización,45000,activo,2024-01-15
+Industrias XYZ,María López,+34 634 567 890,maria@xyz.es,Línea montaje,120000,en_proceso,2024-02-01
+Beta Manufacturing,Carlos Ruiz,+34 678 901 234,carlos@beta.es,Robot colaborativo,85000,activo,2024-02-15
+Global Parts,Ana Martínez,+34 650 123 456,ana@globalparts.es,Inspección calidad,30000,pendiente,2024-03-01
+TechFactory,Pedro Sánchez,+34 690 234 567,pedro@techfactory.es,Control numérico,67000,activo,2024-03-15
