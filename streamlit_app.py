@@ -493,6 +493,7 @@ def login_form() -> None:
                                 st.session_state.user = user
                                 st.session_state.session = response.session
                                 st.session_state.profile = profile
+                                _sb_companies_load()
                                 st.rerun()
                         except Exception as exc:
                             st.error(f"Error al iniciar sesión: {exc}")
@@ -939,12 +940,54 @@ def show_sidebar() -> None:
     is_quick = st.session_state.get("is_quick_access", False)
     effective_role = "admin" if FULL_ACCESS_ALL_USERS else role
 
+    # Ensure companies are loaded on first render (handles page refreshes)
+    if SUPABASE_CONFIGURED and supabase is not None and not st.session_state.get("_companies_loaded"):
+        _sb_companies_load()
+        st.session_state["_companies_loaded"] = True
+
     with st.sidebar:
         st.title("⚙️ Sales Engine")
         st.caption("INGECART CRM")
         st.divider()
         st.write(f"**👤 {name}**")
         st.write(f"🏢 {department}")
+
+        # ── Active company badge ───────────────────────────────
+        active = st.session_state.get("active_company") or {}
+        active_name = active.get("company_name") or active.get("name", "")
+        if active_name:
+            st.success(f"📌 **{active_name}**", icon="🏢")
+        else:
+            companies = st.session_state.get("saved_companies", [])
+            if companies:
+                # Auto-activate the first company if none is selected
+                _sb_set_active_company(companies[0])
+                active_name = companies[0].get("company_name") or companies[0].get("name", "")
+                st.success(f"📌 **{active_name}**", icon="🏢")
+            else:
+                st.caption("Sin empresa activa — ve a **Company Info**")
+
+        # ── Quick company switcher (if more than one) ─────────
+        companies = st.session_state.get("saved_companies", [])
+        if len(companies) > 1:
+            company_names = [c.get("company_name") or c.get("name", f"#{i}") for i, c in enumerate(companies)]
+            current_idx = next(
+                (i for i, c in enumerate(companies) if c.get("id") == active.get("id")),
+                0,
+            )
+            chosen_name = st.selectbox(
+                "Cambiar empresa",
+                company_names,
+                index=current_idx,
+                key="sidebar_company_switcher",
+                label_visibility="collapsed",
+            )
+            if chosen_name != active_name:
+                chosen = next((c for c in companies if (c.get("company_name") or c.get("name")) == chosen_name), None)
+                if chosen:
+                    _sb_set_active_company(chosen)
+                    st.rerun()
+
         if is_quick:
             st.warning("⚡ Sesión de invitado")
         if not SUPABASE_CONFIGURED:
@@ -1219,6 +1262,168 @@ def _persist_local_workspace() -> None:
 
 
 # ──────────────────────────────────────────────────────────────
+# Supabase shared-state helpers  ("open office" model)
+# All functions below are no-ops when Supabase is not configured
+# so the app keeps running in demo/local mode seamlessly.
+# ──────────────────────────────────────────────────────────────
+
+def _current_user_info() -> Dict[str, Any]:
+    """Return minimal user context for audit / activity_log writes."""
+    profile = st.session_state.get("profile") or {}
+    user = st.session_state.get("user")
+    user_id = profile.get("id") or (getattr(user, "id", None) or "anonymous")
+    return {
+        "user_id": str(user_id),
+        "user_email": profile.get("email", ""),
+        "user_name": profile.get("name", ""),
+    }
+
+
+def _sb_companies_load() -> None:
+    """Load all companies from Supabase into session_state.
+
+    Sets:
+      session_state["saved_companies"]  – list of dicts (display)
+      session_state["companies_by_id"]  – {id: record}  (fast lookup)
+
+    Falls back silently when Supabase is not configured.
+    """
+    if not SUPABASE_CONFIGURED or supabase is None:
+        return
+    try:
+        rows = supabase.table("companies").select("*").order("company_name").execute().data or []
+        st.session_state["saved_companies"] = rows
+        st.session_state["companies_by_id"] = {r["id"]: r for r in rows}
+        _logger.info("_sb_companies_load: loaded %d companies", len(rows))
+    except Exception as exc:
+        _logger.warning("_sb_companies_load error: %s", exc)
+
+
+def _sb_company_upsert(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Upsert a company record to Supabase and refresh the local cache.
+
+    ``data`` should use the Supabase column names (``company_name``, etc.).
+    If ``data`` contains an ``id`` the row is updated; otherwise inserted.
+
+    Returns the persisted record (with its ``id``) or None on failure.
+    """
+    if not SUPABASE_CONFIGURED or supabase is None:
+        return None
+    try:
+        if "id" in data and data["id"]:
+            result = supabase.table("companies").update(data).eq("id", data["id"]).execute()
+        else:
+            result = supabase.table("companies").insert(data).execute()
+        record = (result.data or [{}])[0]
+        _sb_companies_load()
+        return record
+    except Exception as exc:
+        _logger.warning("_sb_company_upsert error: %s", exc)
+        return None
+
+
+def _sb_activity_log(
+    action_type: str,
+    description: str,
+    entity_type: Optional[str] = None,
+    entity_id: Optional[str] = None,
+    company_id: Optional[str] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Append one event to the shared activity_log table.
+
+    This is the "open office noticeboard" — every significant user action
+    writes here so teammates can see what's happening in real time.
+    """
+    if not SUPABASE_CONFIGURED or supabase is None:
+        return
+    try:
+        ui = _current_user_info()
+        payload: Dict[str, Any] = {
+            **ui,
+            "action_type": action_type,
+            "description": description,
+            "entity_type": entity_type,
+            "entity_id": str(entity_id) if entity_id else None,
+            "company_id": company_id or None,
+            "metadata": metadata or {},
+        }
+        supabase.table("activity_log").insert(payload).execute()
+    except Exception as exc:
+        _logger.warning("_sb_activity_log error: %s", exc)
+
+
+def _sb_insights_save(agent_results: Dict[str, Any], source_module: str = "orchestrator") -> None:
+    """Persist orchestrator output as shared Insights in Supabase.
+
+    Each agent result becomes one insight row, scoped to the currently active
+    company (if set) so colleagues can see the AI analysis.
+    """
+    if not SUPABASE_CONFIGURED or supabase is None:
+        return
+    active = st.session_state.get("active_company") or {}
+    company_id: Optional[str] = active.get("id")
+    rows: List[Dict[str, Any]] = []
+    for agent_name, output in agent_results.items():
+        if agent_name.startswith("_"):
+            continue
+        if isinstance(output, dict):
+            summary = output.get("summary") or output.get("output") or str(output)[:500]
+            confidence = float(output.get("confidence", 0.8))
+        else:
+            summary = str(output)[:500]
+            confidence = 0.8
+        rows.append(
+            {
+                "company_id": company_id,
+                "insight_type": "agent_output",
+                "title": f"[{source_module}] {agent_name}",
+                "summary": summary,
+                "confidence": confidence,
+                "source_module": source_module,
+                "metadata": {"agent": agent_name, "action": source_module},
+            }
+        )
+    if not rows:
+        return
+    try:
+        supabase.table("insights").insert(rows).execute()
+        _logger.info("_sb_insights_save: wrote %d insights for module=%s", len(rows), source_module)
+    except Exception as exc:
+        _logger.warning("_sb_insights_save error: %s", exc)
+
+
+def _sb_fetch_activity_feed(limit: int = 20) -> List[Dict[str, Any]]:
+    """Return recent activity_log rows for the shared dashboard feed."""
+    if not SUPABASE_CONFIGURED or supabase is None:
+        return []
+    try:
+        return (
+            supabase.table("activity_log")
+            .select("*")
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+            .data or []
+        )
+    except Exception as exc:
+        _logger.warning("_sb_fetch_activity_feed error: %s", exc)
+        return []
+
+
+def _sb_set_active_company(company: Dict[str, Any]) -> None:
+    """Set the active company in session_state and log the switch."""
+    st.session_state["active_company"] = company
+    _sb_activity_log(
+        action_type="company_selected",
+        description=f"Empresa activa: {company.get('company_name', company.get('name', '?'))}",
+        entity_type="company",
+        entity_id=company.get("id"),
+        company_id=company.get("id"),
+    )
+
+
+# ──────────────────────────────────────────────────────────────
 # Maximum Orchestration helper (used by every page)
 # ──────────────────────────────────────────────────────────────
 
@@ -1280,6 +1485,15 @@ def _render_orchestrator_panel(
     if results:
         st.session_state["last_analysis_results"] = results
         st.session_state["last_analysis_action"] = action
+        # Persist agent cascade outputs to shared Supabase tables
+        _sb_insights_save(results, source_module=action)
+        _sb_activity_log(
+            action_type="agents_run",
+            description=f"Cascada de agentes ejecutada — módulo: {action} ({len([k for k in results if not k.startswith('_')])} agentes)",
+            entity_type="analysis",
+            company_id=(st.session_state.get("active_company") or {}).get("id"),
+            metadata={"action": action, "n_agents": len([k for k in results if not k.startswith("_")])},
+        )
         _render_orchestration_results(results)
 
     return results
@@ -1374,6 +1588,8 @@ def page_dashboard() -> None:
             st.plotly_chart(px.pie(df, names="status", title="Actions by status"), use_container_width=True)
 
     st.subheader("Últimas acciones")
+    active = st.session_state.get("active_company") or {}
+    active_id = active.get("id")
     recent = sorted(
         actions,
         key=lambda x: _field(x, "last_modified", "created_at", default=""),
@@ -1383,9 +1599,59 @@ def page_dashboard() -> None:
         status = _field(row, "status", default="open")
         emoji = "🔴" if status == "open" else "🟡" if status == "on-going" else "✅"
         st.write(
-            f"{emoji} **{_field(row, 'name', default='(sin nombre)')}** — "
-            f"{_field(row, 'goal', default='')}"
+            f"{emoji} **{_field(row, 'name', 'title', default='(sin nombre)')}** — "
+            f"{_field(row, 'goal', 'description', default='')}"
         )
+
+    # ── Shared activity feed ("open office noticeboard") ──────
+    st.divider()
+    st.subheader("📣 Actividad reciente del equipo")
+    feed = safe_execute(_sb_fetch_activity_feed, [])
+    if feed:
+        _ACTION_ICONS = {
+            "company_saved": "🏢",
+            "company_selected": "📌",
+            "agents_run": "🤖",
+            "action_created": "📋",
+            "offer_created": "📄",
+            "contact_added": "👤",
+        }
+        for event in feed[:15]:
+            ts_raw = event.get("created_at", "")
+            try:
+                ts = datetime.fromisoformat(ts_raw.replace("Z", "+00:00")).strftime("%d/%m %H:%M")
+            except Exception:
+                ts = ts_raw[:16]
+            icon = _ACTION_ICONS.get(event.get("action_type", ""), "💬")
+            user_label = event.get("user_name") or event.get("user_email", "?")
+            st.caption(
+                f"{icon} **{user_label}** · {event.get('description', '')} &nbsp; _{ts}_"
+            )
+    else:
+        st.caption("Sin actividad reciente registrada.")
+
+    # ── Recent AI insights for active company ─────────────────
+    if active_id:
+        try:
+            insights_rows = (
+                supabase.table("insights")
+                .select("title,summary,source_module,created_at")
+                .eq("company_id", active_id)
+                .order("created_at", desc=True)
+                .limit(5)
+                .execute()
+                .data or []
+            )
+            if insights_rows:
+                st.divider()
+                st.subheader(f"🧠 Últimos insights IA — {active.get('company_name', '')}")
+                for ins in insights_rows:
+                    with st.expander(ins.get("title", "Insight"), expanded=False):
+                        st.write(ins.get("summary", ""))
+                        st.caption(f"Módulo: {ins.get('source_module', '')} · {ins.get('created_at', '')[:16]}")
+        except Exception:
+            pass
+
     st.divider()
     _render_orchestrator_panel(action="dashboard")
 
@@ -1716,12 +1982,52 @@ def page_weekly_planner() -> None:
 def page_saved_companies() -> None:
     st.title("🏢 Saved Companies — Empresas Guardadas")
     st.markdown("Directorio de empresas clave con análisis de contexto.")
+
+    # Always refresh from Supabase so everyone sees up-to-date data.
+    if SUPABASE_CONFIGURED and supabase is not None:
+        _sb_companies_load()
+
     saved = st.session_state.get("saved_companies", [])
+    active = st.session_state.get("active_company") or {}
+    active_id = active.get("id", "")
+
     if saved:
-        st.success(f"✅ {len(saved)} empresas guardadas")
-        st.dataframe(pd.DataFrame(saved), use_container_width=True)
+        st.success(f"✅ {len(saved)} empresa(s) disponible(s)")
+
+        # Company selector: click to set as active context
+        for company in saved:
+            cid = company.get("id", "")
+            cname = company.get("company_name") or company.get("name", "(sin nombre)")
+            is_active = cid == active_id
+            col_a, col_b = st.columns([5, 1])
+            with col_a:
+                badge = "🟢 **ACTIVA**  " if is_active else ""
+                st.markdown(
+                    f"{badge}🏢 **{cname}** &nbsp; "
+                    f"_{company.get('industry', company.get('sector', ''))}_ &nbsp; "
+                    f"{company.get('headquarters', company.get('country', ''))}"
+                )
+            with col_b:
+                if not is_active:
+                    if st.button("Activar", key=f"activate_{cid}", use_container_width=True):
+                        _sb_set_active_company(company)
+                        st.rerun()
+                else:
+                    st.success("✓")
+
+        st.divider()
+        with st.expander("📋 Vista tabla completa"):
+            display_cols = [
+                c for c in ["company_name", "name", "industry", "sector",
+                             "headquarters", "country", "sub_sector", "segment",
+                             "employee_count", "annual_revenue", "created_at"]
+                if any(c in r for r in saved)
+            ]
+            st.dataframe(pd.DataFrame(saved)[display_cols] if display_cols else pd.DataFrame(saved),
+                         use_container_width=True)
     else:
         st.info("No hay empresas guardadas. Añade empresas desde **Company Info**.")
+
     st.divider()
     _render_orchestrator_panel(action="saved_companies")
 
@@ -1729,26 +2035,106 @@ def page_saved_companies() -> None:
 def page_company_info() -> None:
     st.title("ℹ️ Company Info — Información de Empresa")
     st.markdown("Ficha completa de empresa: sector, tamaño, KAMs, y análisis de cuenta.")
+
+    active = st.session_state.get("active_company") or {}
+    if active:
+        st.info(
+            f"🟢 Empresa activa: **{active.get('company_name', active.get('name', ''))}**  "
+            f"— puedes editar sus datos en el formulario de abajo."
+        )
+
     with st.form("company_form"):
         col1, col2 = st.columns(2)
-        company_name = col1.text_input("Nombre de empresa", placeholder="ACME Corp.")
-        country = col2.text_input("País", placeholder="España")
-        sector = col1.text_input("Sector", placeholder="Automatización Industrial")
-        segment = col2.text_input("Segmento", placeholder="Manufacturing")
-        notes = st.text_area("Notas / contexto", placeholder="Información relevante sobre la cuenta...")
+        default_name = active.get("company_name", active.get("name", ""))
+        company_name = col1.text_input("Nombre de empresa", value=default_name, placeholder="ACME Corp.")
+        country = col2.text_input(
+            "País / Sede",
+            value=active.get("headquarters", active.get("country", "")),
+            placeholder="España",
+        )
+        sector = col1.text_input(
+            "Sector / Industria",
+            value=active.get("industry", active.get("sector", "")),
+            placeholder="Automatización Industrial",
+        )
+        segment = col2.text_input(
+            "Sub-sector / Segmento",
+            value=active.get("sub_sector", active.get("segment", "")),
+            placeholder="Manufacturing",
+        )
+        notes = st.text_area(
+            "Notas / contexto",
+            value=active.get("additional_notes", active.get("notes", "")),
+            placeholder="Información relevante sobre la cuenta...",
+        )
         submitted = st.form_submit_button("💾 Guardar empresa", use_container_width=True)
+
     if submitted and company_name:
-        companies = st.session_state.get("saved_companies", [])
-        companies.append({
-            "name": company_name, "country": country, "sector": sector,
-            "segment": segment, "notes": notes,
-        })
-        st.session_state["saved_companies"] = companies
-        _persist_local_workspace()
-        st.success(f"✅ '{company_name}' guardada. Total: {len(companies)} empresas.")
+        sb_payload: Dict[str, Any] = {
+            "company_name": company_name,
+            "headquarters": country,
+            "industry": sector,
+            "sub_sector": segment,
+            "additional_notes": notes,
+        }
+        # Preserve the id when editing an existing record
+        if active.get("id"):
+            sb_payload["id"] = active["id"]
+
+        if SUPABASE_CONFIGURED and supabase is not None:
+            record = _sb_company_upsert(sb_payload)
+            if record:
+                st.session_state["active_company"] = record
+                _sb_activity_log(
+                    action_type="company_saved",
+                    description=f"Empresa guardada/actualizada: {company_name}",
+                    entity_type="company",
+                    entity_id=record.get("id"),
+                    company_id=record.get("id"),
+                    metadata={"company_name": company_name, "sector": sector},
+                )
+                st.success(f"✅ '{company_name}' guardada en Supabase y establecida como empresa activa.")
+            else:
+                st.warning("⚠️ No se pudo guardar en Supabase. Guardando localmente.")
+                _local_company_fallback(sb_payload)
+        else:
+            _local_company_fallback(sb_payload)
+            st.success(f"✅ '{company_name}' guardada localmente.")
         st.rerun()
+
     st.divider()
     _render_orchestrator_panel(action="company_info")
+
+
+def _local_company_fallback(data: Dict[str, Any]) -> None:
+    """Persist company data in session_state and local workspace when Supabase is unavailable."""
+    companies = st.session_state.get("saved_companies", [])
+    # Map Supabase column names → legacy display keys if needed
+    record = {
+        "name": data.get("company_name", data.get("name", "")),
+        "company_name": data.get("company_name", data.get("name", "")),
+        "country": data.get("headquarters", data.get("country", "")),
+        "headquarters": data.get("headquarters", data.get("country", "")),
+        "sector": data.get("industry", data.get("sector", "")),
+        "industry": data.get("industry", data.get("sector", "")),
+        "segment": data.get("sub_sector", data.get("segment", "")),
+        "sub_sector": data.get("sub_sector", data.get("segment", "")),
+        "notes": data.get("additional_notes", data.get("notes", "")),
+        "additional_notes": data.get("additional_notes", data.get("notes", "")),
+    }
+    if data.get("id"):
+        record["id"] = data["id"]
+        for i, c in enumerate(companies):
+            if c.get("id") == data["id"]:
+                companies[i] = record
+                break
+        else:
+            companies.append(record)
+    else:
+        companies.append(record)
+    st.session_state["saved_companies"] = companies
+    st.session_state["active_company"] = record
+    _persist_local_workspace()
 
 
 def page_company_setup() -> None:
@@ -2162,6 +2548,13 @@ def page_actions() -> None:
                     }
                     try:
                         supabase.table("actions").insert(payload).execute()
+                        _sb_activity_log(
+                            action_type="action_created",
+                            description=f"Acción creada: {payload.get('name', payload.get('title', ''))}",
+                            entity_type="action",
+                            company_id=(st.session_state.get("active_company") or {}).get("id"),
+                            metadata={"status": status, "department": department},
+                        )
                         st.success("Acción creada")
                         st.rerun()
                     except Exception as exc:
@@ -2302,6 +2695,13 @@ def page_requests() -> None:
                 }
                 try:
                     supabase.table("customer_requests").insert(payload).execute()
+                    _sb_activity_log(
+                        action_type="request_created",
+                        description=f"Solicitud cliente: {payload.get('company', '')} — {payload.get('description', '')[:60]}",
+                        entity_type="customer_request",
+                        company_id=(st.session_state.get("active_company") or {}).get("id"),
+                        metadata={"company": payload.get("company", "")},
+                    )
                     st.success("Solicitud creada")
                     st.rerun()
                 except Exception as exc:
