@@ -1,7 +1,8 @@
 """
 ADAPTIVE SALES ENGINE - STREAMLIT INTERFACE
 Multi-user access with Supabase Auth + shared Supabase DB.
-Sidebar reorganized per spec. Universal data upload. Agent integration.
+Sidebar reorganized per spec. Universal data upload.
+Maximum Agent Orchestration: all agents execute on every user action.
 """
 
 from __future__ import annotations
@@ -25,6 +26,20 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 from dotenv import load_dotenv
+
+# ── Maximum Orchestrator ──────────────────────────────────────────
+try:
+    from orchestrator import get_max_orchestrator
+    _ORCHESTRATOR_AVAILABLE = True
+except Exception as _orch_exc:
+    _ORCHESTRATOR_AVAILABLE = False
+    logging.getLogger(__name__).warning("MaximumOrchestrator not available: %s", _orch_exc)
+
+try:
+    from modules.template_generator import get_template_bytes, template_info
+    _TEMPLATES_AVAILABLE = True
+except Exception:
+    _TEMPLATES_AVAILABLE = False
 
 # ── Optional heavy imports ────────────────────────────────────────
 try:
@@ -730,6 +745,7 @@ _NAV_STRUCTURE: List[tuple] = [
         ("Monitoring",           "📡"),
         ("Offer & Pricing",      "💼"),
         ("Data Upload",          "📤"),
+        ("Company Setup",        "⚙️"),
     ]),
     ("🔄 After Sales", [
         ("After-Sales Engine", "🔧"),
@@ -989,6 +1005,120 @@ def run_agent(agent_path: str, data: Optional[pd.DataFrame] = None) -> str:
 
 
 # ──────────────────────────────────────────────────────────────
+# Maximum Orchestration helper (used by every page)
+# ──────────────────────────────────────────────────────────────
+
+# Maximum number of agent tabs to show in the UI (Streamlit has soft tab limits)
+_MAX_AGENT_TABS = 12
+# Max characters to display for agent text output preview
+_MAX_AGENT_OUTPUT_PREVIEW = 500
+# Average after-sales opportunities per installed-base account (heuristic)
+_AVG_OPPS_PER_ACCOUNT = 3
+
+
+def _build_context(action: str, extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Build a standard context dict for the orchestrator."""
+    ctx: Dict[str, Any] = {
+        "action": action,
+        "uploaded_data": st.session_state.get("uploaded_data_universal"),
+        "saved_companies": st.session_state.get("saved_companies", []),
+        "estrategia_data": st.session_state.get("estrategia_data"),
+        "portfolio_risk": st.session_state.get("portfolio_risk"),
+    }
+    if extra:
+        ctx.update(extra)
+    return ctx
+
+
+def _render_orchestrator_panel(
+    action: str,
+    button_label: str = "🚀 Ejecutar análisis con TODOS los agentes",
+    auto_run: bool = False,
+    extra_context: Optional[Dict[str, Any]] = None,
+) -> Optional[Dict[str, Any]]:
+    """
+    Renders the orchestrator run button (or runs automatically if auto_run=True).
+    Returns the full results dict if executed, else None.
+    """
+    if not _ORCHESTRATOR_AVAILABLE:
+        st.warning("⚠️ Orchestrator no disponible. Verifica orchestrator.py en la raíz.")
+        return None
+
+    orch = get_max_orchestrator()
+    n_agents = len(orch.agents)
+    results: Optional[Dict[str, Any]] = None
+
+    if auto_run:
+        context = _build_context(action, extra_context)
+        with st.spinner(f"⚡ Ejecutando {n_agents} agentes en paralelo…"):
+            results = orch.execute_all_agents(context)
+    else:
+        if st.button(
+            f"{button_label}  ({n_agents} agentes)",
+            type="primary",
+            use_container_width=True,
+            key=f"orch_btn_{action}",
+        ):
+            context = _build_context(action, extra_context)
+            with st.spinner(f"⚡ Ejecutando {n_agents} agentes en paralelo…"):
+                results = orch.execute_all_agents(context)
+
+    if results:
+        st.session_state["last_analysis_results"] = results
+        st.session_state["last_analysis_action"] = action
+        _render_orchestration_results(results)
+
+    return results
+
+
+def _render_orchestration_results(results: Dict[str, Any]) -> None:
+    """Renders summary + per-agent tabs."""
+    summary = results.get("_summary", "")
+    if summary:
+        st.markdown(summary)
+
+    agent_names = [k for k in results if not k.startswith("_")]
+    if not agent_names:
+        return
+
+    st.subheader("📁 Outputs detallados por agente")
+    # Limit to _MAX_AGENT_TABS tabs to avoid Streamlit tab overflow
+    display_names = agent_names[:_MAX_AGENT_TABS]
+    if len(agent_names) > _MAX_AGENT_TABS:
+        st.caption(f"Mostrando {_MAX_AGENT_TABS} de {len(agent_names)} agentes. Ver Agent Hub para todos.")
+
+    tabs = st.tabs(display_names)
+    for tab, name in zip(tabs, display_names):
+        with tab:
+            output = results[name]
+            if isinstance(output, dict):
+                status = output.get("status", "")
+                if status in ("error", "load_error", "timeout"):
+                    st.error(output.get("error") or output.get("output", "Error"))
+                else:
+                    agent_out = output.get("output")
+                    if agent_out:
+                        st.success(str(agent_out)[:_MAX_AGENT_OUTPUT_PREVIEW])
+                    insights = output.get("insights") or []
+                    if insights:
+                        for ins in insights[:5]:
+                            st.markdown(f"• {ins}")
+                    # Show any special data
+                    for special_key in ("tasks", "opportunities", "matrix", "account_maps", "gaps", "critical_clients"):
+                        special_val = output.get(special_key)
+                        if special_val and isinstance(special_val, list) and special_val:
+                            st.dataframe(pd.DataFrame(special_val), use_container_width=True)
+                            break
+                    with st.expander("Ver JSON completo", expanded=False):
+                        safe = {k: v for k, v in output.items() if not isinstance(v, pd.DataFrame)}
+                        st.json(safe)
+            elif isinstance(output, pd.DataFrame):
+                st.dataframe(output, use_container_width=True)
+            else:
+                st.write(str(output)[:1000])
+
+
+# ──────────────────────────────────────────────────────────────
 # Dashboard
 # ──────────────────────────────────────────────────────────────
 
@@ -1009,6 +1139,8 @@ def page_dashboard() -> None:
         if df_loaded is not None:
             st.subheader("Datos cargados en memoria")
             st.dataframe(df_loaded.head(10), use_container_width=True)
+        st.divider()
+        _render_orchestrator_panel(action="dashboard")
         return
 
     def _fetch_actions():
@@ -1040,6 +1172,8 @@ def page_dashboard() -> None:
             f"{emoji} **{_field(row, 'name', default='(sin nombre)')}** — "
             f"{_field(row, 'goal', default='')}"
         )
+    st.divider()
+    _render_orchestrator_panel(action="dashboard")
 
 
 # ──────────────────────────────────────────────────────────────
@@ -1071,15 +1205,517 @@ def page_portfolio_analysis() -> None:
             )
     else:
         st.info("Sube datos en **Data Upload** para visualizarlos aquí.")
+    st.divider()
+    _render_orchestrator_panel(action="portfolio_analysis")
 
 
-def page_placeholder(title: str, icon: str = "🚧") -> None:
+def page_placeholder(title: str, icon: str = "🚧", action: str = "") -> None:
     st.title(f"{icon} {title}")
-    st.info(f"Módulo **{title}** en construcción. Disponible en próximas versiones.")
     df = st.session_state.get("uploaded_data_universal")
     if df is not None:
-        st.subheader("Datos actualmente cargados")
-        st.dataframe(df.head(10), use_container_width=True)
+        st.info(f"📊 Datos disponibles: {df.shape[0]:,} filas × {df.shape[1]} columnas")
+    else:
+        st.info("💡 Sube datos en **Data Upload** para activar análisis completo.")
+    st.divider()
+    _render_orchestrator_panel(action=action or title.lower().replace(" ", "_").replace("º", ""))
+
+
+# ──────────────────────────────────────────────────────────────
+# 7-Pillar Pages (orchestrator-powered)
+# ──────────────────────────────────────────────────────────────
+
+
+def page_360_analysis() -> None:
+    st.title("🔄 360º Analysis — Análisis Integral")
+    st.markdown(
+        "**Pilar 0** — Visión 360º del negocio: clientes, productos, territorios y KAMs. "
+        "Todos los agentes trabajan en paralelo para darte la imagen completa."
+    )
+    df = st.session_state.get("uploaded_data_universal")
+    if df is not None:
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Filas de datos", f"{df.shape[0]:,}")
+        c2.metric("Variables", df.shape[1])
+        c3.metric("Registros nulos", int(df.isnull().sum().sum()))
+        with st.expander("📊 Vista previa de datos"):
+            st.dataframe(df.head(8), use_container_width=True)
+    else:
+        st.info("📂 Sube datos en **Data Upload** o **Company Setup** para análisis 360º.")
+    st.divider()
+    _render_orchestrator_panel(action="360_analysis")
+
+
+def page_sales_architecture() -> None:
+    st.title("🏗️ Sales Architecture — Arquitectura Comercial Global")
+    st.markdown(
+        "**Pilar 1** — Diseño del sistema comercial: segmentación, cobertura territorial, "
+        "modelo de canales y estructura de la fuerza de ventas."
+    )
+    df = st.session_state.get("uploaded_data_universal")
+    if df is not None:
+        # Quick segmentation view
+        seg_candidates = ["Segment", "segmento", "Geographical Area", "Customer Country"]
+        shown = False
+        for c in seg_candidates:
+            matched = [col for col in df.columns if col.lower() == c.lower()]
+            if matched:
+                counts = df[matched[0]].value_counts().head(10)
+                st.subheader(f"Distribución por {matched[0]}")
+                st.plotly_chart(
+                    px.bar(counts.reset_index(), x=matched[0], y="count",
+                           title=f"Top 10 {matched[0]}"),
+                    use_container_width=True,
+                )
+                shown = True
+                break
+        if not shown:
+            st.info("Sube datos con columnas de Segment o Geographical Area para visualización.")
+    st.divider()
+    _render_orchestrator_panel(action="sales_architecture")
+
+
+def page_key_account_management() -> None:
+    st.title("🔑 Key Account Management — Gestión de Cuentas Clave")
+    st.markdown(
+        "**Pilar 2** — Sistemas de valor en cuentas clave: mapeo de stakeholders, "
+        "planes de cuenta y estrategias de penetración."
+    )
+    df = st.session_state.get("uploaded_data_universal")
+    if df is not None:
+        rev_col = None
+        cust_col = None
+        for c in ["Selling Price", "revenue", "ventas", "amount"]:
+            matched = [col for col in df.columns if col.lower() == c.lower()]
+            if matched:
+                rev_col = matched[0]
+                break
+        for c in ["Customer Name", "customer", "cliente"]:
+            matched = [col for col in df.columns if col.lower() == c.lower()]
+            if matched:
+                cust_col = matched[0]
+                break
+        if cust_col and rev_col:
+            top_df = (
+                df.groupby(cust_col)[rev_col]
+                .apply(lambda s: pd.to_numeric(s, errors="coerce").fillna(0).sum())
+                .sort_values(ascending=False)
+                .head(10)
+                .reset_index()
+            )
+            top_df.columns = ["Cliente", "Revenue Total"]
+            st.subheader("🏆 Top 10 Cuentas por Revenue")
+            st.plotly_chart(
+                px.bar(top_df, x="Cliente", y="Revenue Total",
+                       color="Revenue Total", color_continuous_scale="Blues"),
+                use_container_width=True,
+            )
+    else:
+        st.info("Sube datos en **Data Upload** para ver el ranking de cuentas clave.")
+    st.divider()
+    _render_orchestrator_panel(action="key_account_management")
+
+
+def page_after_sales_engine() -> None:
+    st.title("🔧 After-Sales Engine — Motor de Beneficio Postventa")
+    st.markdown(
+        "**Pilar 3** — Monetizar la base instalada: contratos de mantenimiento, "
+        "upgrades, cross-selling y upselling en clientes existentes."
+    )
+    df = st.session_state.get("uploaded_data_universal")
+    if df is not None:
+        cust_col = None
+        for c in ["Customer Name", "customer", "cliente"]:
+            matched = [col for col in df.columns if col.lower() == c.lower()]
+            if matched:
+                cust_col = matched[0]
+                break
+        if cust_col:
+            n_accounts = df[cust_col].nunique()
+            st.metric("🏢 Cuentas en base instalada", n_accounts)
+            st.info(
+                f"Potencial: {n_accounts} cuentas × avg. 2.5 oportunidades = "
+                f"~{n_accounts * _AVG_OPPS_PER_ACCOUNT} oportunidades post-venta identificables"
+            )
+    st.divider()
+    _render_orchestrator_panel(action="after_sales_engine")
+
+
+def page_ai_augmented_sales() -> None:
+    st.title("🤖 AI-Augmented Sales — Venta Aumentada con IA")
+    st.markdown(
+        "**Pilar 4** — Procesos de venta potenciados con inteligencia artificial: "
+        "scoring de oportunidades, next-best-action y automatización comercial."
+    )
+    st.info(
+        "Este módulo combina el análisis de todos los agentes de IA para generar "
+        "recomendaciones de acción específicas para cada oportunidad."
+    )
+    st.divider()
+    _render_orchestrator_panel(action="ai_augmented_sales")
+
+
+def page_behavioral_transform() -> None:
+    st.title("🧠 Behavioral Transform — Transformación del Comportamiento")
+    st.markdown(
+        "**Pilar 5** — Cambio de comportamiento comercial: de ventas reactivas "
+        "a creación proactiva de valor. Análisis de patrones de comportamiento."
+    )
+    df = st.session_state.get("uploaded_data_universal")
+    if df is not None:
+        kam_col = None
+        for c in ["KAM", "commercial", "vendedor", "sales rep"]:
+            matched = [col for col in df.columns if col.lower() == c.lower()]
+            if matched:
+                kam_col = matched[0]
+                break
+        if kam_col:
+            kam_stats = df[kam_col].value_counts().head(8)
+            st.subheader("📊 Actividad por KAM")
+            st.plotly_chart(
+                px.pie(kam_stats.reset_index(), values="count", names=kam_col,
+                       title="Distribución de operaciones por KAM"),
+                use_container_width=True,
+            )
+    st.divider()
+    _render_orchestrator_panel(action="behavioral_transform")
+
+
+def page_product_strategy() -> None:
+    st.title("📦 Product Strategy — Posicionamiento de Producto y Valor")
+    st.markdown(
+        "**Pilar 6** — Estrategia de producto: posicionamiento, pricing, "
+        "lifecycle management y propuestas de valor diferenciadas."
+    )
+    df = st.session_state.get("uploaded_data_universal")
+    if df is not None:
+        fam_col = None
+        rev_col = None
+        for c in ["Scope product Family", "product Family", "familia"]:
+            matched = [col for col in df.columns if col.lower() == c.lower()]
+            if matched:
+                fam_col = matched[0]
+                break
+        for c in ["Selling Price", "revenue", "ventas", "amount"]:
+            matched = [col for col in df.columns if col.lower() == c.lower()]
+            if matched:
+                rev_col = matched[0]
+                break
+        if fam_col and rev_col:
+            prod_rev = (
+                df.groupby(fam_col)[rev_col]
+                .apply(lambda s: pd.to_numeric(s, errors="coerce").fillna(0).sum())
+                .sort_values(ascending=False)
+                .head(10)
+                .reset_index()
+            )
+            prod_rev.columns = ["Familia", "Revenue"]
+            st.subheader("📊 Revenue por Familia de Producto")
+            st.plotly_chart(
+                px.treemap(prod_rev, path=["Familia"], values="Revenue",
+                           title="Revenue por Familia"),
+                use_container_width=True,
+            )
+    st.divider()
+    _render_orchestrator_panel(action="product_strategy")
+
+
+def page_business_intelligence() -> None:
+    st.title("🔍 Business Intelligence — Inteligencia de Negocio")
+    st.markdown("Análisis avanzado de datos comerciales: tendencias, patrones y KPIs estratégicos.")
+    df = st.session_state.get("uploaded_data_universal")
+    if df is not None:
+        st.subheader("📈 Análisis exploratorio")
+        numeric_cols = df.select_dtypes(include="number").columns.tolist()
+        cat_cols = df.select_dtypes(exclude="number").columns.tolist()
+        if numeric_cols and cat_cols:
+            col_x = st.selectbox("Variable X (categórica)", cat_cols, key="bi_x")
+            col_y = st.selectbox("Variable Y (numérica)", numeric_cols, key="bi_y")
+            agg = df.groupby(col_x)[col_y].sum().sort_values(ascending=False).head(15)
+            st.plotly_chart(
+                px.bar(agg.reset_index(), x=col_x, y=col_y,
+                       title=f"{col_y} por {col_x}"),
+                use_container_width=True,
+            )
+        if len(numeric_cols) >= 2:
+            st.plotly_chart(
+                px.scatter_matrix(df[numeric_cols[:4]], title="Matriz de correlación"),
+                use_container_width=True,
+            )
+    else:
+        st.info("Sube datos en **Data Upload** para activar Business Intelligence.")
+    st.divider()
+    _render_orchestrator_panel(action="business_intelligence")
+
+
+def page_budget_command_center() -> None:
+    st.title("💰 Budget Command Center — Control Presupuestario")
+    st.markdown("Comparativa de resultados reales vs plan estratégico.")
+    df = st.session_state.get("uploaded_data_universal")
+    df_strat = st.session_state.get("estrategia_data")
+
+    if df is not None:
+        rev_col = None
+        for c in ["Selling Price", "revenue", "ventas", "amount", "Est Revenue"]:
+            matched = [col for col in df.columns if col.lower() == c.lower()]
+            if matched:
+                rev_col = matched[0]
+                break
+        if rev_col:
+            total_real = float(pd.to_numeric(df[rev_col], errors="coerce").fillna(0).sum())
+            c1, c2, c3 = st.columns(3)
+            c1.metric("💶 Revenue Real Total", f"{total_real:,.0f}")
+            if df_strat is not None:
+                for c in ["Est Revenue", "Selling Price", "revenue"]:
+                    matched = [col for col in df_strat.columns if col.lower() == c.lower()]
+                    if matched:
+                        total_plan = float(pd.to_numeric(df_strat[matched[0]], errors="coerce").fillna(0).sum())
+                        gap = total_real - total_plan
+                        gap_pct = gap / total_plan * 100 if total_plan else 0
+                        c2.metric("🎯 Plan Estratégico", f"{total_plan:,.0f}")
+                        c3.metric("📊 Desviación", f"{gap:+,.0f}", delta=f"{gap_pct:+.1f}%")
+                        break
+            else:
+                c2.metric("🎯 Plan Estratégico", "—", help="Carga template_estrategia.xlsx")
+                st.info("💡 Carga el **template_estrategia.xlsx** en Data Upload para comparativa completa.")
+    else:
+        st.info("Sube datos históricos y el plan estratégico en **Data Upload** o **Company Setup**.")
+    st.divider()
+    _render_orchestrator_panel(action="budget_command_center")
+
+
+def page_weekly_planner() -> None:
+    st.title("📅 Weekly Planner — Planificador Semanal")
+    st.markdown("Tareas de la semana generadas automáticamente por el agente planificador.")
+    last = st.session_state.get("last_analysis_results")
+    if last and "weekly_task_planner" in last:
+        planner_out = last["weekly_task_planner"]
+        tasks = planner_out.get("tasks", [])
+        if tasks:
+            st.success(f"✅ {len(tasks)} tareas generadas automáticamente")
+            st.dataframe(pd.DataFrame(tasks), use_container_width=True)
+    else:
+        st.info("Ejecuta el análisis con todos los agentes para generar el plan semanal.")
+    st.divider()
+    _render_orchestrator_panel(action="weekly_planner")
+
+
+def page_saved_companies() -> None:
+    st.title("🏢 Saved Companies — Empresas Guardadas")
+    st.markdown("Directorio de empresas clave con análisis de contexto.")
+    saved = st.session_state.get("saved_companies", [])
+    if saved:
+        st.success(f"✅ {len(saved)} empresas guardadas")
+        st.dataframe(pd.DataFrame(saved), use_container_width=True)
+    else:
+        st.info("No hay empresas guardadas. Añade empresas desde **Company Info**.")
+    st.divider()
+    _render_orchestrator_panel(action="saved_companies")
+
+
+def page_company_info() -> None:
+    st.title("ℹ️ Company Info — Información de Empresa")
+    st.markdown("Ficha completa de empresa: sector, tamaño, KAMs, y análisis de cuenta.")
+    with st.form("company_form"):
+        col1, col2 = st.columns(2)
+        company_name = col1.text_input("Nombre de empresa", placeholder="ACME Corp.")
+        country = col2.text_input("País", placeholder="España")
+        sector = col1.text_input("Sector", placeholder="Automatización Industrial")
+        segment = col2.text_input("Segmento", placeholder="Manufacturing")
+        notes = st.text_area("Notas / contexto", placeholder="Información relevante sobre la cuenta...")
+        submitted = st.form_submit_button("💾 Guardar empresa", use_container_width=True)
+    if submitted and company_name:
+        companies = st.session_state.get("saved_companies", [])
+        companies.append({
+            "name": company_name, "country": country, "sector": sector,
+            "segment": segment, "notes": notes,
+        })
+        st.session_state["saved_companies"] = companies
+        st.success(f"✅ '{company_name}' guardada. Total: {len(companies)} empresas.")
+        st.rerun()
+    st.divider()
+    _render_orchestrator_panel(action="company_info")
+
+
+def page_company_setup() -> None:
+    st.title("⚙️ Company Setup — Configuración y Plantillas")
+    st.markdown(
+        "Descarga las plantillas Excel, súbelas con tus datos y el sistema activará "
+        "automáticamente todos los análisis de inteligencia comercial."
+    )
+
+    if _TEMPLATES_AVAILABLE:
+        infos = template_info()
+        st.subheader("📥 Descargar plantillas")
+        cols = st.columns(2)
+        for i, (tpl_key, tpl_data) in enumerate(infos.items()):
+            with cols[i % 2]:
+                st.markdown(f"### {tpl_data['label']}")
+                st.caption(tpl_data["description"])
+                st.markdown("**Columnas:** " + " · ".join(tpl_data["columns"][:5]) + ("…" if len(tpl_data["columns"]) > 5 else ""))
+                try:
+                    tpl_bytes = get_template_bytes(tpl_key)
+                    st.download_button(
+                        f"⬇️ Descargar {tpl_key}.xlsx",
+                        data=tpl_bytes,
+                        file_name=f"{tpl_key}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key=f"dl_{tpl_key}",
+                        use_container_width=True,
+                    )
+                except Exception as exc:
+                    st.error(f"Error generando plantilla: {exc}")
+    else:
+        # Fallback: download from templates/ directory
+        st.subheader("📥 Descargar plantillas")
+        tpl_dir = APP_ROOT / "templates"
+        tpl_files = list(tpl_dir.glob("template_*.xlsx"))
+        if tpl_files:
+            for tpl_file in tpl_files:
+                with open(tpl_file, "rb") as f:
+                    st.download_button(
+                        f"⬇️ {tpl_file.name}",
+                        data=f.read(),
+                        file_name=tpl_file.name,
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key=f"dl_{tpl_file.stem}",
+                        use_container_width=True,
+                    )
+        else:
+            st.warning("Plantillas no disponibles. Instala openpyxl: pip install openpyxl")
+
+    st.divider()
+    st.subheader("📤 Subir datos de configuración")
+    st.markdown("Sube aquí tus plantillas rellenas. El análisis completo se ejecutará automáticamente.")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        hist_file = st.file_uploader("📊 Histórico de ventas", type=["xlsx", "csv"], key="setup_hist")
+        if hist_file:
+            file_bytes = hist_file.read()
+            df_hist = parse_file_to_df(hist_file.name, file_bytes)
+            if df_hist is not None:
+                st.session_state["uploaded_data_universal"] = df_hist
+                st.success(f"✅ Histórico: {df_hist.shape[0]:,} filas")
+
+        prod_file = st.file_uploader("📦 Catálogo de productos", type=["xlsx", "csv"], key="setup_prod")
+        if prod_file:
+            file_bytes = prod_file.read()
+            df_prod = parse_file_to_df(prod_file.name, file_bytes)
+            if df_prod is not None:
+                st.session_state["productos_data"] = df_prod
+                st.success(f"✅ Productos: {df_prod.shape[0]:,} registros")
+
+    with col2:
+        opp_file = st.file_uploader("🎯 Pipeline de oportunidades", type=["xlsx", "csv"], key="setup_opp")
+        if opp_file:
+            file_bytes = opp_file.read()
+            df_opp = parse_file_to_df(opp_file.name, file_bytes)
+            if df_opp is not None:
+                st.session_state["oportunidades_data"] = df_opp
+                st.success(f"✅ Oportunidades: {df_opp.shape[0]:,} registros")
+
+        strat_file = st.file_uploader("🏆 Plan estratégico", type=["xlsx", "csv"], key="setup_strat")
+        if strat_file:
+            file_bytes = strat_file.read()
+            df_strat = parse_file_to_df(strat_file.name, file_bytes)
+            if df_strat is not None:
+                st.session_state["estrategia_data"] = df_strat
+                st.success(f"✅ Estrategia: {df_strat.shape[0]:,} registros")
+
+    # If any file was uploaded in this session, run orchestrator
+    any_uploaded = any([hist_file, prod_file, opp_file, strat_file])
+    if any_uploaded:
+        st.divider()
+        st.subheader("🤖 Análisis automático en curso")
+        _render_orchestrator_panel(action="company_setup", auto_run=True)
+    else:
+        st.divider()
+        _render_orchestrator_panel(action="company_setup")
+
+
+def page_monitoring_dashboard() -> None:
+    st.title("📡 Monitoring Dashboard — Estado del Sistema")
+    st.markdown("Visión en tiempo real del estado de los agentes, datos cargados y análisis ejecutados.")
+
+    # Agent status
+    if _ORCHESTRATOR_AVAILABLE:
+        orch = get_max_orchestrator()
+        n_agents = len(orch.agents)
+        load_errors = sum(1 for a in orch.agents if a.get("load_error"))
+    else:
+        n_agents = 0
+        load_errors = 0
+
+    # Data status
+    n_templates = sum([
+        "uploaded_data_universal" in st.session_state,
+        "estrategia_data" in st.session_state,
+        "productos_data" in st.session_state,
+        "oportunidades_data" in st.session_state,
+    ])
+
+    last_results = st.session_state.get("last_analysis_results", {})
+    last_action = st.session_state.get("last_analysis_action", "—")
+    last_ok = last_results.get("_successful_agents", 0)
+    last_total = last_results.get("_agent_count", 0)
+
+    # KPI metrics
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("⚡ Agentes disponibles", n_agents, delta=f"{load_errors} con errores" if load_errors else None)
+    col2.metric("📂 Datasets cargados", n_templates, delta="/4 plantillas")
+    col3.metric("✅ Último análisis", f"{last_ok}/{last_total}" if last_total else "—")
+    col4.metric("🎯 Última acción", last_action[:20] if last_action != "—" else "—")
+
+    st.divider()
+
+    # Agent registry
+    if _ORCHESTRATOR_AVAILABLE and n_agents > 0:
+        orch = get_max_orchestrator()
+        st.subheader(f"🤖 Registro de agentes ({n_agents})")
+        agent_rows = []
+        for a in orch.agents:
+            agent_rows.append({
+                "Nombre": a["name"],
+                "Carpeta": a["folder"],
+                "Estado": "⚠️ Error de carga" if a.get("load_error") else "✅ Listo",
+                "Error": (a.get("load_error") or "")[:80],
+            })
+        st.dataframe(pd.DataFrame(agent_rows), use_container_width=True)
+
+    # Data inventory
+    st.subheader("📊 Inventario de datos")
+    data_rows = [
+        {"Fuente": "Histórico de ventas", "Key": "uploaded_data_universal",
+         "Estado": "✅ Cargado" if "uploaded_data_universal" in st.session_state else "❌ No cargado",
+         "Filas": st.session_state.get("uploaded_data_universal", pd.DataFrame()).shape[0]
+                  if isinstance(st.session_state.get("uploaded_data_universal"), pd.DataFrame) else 0},
+        {"Fuente": "Plan estratégico", "Key": "estrategia_data",
+         "Estado": "✅ Cargado" if "estrategia_data" in st.session_state else "❌ No cargado",
+         "Filas": st.session_state.get("estrategia_data", pd.DataFrame()).shape[0]
+                  if isinstance(st.session_state.get("estrategia_data"), pd.DataFrame) else 0},
+        {"Fuente": "Catálogo productos", "Key": "productos_data",
+         "Estado": "✅ Cargado" if "productos_data" in st.session_state else "❌ No cargado",
+         "Filas": st.session_state.get("productos_data", pd.DataFrame()).shape[0]
+                  if isinstance(st.session_state.get("productos_data"), pd.DataFrame) else 0},
+        {"Fuente": "Pipeline oportunidades", "Key": "oportunidades_data",
+         "Estado": "✅ Cargado" if "oportunidades_data" in st.session_state else "❌ No cargado",
+         "Filas": st.session_state.get("oportunidades_data", pd.DataFrame()).shape[0]
+                  if isinstance(st.session_state.get("oportunidades_data"), pd.DataFrame) else 0},
+    ]
+    st.dataframe(pd.DataFrame(data_rows), use_container_width=True)
+
+    # Last analysis results summary
+    if last_results:
+        st.subheader("📋 Último análisis ejecutado")
+        summary = last_results.get("_summary", "")
+        if summary:
+            st.markdown(summary)
+        failed_names = last_results.get("_failed_agent_names", [])
+        if failed_names:
+            st.warning(f"Agentes con error: {', '.join(failed_names)}")
+
+    st.divider()
+    _render_orchestrator_panel(action="monitoring_refresh")
 
 
 # ──────────────────────────────────────────────────────────────
@@ -1152,6 +1788,12 @@ def page_data_upload() -> None:
             df = parse_file_to_df(uploaded_file.name, file_bytes)
         if df is not None:
             st.session_state.uploaded_data_universal = df
+            # Detect and store specific template types
+            fname_lower = uploaded_file.name.lower()
+            if "estrategia" in fname_lower:
+                st.session_state["estrategia_data"] = df
+            elif "producto" in fname_lower:
+                st.session_state["productos_data"] = df
             st.success(
                 f"✅ **{uploaded_file.name}** — {df.shape[0]:,} filas, {df.shape[1]} columnas"
             )
@@ -1170,6 +1812,14 @@ def page_data_upload() -> None:
                 df.to_csv(index=False).encode("utf-8"),
                 "datos_procesados.csv",
                 "text/csv",
+            )
+            # ── Auto-orchestration after upload ───────────────────
+            st.divider()
+            st.subheader("🤖 Análisis automático — Todos los agentes")
+            _render_orchestrator_panel(
+                action="data_upload",
+                auto_run=True,
+                extra_context={"file_name": uploaded_file.name},
             )
         else:
             st.error("No se pudo procesar el archivo. Formato no reconocido.")
@@ -1980,28 +2630,29 @@ def page_invites() -> None:
 
 _PAGE_MAP: Dict[str, Any] = {
     "Dashboard":                        page_dashboard,
-    "Business Intelligence":            lambda: page_placeholder("Business Intelligence", "🔍"),
-    "Budget Command Center":            lambda: page_placeholder("Budget Command Center", "💰"),
+    "Business Intelligence":            page_business_intelligence,
+    "Budget Command Center":            page_budget_command_center,
     "Portfolio Analysis":               page_portfolio_analysis,
-    "Weekly Planner":                   lambda: page_placeholder("Weekly Planner", "📅"),
-    "Saved Companies":                  lambda: page_placeholder("Saved Companies", "🏢"),
-    "Company Info":                     lambda: page_placeholder("Company Info", "ℹ️"),
-    "360º Analysis":                    lambda: page_placeholder("360º Analysis", "🔄"),
-    "Sales Architecture":               lambda: page_placeholder("Sales Architecture", "🏗️"),
-    "Key Account Management":           lambda: page_placeholder("Key Account Management", "🔑"),
+    "Weekly Planner":                   page_weekly_planner,
+    "Saved Companies":                  page_saved_companies,
+    "Company Info":                     page_company_info,
+    "360º Analysis":                    page_360_analysis,
+    "Sales Architecture":               page_sales_architecture,
+    "Key Account Management":           page_key_account_management,
     "Commercial Actions Repository":    page_actions,
-    "AI-Augmented Sales":               lambda: page_placeholder("AI-Augmented Sales", "🤖"),
-    "Behavioral Transform":             lambda: page_placeholder("Behavioral Transform", "🧠"),
-    "Product Strategy":                 lambda: page_placeholder("Product Strategy", "📦"),
-    "Monitoring":                       lambda: page_placeholder("Monitoring", "📡"),
+    "AI-Augmented Sales":               page_ai_augmented_sales,
+    "Behavioral Transform":             page_behavioral_transform,
+    "Product Strategy":                 page_product_strategy,
+    "Monitoring":                       page_monitoring_dashboard,
     "Offer & Pricing":                  page_offers,
     "Data Upload":                      page_data_upload,
-    "After-Sales Engine":               lambda: page_placeholder("After-Sales Engine", "🔧"),
+    "Company Setup":                    page_company_setup,
+    "After-Sales Engine":               page_after_sales_engine,
     "Team Directory":                   page_users,
     "Email Cobot":                      page_invites,
-    "Marketing Content":                lambda: page_placeholder("Marketing Content", "📰"),
-    "Social Media":                     lambda: page_placeholder("Social Media", "📱"),
-    "Project Management":               lambda: page_placeholder("Project Management", "🗂️"),
+    "Marketing Content":                lambda: page_placeholder("Marketing Content", "📰", "marketing_content"),
+    "Social Media":                     lambda: page_placeholder("Social Media", "📱", "social_media"),
+    "Project Management":               lambda: page_placeholder("Project Management", "🗂️", "project_management"),
     "Cost & Rates":                     page_cost_modules,
     "Agent Hub":                        page_agent_hub,
 }
