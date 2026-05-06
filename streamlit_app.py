@@ -147,7 +147,9 @@ GMAIL_APP_PASSWORD = _get_secret("GMAIL_APP_PASSWORD")
 STREAMLIT_APP_URL = _get_secret("STREAMLIT_APP_URL")
 
 # ── Feature flags ─────────────────────────────────────────────
-QUICK_ACCESS_ENABLED = get_bool_secret("QUICK_ACCESS_ENABLED")
+# QUICK_ACCESS_ENABLED defaults to True — the app always works without this
+# secret being set.  Set to "false" explicitly to disable guest quick access.
+QUICK_ACCESS_ENABLED = get_bool_secret("QUICK_ACCESS_ENABLED", default=True)
 FULL_ACCESS_ALL_USERS = get_bool_secret("FULL_ACCESS_ALL_USERS")
 
 # Whether Supabase is fully operational (library + credentials)
@@ -374,6 +376,64 @@ def refresh_auth_from_supabase() -> None:
         st.session_state.profile = None
 
 
+def _local_login(email: str, password: str) -> bool:
+    """Attempt login against local users_storage.  Returns True on success."""
+    try:
+        from users_storage import build_profile_from_local_user, get_user, update_last_login, verify_user
+
+        if not verify_user(email, password):
+            return False
+
+        user_data = get_user(email)
+        if not user_data:
+            return False
+
+        update_last_login(email)
+        profile = build_profile_from_local_user(user_data)
+
+        class _LocalUser:
+            id = profile["id"]
+            email = user_data["email"]
+
+            @property
+            def user_metadata(self) -> Dict[str, Any]:
+                return {}
+
+        st.session_state.user = _LocalUser()
+        st.session_state.session = None
+        st.session_state.profile = profile
+        st.session_state.is_quick_access = False
+        _logger.info("Local auth login for %s", email)
+        return True
+    except Exception as exc:
+        _logger.warning("Local login error: %s", exc)
+        return False
+
+
+def _local_register(email: str, name: str, department: str) -> Optional[str]:
+    """Create a local user.  Returns the temporary password or None on failure."""
+    try:
+        from users_storage import create_user
+        result = create_user(email=email, name=name, department=department)
+        return result["password"] if result else None
+    except Exception as exc:
+        _logger.warning("Local register error: %s", exc)
+        return None
+
+
+def _send_welcome_email(email: str, name: str, password: str) -> bool:
+    """Send a welcome email with credentials using the configured Gmail account."""
+    if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
+        return False
+    app_url = STREAMLIT_APP_URL or "https://your-app.streamlit.app"
+    try:
+        _send_gmail_invite(email, name, password, app_url)
+        return True
+    except Exception as exc:
+        _logger.warning("Could not send welcome email to %s: %s", email, exc)
+        return False
+
+
 def login_form() -> None:
     st.title("⚙️ Adaptive Sales Engine")
     st.caption("Sistema de gestión comercial multi-usuario — INGECART")
@@ -381,9 +441,9 @@ def login_form() -> None:
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
         if not SUPABASE_CONFIGURED:
-            st.warning(
-                "⚠️ Supabase no configurado. "
-                "Usa **Quick Access** para acceder en modo demo."
+            st.info(
+                "ℹ️ Supabase no configurado. "
+                "Usa tu cuenta local, regístrate, o accede con **Quick Access**."
             )
 
         t1, t2 = st.tabs(["🔐 Iniciar Sesión", "📝 Registrarse"])
@@ -396,9 +456,8 @@ def login_form() -> None:
                 if submitted:
                     if not email or not password:
                         st.error("Por favor completa todos los campos")
-                    elif not SUPABASE_CONFIGURED or supabase is None:
-                        st.error("Supabase no configurado. Usa Quick Access.")
-                    else:
+                    elif SUPABASE_CONFIGURED and supabase is not None:
+                        # Primary path: Supabase auth
                         try:
                             response = supabase.auth.sign_in_with_password(
                                 {"email": email, "password": password}
@@ -416,15 +475,19 @@ def login_form() -> None:
                                 st.rerun()
                         except Exception as exc:
                             st.error(f"Error al iniciar sesión: {exc}")
+                    else:
+                        # Fallback path: local users_storage
+                        if _local_login(email, password):
+                            st.rerun()
+                        else:
+                            st.error("Email o contraseña incorrectos")
 
-            # Quick Access — shown when Supabase is missing or flag is enabled
+            # Quick Access — always enabled by default (QUICK_ACCESS_ENABLED defaults to True)
             st.divider()
-            if QUICK_ACCESS_ENABLED or not SUPABASE_CONFIGURED:
-                st.caption("⚡ Acceso rápido habilitado")
+            if QUICK_ACCESS_ENABLED:
+                st.caption("⚡ Acceso rápido disponible")
                 if st.button("⚡ Quick Access (invitado)", use_container_width=True, key="quick_access_btn"):
                     _quick_access_login()
-            else:
-                st.caption("ℹ️ Quick Access no está habilitado (QUICK_ACCESS_ENABLED no configurado)")
 
         with t2:
             with st.form("register_form", clear_on_submit=False):
@@ -435,55 +498,73 @@ def login_form() -> None:
                     ["Commercial", "Engineering", "Project Management", "Service", "Administration"],
                     key="reg_department",
                 )
-                reg_password = st.text_input("Contraseña", type="password", key="reg_password")
-                reg_confirm = st.text_input("Confirmar contraseña", type="password", key="reg_confirm")
+                if SUPABASE_CONFIGURED and supabase is not None:
+                    reg_password = st.text_input("Contraseña", type="password", key="reg_password")
+                    reg_confirm = st.text_input("Confirmar contraseña", type="password", key="reg_confirm")
+                else:
+                    reg_password = ""
+                    reg_confirm = ""
+                    st.caption("Se generará una contraseña temporal y se enviará a tu email.")
                 reg_submitted = st.form_submit_button("Registrarse", use_container_width=True)
                 if reg_submitted:
-                    if not SUPABASE_CONFIGURED or supabase is None:
-                        st.error("Supabase no configurado.")
-                    elif reg_password != reg_confirm:
-                        st.error("Las contraseñas no coinciden")
-                    elif len(reg_password) < 6:
-                        st.error("La contraseña debe tener al menos 6 caracteres")
-                    elif not reg_email or not reg_name:
+                    if not reg_email or not reg_name:
                         st.error("Completa email y nombre")
-                    else:
-                        try:
-                            response = supabase.auth.sign_up(
-                                {
-                                    "email": reg_email,
-                                    "password": reg_password,
-                                    "options": {
-                                        "data": {
-                                            "name": reg_name,
-                                            "department": reg_department,
-                                            "role": "user",
-                                        }
-                                    },
-                                }
-                            )
-                            user = response.user
-                            if not user:
-                                st.error("No se pudo crear usuario")
-                            else:
-                                try:
-                                    supabase.table("profiles").upsert(
-                                        {
-                                            "id": user.id,
-                                            "email": reg_email,
-                                            "name": reg_name,
-                                            "department": reg_department,
-                                            "role": "user",
-                                        }
-                                    ).execute()
-                                except Exception:
-                                    pass
-                                st.success(
-                                    "Registro exitoso. "
-                                    "Si hay confirmación por email, actívala y luego inicia sesión."
+                    elif SUPABASE_CONFIGURED and supabase is not None:
+                        # Primary path: Supabase sign-up
+                        if reg_password != reg_confirm:
+                            st.error("Las contraseñas no coinciden")
+                        elif len(reg_password) < 6:
+                            st.error("La contraseña debe tener al menos 6 caracteres")
+                        else:
+                            try:
+                                response = supabase.auth.sign_up(
+                                    {
+                                        "email": reg_email,
+                                        "password": reg_password,
+                                        "options": {
+                                            "data": {
+                                                "name": reg_name,
+                                                "department": reg_department,
+                                                "role": "user",
+                                            }
+                                        },
+                                    }
                                 )
-                        except Exception as exc:
-                            st.error(f"Error al registrar: {exc}")
+                                user = response.user
+                                if not user:
+                                    st.error("No se pudo crear usuario")
+                                else:
+                                    try:
+                                        supabase.table("profiles").upsert(
+                                            {
+                                                "id": user.id,
+                                                "email": reg_email,
+                                                "name": reg_name,
+                                                "department": reg_department,
+                                                "role": "user",
+                                            }
+                                        ).execute()
+                                    except Exception:
+                                        pass
+                                    st.success(
+                                        "Registro exitoso. "
+                                        "Si hay confirmación por email, actívala y luego inicia sesión."
+                                    )
+                            except Exception as exc:
+                                st.error(f"Error al registrar: {exc}")
+                    else:
+                        # Fallback path: local users_storage with email invite
+                        tmp_password = _local_register(reg_email, reg_name, reg_department)
+                        if tmp_password is None:
+                            st.error("Este email ya está registrado. Inicia sesión.")
+                        else:
+                            email_sent = _send_welcome_email(reg_email, reg_name, tmp_password)
+                            if email_sent:
+                                st.success(f"✅ Credenciales enviadas a {reg_email}. Revisa tu bandeja de entrada.")
+                            else:
+                                st.warning("No se pudo enviar el email. Guarda estas credenciales:")
+                                st.code(f"Email: {reg_email}\nContraseña temporal: {tmp_password}")
+                            st.info("Inicia sesión con las credenciales recibidas.")
 
 
 def logout() -> None:
