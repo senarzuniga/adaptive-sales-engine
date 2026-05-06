@@ -10,7 +10,7 @@ import logging
 import os
 import re
 import smtplib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -106,14 +106,13 @@ FULL_ACCESS_ALL_USERS = get_bool_secret("FULL_ACCESS_ALL_USERS")
 _logger = logging.getLogger(__name__)
 _logger.info("=== Adaptive Sales Engine startup ===")
 _logger.info("Environment: SUPABASE_URL configured=%s", bool(SUPABASE_URL))
-_logger.info("Flag QUICK_ACCESS_ENABLED=%s", QUICK_ACCESS_ENABLED)
-_logger.info("Flag FULL_ACCESS_ALL_USERS=%s", FULL_ACCESS_ALL_USERS)
+_logger.info("Feature flags: quick_access=%s full_access=%s", QUICK_ACCESS_ENABLED, FULL_ACCESS_ALL_USERS)
 _logger.info("Gmail configured=%s", bool(GMAIL_ADDRESS and GMAIL_APP_PASSWORD))
 try:
-    _secrets_keys = list(st.secrets.keys()) if hasattr(st, "secrets") else []
-    _logger.info("Secrets keys loaded: %s", _secrets_keys)
+    _secrets_count = len(list(st.secrets.keys())) if hasattr(st, "secrets") else 0
+    _logger.info("Secrets store: %d key(s) loaded", _secrets_count)
 except Exception as _e:
-    _logger.warning("Could not enumerate st.secrets: %s", _e)
+    _logger.warning("Could not access st.secrets: %s", _e)
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     st.error("Faltan credenciales de Supabase (SUPABASE_URL + SUPABASE_KEY/SUPABASE_ANON_KEY).")
@@ -435,13 +434,18 @@ def _quick_access_login() -> None:
         "name": "Guest (Quick Access)",
         "department": "Commercial",
         "role": "user",
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    # A minimal mock user object so code that reads .id / .email still works.
+
     class _GuestUser:
+        """Minimal mock user object compatible with the rest of the application."""
+
         id = "quick_access_guest"
         email = "guest@quick-access.local"
-        user_metadata: Dict[str, Any] = {}
+
+        @property
+        def user_metadata(self) -> Dict[str, Any]:
+            return {}
 
     st.session_state.user = _GuestUser()
     st.session_state.session = None
