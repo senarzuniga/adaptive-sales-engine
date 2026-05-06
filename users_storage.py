@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import secrets
 from datetime import datetime, timezone
@@ -21,6 +22,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 _USERS_DIR = Path(__file__).resolve().parent / "data" / "users"
+_logger = logging.getLogger(__name__)
 
 # scrypt parameters (OWASP recommended minimum)
 _SCRYPT_N = 2**14   # CPU/memory cost
@@ -120,7 +122,8 @@ def verify_user(email: str, password: str) -> bool:
         if not stored_hash or not stored_salt:
             return False
         return _verify_password(password, stored_hash, stored_salt)
-    except Exception:
+    except Exception as exc:
+        _logger.warning("verify_user error for %s: %s", email, exc)
         return False
 
 
@@ -133,7 +136,8 @@ def get_user(email: str) -> Optional[Dict[str, Any]]:
         data = json.loads(fpath.read_text(encoding="utf-8"))
         # Return a safe copy without password fields
         return {k: v for k, v in data.items() if not k.startswith("password_")}
-    except Exception:
+    except Exception as exc:
+        _logger.warning("get_user error for %s: %s", email, exc)
         return None
 
 
@@ -145,8 +149,8 @@ def update_last_login(email: str) -> None:
         data = json.loads(fpath.read_text(encoding="utf-8"))
         data["last_login"] = _utcnow_iso()
         fpath.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    except Exception:
-        pass
+    except Exception as exc:
+        _logger.warning("update_last_login error for %s: %s", email, exc)
 
 
 def load_workspace(email: str) -> Dict[str, Any]:
@@ -157,7 +161,8 @@ def load_workspace(email: str) -> Dict[str, Any]:
     try:
         data = json.loads(fpath.read_text(encoding="utf-8"))
         return data.get("workspace", {})
-    except Exception:
+    except Exception as exc:
+        _logger.warning("load_workspace error for %s: %s", email, exc)
         return {}
 
 
@@ -170,7 +175,8 @@ def save_workspace(email: str, workspace: Dict[str, Any]) -> bool:
         data["workspace"] = workspace
         fpath.write_text(json.dumps(data, indent=2), encoding="utf-8")
         return True
-    except Exception:
+    except Exception as exc:
+        _logger.warning("save_workspace error for %s: %s", email, exc)
         return False
 
 
@@ -182,8 +188,8 @@ def list_users() -> List[Dict[str, Any]]:
         try:
             data = json.loads(fpath.read_text(encoding="utf-8"))
             users.append({k: v for k, v in data.items() if not k.startswith("password_")})
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.warning("list_users: skipping corrupted file %s: %s", fpath, exc)
     return users
 
 
