@@ -6,13 +6,16 @@ Multi-user access with Supabase Auth + shared Supabase DB
 from __future__ import annotations
 
 import io
+import logging
 import os
 import re
 import smtplib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 import pandas as pd
 import plotly.express as px
@@ -63,6 +66,25 @@ def _get_secret(*names: str) -> str:
     return ""
 
 
+def get_bool_secret(key: str, default: bool = False) -> bool:
+    """Robustly parse a boolean secret regardless of whether it is stored as a
+    native TOML boolean, the string ``"true"``/``"1"``/``"yes"``, or is missing
+    entirely.  Falls back to *default* on any error."""
+    try:
+        # Prefer environment variable first (matches _get_secret behaviour)
+        env_val = os.getenv(key)
+        if env_val is not None:
+            return env_val.strip().lower() in ("true", "1", "yes")
+        value = st.secrets.get(key, default)
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            return value.strip().lower() in ("true", "1", "yes")
+        return bool(value)
+    except Exception:
+        return default
+
+
 SUPABASE_URL = _get_secret("SUPABASE_URL", "VITE_SUPABASE_URL")
 SUPABASE_KEY = _get_secret(
     "SUPABASE_KEY",
@@ -75,6 +97,22 @@ SUPABASE_SERVICE_ROLE_KEY = _get_secret("SUPABASE_SERVICE_ROLE_KEY")
 GMAIL_ADDRESS = _get_secret("GMAIL_ADDRESS")
 GMAIL_APP_PASSWORD = _get_secret("GMAIL_APP_PASSWORD")
 STREAMLIT_APP_URL = _get_secret("STREAMLIT_APP_URL")
+
+# ── Feature flags ─────────────────────────────────────────────
+QUICK_ACCESS_ENABLED = get_bool_secret("QUICK_ACCESS_ENABLED")
+FULL_ACCESS_ALL_USERS = get_bool_secret("FULL_ACCESS_ALL_USERS")
+
+# ── Startup logging ───────────────────────────────────────────
+_logger = logging.getLogger(__name__)
+_logger.info("=== Adaptive Sales Engine startup ===")
+_logger.info("Environment: SUPABASE_URL configured=%s", bool(SUPABASE_URL))
+_logger.info("Feature flags: quick_access=%s full_access=%s", QUICK_ACCESS_ENABLED, FULL_ACCESS_ALL_USERS)
+_logger.info("Gmail configured=%s", bool(GMAIL_ADDRESS and GMAIL_APP_PASSWORD))
+try:
+    _secrets_count = len(list(st.secrets.keys())) if hasattr(st, "secrets") else 0
+    _logger.info("Secrets store: %d key(s) loaded", _secrets_count)
+except Exception as _e:
+    _logger.warning("Could not access st.secrets: %s", _e)
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     st.error("Faltan credenciales de Supabase (SUPABASE_URL + SUPABASE_KEY/SUPABASE_ANON_KEY).")
@@ -226,6 +264,7 @@ def init_session_state() -> None:
         "current_request": None,
         "offer_mode": None,
         "show_offer_builder": False,
+        "is_quick_access": False,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -278,6 +317,10 @@ def login_form() -> None:
     st.title("⚙️ Adaptive Sales Engine")
     st.caption("Sistema de gestión comercial multi-usuario")
 
+    # Failsafe warnings for missing secrets
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        st.warning("⚠️ Credenciales de Supabase no configuradas. Comprueba los secrets.")
+
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
         t1, t2 = st.tabs(["🔐 Iniciar Sesión", "📝 Registrarse"])
@@ -306,6 +349,16 @@ def login_form() -> None:
                                 st.rerun()
                         except Exception as exc:
                             st.error(f"Error al iniciar sesión: {exc}")
+
+            # Quick Access button — rendered outside the form so it always shows
+            if QUICK_ACCESS_ENABLED:
+                st.divider()
+                st.caption("⚡ Acceso rápido habilitado")
+                if st.button("⚡ Quick Access (invitado)", use_container_width=True, key="quick_access_btn"):
+                    _quick_access_login()
+            else:
+                # Show a subtle warning so admins know the flag is not set
+                st.caption("ℹ️ Quick Access no está habilitado (QUICK_ACCESS_ENABLED no configurado)")
 
         with t2:
             with st.form("register_form", clear_on_submit=False):
@@ -358,13 +411,87 @@ def login_form() -> None:
 
 
 def logout() -> None:
-    try:
-        supabase.auth.sign_out()
-    except Exception:
-        pass
-    for k in ["user", "session", "profile", "current_request", "offer_mode", "show_offer_builder"]:
+    if not st.session_state.get("is_quick_access"):
+        try:
+            supabase.auth.sign_out()
+        except Exception:
+            pass
+    for k in ["user", "session", "profile", "current_request", "offer_mode", "show_offer_builder", "is_quick_access"]:
         st.session_state[k] = None if k in ["user", "session", "profile", "current_request", "offer_mode"] else False
     st.rerun()
+
+
+def _quick_access_login() -> None:
+    """Create a synthetic guest session without Supabase authentication.
+
+    This is only reachable when QUICK_ACCESS_ENABLED=true.  The resulting
+    session has read-only commercial access and is clearly flagged as a guest
+    so the rest of the application can restrict write operations if desired.
+    """
+    guest_profile: Dict[str, Any] = {
+        "id": "quick_access_guest",
+        "email": "guest@quick-access.local",
+        "name": "Guest (Quick Access)",
+        "department": "Commercial",
+        "role": "user",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    class _GuestUser:
+        """Minimal mock user object compatible with the rest of the application."""
+
+        id = "quick_access_guest"
+        email = "guest@quick-access.local"
+
+        @property
+        def user_metadata(self) -> Dict[str, Any]:
+            return {}
+
+    st.session_state.user = _GuestUser()
+    st.session_state.session = None
+    st.session_state.profile = guest_profile
+    st.session_state.is_quick_access = True
+    _logger.info("Quick access session created for guest user")
+    st.rerun()
+
+
+def show_debug_panel() -> None:
+    """Render a collapsible debug panel showing secrets / flag state.
+
+    Visible to admin users via the sidebar and to anyone who appends
+    ``?debug=1`` to the URL (useful during initial setup).
+    """
+    with st.expander("🛠️ Debug Panel", expanded=False):
+        st.markdown("### Feature flags")
+        st.json(
+            {
+                "QUICK_ACCESS_ENABLED": QUICK_ACCESS_ENABLED,
+                "FULL_ACCESS_ALL_USERS": FULL_ACCESS_ALL_USERS,
+            }
+        )
+
+        st.markdown("### Secrets availability")
+        secrets_status: Dict[str, bool] = {}
+        for key in ("SUPABASE_URL", "SUPABASE_KEY", "SUPABASE_SERVICE_ROLE_KEY",
+                    "QUICK_ACCESS_ENABLED", "FULL_ACCESS_ALL_USERS",
+                    "GMAIL_ADDRESS", "STREAMLIT_APP_URL"):
+            try:
+                secrets_status[key] = bool(st.secrets.get(key))
+            except Exception:
+                secrets_status[key] = bool(os.getenv(key))
+        st.json(secrets_status)
+
+        st.markdown("### Current session")
+        profile = st.session_state.get("profile") or {}
+        st.json(
+            {
+                "user_id": profile.get("id"),
+                "email": profile.get("email"),
+                "role": profile.get("role"),
+                "department": profile.get("department"),
+                "is_quick_access": st.session_state.get("is_quick_access", False),
+            }
+        )
 
 
 # ──────────────────────────────────────────────────────────────
@@ -533,6 +660,10 @@ def show_sidebar() -> str:
     name = profile.get("name", "Usuario")
     department = profile.get("department", "Unknown")
     role = profile.get("role", "user")
+    is_quick = st.session_state.get("is_quick_access", False)
+
+    # FULL_ACCESS_ALL_USERS: treat every logged-in user as admin for navigation
+    effective_role = "admin" if FULL_ACCESS_ALL_USERS else role
 
     with st.sidebar:
         st.title("Adaptive Sales")
@@ -541,6 +672,10 @@ def show_sidebar() -> str:
         st.write(f"**👤 {name}**")
         st.write(f"🏢 {department}")
         st.write(f"🔐 Rol: {role}")
+        if is_quick:
+            st.warning("⚡ Sesión de invitado (Quick Access)")
+        if FULL_ACCESS_ALL_USERS and role != "admin":
+            st.info("🔓 Acceso completo habilitado (FULL_ACCESS_ALL_USERS)")
         st.divider()
 
         pages = {
@@ -551,7 +686,7 @@ def show_sidebar() -> str:
             "💰 Cost Modules": "cost_modules",
         }
 
-        if role == "admin":
+        if effective_role == "admin":
             pages["👥 Users"] = "users"
             pages["📧 User Invites"] = "invites"
 
@@ -559,6 +694,15 @@ def show_sidebar() -> str:
         st.divider()
         if st.button("🚪 Cerrar sesión", use_container_width=True):
             logout()
+
+        # Debug panel: visible to admins or when ?debug=1 is in the URL
+        try:
+            _debug_param = st.query_params.get("debug", "0")
+        except Exception:
+            _debug_param = "0"
+        if effective_role == "admin" or str(_debug_param) == "1":
+            show_debug_panel()
+
         return pages[selected]
 
 
