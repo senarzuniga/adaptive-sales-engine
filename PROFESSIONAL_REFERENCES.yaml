@@ -1,0 +1,264 @@
+modules:
+  Dashboard:
+    references:
+      - Salesforce Einstein Analytics
+      - Tableau
+      - Power BI
+    core_capabilities:
+      - KPIs en tiempo real
+      - Drill-down interactivo
+      - Alertas predictivas
+      - Personalización por rol
+      - Comparativa período anterior
+
+  Actions:
+    references:
+      - Asana
+      - Monday.com
+      - Salesforce Tasks
+    core_capabilities:
+      - Automatización de secuencias
+      - Priorización inteligente
+      - Notificaciones y recordatorios
+      - Historial de auditoría
+      - Vista Kanban / Gantt
+
+  Offers:
+    references:
+      - Salesforce CPQ
+      - PandaDoc
+      - DocuSign
+    core_capabilities:
+      - Motor de configuración-precio-cotización
+      - Aprobación multi-nivel
+      - Plantillas personalizables
+      - Firma electrónica
+      - Versionado de ofertas
+
+  Request Pool:
+    references:
+      - Salesforce Service Cloud
+      - Zendesk
+      - HubSpot Service Hub
+    core_capabilities:
+      - Clasificación automática con IA
+      - SLA tracking
+      - Enrutamiento inteligente
+      - Scoring de prioridad
+      - Vista de carga de trabajo del equipo
+
+  Cost Modules:
+    references:
+      - Oracle Fusion Costing
+      - SAP Product Costing
+      - Epicor
+    core_capabilities:
+      - Motor de escenarios what-if
+      - Análisis de márgenes por segmento
+      - Integración con ERP
+      - Alertas de desviación de costes
+      - Histórico de variaciones
+
+  Business Intelligence:
+    references:
+      - Looker
+      - Domo
+      - ThoughtSpot
+    core_capabilities:
+      - Exploración de datos con lenguaje natural
+      - Creación de informes programados
+      - Integración con múltiples fuentes
+      - Dashboards autoservicio
+      - Alertas basadas en umbrales
+
+  Budget Command Center:
+    references:
+      - Anaplan
+      - Vareto
+      - Cube
+    core_capabilities:
+      - Planificación bottom-up/top-down
+      - Escenarios what-if
+      - Tracking de desviaciones
+      - Aprobaciones multi-rol
+      - Forecasting rodante
+
+  Portfolio Analysis:
+    references:
+      - Alphasense
+      - Bloomberg Terminal
+      - FactSet
+    core_capabilities:
+      - Matriz BCG dinámica
+      - Análisis de concentración
+      - Simulación de riesgo
+      - Segmentación de cartera
+      - Scoring de rentabilidad
+
+  Weekly Planner:
+    references:
+      - Outreach
+      - Salesloft
+      - Clari
+    core_capabilities:
+      - Secuencias de tareas automatizadas
+      - Cadencia por etapa del cliente
+      - Integración con calendario
+      - Sugerencia de próximas acciones con IA
+      - Resumen semanal ejecutivo
+
+  Saved Companies:
+    references:
+      - LinkedIn Sales Navigator
+      - ZoomInfo
+      - Apollo.io
+    core_capabilities:
+      - Enriquecimiento automático de datos
+      - Scoring de prospectos
+      - Alertas de cambio de empresa
+      - Segmentación y filtros avanzados
+      - Exportación a CRM
+
+  Key Account Management:
+    references:
+      - Gainsight
+      - Salesforce CRM
+      - HubSpot Sales Hub
+    core_capabilities:
+      - Identificación de cuentas estratégicas
+      - Mapeo de stakeholders
+      - Customer Health Score
+      - Plan de cuentas ejecutable
+      - Alertas de riesgo de pérdida
+
+  Pipeline Manager:
+    references:
+      - Salesforce Sales Cloud
+      - HubSpot CRM
+      - Pipedrive
+    core_capabilities:
+      - Vista kanban del pipeline
+      - Forecast de cierre por probabilidad
+      - Alertas de estancamiento
+      - Análisis de conversión por etapa
+      - Integración con calendario y email
+
+  Market Intelligence:
+    references:
+      - Crayon
+      - Klue
+      - Bombora
+    core_capabilities:
+      - Monitoreo de señales del mercado
+      - Alertas de cambio en competidores
+      - Análisis de tendencias de la industria
+      - Integración de fuentes externas
+      - Resumen ejecutivo automático
+
+  Competitive Analysis:
+    references:
+      - Klue
+      - Crayon
+      - Kompyte
+    core_capabilities:
+      - Battlecards por competidor
+      - Seguimiento de precios de competidores
+      - Win/loss analysis
+      - Fortalezas y debilidades comparativas
+      - Alertas de lanzamientos competidores
+
+  Customer Success:
+    references:
+      - Gainsight
+      - ChurnZero
+      - Totango
+    core_capabilities:
+      - Customer Health Score en tiempo real
+      - Alertas de riesgo de churn
+      - Playbooks de onboarding
+      - NPS tracking y análisis
+      - Gestión de renovaciones
+
+  Revenue Forecasting:
+    references:
+      - Clari
+      - Gong Forecast
+      - Salesforce Forecasting
+    core_capabilities:
+      - Forecast por representante/región
+      - Análisis de pipeline coverage
+      - Escenarios optimista/base/pesimista
+      - Comparativa real vs forecast
+      - Inteligencia de cierre con IA
+
+  Product Catalog:
+    references:
+      - Salesforce CPQ
+      - SAP Variant Configuration
+      - Zuora
+    core_capabilities:
+      - Configurador de productos
+      - Reglas de precios dinámicas
+      - Gestión de bundles
+      - Histórico de precios
+      - Integración con inventario
+
+  Contract Management:
+    references:
+      - Ironclad
+      - DocuSign CLM
+      - Conga
+    core_capabilities:
+      - Ciclo de vida completo del contrato
+      - Alertas de vencimiento
+      - Aprobaciones multi-firma
+      - Repositorio centralizado
+      - Análisis de cláusulas con IA
+
+  Sales Analytics:
+    references:
+      - Salesforce Einstein
+      - Gong
+      - Chorus
+    core_capabilities:
+      - Análisis de actividad comercial
+      - Correlación actividad-cierre
+      - Leaderboard de rendimiento
+      - Coaching insights
+      - Tendencias de win rate
+
+  Territory Management:
+    references:
+      - Salesforce Territory Management
+      - Xactly Territories
+      - Varicent
+    core_capabilities:
+      - Diseño de territorios por regla
+      - Balanceo de carga comercial
+      - Mapa visual de cobertura
+      - Análisis de penetración
+      - Reasignación automática
+
+  Campaign Manager:
+    references:
+      - HubSpot Marketing Hub
+      - Marketo
+      - Salesforce Marketing Cloud
+    core_capabilities:
+      - Segmentación de audiencias
+      - Automatización de secuencias email
+      - Tracking de ROI por campaña
+      - A/B testing
+      - Integración con CRM
+
+  Team Management:
+    references:
+      - Salesforce Sales Cloud
+      - Workday
+      - BambooHR
+    core_capabilities:
+      - Gestión de cuotas y objetivos
+      - Performance dashboard por rep
+      - Onboarding checklist
+      - Gestión de roles y permisos
+      - Reporting de productividad
