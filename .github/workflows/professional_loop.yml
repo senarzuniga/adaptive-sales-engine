@@ -1,0 +1,49 @@
+name: Professional Enhancement Loop
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # Every day at 2 AM UTC
+  workflow_dispatch:        # Also manual trigger
+
+jobs:
+  enhance:
+    name: Maturity Assessment & Auto-Implement
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run maturity assessment
+        run: python scripts/assess_maturity.py
+
+      - name: Generate improvement plan
+        run: python scripts/prioritize_improvement.py
+
+      - name: Implement improvements (confidence >= 80%)
+        run: python scripts/auto_implement.py --confidence 80
+
+      - name: Verify final syntax
+        run: python -m py_compile streamlit_app.py && echo "Syntax OK"
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "Professional Enhancement Agent"
+          git config user.email "agent@adaptive-sales-engine"
+          git add MATURITY_REPORT.md IMPROVEMENT_PLAN.md CHANGELOG_PROFESSIONAL.md streamlit_app.py
+          git diff --cached --quiet || git commit -m "loop: professional enhancement [skip ci]"
+          git push || echo "No changes to push"
