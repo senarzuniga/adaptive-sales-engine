@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from ingestion.intelligence.competitive_intel import build_competitor_signal
 from ingestion.intelligence.market_intel import build_market_signal
@@ -73,3 +74,91 @@ class IntelligenceAgent:
     async def run_analysis_cycle(self) -> None:
         # Hook point for batch-level synthesis (daily/weekly digests).
         return
+
+
+# ---------------------------------------------------------------------------
+# Orchestrator-compatible synchronous adapter
+# ---------------------------------------------------------------------------
+
+def run(context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Synchronous adapter so this agent participates in the main agent cascade.
+
+    Analyses scraped page content (context['scraped_web_content']) or any available
+    company/market data using the intelligence builders from ingestion.intelligence.
+    """
+    if context is None:
+        context = {}
+
+    scraped_pages: List[Dict[str, Any]] = context.get("scraped_web_content") or []
+    active_company = context.get("active_company") or {}
+    company_name = (
+        active_company.get("company_name") or active_company.get("name", "")
+    )
+    company_notes: str = context.get("company_notes") or ""
+
+    outputs: List[Dict[str, Any]] = []
+
+    if scraped_pages:
+        for page in scraped_pages[:5]:
+            text = page.get("text_snippet", "") or page.get("html", "")
+            url = page.get("url", "unknown")
+            if not text:
+                continue
+
+            # Build a minimal payload for the intelligence builders
+            payload: Dict[str, Any] = {
+                "headline": text[:200],
+                "product_name": company_name or "unknown",
+            }
+            # Price detection
+            price_matches = re.findall(r"(?:EUR|USD|€|\$)\s?([\d\.,]{3,12})", text)
+            prices = []
+            for raw in price_matches[:5]:
+                try:
+                    prices.append(float(raw.replace(".", "").replace(",", ".")))
+                except ValueError:
+                    pass
+            if prices:
+                payload["price_estimated"] = {"value": max(prices), "currency": "EUR"}
+
+            competitor = build_competitor_signal(
+                page.get("url", "web_source"), payload
+            )
+            market = build_market_signal(payload)
+            pricing = build_pricing_insight(payload)
+
+            insight = {
+                "url": url,
+                "competitor_signal": competitor["message"],
+            }
+            if market:
+                insight["market_signal"] = market["message"]
+            if pricing:
+                insight["pricing_alert"] = pricing["message"]
+            outputs.append(insight)
+
+    if not outputs:
+        # No scraped content — return ready state with company context
+        return {
+            "status": "success",
+            "output": (
+                "Intelligence Agent listo. "
+                + (f"Empresa activa: {company_name}. " if company_name else "")
+                + "Proporciona URLs en contexto['scrape_urls'] para análisis competitivo en tiempo real."
+            ),
+            "insights": [
+                "Captura señales de competidores, precios y tendencias de mercado vía web.",
+                "Resultado depende de las URLs proporcionadas para scraping.",
+                f"Contexto empresa: {company_notes[:100]}" if company_notes else "Sin notas de empresa.",
+            ],
+            "intelligence_outputs": [],
+        }
+
+    summary_lines = [f"URL: {o['url'][:60]} — {o['competitor_signal'][:80]}" for o in outputs[:3]]
+    return {
+        "status": "success",
+        "output": f"Inteligencia generada para {len(outputs)} fuentes web.",
+        "insights": summary_lines
+        + [o.get("pricing_alert", "") for o in outputs if o.get("pricing_alert")][:2],
+        "intelligence_outputs": outputs,
+    }

@@ -71,10 +71,20 @@ class MaximumOrchestrator:
         """Loads one agent file, returning a dict or None on hard failure."""
         stem = py_file.stem
         try:
-            # Add the agent's parent directory AND grandparent to sys.path
-            # so that intra-package imports (e.g. `from ingestion import …`) work.
+            # Add the agent's parent directory AND ancestor directories to sys.path
+            # so that intra-package imports work.
+            # For ai-factory-v2 agents:
+            #   py_file = ai-factory-v2/ingestion/agents/scraper_agent.py
+            #   parent               → ai-factory-v2/ingestion/agents  (agent dir)
+            #   parent.parent        → ai-factory-v2/ingestion          (sub-package)
+            #   parent.parent.parent → ai-factory-v2                    (package root, needed for
+            #                                                             `from ingestion.xxx import …`)
             import sys as _sys
-            extra_paths = [str(py_file.parent), str(py_file.parent.parent)]
+            extra_paths = [
+                str(py_file.parent),
+                str(py_file.parent.parent),
+                str(py_file.parent.parent.parent),
+            ]
             _added = []
             for p in extra_paths:
                 if p not in _sys.path:
@@ -311,6 +321,11 @@ def _make_stub_run(stem: str, error_msg: str = "") -> Any:
         }
 
     return _stub
+@st.cache_resource
 def get_max_orchestrator() -> MaximumOrchestrator:
-    """Returns (and caches) the single MaximumOrchestrator instance."""
+    """Returns (and caches) the single MaximumOrchestrator instance.
+
+    The ``@st.cache_resource`` decorator ensures that the heavy agent-discovery
+    step runs only once per Streamlit server process instead of on every render.
+    """
     return MaximumOrchestrator()
