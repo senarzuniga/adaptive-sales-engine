@@ -1239,6 +1239,11 @@ def _restore_local_workspace(email: str) -> None:
         ws = load_workspace(email)
         if ws.get("saved_companies"):
             st.session_state["saved_companies"] = ws["saved_companies"]
+            # Auto-restore the active company (first in the list if not explicitly stored)
+            if ws.get("active_company"):
+                st.session_state["active_company"] = ws["active_company"]
+            elif ws["saved_companies"]:
+                st.session_state["active_company"] = ws["saved_companies"][0]
         _logger.info("Workspace restored for %s (%d companies)", email, len(ws.get("saved_companies", [])))
     except Exception as exc:
         _logger.warning("_restore_local_workspace error for %s: %s", email, exc)
@@ -1257,6 +1262,7 @@ def _persist_local_workspace() -> None:
         from users_storage import load_workspace, save_workspace
         ws = load_workspace(email)
         ws["saved_companies"] = st.session_state.get("saved_companies", [])
+        ws["active_company"] = st.session_state.get("active_company") or {}
         save_workspace(email, ws)
         _logger.info("Workspace persisted for %s", email)
     except Exception as exc:
@@ -1439,10 +1445,14 @@ _AVG_OPPS_PER_ACCOUNT = 3
 
 def _build_context(action: str, extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Build a standard context dict for the orchestrator."""
+    active_company = st.session_state.get("active_company") or {}
     ctx: Dict[str, Any] = {
         "action": action,
         "uploaded_data": st.session_state.get("uploaded_data_universal"),
         "saved_companies": st.session_state.get("saved_companies", []),
+        "active_company": active_company,
+        "active_company_id": active_company.get("id"),
+        "active_company_name": active_company.get("company_name") or active_company.get("name", ""),
         "estrategia_data": st.session_state.get("estrategia_data"),
         "portfolio_risk": st.session_state.get("portfolio_risk"),
     }
@@ -1489,12 +1499,13 @@ def _render_orchestrator_panel(
         st.session_state["last_analysis_action"] = action
         # Persist agent cascade outputs to shared Supabase tables
         _sb_insights_save(results, source_module=action)
+        agent_keys = [k for k in results if not k.startswith("_")]
         _sb_activity_log(
             action_type="agents_run",
-            description=f"Cascada de agentes ejecutada — módulo: {action} ({len([k for k in results if not k.startswith('_')])} agentes)",
+            description=f"Cascada de agentes ejecutada — módulo: {action} ({len(agent_keys)} agentes)",
             entity_type="analysis",
             company_id=(st.session_state.get("active_company") or {}).get("id"),
-            metadata={"action": action, "n_agents": len([k for k in results if not k.startswith("_")])},
+            metadata={"action": action, "n_agents": len(agent_keys)},
         )
         _render_orchestration_results(results)
 
