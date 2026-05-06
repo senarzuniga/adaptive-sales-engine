@@ -149,8 +149,10 @@ STREAMLIT_APP_URL = _get_secret("STREAMLIT_APP_URL")
 # Permanent admin credentials defined in Streamlit Secrets.
 # These bypass Supabase authentication so the owner can always log in
 # after a cold restart without needing a Supabase account.
-# Workspace data (e.g. saved companies) is still persisted to the local
-# filesystem via users_storage so it survives within the same deployment.
+# Workspace data (e.g. saved companies) is persisted to the local filesystem
+# via users_storage as a convenience cache, but this storage is EPHEMERAL on
+# Streamlit Cloud — it will be lost on redeployment or container restart.
+# For durable persistence across deployments configure Supabase (recommended).
 # Configure in Streamlit Cloud → Settings → Secrets:
 #   MAIL_ADDRESS = "your@email.com"
 #   APP_PASSWORD  = "your_password"

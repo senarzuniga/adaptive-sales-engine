@@ -1,6 +1,6 @@
 -- =============================================================================
--- Activity Log  —  shared cross-user event stream ("open office")
--- Every significant user action (save company, run agents, add contact…)
+-- Activity Log  --  shared cross-user event stream ("open office")
+-- Every significant user action (save company, run agents, add contact...)
 -- is written here so the whole team can see what is happening in real time.
 -- =============================================================================
 
