@@ -146,6 +146,15 @@ GMAIL_ADDRESS = _get_secret("GMAIL_ADDRESS")
 GMAIL_APP_PASSWORD = _get_secret("GMAIL_APP_PASSWORD")
 STREAMLIT_APP_URL = _get_secret("STREAMLIT_APP_URL")
 
+# Permanent admin credentials defined in Streamlit Secrets.
+# These bypass Supabase and the ephemeral local filesystem so the owner
+# can always access the app after a cold restart.
+# Configure in Streamlit Cloud → Settings → Secrets:
+#   MAIL_ADDRESS = "your@email.com"
+#   APP_PASSWORD  = "your_password"
+ADMIN_EMAIL = _get_secret("MAIL_ADDRESS", "ADMIN_EMAIL")
+ADMIN_PASSWORD = _get_secret("APP_PASSWORD", "ADMIN_PASSWORD")
+
 # ── Feature flags ─────────────────────────────────────────────
 # QUICK_ACCESS_ENABLED defaults to True — the app always works without this
 # secret being set.  Set to "false" explicitly to disable guest quick access.
@@ -456,6 +465,15 @@ def login_form() -> None:
                 if submitted:
                     if not email or not password:
                         st.error("Por favor completa todos los campos")
+                    elif (
+                        ADMIN_EMAIL
+                        and ADMIN_PASSWORD
+                        and email.strip().lower() == ADMIN_EMAIL.strip().lower()
+                        and password == ADMIN_PASSWORD
+                    ):
+                        # Admin bypass: credentials defined in Streamlit Secrets.
+                        # Always works regardless of Supabase or filesystem state.
+                        _admin_secrets_login(email)
                     elif SUPABASE_CONFIGURED and supabase is not None:
                         # Primary path: Supabase auth
                         try:
@@ -484,7 +502,7 @@ def login_form() -> None:
 
             # Quick Access — always visible when Supabase is not configured so
             # there is always a way to enter the app without credentials.
-            # When Supabase IS configured it can be disabled via the
+            # When Supabase is configured it can be disabled via the
             # QUICK_ACCESS_ENABLED secret/env-var.
             st.divider()
             if QUICK_ACCESS_ENABLED or not SUPABASE_CONFIGURED:
@@ -592,6 +610,47 @@ def logout() -> None:
             pass
     for k in ["user", "session", "profile", "current_request", "offer_mode", "show_offer_builder", "is_quick_access"]:
         st.session_state[k] = None if k not in ("show_offer_builder", "is_quick_access") else False
+    st.rerun()
+
+
+def _admin_secrets_login(email: str) -> None:
+    """Create a full admin session from Secrets-defined credentials.
+
+    This is triggered when the user logs in with the email/password pair stored
+    in the ``MAIL_ADDRESS`` / ``APP_PASSWORD`` Streamlit Secrets.  It works
+    regardless of whether Supabase is configured and survives cold restarts.
+    """
+
+    class _SecretsAdminUser:
+        """Minimal mock user compatible with the rest of the application.
+
+        Represents the owner authenticated via Secrets-defined credentials.
+        ``user_metadata`` is intentionally empty because secrets-based admin
+        sessions are not backed by Supabase and carry no remote metadata.
+        """
+
+        id = "admin_secrets_owner"
+        email = email.strip().lower()
+
+        @property
+        def user_metadata(self) -> Dict[str, Any]:
+            return {}
+
+    admin_profile: Dict[str, Any] = {
+        "id": "admin_secrets_owner",
+        "email": email.strip().lower(),
+        "name": "Administrador",
+        "department": "Management",
+        "role": "admin",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "_local_auth": True,
+    }
+
+    st.session_state.user = _SecretsAdminUser()
+    st.session_state.session = None
+    st.session_state.profile = admin_profile
+    st.session_state.is_quick_access = False
+    _logger.info("Admin-secrets login for %s", email)
     st.rerun()
 
 
