@@ -805,6 +805,33 @@ def show_sidebar() -> None:
 # Universal data parser
 # ──────────────────────────────────────────────────────────────
 
+MAX_DATAFRAME_ROWS = 100_000
+
+
+def _is_safe_url(url: str) -> bool:
+    """Return True only for http/https URLs pointing to non-private hosts."""
+    import ipaddress
+    import socket
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return False
+    hostname = parsed.hostname or ""
+    if not hostname:
+        return False
+    # Reject obviously local hostnames
+    if hostname in ("localhost", "0.0.0.0"):
+        return False
+    try:
+        # Resolve hostname to IP and check if it is private / loopback / link-local
+        addr = ipaddress.ip_address(socket.gethostbyname(hostname))
+        if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
+            return False
+    except Exception:
+        # If we cannot resolve, err on the side of caution
+        return False
+    return True
+
 
 def parse_file_to_df(file_name: str, file_bytes: bytes) -> Optional[pd.DataFrame]:
     """Convert virtually ANY uploaded file to a pandas DataFrame."""
@@ -900,9 +927,9 @@ def parse_file_to_df(file_name: str, file_bytes: bytes) -> Optional[pd.DataFrame
     except Exception as exc:
         df = pd.DataFrame({"error": [str(exc)], "archivo": [file_name]})
 
-    if df is not None and len(df) > 100_000:
-        st.warning(f"⚠️ El archivo tiene {len(df):,} filas. Truncado a 100,000.")
-        df = df.head(100_000)
+    if df is not None and len(df) > MAX_DATAFRAME_ROWS:
+        st.warning(f"⚠️ El archivo tiene {len(df):,} filas. Truncado a {MAX_DATAFRAME_ROWS:,}.")
+        df = df.head(MAX_DATAFRAME_ROWS)
     return df
 
 
@@ -926,7 +953,8 @@ def run_agent(agent_path: str, data: Optional[pd.DataFrame] = None) -> str:
     # Validate agent path is within an allowed directory to prevent path traversal
     _allowed_roots = [APP_ROOT / "agents", APP_ROOT / "ai-factory-v2", APP_ROOT / "scripts"]
     full_path = (APP_ROOT / agent_path).resolve()
-    if not any(str(full_path).startswith(str(r)) for r in _allowed_roots):
+    # Use is_relative_to for robust path traversal prevention (Python 3.9+)
+    if not any(full_path.is_relative_to(r.resolve()) for r in _allowed_roots):
         return f"❌ Ruta de agente no permitida: {agent_path}"
     if not full_path.exists():
         return f"❌ Agente no encontrado: {agent_path}"
@@ -1072,31 +1100,43 @@ def page_data_upload() -> None:
         key="data_url_input",
     )
     if st.button("Cargar desde URL", key="load_url_btn") and url_input:
-        # Validate URL scheme to prevent SSRF (only http/https allowed)
-        from urllib.parse import urlparse
-        _parsed = urlparse(url_input)
-        if _parsed.scheme not in ("http", "https"):
-            st.error("Solo se permiten URLs http:// o https://")
+        # Validate URL to prevent SSRF attacks (scheme + private IP check)
+        if not _is_safe_url(url_input):
+            st.error(
+                "URL no permitida. Solo se aceptan URLs https:// / http:// "
+                "hacia hosts públicos (no IPs privadas ni localhost)."
+            )
         else:
             try:
                 import requests as _requests
-                resp = _requests.get(url_input, timeout=15)
-                resp.raise_for_status()
-                url_fname = url_input.split("?")[0].split("/")[-1] or "data.json"
-                df = parse_file_to_df(url_fname, resp.content)
-                if df is None:
-                    import json as _json
-                    try:
-                        data = _json.loads(resp.text)
-                        df = pd.DataFrame(data if isinstance(data, list) else [data])
-                    except Exception:
-                        df = pd.DataFrame({"linea": resp.text.splitlines()})
-                if df is not None:
-                    st.session_state.uploaded_data_universal = df
-                    st.success(f"✅ URL cargada: {df.shape[0]:,} filas, {df.shape[1]} columnas")
-                    st.dataframe(df.head(5))
-                else:
-                    st.error("No se pudo interpretar la respuesta de la URL")
+                import json as _json
+                resp = _requests.get(
+                    url_input, timeout=15, allow_redirects=False
+                )
+                # Follow only one redirect (if any) to a safe destination
+                if resp.is_redirect and resp.headers.get("Location"):
+                    loc = resp.headers["Location"]
+                    if _is_safe_url(loc):
+                        resp = _requests.get(loc, timeout=15, allow_redirects=False)
+                    else:
+                        st.error("Redirección bloqueada: destino no permitido")
+                        resp = None
+                if resp is not None:
+                    resp.raise_for_status()
+                    url_fname = url_input.split("?")[0].split("/")[-1] or "data.json"
+                    df = parse_file_to_df(url_fname, resp.content)
+                    if df is None:
+                        try:
+                            data = _json.loads(resp.text)
+                            df = pd.DataFrame(data if isinstance(data, list) else [data])
+                        except Exception:
+                            df = pd.DataFrame({"linea": resp.text.splitlines()})
+                    if df is not None:
+                        st.session_state.uploaded_data_universal = df
+                        st.success(f"✅ URL cargada: {df.shape[0]:,} filas, {df.shape[1]} columnas")
+                        st.dataframe(df.head(5))
+                    else:
+                        st.error("No se pudo interpretar la respuesta de la URL")
             except Exception as exc:
                 st.error(f"Error cargando URL: {exc}")
 
