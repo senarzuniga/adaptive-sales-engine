@@ -482,9 +482,12 @@ def login_form() -> None:
                         else:
                             st.error("Email o contraseña incorrectos")
 
-            # Quick Access — always enabled by default (QUICK_ACCESS_ENABLED defaults to True)
+            # Quick Access — always visible when Supabase is not configured so
+            # there is always a way to enter the app without credentials.
+            # When Supabase IS configured it can be disabled via the
+            # QUICK_ACCESS_ENABLED secret/env-var.
             st.divider()
-            if QUICK_ACCESS_ENABLED:
+            if QUICK_ACCESS_ENABLED or not SUPABASE_CONFIGURED:
                 st.caption("⚡ Acceso rápido disponible")
                 if st.button("⚡ Quick Access (invitado)", use_container_width=True, key="quick_access_btn"):
                     _quick_access_login()
