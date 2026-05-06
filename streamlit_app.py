@@ -1444,16 +1444,40 @@ _AVG_OPPS_PER_ACCOUNT = 3
 
 
 def _build_context(action: str, extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """Build a standard context dict for the orchestrator."""
+    """Build a standard context dict for the orchestrator.
+
+    Keys exposed to every agent:
+      uploaded_data        – primary sales history DataFrame
+      productos_data       – product catalogue DataFrame (product_lifecycle_analyzer)
+      oportunidades_data   – opportunity pipeline DataFrame
+      estrategia_data      – strategic plan DataFrame (strategy_comparator)
+      saved_companies      – list of all company dicts
+      active_company       – currently active company dict
+      active_company_id    – UUID of active company (convenience)
+      active_company_name  – display name of active company (convenience)
+      company_notes        – descriptive text from active_company.additional_notes
+      portfolio_risk       – last portfolio risk result (if any)
+    """
     active_company = st.session_state.get("active_company") or {}
+    company_notes: str = (
+        active_company.get("additional_notes")
+        or active_company.get("notes")
+        or ""
+    )
     ctx: Dict[str, Any] = {
         "action": action,
+        # Tabular datasets
         "uploaded_data": st.session_state.get("uploaded_data_universal"),
+        "productos_data": st.session_state.get("productos_data"),
+        "oportunidades_data": st.session_state.get("oportunidades_data"),
+        "estrategia_data": st.session_state.get("estrategia_data"),
+        # Company context
         "saved_companies": st.session_state.get("saved_companies", []),
         "active_company": active_company,
         "active_company_id": active_company.get("id"),
         "active_company_name": active_company.get("company_name") or active_company.get("name", ""),
-        "estrategia_data": st.session_state.get("estrategia_data"),
+        "company_notes": company_notes,
+        # Derived / cached
         "portfolio_risk": st.session_state.get("portfolio_risk"),
     }
     if extra:
@@ -2116,6 +2140,13 @@ def page_company_info() -> None:
         st.rerun()
 
     st.divider()
+    # Show company context that will be passed to agents
+    active_now = st.session_state.get("active_company") or {}
+    if active_now:
+        active_notes = active_now.get("additional_notes") or active_now.get("notes", "")
+        if active_notes:
+            with st.expander("📝 Notas de empresa disponibles para los agentes", expanded=False):
+                st.write(active_notes)
     _render_orchestrator_panel(action="company_info")
 
 
@@ -2236,14 +2267,40 @@ def page_company_setup() -> None:
                 st.session_state["estrategia_data"] = df_strat
                 st.success(f"✅ Estrategia: {df_strat.shape[0]:,} registros")
 
+    # ── Current data status ───────────────────────────────────
+    st.divider()
+    _SETUP_DATASETS = [
+        ("📊 Histórico de ventas", "uploaded_data_universal"),
+        ("📦 Catálogo de productos", "productos_data"),
+        ("🎯 Pipeline de oportunidades", "oportunidades_data"),
+        ("🏆 Plan estratégico", "estrategia_data"),
+    ]
+    any_in_session = any(
+        isinstance(st.session_state.get(key), pd.DataFrame)
+        for _, key in _SETUP_DATASETS
+    )
+    if any_in_session:
+        st.subheader("📂 Datos actualmente en memoria")
+        status_cols = st.columns(4)
+        for idx, (label, key) in enumerate(_SETUP_DATASETS):
+            df_check = st.session_state.get(key)
+            if isinstance(df_check, pd.DataFrame) and not df_check.empty:
+                status_cols[idx].success(f"{label}\n{df_check.shape[0]:,} filas")
+            else:
+                status_cols[idx].warning(f"{label}\n— no cargado")
+
     # If any file was uploaded in this session, run orchestrator
     any_uploaded = any([hist_file, prod_file, opp_file, strat_file])
     if any_uploaded:
-        st.divider()
         st.subheader("🤖 Análisis automático en curso")
         _render_orchestrator_panel(action="company_setup", auto_run=True)
     else:
-        st.divider()
+        if any_in_session:
+            st.subheader("🤖 Ejecutar análisis completo")
+            st.caption(
+                "Los datos ya están cargados en memoria. Pulsa el botón para "
+                "lanzar la cascada de todos los agentes sobre los datasets actuales."
+            )
         _render_orchestrator_panel(action="company_setup")
 
 
@@ -2402,14 +2459,35 @@ def page_data_upload() -> None:
             df = parse_file_to_df(uploaded_file.name, file_bytes)
         if df is not None:
             st.session_state.uploaded_data_universal = df
-            # Detect and store specific template types
+            # Detect and store specific template types by filename keywords
             fname_lower = uploaded_file.name.lower()
-            if "estrategia" in fname_lower:
+            _detected_type: Optional[str] = None
+            if any(k in fname_lower for k in ("estrategia", "strategy", "plan")):
                 st.session_state["estrategia_data"] = df
-            elif "producto" in fname_lower:
+                _detected_type = "Plan estratégico"
+            elif any(k in fname_lower for k in ("producto", "product", "catalogo", "catalogue", "catalog")):
                 st.session_state["productos_data"] = df
+                _detected_type = "Catálogo de productos"
+            elif any(k in fname_lower for k in ("oportunidad", "opportunity", "pipeline", "funnel")):
+                st.session_state["oportunidades_data"] = df
+                _detected_type = "Pipeline de oportunidades"
+            elif any(k in fname_lower for k in ("historico", "historic", "ventas", "sales", "revenue")):
+                _detected_type = "Histórico de ventas"
+            else:
+                # Fallback: auto-detect by column names
+                cols_lower = [c.lower() for c in df.columns]
+                if any(c in cols_lower for c in ("estrategia", "objetivo", "target", "kpi")):
+                    st.session_state["estrategia_data"] = df
+                    _detected_type = "Plan estratégico (auto-detectado)"
+                elif any(c in cols_lower for c in ("product family", "familia", "lifecycle", "ciclo de vida", "sku")):
+                    st.session_state["productos_data"] = df
+                    _detected_type = "Catálogo de productos (auto-detectado)"
+                elif any(c in cols_lower for c in ("stage", "etapa", "probabilidad", "probability", "deal")):
+                    st.session_state["oportunidades_data"] = df
+                    _detected_type = "Pipeline de oportunidades (auto-detectado)"
             st.success(
                 f"✅ **{uploaded_file.name}** — {df.shape[0]:,} filas, {df.shape[1]} columnas"
+                + (f"  |  Tipo detectado: **{_detected_type}**" if _detected_type else "")
             )
             col1, col2, col3 = st.columns(3)
             col1.metric("Filas", f"{df.shape[0]:,}")
