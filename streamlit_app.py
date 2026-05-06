@@ -147,8 +147,10 @@ GMAIL_APP_PASSWORD = _get_secret("GMAIL_APP_PASSWORD")
 STREAMLIT_APP_URL = _get_secret("STREAMLIT_APP_URL")
 
 # Permanent admin credentials defined in Streamlit Secrets.
-# These bypass Supabase and the ephemeral local filesystem so the owner
-# can always access the app after a cold restart.
+# These bypass Supabase authentication so the owner can always log in
+# after a cold restart without needing a Supabase account.
+# Workspace data (e.g. saved companies) is still persisted to the local
+# filesystem via users_storage so it survives within the same deployment.
 # Configure in Streamlit Cloud → Settings → Secrets:
 #   MAIL_ADDRESS = "your@email.com"
 #   APP_PASSWORD  = "your_password"
@@ -412,6 +414,7 @@ def _local_login(email: str, password: str) -> bool:
         st.session_state.session = None
         st.session_state.profile = profile
         st.session_state.is_quick_access = False
+        _restore_local_workspace(user_data["email"])
         _logger.info("Local auth login for %s", email)
         return True
     except Exception as exc:
@@ -650,6 +653,13 @@ def _admin_secrets_login(email: str) -> None:
     st.session_state.session = None
     st.session_state.profile = admin_profile
     st.session_state.is_quick_access = False
+    # Ensure a workspace record exists on disk and restore previous session data.
+    try:
+        from users_storage import ensure_workspace_user
+        ensure_workspace_user(email.strip().lower(), name="Administrador", department="Management", role="admin")
+    except Exception as exc:
+        _logger.warning("Admin workspace init error: %s", exc)
+    _restore_local_workspace(email.strip().lower())
     _logger.info("Admin-secrets login for %s", email)
     st.rerun()
 
@@ -1159,6 +1169,53 @@ def run_agent(agent_path: str, data: Optional[pd.DataFrame] = None) -> str:
         return "⏱️ Timeout: el agente tardó más de 30 segundos"
     except Exception as exc:
         return f"❌ Error ejecutando agente: {exc}"
+
+
+# ──────────────────────────────────────────────────────────────
+# Workspace persistence helpers (local auth + admin-secrets)
+# ──────────────────────────────────────────────────────────────
+
+def _get_local_email() -> Optional[str]:
+    """Return the email of the currently-logged-in local/admin user, or None."""
+    profile = st.session_state.get("profile")
+    if profile and profile.get("_local_auth"):
+        return profile.get("email")
+    return None
+
+
+def _restore_local_workspace(email: str) -> None:
+    """Load the workspace from users_storage and populate session_state.
+
+    Called once after a successful local or admin-secrets login so that data
+    saved in previous sessions (e.g. saved_companies) is immediately available.
+    """
+    try:
+        from users_storage import load_workspace
+        ws = load_workspace(email)
+        if ws.get("saved_companies"):
+            st.session_state["saved_companies"] = ws["saved_companies"]
+        _logger.info("Workspace restored for %s (%d companies)", email, len(ws.get("saved_companies", [])))
+    except Exception as exc:
+        _logger.warning("_restore_local_workspace error for %s: %s", email, exc)
+
+
+def _persist_local_workspace() -> None:
+    """Persist session_state workspace fields back to users_storage.
+
+    Safe to call at any time; silently skips if the current user is not a
+    local/admin user (e.g. Supabase-authenticated or guest).
+    """
+    email = _get_local_email()
+    if not email:
+        return
+    try:
+        from users_storage import load_workspace, save_workspace
+        ws = load_workspace(email)
+        ws["saved_companies"] = st.session_state.get("saved_companies", [])
+        save_workspace(email, ws)
+        _logger.info("Workspace persisted for %s", email)
+    except Exception as exc:
+        _logger.warning("_persist_local_workspace error: %s", exc)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -1687,6 +1744,7 @@ def page_company_info() -> None:
             "segment": segment, "notes": notes,
         })
         st.session_state["saved_companies"] = companies
+        _persist_local_workspace()
         st.success(f"✅ '{company_name}' guardada. Total: {len(companies)} empresas.")
         st.rerun()
     st.divider()

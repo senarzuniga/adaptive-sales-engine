@@ -193,6 +193,45 @@ def list_users() -> List[Dict[str, Any]]:
     return users
 
 
+def ensure_workspace_user(email: str, name: str = "", department: str = "Management", role: str = "admin") -> Dict[str, Any]:
+    """Return (or create) a workspace-only record for *email*.
+
+    Unlike :func:`create_user` this does not require a password; it is intended
+    for the admin-secrets login path where credentials live in Streamlit Secrets
+    and we only need a persistent workspace store on disk.
+
+    Returns the full user record.
+    """
+    _ensure_dir()
+    fpath = _user_file(email)
+    if fpath.exists():
+        try:
+            return json.loads(fpath.read_text(encoding="utf-8"))
+        except Exception as exc:
+            _logger.warning("ensure_workspace_user: corrupted file for %s: %s", email, exc)
+
+    user_data: Dict[str, Any] = {
+        "email": email.strip().lower(),
+        "name": name,
+        "department": department,
+        "role": role,
+        "password_hash": "",
+        "password_salt": "",
+        "created_at": _utcnow_iso(),
+        "last_login": _utcnow_iso(),
+        "workspace": {
+            "uploaded_data": None,
+            "saved_companies": [],
+            "scraped_urls": [],
+            "documents": [],
+            "settings": {},
+        },
+    }
+    fpath.write_text(json.dumps(user_data, indent=2), encoding="utf-8")
+    _logger.info("ensure_workspace_user: created workspace record for %s", email)
+    return user_data
+
+
 def build_profile_from_local_user(user_data: Dict[str, Any]) -> Dict[str, Any]:
     """Convert a local user record into the same profile shape used by Supabase auth."""
     return {
