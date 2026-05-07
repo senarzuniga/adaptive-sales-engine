@@ -1,5 +1,5 @@
 # MATURITY REPORT
-_Generated: 2026-05-06 09:38 UTC_
+_Generated: 2026-05-07 05:28 UTC_
 
 ## Summary table
 
@@ -7,12 +7,12 @@ _Generated: 2026-05-06 09:38 UTC_
 |--------|-----------|----------|----|---------|
 | Dashboard | 60% | 0% | 100% | 60% |
 | Actions | 100% | 100% | 100% | 100% |
-| Offers | 20% | 0% | 100% | 40% |
+| Offers | 40% | 0% | 100% | 50% |
 | Request Pool | 100% | 100% | 100% | 100% |
 | Cost Modules | 20% | 0% | 100% | 40% |
-| Business Intelligence | 80% | 100% | 100% | 90% |
-| Budget Command Center | 80% | 100% | 100% | 90% |
-| Key Account Management | 100% | 100% | 100% | 100% |
+| Business Intelligence | 40% | 0% | 100% | 50% |
+| Budget Command Center | 20% | 0% | 100% | 40% |
+| Key Account Management | 40% | 0% | 0% | 20% |
 | Pipeline Manager | 0% | 0% | 0% | 0% |
 | Market Intelligence | 0% | 0% | 0% | 0% |
 | Competitive Analysis | 0% | 0% | 0% | 0% |
@@ -53,13 +53,13 @@ _Generated: 2026-05-06 09:38 UTC_
 
 ### Offers
 - **Status**: ✅ Implemented
-- **functional_coverage**: 20%
+- **functional_coverage**: 40%
 - **protocol_score**: 0%
 - **ux_score**: 100%
-- **overall**: 40%
+- **overall**: 50%
 - **References**: Salesforce CPQ, PandaDoc, DocuSign
-- **Implemented**: Origen desde solicitud
-- **Missing**: Motor de cálculo de costes, Múltiples versiones, Estados de oferta, Exportación PDF/Excel
+- **Implemented**: Motor de cálculo de costes, Origen desde solicitud
+- **Missing**: Múltiples versiones, Estados de oferta, Exportación PDF/Excel
 
 ### Request Pool
 - **Status**: ✅ Implemented
@@ -82,32 +82,33 @@ _Generated: 2026-05-06 09:38 UTC_
 
 ### Business Intelligence
 - **Status**: ✅ Implemented
-- **functional_coverage**: 80%
-- **protocol_score**: 100%
+- **functional_coverage**: 40%
+- **protocol_score**: 0%
 - **ux_score**: 100%
-- **overall**: 90%
+- **overall**: 50%
 - **References**: Looker, Domo, ThoughtSpot
-- **Implemented**: Gráficos de tendencia, Segmentación de datos, Informes programados, Exploración de datos
-- **Missing**: KPI metrics
+- **Implemented**: Gráficos de tendencia, Segmentación de datos
+- **Missing**: KPI metrics, Informes programados, Exploración de datos
 
 ### Budget Command Center
 - **Status**: ✅ Implemented
-- **functional_coverage**: 80%
-- **protocol_score**: 100%
+- **functional_coverage**: 20%
+- **protocol_score**: 0%
 - **ux_score**: 100%
-- **overall**: 90%
+- **overall**: 40%
 - **References**: Anaplan, Vareto, Cube
-- **Implemented**: Simulación what-if, Tracking de desviaciones, Exportación de escenarios, Visualización de barras
-- **Missing**: Alertas de desviación
+- **Implemented**: Tracking de desviaciones
+- **Missing**: Simulación what-if, Alertas de desviación, Exportación de escenarios, Visualización de barras
 
 ### Key Account Management
 - **Status**: ✅ Implemented
-- **functional_coverage**: 100%
-- **protocol_score**: 100%
-- **ux_score**: 100%
-- **overall**: 100%
+- **functional_coverage**: 40%
+- **protocol_score**: 0%
+- **ux_score**: 0%
+- **overall**: 20%
 - **References**: Gainsight, Salesforce CRM, HubSpot Sales Hub
-- **Implemented**: Tabla de cuentas clave, Health Score, Alertas de riesgo, Visualización horizontal, Exportación
+- **Implemented**: Tabla de cuentas clave, Visualización horizontal
+- **Missing**: Health Score, Alertas de riesgo, Exportación
 
 ### Pipeline Manager
 - **Status**: ⬜ Not implemented
@@ -155,7 +156,7 @@ _Generated: 2026-05-06 09:38 UTC_
 - **Missing**: Forecast por representante/región, Escenarios optimista/base/pesimista, Comparativa real vs forecast
 
 ### Portfolio Analysis
-- **Status**: ⬜ Not implemented
+- **Status**: ✅ Implemented
 - **functional_coverage**: 0%
 - **protocol_score**: 0%
 - **ux_score**: 0%
@@ -164,7 +165,7 @@ _Generated: 2026-05-06 09:38 UTC_
 - **Missing**: Matriz BCG dinámica, Análisis de concentración, Simulación de riesgo
 
 ### Weekly Planner
-- **Status**: ⬜ Not implemented
+- **Status**: ✅ Implemented
 - **functional_coverage**: 0%
 - **protocol_score**: 0%
 - **ux_score**: 0%
@@ -173,7 +174,7 @@ _Generated: 2026-05-06 09:38 UTC_
 - **Missing**: Secuencias de tareas automatizadas, Cadencia por etapa del cliente, Integración con calendario
 
 ### Saved Companies
-- **Status**: ⬜ Not implemented
+- **Status**: ✅ Implemented
 - **functional_coverage**: 0%
 - **protocol_score**: 0%
 - **ux_score**: 0%
@@ -237,6 +238,6 @@ _Generated: 2026-05-06 09:38 UTC_
 
 ---
 
-**Modules implemented**: 8/22
-**Average maturity (implemented)**: 77%
+**Modules implemented**: 11/22
+**Average maturity (implemented)**: 41%
 **Total modules planned**: 22
