@@ -9,6 +9,7 @@ Wraps raw agent ``run()`` calls with:
 """
 from __future__ import annotations
 
+import atexit
 import logging
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from typing import Any, Callable, Dict, Optional
@@ -19,7 +20,9 @@ _DEFAULT_TIMEOUT_S = 60
 
 # Module-level shared thread pool — avoids per-call overhead of creating a new pool.
 # max_workers matches the default orchestrator concurrency.
+# The pool is shut down gracefully via atexit when the process exits.
 _SHARED_EXECUTOR = ThreadPoolExecutor(max_workers=12, thread_name_prefix="agent_runtime")
+atexit.register(_SHARED_EXECUTOR.shutdown, wait=False)
 
 
 class AgentRuntime:

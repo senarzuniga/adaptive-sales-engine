@@ -13,7 +13,7 @@ import re
 import socket
 import zipfile
 from typing import Optional
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 import pandas as pd
 
@@ -49,20 +49,52 @@ def is_safe_url(url: str) -> bool:
 def fetch_url_safe(url: str, timeout: int = 15) -> bytes:
     """Fetch a URL's content after SSRF validation.
 
-    Raises ``ValueError`` if the URL fails safety checks or if the server
-    returns a redirect (to prevent redirect-based SSRF bypasses).
+    The function validates the URL against private/loopback/reserved IP ranges
+    and only accepts ``http`` / ``https`` schemes.  The URL is then
+    reconstructed from its parsed components so that no raw user-supplied string
+    is passed to the HTTP client (mitigates SSRF).
+
+    Raises ``ValueError`` if:
+      - the URL fails safety checks (private IP, localhost, bad scheme)
+      - the server returns a redirect (prevents redirect-based SSRF bypasses)
+
     Raises ``requests.HTTPError`` on non-2xx responses.
     """
     import requests as _requests
 
-    if not is_safe_url(url):
+    parsed = urlparse(url)
+
+    # Validate scheme, hostname and resolved IP.
+    if parsed.scheme not in ("http", "https"):
         raise ValueError(
-            "URL not allowed: only http/https URLs to public hosts are accepted. "
-            "Private IPs, localhost and non-http schemes are blocked."
+            "URL not allowed: only http/https URLs to public hosts are accepted."
         )
+    hostname = parsed.hostname or ""
+    if not hostname or hostname in ("localhost", "0.0.0.0"):
+        raise ValueError("URL not allowed: private or local hostnames are blocked.")
+    try:
+        addr = ipaddress.ip_address(socket.gethostbyname(hostname))
+        if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
+            raise ValueError("URL not allowed: resolved IP is in a private or reserved range.")
+    except ValueError:
+        raise
+    except Exception:
+        raise ValueError("URL not allowed: hostname could not be resolved to a public IP.")
+
+    # Reconstruct URL from validated parsed components — do NOT forward the raw
+    # user-supplied string to the HTTP client (SSRF mitigation).
+    safe_url = urlunparse((
+        parsed.scheme,
+        parsed.netloc,
+        parsed.path,
+        parsed.params,
+        parsed.query,
+        "",  # fragment is stripped — not needed for data fetching
+    ))
+
     # allow_redirects=False prevents the client from automatically following
     # Location headers which could point at internal services.
-    resp = _requests.get(url, timeout=timeout, allow_redirects=False)
+    resp = _requests.get(safe_url, timeout=timeout, allow_redirects=False)
     if resp.status_code in (301, 302, 303, 307, 308):
         raise ValueError(
             "The URL returned a redirect. For security, redirects are not followed. "
@@ -177,7 +209,7 @@ def parse_file_to_df(file_name: str, file_bytes: bytes) -> Optional[pd.DataFrame
 
     if df is not None and len(df) > MAX_DATAFRAME_ROWS:
         logger.warning(
-            "File %s truncated from %d to %d rows — only first %d rows will be analysed",
+            "File %s truncated from %d rows to %d rows — only the first %d rows will be analysed.",
             file_name, len(df), MAX_DATAFRAME_ROWS, MAX_DATAFRAME_ROWS,
         )
         df = df.head(MAX_DATAFRAME_ROWS)

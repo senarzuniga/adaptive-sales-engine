@@ -155,6 +155,11 @@ def refresh_auth_from_supabase() -> None:
 
 
 def _local_login(email: str, password: str) -> bool:
+    """Authenticate against the local users_storage (used when Supabase is not configured).
+
+    Updates ``st.session_state`` with user, session (None) and profile on success.
+    Returns True on success, False on wrong credentials or any error.
+    """
     try:
         from users_storage import build_profile_from_local_user, get_user, update_last_login, verify_user
         if not verify_user(email, password):
@@ -185,6 +190,11 @@ def _local_login(email: str, password: str) -> bool:
 
 
 def _local_register(email: str, name: str, department: str) -> Optional[str]:
+    """Register a new user in the local users_storage.
+
+    Returns the temporary password on success, or None if the email is already taken
+    or any other error occurs.
+    """
     try:
         from users_storage import create_user
         result = create_user(email=email, name=name, department=department)
