@@ -7,7 +7,7 @@ import streamlit as st
 
 from config import SUPABASE_CONFIGURED, AVG_OPPS_PER_ACCOUNT
 from ui.components import _render_orchestrator_panel
-from infrastructure.file_parser import parse_file_to_df, is_safe_url
+from infrastructure.file_parser import parse_file_to_df, is_safe_url, fetch_url_safe
 
 
 def page_after_sales_engine() -> None:
@@ -232,42 +232,27 @@ def page_data_upload() -> None:
         key="data_url_input",
     )
     if st.button("Cargar desde URL", key="load_url_btn") and url_input:
-        if not is_safe_url(url_input):
-            st.error(
-                "URL no permitida. Solo se aceptan URLs https:// / http:// "
-                "hacia hosts públicos (no IPs privadas ni localhost)."
-            )
-        else:
-            try:
-                import json as _json
-                import requests as _requests
-                # Redirects are disabled — we do not follow Location headers to
-                # avoid SSRF bypasses via server-controlled redirects.
-                resp = _requests.get(url_input, timeout=15, allow_redirects=False)
-                if resp.status_code in (301, 302, 303, 307, 308):
-                    st.error(
-                        "La URL devolvió una redirección. "
-                        "Por seguridad no se siguen redirecciones automáticas. "
-                        "Usa la URL final directamente."
-                    )
-                else:
-                    resp.raise_for_status()
-                    url_fname = url_input.split("?")[0].split("/")[-1] or "data.json"
-                    df = parse_file_to_df(url_fname, resp.content)
-                    if df is None:
-                        try:
-                            data = _json.loads(resp.text)
-                            df = pd.DataFrame(data if isinstance(data, list) else [data])
-                        except Exception:
-                            df = pd.DataFrame({"linea": resp.text.splitlines()})
-                    if df is not None:
-                        st.session_state.uploaded_data_universal = df
-                        st.success(f"✅ URL cargada: {df.shape[0]:,} filas, {df.shape[1]} columnas")
-                        st.dataframe(df.head(5))
-                    else:
-                        st.error("No se pudo interpretar la respuesta de la URL")
-            except Exception as exc:
-                st.error(f"Error cargando URL: {exc}")
+        try:
+            import json as _json
+            content = fetch_url_safe(url_input, timeout=15)
+            url_fname = url_input.split("?")[0].split("/")[-1] or "data.json"
+            df = parse_file_to_df(url_fname, content)
+            if df is None:
+                try:
+                    data = _json.loads(content.decode("utf-8", errors="replace"))
+                    df = pd.DataFrame(data if isinstance(data, list) else [data])
+                except Exception:
+                    df = pd.DataFrame({"linea": content.decode("utf-8", errors="replace").splitlines()})
+            if df is not None:
+                st.session_state.uploaded_data_universal = df
+                st.success(f"✅ URL cargada: {df.shape[0]:,} filas, {df.shape[1]} columnas")
+                st.dataframe(df.head(5))
+            else:
+                st.error("No se pudo interpretar la respuesta de la URL")
+        except ValueError as exc:
+            st.error(str(exc))
+        except Exception as exc:
+            st.error(f"Error cargando URL: {exc}")
 
     st.subheader("2️⃣ Subir archivo")
     uploaded_file = st.file_uploader(

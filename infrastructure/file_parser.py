@@ -46,6 +46,32 @@ def is_safe_url(url: str) -> bool:
     return True
 
 
+def fetch_url_safe(url: str, timeout: int = 15) -> bytes:
+    """Fetch a URL's content after SSRF validation.
+
+    Raises ``ValueError`` if the URL fails safety checks or if the server
+    returns a redirect (to prevent redirect-based SSRF bypasses).
+    Raises ``requests.HTTPError`` on non-2xx responses.
+    """
+    import requests as _requests
+
+    if not is_safe_url(url):
+        raise ValueError(
+            "URL not allowed: only http/https URLs to public hosts are accepted. "
+            "Private IPs, localhost and non-http schemes are blocked."
+        )
+    # allow_redirects=False prevents the client from automatically following
+    # Location headers which could point at internal services.
+    resp = _requests.get(url, timeout=timeout, allow_redirects=False)
+    if resp.status_code in (301, 302, 303, 307, 308):
+        raise ValueError(
+            "The URL returned a redirect. For security, redirects are not followed. "
+            "Use the final destination URL directly."
+        )
+    resp.raise_for_status()
+    return resp.content
+
+
 # ──────────────────────────────────────────────────────────────
 # File parsing
 # ──────────────────────────────────────────────────────────────
@@ -150,6 +176,9 @@ def parse_file_to_df(file_name: str, file_bytes: bytes) -> Optional[pd.DataFrame
         df = pd.DataFrame({"error": [str(exc)], "archivo": [file_name]})
 
     if df is not None and len(df) > MAX_DATAFRAME_ROWS:
-        logger.info("File %s truncated from %d to %d rows", file_name, len(df), MAX_DATAFRAME_ROWS)
+        logger.warning(
+            "File %s truncated from %d to %d rows — only first %d rows will be analysed",
+            file_name, len(df), MAX_DATAFRAME_ROWS, MAX_DATAFRAME_ROWS,
+        )
         df = df.head(MAX_DATAFRAME_ROWS)
     return df

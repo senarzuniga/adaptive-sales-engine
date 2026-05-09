@@ -160,9 +160,10 @@ def page_actions() -> None:
                         "estimated_hours": estimated_hours,
                         "supportive_content": {},
                         "created_by": st.session_state.user.id,
-                        "created_at": datetime.now(timezone.utc).isoformat(),
-                        "last_modified": datetime.now(timezone.utc).isoformat(),
                     }
+                    now_iso = datetime.now(timezone.utc).isoformat()
+                    payload["created_at"] = now_iso
+                    payload["last_modified"] = now_iso
                     try:
                         supabase.table("actions").insert(payload).execute()
                         st.success("Acción creada")

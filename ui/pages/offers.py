@@ -89,15 +89,16 @@ def page_requests() -> None:
             submitted = st.form_submit_button("Guardar", use_container_width=True)
 
             if submitted:
+                _now = datetime.now(timezone.utc)
                 payload = {
                     "company": company,
                     "contact_name": contact_name,
                     "contact_email": contact_email,
                     "contact_phone": contact_phone,
                     "description": description,
-                    "received_date": datetime.now(timezone.utc).date().isoformat(),
+                    "received_date": _now.date().isoformat(),
                     "deadline_preliminary_budget": (
-                        datetime.now(timezone.utc) + timedelta(days=int(days_to_deadline))
+                        _now + timedelta(days=int(days_to_deadline))
                     ).date().isoformat(),
                     "status": "new",
                     "created_by": st.session_state.user.id,
