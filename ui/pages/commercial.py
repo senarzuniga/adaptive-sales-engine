@@ -160,8 +160,8 @@ def page_actions() -> None:
                         "estimated_hours": estimated_hours,
                         "supportive_content": {},
                         "created_by": st.session_state.user.id,
-                        "created_at": datetime.utcnow().isoformat(),
-                        "last_modified": datetime.utcnow().isoformat(),
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "last_modified": datetime.now(timezone.utc).isoformat(),
                     }
                     try:
                         supabase.table("actions").insert(payload).execute()
@@ -208,7 +208,7 @@ def page_actions() -> None:
                             supabase.table("actions").update({
                                 "status": str(row.get("status", "open")),
                                 "comments": str(row.get("comments", "")),
-                                "last_modified": datetime.utcnow().isoformat(),
+                                "last_modified": datetime.now(timezone.utc).isoformat(),
                             }).eq("id", str(row.get("id"))).execute()
                             ok += 1
                         except Exception:
@@ -243,7 +243,7 @@ def page_actions() -> None:
             )
             if new_status != _field(action, "status", default="open"):
                 supabase.table("actions").update(
-                    {"status": new_status, "last_modified": datetime.utcnow().isoformat()}
+                    {"status": new_status, "last_modified": datetime.now(timezone.utc).isoformat()}
                 ).eq("id", action["id"]).execute()
                 st.rerun()
 
@@ -255,7 +255,7 @@ def page_actions() -> None:
             )
             if comments_val != str(_field(action, "comments", default="")):
                 supabase.table("actions").update(
-                    {"comments": comments_val, "last_modified": datetime.utcnow().isoformat()}
+                    {"comments": comments_val, "last_modified": datetime.now(timezone.utc).isoformat()}
                 ).eq("id", action["id"]).execute()
 
             if c4.button("🗑", key=f"act_del_{action['id']}", use_container_width=True):

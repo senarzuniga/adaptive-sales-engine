@@ -10,13 +10,16 @@ Wraps raw agent ``run()`` calls with:
 from __future__ import annotations
 
 import logging
-import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from typing import Any, Callable, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
 _DEFAULT_TIMEOUT_S = 60
+
+# Module-level shared thread pool — avoids per-call overhead of creating a new pool.
+# max_workers matches the default orchestrator concurrency.
+_SHARED_EXECUTOR = ThreadPoolExecutor(max_workers=12, thread_name_prefix="agent_runtime")
 
 
 class AgentRuntime:
@@ -54,26 +57,26 @@ class AgentRuntime:
         agent_fn: Callable[..., Dict[str, Any]],
         context: Dict[str, Any],
     ) -> Dict[str, Any]:
-        """Run agent_fn in a thread with a timeout."""
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(agent_fn, context)
-            try:
-                raw = future.result(timeout=self.timeout_s)
-                return self._normalise(raw)
-            except FutureTimeout:
-                return {
-                    "status": "timeout",
-                    "output": f"Agent exceeded {self.timeout_s}s timeout.",
-                    "insights": [],
-                    "error": "timeout",
-                }
-            except Exception as exc:
-                return {
-                    "status": "error",
-                    "output": str(exc),
-                    "insights": [],
-                    "error": str(exc),
-                }
+        """Submit agent_fn to the shared thread pool with a timeout."""
+        future = _SHARED_EXECUTOR.submit(agent_fn, context)
+        try:
+            raw = future.result(timeout=self.timeout_s)
+            return self._normalise(raw)
+        except FutureTimeout:
+            future.cancel()
+            return {
+                "status": "timeout",
+                "output": f"Agent exceeded {self.timeout_s}s timeout.",
+                "insights": [],
+                "error": "timeout",
+            }
+        except Exception as exc:
+            return {
+                "status": "error",
+                "output": str(exc),
+                "insights": [],
+                "error": str(exc),
+            }
 
     @staticmethod
     def _normalise(raw: Any) -> Dict[str, Any]:

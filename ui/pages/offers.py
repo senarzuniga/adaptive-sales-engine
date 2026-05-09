@@ -1,7 +1,7 @@
 """Offer & Pricing pages — manual creation, from request, document upload, listing."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -95,9 +95,9 @@ def page_requests() -> None:
                     "contact_email": contact_email,
                     "contact_phone": contact_phone,
                     "description": description,
-                    "received_date": datetime.utcnow().date().isoformat(),
+                    "received_date": datetime.now(timezone.utc).date().isoformat(),
                     "deadline_preliminary_budget": (
-                        datetime.utcnow() + timedelta(days=int(days_to_deadline))
+                        datetime.now(timezone.utc) + timedelta(days=int(days_to_deadline))
                     ).date().isoformat(),
                     "status": "new",
                     "created_by": st.session_state.user.id,
@@ -207,7 +207,7 @@ def page_create_offer_manual() -> None:
                 "customer_name": draft["company"],
                 "customer_contact": draft["contact"],
                 "valid_until": (
-                    datetime.utcnow() + timedelta(days=draft["valid_days"])
+                    datetime.now(timezone.utc) + timedelta(days=draft["valid_days"])
                 ).date().isoformat(),
                 "created_from": "manual",
                 "warnings": [],
@@ -286,7 +286,7 @@ def page_create_offer_from_request() -> None:
                 "customer_name": _field(req, "company", default=""),
                 "customer_contact": _field(req, "contact_name", "contact", default=""),
                 "valid_until": (
-                    datetime.utcnow() + timedelta(days=int(valid_days))
+                    datetime.now(timezone.utc) + timedelta(days=int(valid_days))
                 ).date().isoformat(),
                 "created_from": "request_pool",
                 "warnings": ["filled from request, verify all data"],
@@ -359,7 +359,7 @@ def page_upload_offer_document() -> None:
                 "customer_name": company,
                 "customer_contact": contact,
                 "valid_until": (
-                    datetime.utcnow() + timedelta(days=int(valid_days))
+                    datetime.now(timezone.utc) + timedelta(days=int(valid_days))
                 ).date().isoformat(),
                 "created_from": "document_upload",
                 "warnings": ["source document uploaded", "verify extraction"],

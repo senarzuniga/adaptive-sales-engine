@@ -87,7 +87,10 @@ def _render_orchestration_results(results: Dict[str, Any]) -> None:
                 else:
                     agent_out = output.get("output")
                     if agent_out:
-                        st.success(str(agent_out)[:MAX_AGENT_OUTPUT_PREVIEW])
+                        preview = str(agent_out)[:MAX_AGENT_OUTPUT_PREVIEW]
+                        if len(str(agent_out)) > MAX_AGENT_OUTPUT_PREVIEW:
+                            preview += "…"
+                        st.success(preview)
                     for ins in (output.get("insights") or [])[:5]:
                         st.markdown(f"• {ins}")
                     for special_key in ("tasks", "opportunities", "matrix", "account_maps", "gaps", "critical_clients"):

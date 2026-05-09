@@ -241,15 +241,16 @@ def page_data_upload() -> None:
             try:
                 import json as _json
                 import requests as _requests
+                # Redirects are disabled — we do not follow Location headers to
+                # avoid SSRF bypasses via server-controlled redirects.
                 resp = _requests.get(url_input, timeout=15, allow_redirects=False)
                 if resp.status_code in (301, 302, 303, 307, 308):
-                    loc = resp.headers.get("Location", "")
-                    if loc and is_safe_url(loc):
-                        resp = _requests.get(loc, timeout=15, allow_redirects=False)
-                    else:
-                        st.error("Redirección bloqueada: destino no permitido")
-                        resp = None
-                if resp is not None:
+                    st.error(
+                        "La URL devolvió una redirección. "
+                        "Por seguridad no se siguen redirecciones automáticas. "
+                        "Usa la URL final directamente."
+                    )
+                else:
                     resp.raise_for_status()
                     url_fname = url_input.split("?")[0].split("/")[-1] or "data.json"
                     df = parse_file_to_df(url_fname, resp.content)

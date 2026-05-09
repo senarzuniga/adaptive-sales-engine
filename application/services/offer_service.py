@@ -12,8 +12,9 @@ logger = logging.getLogger(__name__)
 
 def next_offer_serial() -> str:
     """Generate a unique offer serial number."""
-    date_part = datetime.utcnow().strftime("%Y%m%d")
-    seq = abs(hash(datetime.utcnow().isoformat())) % 10000
+    now = datetime.now(timezone.utc)
+    date_part = now.strftime("%Y%m%d")
+    seq = abs(hash(now.isoformat())) % 10000
     return f"OFF-{date_part}-{seq:04d}"
 
 
