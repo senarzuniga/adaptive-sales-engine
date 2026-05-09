@@ -11,6 +11,7 @@ A zero-dependency, Python-based desktop launcher that lets you start, stop, and 
 | `launcher.py` | Main GUI application (Python 3.8+ / tkinter) |
 | `apps_config.json` | Defines the list of apps and how to start them |
 | `run_launcher.bat` | Windows double-click entry point |
+| `run_launcher.sh` | Linux/macOS shell entry point |
 | `icons/` | Optional `.ico` file for the window icon |
 
 ---
@@ -20,6 +21,16 @@ A zero-dependency, Python-based desktop launcher that lets you start, stop, and 
 1. **Open** `launcher/` in File Explorer  
 2. **Double-click** `run_launcher.bat`  
 3. A window appears — click **▶ Start** next to any app
+
+## ⚡ Quick Start (Linux/macOS)
+
+```bash
+cd launcher
+chmod +x run_launcher.sh
+./run_launcher.sh
+```
+
+Then click **▶ Start** on **Adaptive Sales Engine (Streamlit)** and use **🌐 Open**.
 
 ### Prerequisites
 

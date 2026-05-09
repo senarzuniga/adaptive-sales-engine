@@ -1,6 +1,13 @@
 {
   "apps": [
     {
+      "name": "Adaptive Sales Engine (Streamlit)",
+      "path": ".",
+      "command": "python -m streamlit run streamlit_app.py --server.port 8501",
+      "port": 8501,
+      "description": "Main application from this repository"
+    },
+    {
       "name": "Next.js Frontend (dev)",
       "path": ".",
       "command": "npm run dev",
