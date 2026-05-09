@@ -19,6 +19,7 @@ Windows quick-start
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -92,6 +93,19 @@ def _load_repo_env() -> dict[str, str]:
         values[key.strip()] = value.strip().strip('"').strip("'")
 
     return values
+
+
+def _normalize_python_command(command: str) -> str:
+    """Switch leading 'python' to 'python3' when needed on Unix-like systems."""
+    if sys.platform == "win32":
+        return command
+    if not re.match(r"^\s*python\b", command):
+        return command
+    if shutil.which("python"):
+        return command
+    if shutil.which("python3"):
+        return re.sub(r"^\s*python\b", "python3", command, count=1)
+    return command
 
 
 # ─── AppRow ───────────────────────────────────────────────────────────────────
@@ -210,7 +224,7 @@ class AppRow:
             return  # already running
 
         work_dir = _resolve_path(self.cfg["path"])
-        cmd      = self.cfg["command"]
+        cmd      = _normalize_python_command(self.cfg["command"])
 
         self.log(self.cfg["name"], f"→ cwd:  {work_dir}")
         self.log(self.cfg["name"], f"→ cmd:  {cmd}\n")
