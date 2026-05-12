@@ -104,6 +104,8 @@ _SUPABASE_COMPANY_SCOPED_TABLES = [
     "spare_parts",
 ]
 
+_WORKSPACE_ROW_EXCLUDE_FIELDS = ("id", "company_id", "created_at", "updated_at")
+
 
 def _workspace_session_key(table_name: str) -> str:
     return f"workspace_{table_name}"
@@ -111,7 +113,7 @@ def _workspace_session_key(table_name: str) -> str:
 
 def _persist_workspace_session(workspace: Dict[str, Any]) -> None:
     """Store workspace tables into session_state for local/demo mode pages."""
-    for table in _SUPABASE_COMPANY_SCOPED_TABLES:
+    for table in _WORKSPACE_TABLE_KEYS:
         st.session_state[_workspace_session_key(table)] = workspace.get(table, []) or []
 
 
@@ -126,22 +128,16 @@ def _hydrate_workspace_supabase(company_id: str, workspace: Dict[str, Any]) -> N
     if sb is None:
         return
 
-    for table in _WORKSPACE_TABLE_KEYS:
+    for table in _SUPABASE_COMPANY_SCOPED_TABLES:
         rows = workspace.get(table) or []
         if not isinstance(rows, list) or not rows:
             continue
-        try:
-            # Reset company-scoped rows to avoid duplicates on repeated imports.
-            sb.table(table).delete().eq("company_id", company_id).execute()
-        except Exception:
-            # Some tables may not have company_id or may be empty; continue importing.
-            pass
 
         normalized_rows: List[Dict[str, Any]] = []
         for row in rows:
             if not isinstance(row, dict):
                 continue
-            payload = {k: v for k, v in row.items() if k not in ("id", "company_id", "created_at", "updated_at")}
+            payload = {k: v for k, v in row.items() if k not in _WORKSPACE_ROW_EXCLUDE_FIELDS}
             payload["company_id"] = company_id
             normalized_rows.append(payload)
         if not normalized_rows:
@@ -224,6 +220,10 @@ def _load_company_pack_ui() -> None:
                     company_id = (profile or {}).get("id")
                     if company_id:
                         _hydrate_workspace_supabase(company_id, workspace)
+                    elif SUPABASE_CONFIGURED and workspace:
+                        st.warning(
+                            "Workspace cargado en sesión local, pero no se sincronizó en Supabase porque la empresa no tiene id."
+                        )
 
                     st.success(
                         f"✅ Pack **{pack_name}** cargado: empresa activa, "

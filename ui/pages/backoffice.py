@@ -39,6 +39,16 @@ def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _normalize_iso_date(date_text: str, field_label: str) -> str | None:
+    value = (date_text or "").strip()
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date().isoformat()
+    except ValueError as exc:
+        raise ValueError(f"{field_label} debe tener formato YYYY-MM-DD.") from exc
+
+
 def _workspace_list(table: str) -> List[Dict[str, Any]]:
     val = st.session_state.get(_workspace_key(table), [])
     return val if isinstance(val, list) else []
@@ -465,26 +475,29 @@ def page_project_management() -> None:
             notes = st.text_area("Notas")
             submitted = st.form_submit_button("Guardar proyecto", use_container_width=True)
             if submitted:
-                _table_insert(
-                    "projects",
-                    company_id,
-                    {
-                        "project_number": project_number,
-                        "title": title,
-                        "customer_name": customer_name,
-                        "status": status,
-                        "risk_level": risk_level,
-                        "complexity": complexity,
-                        "delivery_deadline": delivery_deadline or None,
-                        "planned_start": planned_start or None,
-                        "planned_end": planned_end or None,
-                        "contract_value": contract_value,
-                        "currency": "EUR",
-                        "notes": notes,
-                    },
-                )
-                st.success("Proyecto creado")
-                st.rerun()
+                try:
+                    _table_insert(
+                        "projects",
+                        company_id,
+                        {
+                            "project_number": project_number,
+                            "title": title,
+                            "customer_name": customer_name,
+                            "status": status,
+                            "risk_level": risk_level,
+                            "complexity": complexity,
+                            "delivery_deadline": _normalize_iso_date(delivery_deadline, "Deadline entrega"),
+                            "planned_start": _normalize_iso_date(planned_start, "Inicio planificado"),
+                            "planned_end": _normalize_iso_date(planned_end, "Fin planificado"),
+                            "contract_value": contract_value,
+                            "currency": "EUR",
+                            "notes": notes,
+                        },
+                    )
+                    st.success("Proyecto creado")
+                    st.rerun()
+                except ValueError as exc:
+                    st.error(str(exc))
 
     rows = _table_rows("projects", company_id, order_col="created_at")
     if not rows:
