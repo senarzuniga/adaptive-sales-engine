@@ -565,15 +565,47 @@ from ui.pages.sales_support import (  # noqa: E402
     page_company_setup,
     page_after_sales_engine,
 )
-from ui.pages.backoffice import (  # noqa: E402
-    page_placeholder,
-    page_cost_modules,
-    page_users,
-    page_invites,
-    page_marketing_content,
-    page_social_media_settings,
-    page_project_management,
-)
+try:
+    from ui.pages.backoffice import (  # noqa: E402
+        page_placeholder,
+        page_cost_modules,
+        page_users,
+        page_invites,
+        page_marketing_content,
+        page_social_media_settings,
+        page_project_management,
+    )
+except (ImportError, ModuleNotFoundError):  # pragma: no cover - runtime safety for Streamlit Cloud
+    _logger.exception("Failed to import ui.pages.backoffice; using fallback pages.")
+
+    def _fallback_page_placeholder(title: str, icon: str = "🚧", action: str = "") -> None:
+        st.title(f"{icon} {title}")
+        st.error(
+            "The Backoffice module failed to load due to a dependency or configuration issue. "
+            "Please contact your administrator and check deployment logs."
+        )
+        if action:
+            st.caption(f"Action key: {action}")
+
+    def page_cost_modules() -> None:
+        _fallback_page_placeholder("Cost & Rates", "💲", "cost_rates")
+
+    def page_users() -> None:
+        _fallback_page_placeholder("Team Directory", "👥", "team_directory")
+
+    def page_invites() -> None:
+        _fallback_page_placeholder("Email Cobot", "📧", "email_cobot")
+
+    def page_marketing_content() -> None:
+        _fallback_page_placeholder("Marketing Content", "📰", "marketing_content")
+
+    def page_social_media_settings() -> None:
+        _fallback_page_placeholder("Social Media", "📱", "social_media")
+
+    def page_project_management() -> None:
+        _fallback_page_placeholder("Project Management", "🗂️", "project_management")
+
+    page_placeholder = _fallback_page_placeholder
 from ui.pages.agent_hub import page_agent_hub  # noqa: E402
 
 # ── Auto-implement injection anchors (do not remove) ──────────
