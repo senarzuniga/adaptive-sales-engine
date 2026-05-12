@@ -581,7 +581,9 @@ except Exception as exc:  # pragma: no cover - runtime safety for Streamlit Clou
 
     def page_placeholder(title: str, icon: str = "🚧", action: str = "") -> None:
         st.title(f"{icon} {title}")
-        st.error("No se pudo cargar el módulo Backoffice.")
+        st.error("Failed to load Backoffice module.")
+        if action:
+            st.caption(f"Action key: {action}")
         st.caption(str(_BACKOFFICE_IMPORT_ERROR))
 
     def page_cost_modules() -> None:
