@@ -234,7 +234,7 @@ def page_data_upload() -> None:
         "🏆 Plan estratégico":             "estrategia_data",
         "🧲 Leads comerciales":            "leads_data",
         "👥 Contactos":                    "contacts_data",
-        "🗂️ Universal / otro":             "universal_data",
+        "🗂️ Universal / otro":             "uploaded_data_misc",
     }
     content_type_label = st.selectbox(
         "¿Qué tipo de datos vas a cargar?",

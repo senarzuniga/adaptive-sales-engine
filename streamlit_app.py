@@ -108,7 +108,7 @@ def init_session_state() -> None:
         "estrategia_data":      None,
         "leads_data":           None,
         "contacts_data":        None,
-        "universal_data":       None,
+        "uploaded_data_misc":   None,   # ad-hoc uploads intentionally separated from main historical slot
         # ── Workspace slots (company-scoped) ────────────────────
         "workspace_company_contacts": [],
         "workspace_social_media_accounts": [],
