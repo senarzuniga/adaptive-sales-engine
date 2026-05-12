@@ -1,0 +1,146 @@
+[
+  {
+    "productFamily": "AMR Systems",
+    "numberOfSegment": "Corrugated Packaging",
+    "region": "Spain",
+    "estPurchasingQuarter": "Q2 2026",
+    "estRevenue": 400000,
+    "margin": 30,
+    "kam": "Diego Garcia"
+  },
+  {
+    "productFamily": "AMR Systems",
+    "numberOfSegment": "Corrugated Packaging",
+    "region": "USA",
+    "estPurchasingQuarter": "Q4 2026",
+    "estRevenue": 400000,
+    "margin": 28,
+    "kam": "Michael Korchega"
+  },
+  {
+    "productFamily": "AMR Systems",
+    "numberOfSegment": "Corrugated Packaging",
+    "region": "Europe",
+    "estPurchasingQuarter": "Q3 2026",
+    "estRevenue": 200000,
+    "margin": 29,
+    "kam": "Diego Garcia"
+  },
+  {
+    "productFamily": "Easy Pack",
+    "numberOfSegment": "Box Converter",
+    "region": "Spain",
+    "estPurchasingQuarter": "Q2 2026",
+    "estRevenue": 450000,
+    "margin": 34,
+    "kam": "Diego Garcia"
+  },
+  {
+    "productFamily": "Easy Pack",
+    "numberOfSegment": "Corrugated Packaging",
+    "region": "Europe",
+    "estPurchasingQuarter": "Q3 2026",
+    "estRevenue": 300000,
+    "margin": 32,
+    "kam": "Diego Garcia"
+  },
+  {
+    "productFamily": "Easy Pack",
+    "numberOfSegment": "Corrugated Packaging",
+    "region": "USA",
+    "estPurchasingQuarter": "Q4 2026",
+    "estRevenue": 150000,
+    "margin": 30,
+    "kam": "Michael Korchega"
+  },
+  {
+    "productFamily": "Palletizer",
+    "numberOfSegment": "Corrugated Packaging",
+    "region": "Spain",
+    "estPurchasingQuarter": "Q3 2026",
+    "estRevenue": 450000,
+    "margin": 26,
+    "kam": "Diego Garcia"
+  },
+  {
+    "productFamily": "Palletizer",
+    "numberOfSegment": "Corrugated Packaging",
+    "region": "USA",
+    "estPurchasingQuarter": "Q4 2026",
+    "estRevenue": 450000,
+    "margin": 27,
+    "kam": "Michael Korchega"
+  },
+  {
+    "productFamily": "Ingetrans",
+    "numberOfSegment": "Corrugated Packaging",
+    "region": "USA",
+    "estPurchasingQuarter": "Q4 2026",
+    "estRevenue": 720000,
+    "margin": 27,
+    "kam": "Michael Korchega"
+  },
+  {
+    "productFamily": "Retal",
+    "numberOfSegment": "Corrugated Packaging",
+    "region": "Spain",
+    "estPurchasingQuarter": "Q2 2026",
+    "estRevenue": 360000,
+    "margin": 33,
+    "kam": "Diego Garcia"
+  },
+  {
+    "productFamily": "Retal",
+    "numberOfSegment": "Box Converter",
+    "region": "Spain",
+    "estPurchasingQuarter": "Q3 2026",
+    "estRevenue": 180000,
+    "margin": 35,
+    "kam": "Diego Garcia"
+  },
+  {
+    "productFamily": "Retal",
+    "numberOfSegment": "Corrugated Packaging",
+    "region": "Europe",
+    "estPurchasingQuarter": "Q4 2026",
+    "estRevenue": 180000,
+    "margin": 31,
+    "kam": "Diego Garcia"
+  },
+  {
+    "productFamily": "Service & Maintenance",
+    "numberOfSegment": "Installed Base",
+    "region": "Spain",
+    "estPurchasingQuarter": "Q2 2026",
+    "estRevenue": 100000,
+    "margin": 38,
+    "kam": "Diego Garcia"
+  },
+  {
+    "productFamily": "Service & Maintenance",
+    "numberOfSegment": "Installed Base",
+    "region": "Spain",
+    "estPurchasingQuarter": "Q4 2026",
+    "estRevenue": 100000,
+    "margin": 38,
+    "kam": "Diego Garcia"
+  },
+  {
+    "productFamily": "Custom Engineering",
+    "numberOfSegment": "Strategic Accounts",
+    "region": "USA",
+    "estPurchasingQuarter": "Q3 2026",
+    "estRevenue": 250000,
+    "margin": 24,
+    "kam": "Michael Korchega"
+  },
+  {
+    "productFamily": "Custom Engineering",
+    "numberOfSegment": "Strategic Accounts",
+    "region": "Europe",
+    "estPurchasingQuarter": "Q4 2026",
+    "estRevenue": 250000,
+    "margin": 24,
+    "kam": "Diego Garcia"
+  }
+]

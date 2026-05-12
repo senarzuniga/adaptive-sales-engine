@@ -31,6 +31,7 @@ import BudgetCommandCenterPage from "./pages/BudgetCommandCenterPage";
 import CostRatesPage from "./pages/CostRatesPage";
 import BusinessIntelligencePage from "./pages/BusinessIntelligencePage";
 import SavedCompaniesPage from "./pages/SavedCompaniesPage";
+import CommercialActionsRepositoryPage from "./pages/CommercialActionsRepositoryPage";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -68,6 +69,7 @@ const App = () => (
                 <Route path="/budget-command-center" element={<BudgetCommandCenterPage />} />
                 <Route path="/cost-rates" element={<CostRatesPage />} />
                 <Route path="/business-intelligence" element={<BusinessIntelligencePage />} />
+                <Route path="/commercial-actions-repository" element={<CommercialActionsRepositoryPage />} />
                 <Route path="/companies" element={<SavedCompaniesPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>

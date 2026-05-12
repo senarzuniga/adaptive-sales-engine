@@ -1,0 +1,234 @@
+[
+  {
+    "id": "ing-task-001",
+    "title": "360° Commercial System Audit",
+    "description": "Complete structured diagnosis of current commercial processes, pipeline health, product positioning, and team capabilities. Identify critical gaps vs target model.",
+    "pillar": "p0",
+    "status": "in_progress",
+    "priority": "high",
+    "category": "follow_up",
+    "assignee": "Inaki Senar",
+    "dueDate": "2026-04-30",
+    "createdAt": "2026-01-17T00:00:00Z",
+    "notes": [
+      "Phase 1 action (0–3 months)",
+      "Key deliverable: diagnosis report + top 5 gaps"
+    ],
+    "actionContent": {
+      "goal": "Deliver a complete commercial system audit identifying top 5 gaps and quick wins for Ingecart transformation.",
+      "callScript": "",
+      "emailTemplate": "",
+      "presentationNotes": "Cover: current revenue mix, pipeline status, product positioning, team roles, and recommended priorities for Phase 2."
+    }
+  },
+  {
+    "id": "ing-task-002",
+    "title": "Define Elevator Speech — Diego Garcia Brand",
+    "description": "Develop a clear, compelling positioning statement anchored on Diego Garcia expertise: 'El conocimiento como base para el crecimiento'. Differentiating, memorable, product-coherent.",
+    "pillar": "p1",
+    "status": "in_progress",
+    "priority": "high",
+    "category": "follow_up",
+    "assignee": "Diego Garcia",
+    "dueDate": "2026-04-30",
+    "createdAt": "2026-01-17T00:00:00Z",
+    "notes": [
+      "Phase 1 — Brand creation",
+      "Core tagline: Faster than OEMs. More reliable than low-cost.",
+      "Must anchor on ROI speed + corrugated expertise + agility"
+    ],
+    "actionContent": {
+      "goal": "Create a 2-sentence positioning that Diego can use in any conversation with a prospect.",
+      "callScript": "Hi, I'm Diego Garcia from Ingecart. We help corrugated packaging plants accelerate sustainable transformation — eliminating losses, scrap, and inefficiency with fast-ROI automation. We are agile enough to outperform OEMs and engineered to outlast low-cost alternatives.",
+      "emailTemplate": "Subject: How [Company] can reduce scrap and improve OEE in 4–8 weeks\n\nHi [Name],\n\nIngecart specializes in end-of-line automation for corrugated packaging plants. Our solutions typically deliver ROI in 12–15 months with minimal disruption.\n\nWould it make sense to have a 20-minute call to explore if there's a fit?\n\nBest,\nDiego Garcia\nIngecart | www.ingecart.eu",
+      "presentationNotes": "Always anchor on: 1) ROI speed 2) corrugated sector expertise 3) Spanish/European install references"
+    }
+  },
+  {
+    "id": "ing-task-003",
+    "title": "Build Top-10 Account List (Spain)",
+    "description": "Identify and qualify the top 10 Spanish corrugated packaging accounts to target in 2026. Score by revenue potential, proximity, decision speed, and strategic fit.",
+    "pillar": "p2",
+    "status": "todo",
+    "priority": "high",
+    "category": "follow_up",
+    "assignee": "Diego Garcia",
+    "dueDate": "2026-05-15",
+    "createdAt": "2026-01-17T00:00:00Z",
+    "notes": [
+      "Use AFCO member list as base (~65 companies)",
+      "Priority Tier 1: Saica, DS Smith, Hinojosa, Smurfit WestRock, Klingele",
+      "Priority Tier 2: La Plana, Santorromán, Ondupack, Onducart, Europac"
+    ],
+    "actionContent": {
+      "goal": "Produce a scored CRM list of Top-10 Spanish accounts with: contact name, decision-maker, current pain, best product fit, and first action.",
+      "callScript": "",
+      "emailTemplate": "",
+      "presentationNotes": "Scoring criteria: revenue potential (40%), purchase readiness (30%), strategic fit (20%), geographic proximity (10%)"
+    }
+  },
+  {
+    "id": "ing-task-004",
+    "title": "USA Pipeline Alignment — Michael Korchega",
+    "description": "Align with Michael Korchega (Rapid-Bond) on USA 2026 pipeline targets. Define 5 qualified US prospects, prioritize Ingetrans and Palletizer opportunities.",
+    "pillar": "p2",
+    "status": "todo",
+    "priority": "high",
+    "category": "follow_up",
+    "assignee": "Diego Garcia",
+    "dueDate": "2026-05-31",
+    "createdAt": "2026-01-17T00:00:00Z",
+    "notes": [
+      "International Paper (Ingetrans) — highest value target",
+      "Graphic Packaging — Smart Changeover Cell",
+      "Smurfit WestRock USA — Greenfield Assist (2027)",
+      "Joint call cadence: biweekly"
+    ],
+    "actionContent": {
+      "goal": "Close at least 1 Ingetrans or Palletizer deal in USA in H2 2026.",
+      "callScript": "",
+      "emailTemplate": "Subject: 2026 USA Pipeline — let's align\n\nHi Michael,\n\nFor 2026 I'd like to align on our top 5 USA targets. Based on my analysis, International Paper and Graphic Packaging are priorities for Ingetrans and Smart Changeover respectively.\n\nCan we schedule a 30-min call this week to confirm the list and define the outreach strategy?\n\nBest,\nDiego",
+      "presentationNotes": "USA focus: Ingetrans (high ticket) + AMR/Palletizer combo. Present ROI case studies from Spanish installs."
+    }
+  },
+  {
+    "id": "ing-task-005",
+    "title": "Service Business Scaling Plan",
+    "description": "Design the service business scaling plan: define service offer tiers, pricing model (contracts vs T&M), territory expansion beyond 50km, technician hiring plan for 2026–2028.",
+    "pillar": "p3",
+    "status": "todo",
+    "priority": "high",
+    "category": "follow_up",
+    "assignee": "Diego Garcia",
+    "dueDate": "2026-06-30",
+    "createdAt": "2026-01-17T00:00:00Z",
+    "notes": [
+      "Current: 2,000h/year, €45/h, 50km radius Catalunya",
+      "Milestone 1: 3 maintenance contracts signed H1 2026",
+      "Milestone 2: 2 technicians added by Q3 2026",
+      "Target: 14 technicians = 24,500h = €1.1M revenue potential"
+    ],
+    "actionContent": {
+      "goal": "Launch 3 preventive maintenance contracts with existing installed base customers by June 2026.",
+      "callScript": "Hola [Nombre], soy Diego de Ingecart. Siguiendo nuestra instalación reciente, quería explorar un contrato de mantenimiento preventivo para proteger su inversión y evitar paradas no planificadas. Tenemos un programa nuevo especificamente diseñado para su tipo de planta...",
+      "emailTemplate": "Subject: Proteja su inversión en Ingecart — Programa de Mantenimiento Preventivo\n\nEstimado [Nombre],\n\nAhora que su [producto] lleva [X meses] funcionando, es el momento ideal para activar un plan de mantenimiento preventivo estructurado.\n\nNuestro programa incluye:\n- Visitas preventivas trimestrales\n- Respuesta prioritaria (< 24h)\n- Asignación de repuestos\n- Soporte remoto\n\nDesde €X/mes. Le muestro el cálculo de ROI.\n\nSaludos,\nDiego Garcia\nIngecart",
+      "presentationNotes": "Installed base first: Saica, DS Smith, Santorromán, La Plana, Ondupack are ideal first contracts."
+    }
+  },
+  {
+    "id": "ing-task-006",
+    "title": "Retal Pipeline Acceleration — Spain H1 2026",
+    "description": "Activate pipeline for 4+ Retal scrap management systems in Spain for H1 2026. Retal is the highest-frequency, lowest-friction entry product with fastest ROI (<12 months).",
+    "pillar": "p4",
+    "status": "in_progress",
+    "priority": "high",
+    "category": "follow_up",
+    "assignee": "Diego Garcia",
+    "dueDate": "2026-06-30",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "notes": [
+      "Qualified: Hinojosa (3 plants), Ondupack (2nd line), Saica (corrugator #2)",
+      "Target: 4 units x €90K = €360K revenue H1 2026",
+      "Reference plants: Santorromán + La Plana installs"
+    ],
+    "actionContent": {
+      "goal": "Close 4 Retal systems in Spain by June 2026 = €360K revenue.",
+      "callScript": "Hola [Nombre], Diego Garcia de Ingecart. Estamos viendo plantas en Catalunya y otras regiones que pierden entre 50.000 y 200.000 euros al año en gestión de retal. Tenemos un sistema que lo automatiza con payback inferior a 15 meses. ¿Le interesaría ver el caso de una planta similar a la suya?",
+      "emailTemplate": "",
+      "presentationNotes": "Retal ROI case: typical plant saves €80–150K/year in scrap losses. Payback 12–15 months. Show La Plana and Santorroman as references."
+    }
+  },
+  {
+    "id": "ing-task-007",
+    "title": "Modular Sales Collateral — Product Sheets",
+    "description": "Develop one-page product sheets for each of the 5 core products (AMR, Easy Pack, Palletizer, Ingetrans, Retal) + 3 productized offer packs. Include: ROI case, client profile, key features, CTA.",
+    "pillar": "p6",
+    "status": "todo",
+    "priority": "medium",
+    "category": "follow_up",
+    "assignee": "Ariel (Marketing)",
+    "dueDate": "2026-05-31",
+    "createdAt": "2026-01-17T00:00:00Z",
+    "notes": [
+      "Priority: Retal + AMR sheets first (highest pipeline activity)",
+      "Language: Spanish + English versions for USA",
+      "Format: 1-page max, digital + print-ready"
+    ],
+    "actionContent": {
+      "goal": "Have print-ready and digital product sheets ready before Top-10 account workshops begin.",
+      "callScript": "",
+      "emailTemplate": "",
+      "presentationNotes": "Each sheet: Header = ROI promise. Body = 3 key benefits + reference install. Footer = reference logos + CTA URL."
+    }
+  },
+  {
+    "id": "ing-task-008",
+    "title": "Implement Weekly Sales Cadence (45 min)",
+    "description": "Establish a fixed weekly 45-min sales meeting with data-driven agenda: pipeline review, KPIs in red, top-3 actions. First meeting by April 21, 2026.",
+    "pillar": "p5",
+    "status": "todo",
+    "priority": "high",
+    "category": "follow_up",
+    "assignee": "Diego Garcia",
+    "dueDate": "2026-04-21",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "notes": [
+      "Fixed agenda: 15min pipeline, 15min KPIs, 15min top actions",
+      "Attendees: Diego + commercial support + Michael (monthly extended call)",
+      "KPIs to track: pipeline value, new opps added, proposals sent, calls made, win rate YTD"
+    ],
+    "actionContent": {
+      "goal": "Run first Weekly Sales meeting by April 21, 2026 with live pipeline visible.",
+      "callScript": "",
+      "emailTemplate": "",
+      "presentationNotes": "No storytelling without data. Every meeting ends with: 3 concrete actions + owner + deadline."
+    }
+  },
+  {
+    "id": "ing-task-009",
+    "title": "Complete Installed Base Map",
+    "description": "Build a full map of all machines and systems installed at customer sites (Retal, AMR, Easy Pack, Palletizer, Ingetrans). Document: customer, install date, model, service history, upsell potential.",
+    "pillar": "p3",
+    "status": "todo",
+    "priority": "high",
+    "category": "follow_up",
+    "assignee": "Paco (Maintenance Leader)",
+    "dueDate": "2026-05-31",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "notes": [
+      "Foundation of the entire service business",
+      "Estimate: 15–25 active installations in Spain",
+      "Map into After-Sales module in ACS platform"
+    ],
+    "actionContent": {
+      "goal": "100% of known installations mapped, service potential scored (High/Medium/Low), and first contract targets identified.",
+      "callScript": "",
+      "emailTemplate": "",
+      "presentationNotes": ""
+    }
+  },
+  {
+    "id": "ing-task-010",
+    "title": "ABM Campaign — Top 5 Spanish Accounts",
+    "description": "Launch Account-Based Marketing campaign targeting Saica Pack, DS Smith, Hinojosa, Smurfit WestRock, and Klingele. One tailored touchpoint per week per account over 8 weeks.",
+    "pillar": "p4",
+    "status": "todo",
+    "priority": "medium",
+    "category": "follow_up",
+    "assignee": "Ariel (Marketing)",
+    "dueDate": "2026-06-30",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "notes": [
+      "Phase 2 action (4–10 months)",
+      "Channels: LinkedIn + email + phone",
+      "Content: ROI calculators, reference cases, plant-specific insights",
+      "Goal: 3 on-site discovery meetings booked by end Q2 2026"
+    ],
+    "actionContent": {
+      "goal": "Book at least 3 on-site discovery meetings with Top-5 accounts by end of Q2 2026.",
+      "callScript": "",
+      "emailTemplate": "",
+      "presentationNotes": "Each account needs a personalized insight anchor: 'We saw that your plant in [location] recently [installed/expanded/acquired]...'"
+    }
+  }
+]

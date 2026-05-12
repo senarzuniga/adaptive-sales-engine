@@ -1,0 +1,62 @@
+[
+  {
+    "name": "AMR Systems",
+    "averageValue": 200000,
+    "type": "Standard Product",
+    "comments": "Core scalable product. Automated material routing for corrugated end-of-line. Target: 4–6 units/year = ~€1.0M annual revenue. OEE improvement focus. Medium sales cycle (3–5 months)."
+  },
+  {
+    "name": "Easy Pack",
+    "averageValue": 150000,
+    "type": "Standard Product",
+    "comments": "Volume driver product. Automated packing systems for corrugated converting. Target: 5–7 units/year = ~€0.9M annual revenue. High SKU variability compatibility. Fast ROI."
+  },
+  {
+    "name": "Palletizer",
+    "averageValue": 450000,
+    "type": "Standard Product",
+    "comments": "High-value robotic palletizing system. Target: 1–2 units/year = ~€0.6M annual revenue. Strategic upside. Longer sales cycle (6–9 months). High margin potential."
+  },
+  {
+    "name": "Ingetrans",
+    "averageValue": 1200000,
+    "type": "Strategic Custom",
+    "comments": "Strategic flagship — heavy corrugated board transport systems. ~0.6 units/year = ~€0.7M revenue. Highest single-deal risk and reward. USA market priority. Requires C-level relationship."
+  },
+  {
+    "name": "Retal",
+    "averageValue": 90000,
+    "type": "Standard Product",
+    "comments": "Scrap/trim management system. High frequency, low price = volume. Target: 6–10 units/year = ~€0.7M annual revenue. Fastest ROI product (<12 months). Strong recurring installed base."
+  },
+  {
+    "name": "Service & Maintenance",
+    "averageValue": 22500,
+    "type": "Service",
+    "comments": "Annual maintenance contracts + T&M interventions. €45/h rate, €30/h cost, €15/h margin. Current capacity: ~2,000 h/year in Catalunya. Scale target: 14 technicians = 24,500 h = €1.1M revenue potential."
+  },
+  {
+    "name": "Custom Engineering Projects",
+    "averageValue": 350000,
+    "type": "Custom Project",
+    "comments": "Bespoke industrial automation. Strategic role only. Target: €0.5M/year. Selected for innovation, strategic accounts, or complex solutions. Not required for survival — chosen, not needed."
+  },
+  {
+    "name": "Quick Throughput Pack",
+    "averageValue": 80000,
+    "type": "Productized Offer",
+    "comments": "4–8 week deployment. Focus: logistics optimization, scrap reduction, safety improvements. ROI < 12–15 months. Entry offer for new account activation."
+  },
+  {
+    "name": "Smart Changeover Cell",
+    "averageValue": 200000,
+    "type": "Productized Offer",
+    "comments": "8–12 week deployment. Focus: robotics + OEE improvement for high-variability SKU plants. ROI < 12–18 months. Targets converting plants with frequent changeovers."
+  },
+  {
+    "name": "Greenfield Assist",
+    "averageValue": 500000,
+    "type": "Productized Offer",
+    "comments": "12–24 weeks. Full end-of-line project integration for new or converted plants. Strategic accounts only. Highest relationship and complexity requirement."
+  }
+]
