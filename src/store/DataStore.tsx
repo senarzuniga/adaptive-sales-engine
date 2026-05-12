@@ -56,6 +56,8 @@ const WORKSPACE_TABLES: WorkspaceTableName[] = [
 ];
 
 const lsWorkspaceKey = (table: WorkspaceTableName, companyId: string) => `acs_workspace_${table}_${companyId}`;
+const LOCAL_COMPANY_DATA_KEYS = ['orders', 'opps', 'products', 'strategy', 'leads', 'contacts', 'tasks', 'log', 'registries', 'quality', 'enriched'] as const;
+const getLocalCompanyDataKeys = (companyId: string) => LOCAL_COMPANY_DATA_KEYS.map((key) => `acs_${key}_${companyId}`);
 
 const readLocalWorkspacePack = (companyId: string): WorkspacePack =>
   WORKSPACE_TABLES.reduce<WorkspacePack>((acc, table) => {
@@ -627,7 +629,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured) {
       const existing = LS.get<CompanyProfile[]>('acs_companies', []);
       LS.set('acs_companies', existing.filter(c => c.id !== id));
-      ['orders', 'opps', 'products', 'strategy', 'leads', 'contacts', 'tasks', 'log', 'registries', 'quality', 'enriched'].forEach(k => LS.del(`acs_${k}_${id}`));
+      getLocalCompanyDataKeys(id).forEach((storageKey) => LS.del(storageKey));
       writeLocalWorkspacePack(id, {});
       if (activeCompanyId === id) setActiveCompany(null);
       await loadCompanies();
@@ -1108,19 +1110,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const clearAll = useCallback(async () => {
     if (!activeCompanyId) return;
     if (!isSupabaseConfigured) {
-      [
-        `acs_orders_${activeCompanyId}`,
-        `acs_opps_${activeCompanyId}`,
-        `acs_products_${activeCompanyId}`,
-        `acs_strategy_${activeCompanyId}`,
-        `acs_leads_${activeCompanyId}`,
-        `acs_contacts_${activeCompanyId}`,
-        `acs_tasks_${activeCompanyId}`,
-        `acs_log_${activeCompanyId}`,
-        `acs_registries_${activeCompanyId}`,
-        `acs_quality_${activeCompanyId}`,
-        `acs_enriched_${activeCompanyId}`,
-      ].forEach((storageKey) => LS.del(storageKey));
+      getLocalCompanyDataKeys(activeCompanyId).forEach((storageKey) => LS.del(storageKey));
       writeLocalWorkspacePack(activeCompanyId, {});
       setData(prev => ({
         orders: [],

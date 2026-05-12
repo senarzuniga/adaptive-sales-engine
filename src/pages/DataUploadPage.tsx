@@ -35,6 +35,9 @@ const DataUploadPage = () => {
   const navigate = useNavigate();
   const [processing, setProcessing] = useState<string[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const activeCompanyLabel = activeCompanyId
+    ? data.companyProfile.company_name || 'the active company'
+    : 'the selected company';
 
   const templates = [
     { key: 'orders', title: t.upload.templates.orders, desc: t.upload.templates.ordersDesc, count: data.orders.length },
@@ -104,7 +107,7 @@ const DataUploadPage = () => {
       }
 
       if (result.type !== 'unknown') {
-        toast({ title: `✅ ${file.name}`, description: `Detected as ${result.type} — ${result.rowCount} rows loaded for ${data.companyProfile.company_name || 'the selected company'}.` });
+        toast({ title: `✅ ${file.name}`, description: `Detected as ${result.type} — ${result.rowCount} rows loaded for ${activeCompanyLabel}.` });
       } else {
         toast({ title: `⚠️ ${file.name}`, description: result.errors.join('. '), variant: 'destructive' });
       }
@@ -184,7 +187,7 @@ const DataUploadPage = () => {
             </div>
             <div>
               <p className="text-sm font-medium text-foreground">
-                {activeCompanyId ? `Uploading into ${data.companyProfile.company_name || 'the selected company'}` : 'No active company selected'}
+                {activeCompanyId ? `Uploading into ${activeCompanyLabel}` : 'No active company selected'}
               </p>
               <p className="text-xs text-muted-foreground">
                 {activeCompanyId
