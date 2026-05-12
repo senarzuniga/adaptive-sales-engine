@@ -575,16 +575,17 @@ try:
         page_social_media_settings,
         page_project_management,
     )
-except (ImportError, ModuleNotFoundError) as exc:  # pragma: no cover - runtime safety for Streamlit Cloud
+except (ImportError, ModuleNotFoundError):  # pragma: no cover - runtime safety for Streamlit Cloud
     _logger.exception("Failed to import ui.pages.backoffice; using fallback pages.")
-    _backoffice_import_error = exc
 
     def page_placeholder(title: str, icon: str = "🚧", action: str = "") -> None:
         st.title(f"{icon} {title}")
-        st.error("Failed to load Backoffice module. Please contact support and check app logs.")
+        st.error(
+            "The Backoffice module failed to load due to a dependency or configuration issue. "
+            "Please contact your administrator and check deployment logs."
+        )
         if action:
             st.caption(f"Action key: {action}")
-        st.caption(f"Error type: {type(_backoffice_import_error).__name__}")
 
     def page_cost_modules() -> None:
         page_placeholder("Cost & Rates", "💲", "cost_rates")
