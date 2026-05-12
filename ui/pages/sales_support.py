@@ -225,6 +225,44 @@ def page_data_upload() -> None:
         "TXT, Markdown, HTML, XML, PDF, DOCX, ZIP, Imágenes (OCR), SQLite."
     )
 
+    # ── Dataset type selector ─────────────────────────────────
+    st.subheader("📂 Tipo de contenido")
+    CONTENT_TYPES = {
+        "📊 Histórico de ventas":          "uploaded_data_universal",
+        "📦 Catálogo de productos":        "productos_data",
+        "🎯 Pipeline de oportunidades":    "oportunidades_data",
+        "🏆 Plan estratégico":             "estrategia_data",
+        "🧲 Leads comerciales":            "leads_data",
+        "👥 Contactos":                    "contacts_data",
+        "🗂️ Universal / otros":            "uploaded_data_misc",
+    }
+    content_type_label = st.selectbox(
+        "¿Qué tipo de datos vas a cargar?",
+        list(CONTENT_TYPES.keys()),
+        key="data_upload_content_type",
+        help="Selecciona el tipo de contenido para que se almacene en la ranura correcta.",
+    )
+    target_key = CONTENT_TYPES[content_type_label]
+    st.caption(f"Los datos se guardarán en: `st.session_state['{target_key}']`")
+
+    # ── Dataset status ─────────────────────────────────────────
+    with st.expander("📋 Estado actual de datasets", expanded=False):
+        for label, key in [
+            ("📊 Histórico de ventas",       "uploaded_data_universal"),
+            ("📦 Catálogo de productos",      "productos_data"),
+            ("🎯 Pipeline oportunidades",     "oportunidades_data"),
+            ("🏆 Plan estratégico",           "estrategia_data"),
+            ("🧲 Leads comerciales",          "leads_data"),
+            ("👥 Contactos",                  "contacts_data"),
+        ]:
+            df_val = st.session_state.get(key)
+            if isinstance(df_val, pd.DataFrame) and not df_val.empty:
+                st.success(f"{label}: ✅ {df_val.shape[0]:,} filas × {df_val.shape[1]} columnas")
+            else:
+                st.warning(f"{label}: ❌ No cargado")
+
+    st.divider()
+
     st.subheader("1️⃣ Desde URL")
     url_input = st.text_input(
         "URL de datos (JSON/CSV/XML)",
@@ -244,8 +282,8 @@ def page_data_upload() -> None:
                 except Exception:
                     df = pd.DataFrame({"linea": content.decode("utf-8", errors="replace").splitlines()})
             if df is not None:
-                st.session_state.uploaded_data_universal = df
-                st.success(f"✅ URL cargada: {df.shape[0]:,} filas, {df.shape[1]} columnas")
+                st.session_state[target_key] = df
+                st.success(f"✅ URL cargada → *{content_type_label}*: {df.shape[0]:,} filas, {df.shape[1]} columnas")
                 st.dataframe(df.head(5))
             else:
                 st.error("No se pudo interpretar la respuesta de la URL")
@@ -263,13 +301,8 @@ def page_data_upload() -> None:
         with st.spinner(f"Procesando {uploaded_file.name}…"):
             df = parse_file_to_df(uploaded_file.name, file_bytes)
         if df is not None:
-            st.session_state.uploaded_data_universal = df
-            fname_lower = uploaded_file.name.lower()
-            if "estrategia" in fname_lower:
-                st.session_state["estrategia_data"] = df
-            elif "producto" in fname_lower:
-                st.session_state["productos_data"] = df
-            st.success(f"✅ **{uploaded_file.name}** — {df.shape[0]:,} filas, {df.shape[1]} columnas")
+            st.session_state[target_key] = df
+            st.success(f"✅ **{uploaded_file.name}** → *{content_type_label}* — {df.shape[0]:,} filas, {df.shape[1]} columnas")
             col1, col2, col3 = st.columns(3)
             col1.metric("Filas", f"{df.shape[0]:,}")
             col2.metric("Columnas", df.shape[1])
@@ -289,7 +322,7 @@ def page_data_upload() -> None:
             _render_orchestrator_panel(
                 action="data_upload",
                 auto_run=True,
-                extra_context={"file_name": uploaded_file.name},
+                extra_context={"file_name": uploaded_file.name, "content_type": content_type_label},
             )
         else:
             st.error("No se pudo procesar el archivo. Formato no reconocido.")
