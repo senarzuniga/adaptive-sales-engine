@@ -578,7 +578,7 @@ try:
 except (ImportError, ModuleNotFoundError):  # pragma: no cover - runtime safety for Streamlit Cloud
     _logger.exception("Failed to import ui.pages.backoffice; using fallback pages.")
 
-    def page_placeholder(title: str, icon: str = "🚧", action: str = "") -> None:
+    def _fallback_page_placeholder(title: str, icon: str = "🚧", action: str = "") -> None:
         st.title(f"{icon} {title}")
         st.error(
             "The Backoffice module failed to load due to a dependency or configuration issue. "
@@ -588,22 +588,24 @@ except (ImportError, ModuleNotFoundError):  # pragma: no cover - runtime safety 
             st.caption(f"Action key: {action}")
 
     def page_cost_modules() -> None:
-        page_placeholder("Cost & Rates", "💲", "cost_rates")
+        _fallback_page_placeholder("Cost & Rates", "💲", "cost_rates")
 
     def page_users() -> None:
-        page_placeholder("Team Directory", "👥", "team_directory")
+        _fallback_page_placeholder("Team Directory", "👥", "team_directory")
 
     def page_invites() -> None:
-        page_placeholder("Email Cobot", "📧", "email_cobot")
+        _fallback_page_placeholder("Email Cobot", "📧", "email_cobot")
 
     def page_marketing_content() -> None:
-        page_placeholder("Marketing Content", "📰", "marketing_content")
+        _fallback_page_placeholder("Marketing Content", "📰", "marketing_content")
 
     def page_social_media_settings() -> None:
-        page_placeholder("Social Media", "📱", "social_media")
+        _fallback_page_placeholder("Social Media", "📱", "social_media")
 
     def page_project_management() -> None:
-        page_placeholder("Project Management", "🗂️", "project_management")
+        _fallback_page_placeholder("Project Management", "🗂️", "project_management")
+
+    page_placeholder = _fallback_page_placeholder
 from ui.pages.agent_hub import page_agent_hub  # noqa: E402
 
 # ── Auto-implement injection anchors (do not remove) ──────────
