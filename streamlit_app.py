@@ -211,17 +211,17 @@ def _send_welcome_email(email: str, name: str, password: str) -> bool:
 
 def _quick_access_login() -> None:
     guest_profile: Dict[str, Any] = {
-        "id": "quick_access_guest",
-        "email": "guest@quick-access.local",
-        "name": "Guest (Quick Access)",
-        "department": "Commercial",
-        "role": "user",
+        "id": "key_administrator",
+        "email": "keyadministrator@quick-access.local",
+        "name": "KeyAdministrator",
+        "department": "Administration",
+        "role": "admin",
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
 
     class _GuestUser:
-        id = "quick_access_guest"
-        email = "guest@quick-access.local"
+        id = "key_administrator"
+        email = "keyadministrator@quick-access.local"
 
         @property
         def user_metadata(self) -> Dict[str, Any]:
@@ -231,7 +231,7 @@ def _quick_access_login() -> None:
     st.session_state.session = None
     st.session_state.profile = guest_profile
     st.session_state.is_quick_access = True
-    _logger.info("Quick access session created for guest user")
+    _logger.info("Quick access session created for KeyAdministrator user")
     st.rerun()
 
 
@@ -296,7 +296,7 @@ def login_form() -> None:
             st.divider()
             if QUICK_ACCESS_ENABLED:
                 st.caption("⚡ Acceso rápido disponible")
-                if st.button("⚡ Quick Access (invitado)", use_container_width=True, key="quick_access_btn"):
+                if st.button("⚡ Quick Access (KeyAdministrator)", use_container_width=True, key="quick_access_btn"):
                     _quick_access_login()
 
         with t2:
