@@ -20,6 +20,61 @@ const LS = {
   del: (key: string) => localStorage.removeItem(key),
 };
 
+type WorkspaceTableName =
+  | 'company_contacts'
+  | 'social_media_accounts'
+  | 'marketing_content'
+  | 'business_intelligence_reports'
+  | 'cost_rates'
+  | 'offers'
+  | 'offer_items'
+  | 'cost_breakdowns'
+  | 'offer_scenarios'
+  | 'offer_scores'
+  | 'installed_base_assets'
+  | 'service_contracts'
+  | 'after_sales_opportunities'
+  | 'spare_parts';
+
+type WorkspacePack = Partial<Record<WorkspaceTableName, any[]>>;
+
+const WORKSPACE_TABLES: WorkspaceTableName[] = [
+  'company_contacts',
+  'social_media_accounts',
+  'marketing_content',
+  'business_intelligence_reports',
+  'cost_rates',
+  'offers',
+  'offer_items',
+  'cost_breakdowns',
+  'offer_scenarios',
+  'offer_scores',
+  'installed_base_assets',
+  'service_contracts',
+  'after_sales_opportunities',
+  'spare_parts',
+];
+
+const lsWorkspaceKey = (table: WorkspaceTableName, companyId: string) => `acs_workspace_${table}_${companyId}`;
+
+const readLocalWorkspacePack = (companyId: string): WorkspacePack =>
+  WORKSPACE_TABLES.reduce<WorkspacePack>((acc, table) => {
+    const rows = LS.get<any[]>(lsWorkspaceKey(table, companyId), []);
+    if (rows.length > 0) acc[table] = rows;
+    return acc;
+  }, {});
+
+const writeLocalWorkspacePack = (companyId: string, workspace: WorkspacePack = {}) => {
+  WORKSPACE_TABLES.forEach((table) => {
+    const rows = workspace[table] || [];
+    if (rows.length > 0) {
+      LS.set(lsWorkspaceKey(table, companyId), rows);
+    } else {
+      LS.del(lsWorkspaceKey(table, companyId));
+    }
+  });
+};
+
 // ─── Types ───
 export interface CompanyProfile {
   id?: string;
@@ -248,6 +303,71 @@ function dbToTask(r: any): MonitoringTask {
   };
 }
 
+async function fetchWorkspacePack(companyId: string): Promise<WorkspacePack> {
+  if (!isSupabaseConfigured) {
+    return readLocalWorkspacePack(companyId);
+  }
+
+  const [
+    companyContactsRes,
+    socialAccountsRes,
+    marketingContentRes,
+    businessReportsRes,
+    costRatesRes,
+    offersRes,
+    installedAssetsRes,
+    serviceContractsRes,
+    afterSalesOppsRes,
+    sparePartsRes,
+  ] = await Promise.all([
+    supabase.from('company_contacts').select('*').eq('company_id', companyId).order('department', { ascending: true }),
+    supabase.from('social_media_accounts').select('*').eq('company_id', companyId).order('platform', { ascending: true }),
+    supabase.from('marketing_content').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
+    supabase.from('business_intelligence_reports').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
+    supabase.from('cost_rates').select('*').eq('company_id', companyId).order('rate_name', { ascending: true }),
+    supabase.from('offers').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
+    supabase.from('installed_base_assets').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
+    supabase.from('service_contracts').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
+    supabase.from('after_sales_opportunities').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
+    supabase.from('spare_parts').select('*').eq('company_id', companyId).order('part_name', { ascending: true }),
+  ]);
+
+  const offers = (offersRes.data || []) as any[];
+  const offerIds = offers.map((offer) => offer.id).filter(Boolean);
+  const offerItemsRes = offerIds.length > 0
+    ? await supabase.from('offer_items').select('*').in('offer_id', offerIds)
+    : { data: [] };
+  const offerItemIds = ((offerItemsRes.data || []) as any[]).map((item) => item.id).filter(Boolean);
+  const [costBreakdownsRes, offerScenariosRes, offerScoresRes] = await Promise.all([
+    offerItemIds.length > 0
+      ? supabase.from('cost_breakdowns').select('*').in('offer_item_id', offerItemIds)
+      : Promise.resolve({ data: [] }),
+    offerIds.length > 0
+      ? supabase.from('offer_scenarios').select('*').in('offer_id', offerIds)
+      : Promise.resolve({ data: [] }),
+    offerIds.length > 0
+      ? supabase.from('offer_scores').select('*').in('offer_id', offerIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  return {
+    company_contacts: (companyContactsRes.data || []) as any[],
+    social_media_accounts: (socialAccountsRes.data || []) as any[],
+    marketing_content: (marketingContentRes.data || []) as any[],
+    business_intelligence_reports: (businessReportsRes.data || []) as any[],
+    cost_rates: (costRatesRes.data || []) as any[],
+    offers,
+    offer_items: (offerItemsRes.data || []) as any[],
+    cost_breakdowns: (costBreakdownsRes.data || []) as any[],
+    offer_scenarios: (offerScenariosRes.data || []) as any[],
+    offer_scores: (offerScoresRes.data || []) as any[],
+    installed_base_assets: (installedAssetsRes.data || []) as any[],
+    service_contracts: (serviceContractsRes.data || []) as any[],
+    after_sales_opportunities: (afterSalesOppsRes.data || []) as any[],
+    spare_parts: (sparePartsRes.data || []) as any[],
+  };
+}
+
 // ─── State ───
 interface DataState {
   orders: OrderRecord[];
@@ -379,9 +499,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
           opportunities: dedupeOpportunities(LS.get(`acs_opps_${companyId}`, [])),
           products: LS.get(`acs_products_${companyId}`, []),
           strategy: LS.get(`acs_strategy_${companyId}`, []),
+          leads: LS.get(`acs_leads_${companyId}`, []),
+          contacts: LS.get(`acs_contacts_${companyId}`, []),
           tasks: LS.get(`acs_tasks_${companyId}`, []),
           uploadLog: LS.get(`acs_log_${companyId}`, []),
           companyProfile: profile,
+          entityRegistries: LS.get(`acs_registries_${companyId}`, emptyRegistries),
+          qualityReports: LS.get(`acs_quality_${companyId}`, []),
+          enrichedProfiles: LS.get(`acs_enriched_${companyId}`, []),
         });
         return;
       }
@@ -502,7 +627,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured) {
       const existing = LS.get<CompanyProfile[]>('acs_companies', []);
       LS.set('acs_companies', existing.filter(c => c.id !== id));
-      ['orders', 'opps', 'products', 'strategy', 'tasks', 'log'].forEach(k => LS.del(`acs_${k}_${id}`));
+      ['orders', 'opps', 'products', 'strategy', 'leads', 'contacts', 'tasks', 'log', 'registries', 'quality', 'enriched'].forEach(k => LS.del(`acs_${k}_${id}`));
+      writeLocalWorkspacePack(id, {});
       if (activeCompanyId === id) setActiveCompany(null);
       await loadCompanies();
       return;
@@ -514,6 +640,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // ─── Export / Import ───
   const exportCompanyPack = useCallback(async (): Promise<string> => {
+    const workspace = activeCompanyId ? await fetchWorkspacePack(activeCompanyId) : {};
     return JSON.stringify({
       companyProfile: data.companyProfile,
       orders: data.orders,
@@ -526,11 +653,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       entityRegistries: data.entityRegistries,
       qualityReports: data.qualityReports,
       enrichedProfiles: data.enrichedProfiles,
+      workspace,
     }, null, 2);
-  }, [data]);
+  }, [activeCompanyId, data]);
 
   const importCompanyPack = useCallback(async (json: string) => {
     const pack = JSON.parse(json);
+    const workspace: WorkspacePack = pack.workspace || {};
     const companyName = pack.companyProfile?.company_name || 'Imported Company';
     const id = await createCompany(companyName,
       pack.companyProfile?.website_url, pack.companyProfile?.linkedin_url,
@@ -545,7 +674,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (pack.opportunities?.length) LS.set(`acs_opps_${id}`, pack.opportunities);
       if (pack.products?.length) LS.set(`acs_products_${id}`, pack.products);
       if (pack.strategy?.length) LS.set(`acs_strategy_${id}`, pack.strategy);
+      if (pack.leads?.length) LS.set(`acs_leads_${id}`, pack.leads);
+      if (pack.contacts?.length) LS.set(`acs_contacts_${id}`, pack.contacts);
       if (pack.tasks?.length) LS.set(`acs_tasks_${id}`, pack.tasks);
+      if (pack.entityRegistries) LS.set(`acs_registries_${id}`, pack.entityRegistries);
+      if (pack.qualityReports?.length) LS.set(`acs_quality_${id}`, pack.qualityReports);
+      if (pack.enrichedProfiles?.length) LS.set(`acs_enriched_${id}`, pack.enrichedProfiles);
+      writeLocalWorkspacePack(id, workspace);
       // Reload companies list so the full merged profile appears in the UI
       await loadCompanies();
       setActiveCompany(id);
@@ -607,6 +742,97 @@ export function DataProvider({ children }: { children: ReactNode }) {
         est_revenue: s.estRevenue, margin: s.margin, kam: s.kam,
       })));
     }
+    if (pack.tasks?.length) {
+      await supabase.from('tasks').insert(pack.tasks.map((task: any) => ({
+        id: task.id,
+        company_id: id,
+        title: task.title,
+        description: task.description || '',
+        pillar: task.pillar,
+        status: task.status,
+        priority: task.priority,
+        category: task.category,
+        assignee: task.assignee || '',
+        due_date: task.dueDate || null,
+        created_at: task.createdAt || undefined,
+        completed_at: task.completedAt || null,
+        notes: task.notes || [],
+        action_content: task.actionContent || { goal: '', callScript: '', emailTemplate: '', presentationNotes: '' },
+        action_result: task.actionResult || null,
+      })));
+    }
+    if (workspace.company_contacts?.length) {
+      await supabase.from('company_contacts').insert(workspace.company_contacts.map((contact: any) => ({
+        ...contact,
+        company_id: id,
+      })));
+    }
+    if (workspace.social_media_accounts?.length) {
+      await supabase.from('social_media_accounts').insert(workspace.social_media_accounts.map((account: any) => ({
+        ...account,
+        company_id: id,
+      })));
+    }
+    if (workspace.marketing_content?.length) {
+      await supabase.from('marketing_content').insert(workspace.marketing_content.map((content: any) => ({
+        ...content,
+        company_id: id,
+      })));
+    }
+    if (workspace.business_intelligence_reports?.length) {
+      await supabase.from('business_intelligence_reports').insert(workspace.business_intelligence_reports.map((report: any) => ({
+        ...report,
+        company_id: id,
+      })));
+    }
+    if (workspace.cost_rates?.length) {
+      await supabase.from('cost_rates').insert(workspace.cost_rates.map((rate: any) => ({
+        ...rate,
+        company_id: id,
+      })));
+    }
+    if (workspace.offers?.length) {
+      await supabase.from('offers').insert(workspace.offers.map((offer: any) => ({
+        ...offer,
+        company_id: id,
+      })));
+    }
+    if (workspace.offer_items?.length) {
+      await supabase.from('offer_items').insert(workspace.offer_items);
+    }
+    if (workspace.cost_breakdowns?.length) {
+      await supabase.from('cost_breakdowns').insert(workspace.cost_breakdowns);
+    }
+    if (workspace.offer_scenarios?.length) {
+      await supabase.from('offer_scenarios').insert(workspace.offer_scenarios);
+    }
+    if (workspace.offer_scores?.length) {
+      await supabase.from('offer_scores').insert(workspace.offer_scores);
+    }
+    if (workspace.installed_base_assets?.length) {
+      await supabase.from('installed_base_assets').insert(workspace.installed_base_assets.map((asset: any) => ({
+        ...asset,
+        company_id: id,
+      })));
+    }
+    if (workspace.service_contracts?.length) {
+      await supabase.from('service_contracts').insert(workspace.service_contracts.map((contract: any) => ({
+        ...contract,
+        company_id: id,
+      })));
+    }
+    if (workspace.after_sales_opportunities?.length) {
+      await supabase.from('after_sales_opportunities').insert(workspace.after_sales_opportunities.map((opportunity: any) => ({
+        ...opportunity,
+        company_id: id,
+      })));
+    }
+    if (workspace.spare_parts?.length) {
+      await supabase.from('spare_parts').insert(workspace.spare_parts.map((part: any) => ({
+        ...part,
+        company_id: id,
+      })));
+    }
     // Also update extended profile fields not handled in createCompany
     await supabase.from('companies').update({
       objectives: p.objectives || '',
@@ -621,7 +847,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await loadCompanies();
     setActiveCompany(id);
     toast({ title: 'Company pack imported successfully' });
-  }, [createCompany, setActiveCompany]);
+  }, [createCompany, loadCompanies, setActiveCompany]);
 
   // ─── CRUD operations (persist to Supabase) ───
   const setOrders = useCallback(async (records: OrderRecord[]) => {
@@ -734,20 +960,35 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [activeCompanyId]);
 
   const setLeads = useCallback(async (records: LeadRecord[]) => {
+    if (!activeCompanyId) return;
+    if (!isSupabaseConfigured) {
+      LS.set(`acs_leads_${activeCompanyId}`, records);
+    }
     setData(prev => ({ ...prev, leads: records }));
-  }, []);
+  }, [activeCompanyId]);
 
   const setContacts = useCallback(async (records: ContactRecord[]) => {
+    if (!activeCompanyId) return;
+    if (!isSupabaseConfigured) {
+      LS.set(`acs_contacts_${activeCompanyId}`, records);
+    }
     setData(prev => ({ ...prev, contacts: records }));
-  }, []);
+  }, [activeCompanyId]);
 
   const setDataManagementResults = useCallback((registries: NormalizedEntityRegistries, qualityReports: DatasetQualityReport[]) => {
+    if (activeCompanyId && !isSupabaseConfigured) {
+      LS.set(`acs_registries_${activeCompanyId}`, registries);
+      LS.set(`acs_quality_${activeCompanyId}`, qualityReports);
+    }
     setData(prev => ({ ...prev, entityRegistries: registries, qualityReports }));
-  }, []);
+  }, [activeCompanyId]);
 
   const setEnrichedProfiles = useCallback((profiles: EnrichedCompanyProfile[]) => {
+    if (activeCompanyId && !isSupabaseConfigured) {
+      LS.set(`acs_enriched_${activeCompanyId}`, profiles);
+    }
     setData(prev => ({ ...prev, enrichedProfiles: profiles }));
-  }, []);
+  }, [activeCompanyId]);
 
   const setCompanyProfile = useCallback(async (profile: CompanyProfile) => {
     if (!activeCompanyId) return;
@@ -777,6 +1018,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addUploadLog = useCallback(async (entry: UploadLogEntry) => {
     if (!activeCompanyId) return;
+    if (!isSupabaseConfigured) {
+      const next = [entry, ...LS.get<UploadLogEntry[]>(`acs_log_${activeCompanyId}`, [])].slice(0, 50);
+      LS.set(`acs_log_${activeCompanyId}`, next);
+      setData(prev => ({ ...prev, uploadLog: next }));
+      return;
+    }
     await supabase.from('upload_log').insert({
       id: entry.id, company_id: activeCompanyId, file_name: entry.fileName,
       detected_type: entry.detectedType, row_count: entry.rowCount,
@@ -787,6 +1034,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addTask = useCallback(async (task: MonitoringTask) => {
     if (!activeCompanyId) return;
+    if (!isSupabaseConfigured) {
+      const next = [task, ...LS.get<MonitoringTask[]>(`acs_tasks_${activeCompanyId}`, [])];
+      LS.set(`acs_tasks_${activeCompanyId}`, next);
+      setData(prev => ({ ...prev, tasks: next }));
+      return;
+    }
     await supabase.from('tasks').insert({
       id: task.id, company_id: activeCompanyId, title: task.title, description: task.description,
       pillar: task.pillar, status: task.status, priority: task.priority, category: task.category,
@@ -797,6 +1050,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [activeCompanyId]);
 
   const updateTask = useCallback(async (id: string, updates: Partial<MonitoringTask>) => {
+    if (activeCompanyId && !isSupabaseConfigured) {
+      const next = LS.get<MonitoringTask[]>(`acs_tasks_${activeCompanyId}`, []).map(t => t.id === id ? { ...t, ...updates } : t);
+      LS.set(`acs_tasks_${activeCompanyId}`, next);
+      setData(prev => ({ ...prev, tasks: next }));
+      return;
+    }
     const dbUpdates: any = {};
     if (updates.title !== undefined) dbUpdates.title = updates.title;
     if (updates.description !== undefined) dbUpdates.description = updates.description;
@@ -812,15 +1071,34 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (updates.actionResult !== undefined) dbUpdates.action_result = updates.actionResult;
     await supabase.from('tasks').update(dbUpdates).eq('id', id);
     setData(prev => ({ ...prev, tasks: prev.tasks.map(t => t.id === id ? { ...t, ...updates } : t) }));
-  }, []);
+  }, [activeCompanyId]);
 
   const deleteTask = useCallback(async (id: string) => {
+    if (activeCompanyId && !isSupabaseConfigured) {
+      const next = LS.get<MonitoringTask[]>(`acs_tasks_${activeCompanyId}`, []).filter(t => t.id !== id);
+      LS.set(`acs_tasks_${activeCompanyId}`, next);
+      setData(prev => ({ ...prev, tasks: next }));
+      return;
+    }
     await supabase.from('tasks').delete().eq('id', id);
     setData(prev => ({ ...prev, tasks: prev.tasks.filter(t => t.id !== id) }));
-  }, []);
+  }, [activeCompanyId]);
 
   const clearDataset = useCallback(async (key: 'orders' | 'opportunities' | 'products' | 'strategy' | 'leads' | 'contacts') => {
     if (!activeCompanyId) return;
+    if (!isSupabaseConfigured) {
+      const localKeys: Record<typeof key, string> = {
+        orders: `acs_orders_${activeCompanyId}`,
+        opportunities: `acs_opps_${activeCompanyId}`,
+        products: `acs_products_${activeCompanyId}`,
+        strategy: `acs_strategy_${activeCompanyId}`,
+        leads: `acs_leads_${activeCompanyId}`,
+        contacts: `acs_contacts_${activeCompanyId}`,
+      };
+      LS.del(localKeys[key]);
+      setData(prev => ({ ...prev, [key]: [] }));
+      return;
+    }
     if (key !== 'leads' && key !== 'contacts') {
       await supabase.from(key).delete().eq('company_id', activeCompanyId);
     }
@@ -829,6 +1107,37 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const clearAll = useCallback(async () => {
     if (!activeCompanyId) return;
+    if (!isSupabaseConfigured) {
+      [
+        `acs_orders_${activeCompanyId}`,
+        `acs_opps_${activeCompanyId}`,
+        `acs_products_${activeCompanyId}`,
+        `acs_strategy_${activeCompanyId}`,
+        `acs_leads_${activeCompanyId}`,
+        `acs_contacts_${activeCompanyId}`,
+        `acs_tasks_${activeCompanyId}`,
+        `acs_log_${activeCompanyId}`,
+        `acs_registries_${activeCompanyId}`,
+        `acs_quality_${activeCompanyId}`,
+        `acs_enriched_${activeCompanyId}`,
+      ].forEach((storageKey) => LS.del(storageKey));
+      writeLocalWorkspacePack(activeCompanyId, {});
+      setData(prev => ({
+        orders: [],
+        opportunities: [],
+        products: [],
+        strategy: [],
+        leads: [],
+        contacts: [],
+        companyProfile: prev.companyProfile,
+        uploadLog: [],
+        tasks: [],
+        entityRegistries: emptyRegistries,
+        qualityReports: [],
+        enrichedProfiles: [],
+      }));
+      return;
+    }
     await Promise.all([
       supabase.from('orders').delete().eq('company_id', activeCompanyId),
       supabase.from('opportunities').delete().eq('company_id', activeCompanyId),
@@ -836,6 +1145,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       supabase.from('strategy').delete().eq('company_id', activeCompanyId),
       supabase.from('tasks').delete().eq('company_id', activeCompanyId),
       supabase.from('upload_log').delete().eq('company_id', activeCompanyId),
+      supabase.from('company_contacts').delete().eq('company_id', activeCompanyId),
+      supabase.from('social_media_accounts').delete().eq('company_id', activeCompanyId),
+      supabase.from('marketing_content').delete().eq('company_id', activeCompanyId),
+      supabase.from('business_intelligence_reports').delete().eq('company_id', activeCompanyId),
+      supabase.from('cost_rates').delete().eq('company_id', activeCompanyId),
+      supabase.from('offers').delete().eq('company_id', activeCompanyId),
+      supabase.from('installed_base_assets').delete().eq('company_id', activeCompanyId),
+      supabase.from('service_contracts').delete().eq('company_id', activeCompanyId),
+      supabase.from('after_sales_opportunities').delete().eq('company_id', activeCompanyId),
+      supabase.from('spare_parts').delete().eq('company_id', activeCompanyId),
     ]);
     setData(prev => ({
       orders: [],
