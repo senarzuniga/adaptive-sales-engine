@@ -97,6 +97,15 @@ def init_session_state() -> None:
         "uploaded_data_universal": None,
         "agent_output":         None,
         "manual_offer_draft":   None,
+        # ── Company context ──────────────────────────────────────
+        "active_company":       None,   # dict with company profile
+        "company_notes":        "",
+        "saved_companies":      [],     # list of company dicts (local fallback)
+        "portfolio_risk":       None,
+        # ── Dataset slots ────────────────────────────────────────
+        "productos_data":       None,
+        "oportunidades_data":   None,
+        "estrategia_data":      None,
     }
     for key, value in defaults.items():
         if key not in st.session_state:

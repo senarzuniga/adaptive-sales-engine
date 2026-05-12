@@ -12,15 +12,208 @@ from config import SUPABASE_CONFIGURED, FULL_ACCESS_ALL_USERS
 from ui.components import _field, safe_execute, _render_orchestrator_panel, get_deadline_priority
 
 
+def _load_companies() -> List[Dict[str, Any]]:
+    """Load companies from Supabase (if configured) or local session state."""
+    from config import SUPABASE_CONFIGURED
+    if SUPABASE_CONFIGURED:
+        from infrastructure.supabase_client import get_supabase
+        sb = get_supabase()
+        if sb is not None:
+            try:
+                rows = sb.table("companies").select("*").order("company_name").execute().data or []
+                return rows
+            except Exception:
+                pass
+    return st.session_state.get("saved_companies", [])
+
+
+def _upsert_company(company: Dict[str, Any]) -> None:
+    """Persist a company to Supabase or to local session state."""
+    from config import SUPABASE_CONFIGURED
+    if SUPABASE_CONFIGURED:
+        from infrastructure.supabase_client import get_supabase
+        sb = get_supabase()
+        if sb is not None:
+            try:
+                payload = {k: v for k, v in company.items() if k != "id"}
+                cid = company.get("id")
+                if cid:
+                    sb.table("companies").update(payload).eq("id", cid).execute()
+                else:
+                    res = sb.table("companies").insert(payload).execute()
+                    if res.data:
+                        company["id"] = res.data[0]["id"]
+                return
+            except Exception:
+                pass
+    # Local fallback
+    saved = st.session_state.get("saved_companies", [])
+    cid = company.get("id")
+    if cid:
+        updated = [c if c.get("id") != cid else company for c in saved]
+    else:
+        import uuid
+        company["id"] = str(uuid.uuid4())
+        updated = saved + [company]
+    st.session_state["saved_companies"] = updated
+
+
+def _delete_company(company_id: str) -> None:
+    """Delete a company from Supabase or local session state."""
+    from config import SUPABASE_CONFIGURED
+    if SUPABASE_CONFIGURED:
+        from infrastructure.supabase_client import get_supabase
+        sb = get_supabase()
+        if sb is not None:
+            try:
+                sb.table("companies").delete().eq("id", company_id).execute()
+                return
+            except Exception:
+                pass
+    saved = st.session_state.get("saved_companies", [])
+    st.session_state["saved_companies"] = [c for c in saved if c.get("id") != company_id]
+
+
+def _load_company_pack_ui() -> None:
+    """Render company pack loading buttons for available packs."""
+    import json
+    from pathlib import Path
+
+    from config import APP_ROOT
+
+    packs_dir = APP_ROOT / "public" / "company-packs"
+    if not packs_dir.exists():
+        st.caption("No hay packs disponibles.")
+        return
+
+    pack_dirs = [p for p in packs_dir.iterdir() if p.is_dir()]
+    if not pack_dirs:
+        st.caption("No hay packs disponibles.")
+        return
+
+    for pack_dir in pack_dirs:
+        pack_file = pack_dir / "ingecart_pack.json"
+        if not pack_file.exists():
+            # try any .json file
+            json_files = list(pack_dir.glob("*_pack.json"))
+            if not json_files:
+                continue
+            pack_file = json_files[0]
+
+        pack_name = pack_dir.name
+        with st.container(border=True):
+            col1, col2 = st.columns([3, 1])
+            col1.markdown(f"**{pack_name}** — Pack de empresa con datos históricos, oportunidades, productos y estrategia")
+            if col2.button(f"⬇️ Cargar {pack_name}", key=f"load_pack_{pack_name}", use_container_width=True):
+                try:
+                    with pack_file.open("r", encoding="utf-8") as f:
+                        pack = json.load(f)
+
+                    profile = pack.get("companyProfile", {})
+                    if profile:
+                        _upsert_company(dict(profile))
+                        st.session_state["active_company"] = profile
+                        st.session_state["company_notes"] = profile.get("additional_notes", "")
+
+                    if pack.get("orders"):
+                        st.session_state["uploaded_data_universal"] = pd.DataFrame(pack["orders"])
+
+                    if pack.get("opportunities"):
+                        st.session_state["oportunidades_data"] = pd.DataFrame(pack["opportunities"])
+
+                    if pack.get("products"):
+                        st.session_state["productos_data"] = pd.DataFrame(pack["products"])
+
+                    if pack.get("strategy"):
+                        st.session_state["estrategia_data"] = pd.DataFrame(pack["strategy"])
+
+                    st.success(
+                        f"✅ Pack **{pack_name}** cargado: empresa activa, "
+                        f"{len(pack.get('orders', []))} pedidos, "
+                        f"{len(pack.get('opportunities', []))} oportunidades, "
+                        f"{len(pack.get('products', []))} productos."
+                    )
+                    st.rerun()
+                except Exception as exc:
+                    st.error(f"Error cargando pack: {exc}")
+
+
 def page_saved_companies() -> None:
     st.title("🏢 Saved Companies — Empresas Guardadas")
-    st.markdown("Directorio de empresas clave con análisis de contexto.")
-    saved = st.session_state.get("saved_companies", [])
-    if saved:
-        st.success(f"✅ {len(saved)} empresas guardadas")
-        st.dataframe(pd.DataFrame(saved), use_container_width=True)
+    st.markdown("Selecciona la empresa activa. Todos los análisis y agentes usarán su contexto.")
+
+    companies = _load_companies()
+
+    active_company = st.session_state.get("active_company")
+    active_id = (active_company or {}).get("id")
+
+    if not companies:
+        st.info("No hay empresas guardadas. Añade una empresa desde **Company Info**.")
     else:
-        st.info("No hay empresas guardadas. Añade empresas desde **Company Info**.")
+        st.subheader(f"📋 {len(companies)} empresa(s) guardada(s)")
+
+        # ── Active company selector ──────────────────────────────
+        company_names = [c.get("company_name", c.get("name", "(sin nombre)")) for c in companies]
+        selected_idx = 0
+        if active_id:
+            for i, c in enumerate(companies):
+                if c.get("id") == active_id:
+                    selected_idx = i
+                    break
+
+        selected_name = st.selectbox(
+            "🎯 Empresa activa",
+            company_names,
+            index=selected_idx,
+            key="company_selector",
+            help="La empresa seleccionada se usará en todos los análisis y módulos.",
+        )
+        if st.button("✅ Establecer como empresa activa", type="primary", key="set_active_company_btn"):
+            sel = companies[company_names.index(selected_name)]
+            st.session_state["active_company"] = sel
+            st.session_state["company_notes"] = sel.get("additional_notes", sel.get("notes", ""))
+            st.success(f"✅ Empresa activa: **{selected_name}**")
+            st.rerun()
+
+        if active_company:
+            ac_name = active_company.get("company_name", active_company.get("name", ""))
+            st.success(f"🎯 Empresa activa actual: **{ac_name}**")
+
+        st.divider()
+
+        # ── Company cards ────────────────────────────────────────
+        for company in companies:
+            cid = company.get("id", "")
+            cname = company.get("company_name", company.get("name", "(sin nombre)"))
+            industry = company.get("industry", company.get("sector", ""))
+            hq = company.get("headquarters", company.get("country", ""))
+            is_active = cid == (st.session_state.get("active_company") or {}).get("id")
+
+            with st.container(border=True):
+                c1, c2, c3 = st.columns([4, 2, 1])
+                label = f"**{cname}**" + (" ⭐ *Activa*" if is_active else "")
+                c1.markdown(label)
+                c1.caption(f"{industry} · {hq}" if industry or hq else "")
+                if c2.button("🎯 Activar", key=f"activate_{cid}", use_container_width=True):
+                    st.session_state["active_company"] = company
+                    st.session_state["company_notes"] = company.get("additional_notes", company.get("notes", ""))
+                    st.success(f"Empresa activa: **{cname}**")
+                    st.rerun()
+                if c3.button("🗑", key=f"del_company_{cid}", use_container_width=True):
+                    _delete_company(cid)
+                    if is_active:
+                        st.session_state["active_company"] = None
+                        st.session_state["company_notes"] = ""
+                    st.rerun()
+
+    st.divider()
+
+    # ── Company packs (demo data) ────────────────────────────────
+    st.subheader("📦 Company Packs — Datos preconfigurados")
+    st.markdown("Carga un pack de empresa completo con datos de demostración.")
+
+    _load_company_pack_ui()
+
     st.divider()
     _render_orchestrator_panel(action="saved_companies")
 
@@ -28,23 +221,100 @@ def page_saved_companies() -> None:
 def page_company_info() -> None:
     st.title("ℹ️ Company Info — Información de Empresa")
     st.markdown("Ficha completa de empresa: sector, tamaño, KAMs, y análisis de cuenta.")
-    with st.form("company_form"):
-        col1, col2 = st.columns(2)
-        company_name = col1.text_input("Nombre de empresa", placeholder="ACME Corp.")
-        country = col2.text_input("País", placeholder="España")
-        sector = col1.text_input("Sector", placeholder="Automatización Industrial")
-        segment = col2.text_input("Segmento", placeholder="Manufacturing")
-        notes = st.text_area("Notas / contexto", placeholder="Información relevante sobre la cuenta...")
+
+    active_company = st.session_state.get("active_company") or {}
+
+    # ── Edit active company or create new ─────────────────────
+    mode = st.radio(
+        "Modo",
+        ["Editar empresa activa", "Crear nueva empresa"],
+        horizontal=True,
+        key="company_info_mode",
+    )
+
+    if mode == "Editar empresa activa" and not active_company:
+        st.info("No hay empresa activa. Selecciona una en **Saved Companies** o crea una nueva aquí.")
+        mode = "Crear nueva empresa"
+
+    prefill = active_company if mode == "Editar empresa activa" else {}
+
+    with st.form("company_form_full"):
+        st.subheader("📌 Identificación")
+        c1, c2 = st.columns(2)
+        company_name   = c1.text_input("Nombre de empresa *", value=prefill.get("company_name", prefill.get("name", "")), placeholder="ACME Corp.")
+        industry       = c2.text_input("Sector / Industria", value=prefill.get("industry", prefill.get("sector", "")), placeholder="Automatización Industrial")
+        sub_sector     = c1.text_input("Sub-sector", value=prefill.get("sub_sector", ""), placeholder="Robótica")
+        headquarters   = c2.text_input("Sede central", value=prefill.get("headquarters", prefill.get("country", "")), placeholder="Madrid, España")
+
+        st.subheader("📊 Tamaño y alcance")
+        c3, c4 = st.columns(2)
+        operating_regions       = c3.text_input("Regiones de operación", value=prefill.get("operating_regions", ""), placeholder="EMEA, LATAM")
+        employee_count          = c4.text_input("Número de empleados", value=prefill.get("employee_count", ""), placeholder="500–1000")
+        annual_revenue          = c3.text_input("Facturación anual (aprox.)", value=prefill.get("annual_revenue", ""), placeholder="€50M")
+        sales_team_size         = c4.text_input("Tamaño equipo comercial", value=prefill.get("sales_team_size", ""), placeholder="15")
+        kam_count               = c3.text_input("KAMs asignados", value=prefill.get("kam_count", ""), placeholder="3")
+        sales_channels          = c4.text_input("Canales de venta", value=prefill.get("sales_channels", ""), placeholder="Directo, Distribuidores")
+
+        st.subheader("🎯 Contexto estratégico")
+        main_products           = st.text_area("Productos / servicios principales", value=prefill.get("main_products", ""), height=80, placeholder="Sensores industriales, controladores PLC…")
+        main_customer_segments  = st.text_area("Segmentos de cliente principales", value=prefill.get("main_customer_segments", ""), height=80, placeholder="Fabricantes, integradores…")
+        main_competitors        = st.text_area("Principales competidores", value=prefill.get("main_competitors", ""), height=80, placeholder="Siemens, ABB, Schneider…")
+        current_challenges      = st.text_area("Retos actuales", value=prefill.get("current_challenges", ""), height=80, placeholder="Presión de margen, internacionalización…")
+        strategic_goals         = st.text_area("Objetivos estratégicos", value=prefill.get("strategic_goals", ""), height=80, placeholder="Duplicar cuota en 3 años…")
+
+        st.subheader("🌐 Digital & notas")
+        c5, c6 = st.columns(2)
+        website_url             = c5.text_input("Web", value=prefill.get("website_url", prefill.get("website", "")), placeholder="https://acme.com")
+        linkedin_url            = c6.text_input("LinkedIn", value=prefill.get("linkedin_url", ""), placeholder="https://linkedin.com/company/acme")
+        additional_notes        = st.text_area("Notas adicionales / contexto", value=prefill.get("additional_notes", prefill.get("notes", "")), height=100, placeholder="Información relevante sobre la cuenta…")
+
         submitted = st.form_submit_button("💾 Guardar empresa", use_container_width=True)
+
     if submitted and company_name:
-        companies = st.session_state.get("saved_companies", [])
-        companies.append({
-            "name": company_name, "country": country, "sector": sector,
-            "segment": segment, "notes": notes,
-        })
-        st.session_state["saved_companies"] = companies
-        st.success(f"✅ '{company_name}' guardada. Total: {len(companies)} empresas.")
+        company_data: Dict[str, Any] = {
+            "company_name": company_name,
+            "industry": industry,
+            "sub_sector": sub_sector,
+            "headquarters": headquarters,
+            "operating_regions": operating_regions,
+            "employee_count": employee_count,
+            "annual_revenue": annual_revenue,
+            "main_products": main_products,
+            "main_customer_segments": main_customer_segments,
+            "main_competitors": main_competitors,
+            "sales_team_size": sales_team_size,
+            "kam_count": kam_count,
+            "sales_channels": sales_channels,
+            "current_challenges": current_challenges,
+            "strategic_goals": strategic_goals,
+            "additional_notes": additional_notes,
+            "website_url": website_url,
+            "linkedin_url": linkedin_url,
+        }
+        if mode == "Editar empresa activa" and active_company.get("id"):
+            company_data["id"] = active_company["id"]
+
+        _upsert_company(company_data)
+
+        # Keep the rich company data as active company
+        st.session_state["active_company"] = company_data
+        st.session_state["company_notes"] = additional_notes
+        st.success(f"✅ Empresa **{company_name}** guardada correctamente.")
         st.rerun()
+
+    # ── Show current active company summary ─────────────────────
+    if active_company:
+        st.divider()
+        st.subheader("🎯 Empresa activa")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Empresa", active_company.get("company_name", active_company.get("name", "—")))
+        col2.metric("Sector", active_company.get("industry", active_company.get("sector", "—")))
+        col3.metric("Sede", active_company.get("headquarters", active_company.get("country", "—")))
+        if active_company.get("annual_revenue"):
+            st.caption(f"💶 Facturación: {active_company['annual_revenue']}")
+        if active_company.get("strategic_goals"):
+            st.caption(f"🎯 Objetivos: {active_company['strategic_goals'][:200]}")
+
     st.divider()
     _render_orchestrator_panel(action="company_info")
 
