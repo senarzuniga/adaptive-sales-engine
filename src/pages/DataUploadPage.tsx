@@ -54,6 +54,15 @@ const DataUploadPage = () => {
     try {
       const result = await parseExcelFile(file);
       if (expectedType && result.type !== 'unknown' && result.type !== expectedType) {
+        addUploadLog({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          fileName: file.name,
+          detectedType: result.type,
+          rowCount: result.rowCount,
+          status: 'error',
+          errors: [`Expected ${expectedType} data but detected ${result.type}`],
+          timestamp: new Date().toISOString(),
+        });
         toast({
           title: `⚠️ ${file.name}`,
           description: `This box is for ${expectedType}. The uploaded file was detected as ${result.type}.`,
