@@ -106,6 +106,17 @@ def init_session_state() -> None:
         "productos_data":       None,
         "oportunidades_data":   None,
         "estrategia_data":      None,
+        "leads_data":           None,
+        "contacts_data":        None,
+        # ── Workspace slots (company-scoped) ────────────────────
+        "workspace_company_contacts": [],
+        "workspace_social_media_accounts": [],
+        "workspace_marketing_content": [],
+        "workspace_business_intelligence_reports": [],
+        "workspace_cost_rates": [],
+        "workspace_service_contracts": [],
+        "workspace_after_sales_opportunities": [],
+        "workspace_spare_parts": [],
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -556,6 +567,9 @@ from ui.pages.backoffice import (  # noqa: E402
     page_cost_modules,
     page_users,
     page_invites,
+    page_marketing_content,
+    page_social_media_settings,
+    page_project_management,
 )
 from ui.pages.agent_hub import page_agent_hub  # noqa: E402
 
@@ -585,9 +599,9 @@ _PAGE_MAP: Dict[str, Any] = {
     "After-Sales Engine":               page_after_sales_engine,
     "Team Directory":                   page_users,
     "Email Cobot":                      page_invites,
-    "Marketing Content":                lambda: page_placeholder("Marketing Content", "📰", "marketing_content"),
-    "Social Media":                     lambda: page_placeholder("Social Media", "📱", "social_media"),
-    "Project Management":               lambda: page_placeholder("Project Management", "🗂️", "project_management"),
+    "Marketing Content":                page_marketing_content,
+    "Social Media":                     page_social_media_settings,
+    "Project Management":               page_project_management,
     "Cost & Rates":                     page_cost_modules,
     "Agent Hub":                        page_agent_hub,
 }

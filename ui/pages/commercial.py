@@ -74,6 +74,84 @@ def _delete_company(company_id: str) -> None:
     st.session_state["saved_companies"] = [c for c in saved if c.get("id") != company_id]
 
 
+_WORKSPACE_TABLE_KEYS = [
+    "company_contacts",
+    "social_media_accounts",
+    "marketing_content",
+    "business_intelligence_reports",
+    "cost_rates",
+    "offers",
+    "offer_items",
+    "cost_breakdowns",
+    "offer_scenarios",
+    "offer_scores",
+    "installed_base_assets",
+    "service_contracts",
+    "after_sales_opportunities",
+    "spare_parts",
+]
+
+_SUPABASE_COMPANY_SCOPED_TABLES = [
+    "company_contacts",
+    "social_media_accounts",
+    "marketing_content",
+    "business_intelligence_reports",
+    "cost_rates",
+    "offers",
+    "installed_base_assets",
+    "service_contracts",
+    "after_sales_opportunities",
+    "spare_parts",
+]
+
+
+def _workspace_session_key(table_name: str) -> str:
+    return f"workspace_{table_name}"
+
+
+def _persist_workspace_session(workspace: Dict[str, Any]) -> None:
+    """Store workspace tables into session_state for local/demo mode pages."""
+    for table in _SUPABASE_COMPANY_SCOPED_TABLES:
+        st.session_state[_workspace_session_key(table)] = workspace.get(table, []) or []
+
+
+def _hydrate_workspace_supabase(company_id: str, workspace: Dict[str, Any]) -> None:
+    """Persist workspace rows into Supabase for the imported company."""
+    from infrastructure.supabase_client import get_supabase
+
+    if not SUPABASE_CONFIGURED:
+        return
+    sb = get_supabase()
+    if sb is None:
+        return
+
+    for table in _WORKSPACE_TABLE_KEYS:
+        rows = workspace.get(table) or []
+        if not isinstance(rows, list) or not rows:
+            continue
+        try:
+            # Reset company-scoped rows to avoid duplicates on repeated imports.
+            sb.table(table).delete().eq("company_id", company_id).execute()
+        except Exception:
+            # Some tables may not have company_id or may be empty; continue importing.
+            pass
+
+        normalized_rows: List[Dict[str, Any]] = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            payload = {k: v for k, v in row.items() if k not in ("id", "company_id", "created_at", "updated_at")}
+            payload["company_id"] = company_id
+            normalized_rows.append(payload)
+        if not normalized_rows:
+            continue
+        try:
+            sb.table(table).insert(normalized_rows).execute()
+        except Exception:
+            # Keep pack loading resilient even if one workspace table fails.
+            continue
+
+
 def _load_company_pack_ui() -> None:
     """Render company pack loading buttons for available packs."""
     import json
@@ -128,11 +206,30 @@ def _load_company_pack_ui() -> None:
                     if pack.get("strategy"):
                         st.session_state["estrategia_data"] = pd.DataFrame(pack["strategy"])
 
+                    if pack.get("leads"):
+                        st.session_state["leads_data"] = pd.DataFrame(pack["leads"])
+
+                    if pack.get("contacts"):
+                        st.session_state["contacts_data"] = pd.DataFrame(pack["contacts"])
+
+                    if pack.get("tasks"):
+                        st.session_state["tasks_data"] = pd.DataFrame(pack["tasks"])
+
+                    if pack.get("entityRegistries"):
+                        st.session_state["entity_registries"] = pack["entityRegistries"]
+
+                    workspace = pack.get("workspace", {}) or {}
+                    _persist_workspace_session(workspace)
+                    company_id = (profile or {}).get("id")
+                    if company_id:
+                        _hydrate_workspace_supabase(company_id, workspace)
+
                     st.success(
                         f"✅ Pack **{pack_name}** cargado: empresa activa, "
                         f"{len(pack.get('orders', []))} pedidos, "
                         f"{len(pack.get('opportunities', []))} oportunidades, "
-                        f"{len(pack.get('products', []))} productos."
+                        f"{len(pack.get('products', []))} productos, "
+                        f"{sum(len(v) for v in workspace.values() if isinstance(v, list))} registros workspace."
                     )
                     st.rerun()
                 except Exception as exc:

@@ -232,6 +232,8 @@ def page_data_upload() -> None:
         "📦 Catálogo de productos":        "productos_data",
         "🎯 Pipeline de oportunidades":    "oportunidades_data",
         "🏆 Plan estratégico":             "estrategia_data",
+        "🧲 Leads comerciales":            "leads_data",
+        "👥 Contactos":                    "contacts_data",
         "🗂️ Universal / otro":             "uploaded_data_universal",
     }
     content_type_label = st.selectbox(
@@ -250,6 +252,8 @@ def page_data_upload() -> None:
             ("📦 Catálogo de productos",      "productos_data"),
             ("🎯 Pipeline oportunidades",     "oportunidades_data"),
             ("🏆 Plan estratégico",           "estrategia_data"),
+            ("🧲 Leads comerciales",          "leads_data"),
+            ("👥 Contactos",                  "contacts_data"),
         ]:
             df_val = st.session_state.get(key)
             if isinstance(df_val, pd.DataFrame) and not df_val.empty:
