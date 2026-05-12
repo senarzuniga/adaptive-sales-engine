@@ -35,6 +35,10 @@ def _workspace_key(table: str) -> str:
     return f"workspace_{table}"
 
 
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
 def _workspace_list(table: str) -> List[Dict[str, Any]]:
     val = st.session_state.get(_workspace_key(table), [])
     return val if isinstance(val, list) else []
@@ -78,7 +82,7 @@ def _table_insert(table: str, company_id: str, payload: Dict[str, Any]) -> None:
 
     import uuid
 
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_iso = _utc_now_iso()
     payload.setdefault("id", str(uuid.uuid4()))
     payload.setdefault("created_at", now_iso)
     payload.setdefault("updated_at", now_iso)
@@ -99,7 +103,7 @@ def _table_update(table: str, company_id: str, row_id: str, updates: Dict[str, A
     merged = []
     for row in rows:
         if str(row.get("id")) == str(row_id):
-            merged.append({**row, **updates, "updated_at": datetime.now(timezone.utc).isoformat()})
+            merged.append({**row, **updates, "updated_at": _utc_now_iso()})
         else:
             merged.append(row)
     _workspace_save(table, merged)
