@@ -221,7 +221,8 @@ def _load_company_pack_ui() -> None:
                         _hydrate_workspace_supabase(company_id, workspace)
                     elif SUPABASE_CONFIGURED and workspace:
                         st.warning(
-                            "Workspace cargado en sesión local, pero no se sincronizó en Supabase porque la empresa no tiene id."
+                            "Workspace cargado solo en sesión local. Guarda/activa primero la empresa con id en **Company Info** "
+                            "para habilitar sincronización completa en Supabase."
                         )
 
                     st.success(
