@@ -213,13 +213,21 @@ export default function SavedCompaniesPage() {
     setLoadingIngecart(true);
     try {
       const response = await fetch('/company-packs/Ingecart/ingecart_pack.json');
-      if (!response.ok) throw new Error('Failed to load bundled Ingecart pack');
+      if (!response.ok) {
+        if (response.status === 404) throw new Error('Ingecart pack file not found');
+        throw new Error(`Ingecart pack request failed (${response.status})`);
+      }
       const text = await response.text();
       await importCompanyPack(text);
       await loadCompanies();
       toast({ title: 'Ingecart pack loaded successfully' });
-    } catch {
-      toast({ title: 'Could not load Ingecart pack', variant: 'destructive' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      toast({
+        title: 'Could not load Ingecart pack',
+        description: message,
+        variant: 'destructive',
+      });
     } finally {
       setLoadingIngecart(false);
     }

@@ -110,8 +110,8 @@
     ],
     "actionContent": {
       "goal": "Launch 3 preventive maintenance contracts with existing installed base customers by June 2026.",
-      "callScript": "Hola [Nombre], soy Diego de Ingecart. Siguiendo nuestra instalacion reciente, queria explorar un contrato de mantenimiento preventivo para proteger su inversion y evitar paradas no planificadas. Tenemos un programa nuevo especificamente disenado para su tipo de planta...",
-      "emailTemplate": "Subject: Proteja su inversion en Ingecart — Programa de Mantenimiento Preventivo\n\nEstimado [Nombre],\n\nAhora que su [producto] lleva [X meses] funcionando, es el momento ideal para activar un plan de mantenimiento preventivo estructurado.\n\nNuestro programa incluye:\n- Visitas preventivas trimestrales\n- Respuesta prioritaria (< 24h)\n- Asignacion de repuestos\n- Soporte remoto\n\nDesde €X/mes. Le muestro el calculo de ROI.\n\nSaludos,\nDiego Garcia\nIngecart",
+      "callScript": "Hola [Nombre], soy Diego de Ingecart. Siguiendo nuestra instalación reciente, quería explorar un contrato de mantenimiento preventivo para proteger su inversión y evitar paradas no planificadas. Tenemos un programa nuevo especificamente diseñado para su tipo de planta...",
+      "emailTemplate": "Subject: Proteja su inversión en Ingecart — Programa de Mantenimiento Preventivo\n\nEstimado [Nombre],\n\nAhora que su [producto] lleva [X meses] funcionando, es el momento ideal para activar un plan de mantenimiento preventivo estructurado.\n\nNuestro programa incluye:\n- Visitas preventivas trimestrales\n- Respuesta prioritaria (< 24h)\n- Asignación de repuestos\n- Soporte remoto\n\nDesde €X/mes. Le muestro el cálculo de ROI.\n\nSaludos,\nDiego Garcia\nIngecart",
       "presentationNotes": "Installed base first: Saica, DS Smith, Santorromán, La Plana, Ondupack are ideal first contracts."
     }
   },
@@ -133,7 +133,7 @@
     ],
     "actionContent": {
       "goal": "Close 4 Retal systems in Spain by June 2026 = €360K revenue.",
-      "callScript": "Hola [Nombre], Diego Garcia de Ingecart. Estamos viendo plantas en Catalunya y otras regiones que pierden entre 50.000 y 200.000 euros al año en gestión de retal. Tenemos un sistema que lo automatiza con payback inferior a 15 meses. ¿Le interesaria ver el caso de una planta similar a la suya?",
+      "callScript": "Hola [Nombre], Diego Garcia de Ingecart. Estamos viendo plantas en Catalunya y otras regiones que pierden entre 50.000 y 200.000 euros al año en gestión de retal. Tenemos un sistema que lo automatiza con payback inferior a 15 meses. ¿Le interesaría ver el caso de una planta similar a la suya?",
       "emailTemplate": "",
       "presentationNotes": "Retal ROI case: typical plant saves €80–150K/year in scrap losses. Payback 12–15 months. Show La Plana and Santorroman as references."
     }
