@@ -152,6 +152,12 @@ describe('Loaded data simulation, panel smoke simulation, and agent simulation',
     });
   });
 
+  it('shows bundled company-pack quick loaders in Saved Companies', () => {
+    renderPanel('/companies', <SavedCompaniesPage />);
+    expect(screen.getByText('Load Ingecart Pack')).toBeTruthy();
+    expect(screen.getByText('Load Ingecart Demo Pack')).toBeTruthy();
+  });
+
   it('simulates active frontend agents with loaded data', () => {
     const input = {
       orders: [
