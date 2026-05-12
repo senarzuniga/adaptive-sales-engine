@@ -562,10 +562,10 @@ export default function AfterSalesEnginePage() {
                   <div><label className="text-xs font-medium">SLA ({isEs ? 'horas respuesta' : 'response hours'})</label><Input type="number" value={contractForm.sla_response_hours} onChange={e => setContractForm(p => ({ ...p, sla_response_hours: Number(e.target.value) }))} /></div>
                   <div>
                     <label className="text-xs font-medium">{isEs ? 'Activo vinculado' : 'Linked Asset'}</label>
-                    <Select value={contractForm.asset_id} onValueChange={v => setContractForm(p => ({ ...p, asset_id: v }))}>
+                    <Select value={contractForm.asset_id || '__none__'} onValueChange={v => setContractForm(p => ({ ...p, asset_id: v === '__none__' ? '' : v }))}>
                       <SelectTrigger><SelectValue placeholder={isEs ? 'Seleccionar...' : 'Select...'} /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">-</SelectItem>
+                        <SelectItem value="__none__">-</SelectItem>
                         {assets.map(a => <SelectItem key={a.id} value={a.id}>{a.asset_name} ({a.serial_number})</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -660,10 +660,10 @@ export default function AfterSalesEnginePage() {
                   </div>
                   <div>
                     <label className="text-xs font-medium">{isEs ? 'Activo' : 'Asset'}</label>
-                    <Select value={interventionForm.asset_id} onValueChange={v => setInterventionForm(p => ({ ...p, asset_id: v }))}>
+                    <Select value={interventionForm.asset_id || '__none__'} onValueChange={v => setInterventionForm(p => ({ ...p, asset_id: v === '__none__' ? '' : v }))}>
                       <SelectTrigger><SelectValue placeholder={isEs ? 'Seleccionar...' : 'Select...'} /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">-</SelectItem>
+                        <SelectItem value="__none__">-</SelectItem>
                         {assets.map(a => <SelectItem key={a.id} value={a.id}>{a.asset_name}</SelectItem>)}
                       </SelectContent>
                     </Select>

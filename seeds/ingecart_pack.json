@@ -639,7 +639,10 @@
       "assignee": "Inaki Senar",
       "dueDate": "2026-04-30",
       "createdAt": "2026-01-17T00:00:00Z",
-      "notes": ["Phase 1 action (0–3 months)", "Key deliverable: diagnosis report + top 5 gaps"],
+      "notes": [
+        "Phase 1 action (0–3 months)",
+        "Key deliverable: diagnosis report + top 5 gaps"
+      ],
       "actionContent": {
         "goal": "Deliver a complete commercial system audit identifying top 5 gaps and quick wins for Ingecart transformation.",
         "callScript": "",
@@ -658,7 +661,11 @@
       "assignee": "Diego Garcia",
       "dueDate": "2026-04-30",
       "createdAt": "2026-01-17T00:00:00Z",
-      "notes": ["Phase 1 — Brand creation", "Core tagline: Faster than OEMs. More reliable than low-cost.", "Must anchor on ROI speed + corrugated expertise + agility"],
+      "notes": [
+        "Phase 1 — Brand creation",
+        "Core tagline: Faster than OEMs. More reliable than low-cost.",
+        "Must anchor on ROI speed + corrugated expertise + agility"
+      ],
       "actionContent": {
         "goal": "Create a 2-sentence positioning that Diego can use in any conversation with a prospect.",
         "callScript": "Hi, I'm Diego Garcia from Ingecart. We help corrugated packaging plants accelerate sustainable transformation — eliminating losses, scrap, and inefficiency with fast-ROI automation. We are agile enough to outperform OEMs and engineered to outlast low-cost alternatives.",
@@ -853,5 +860,810 @@
         "presentationNotes": "Each account needs a personalized insight anchor: 'We saw that your plant in [location] recently [installed/expanded/acquired]...'"
       }
     }
-  ]
+  ],
+  "workspace": {
+    "company_contacts": [
+      {
+        "id": "4b0b2a8c-18c6-4fb2-8f5f-0d30a0b01a10",
+        "company_id": "pack-ingecart",
+        "name": "Diego Garcia",
+        "email": "diego@ingecart.eu",
+        "role": "Owner & General Manager",
+        "department": "Sales",
+        "is_default_handler": true,
+        "notes": "Primary commercial owner for Spain and strategic accounts.",
+        "created_at": "2026-04-10T08:00:00Z",
+        "updated_at": "2026-04-10T08:00:00Z"
+      },
+      {
+        "id": "8c7cf6f1-1bc1-44d9-9786-cf0a6ec4f0ef",
+        "company_id": "pack-ingecart",
+        "name": "Ariel Marketing",
+        "email": "marketing@ingecart.eu",
+        "role": "Marketing & Brand Support",
+        "department": "Marketing",
+        "is_default_handler": false,
+        "notes": "Supports ABM campaigns, brand assets, and newsletter production.",
+        "created_at": "2026-04-10T08:05:00Z",
+        "updated_at": "2026-04-10T08:05:00Z"
+      },
+      {
+        "id": "0a2edfeb-b570-4870-9763-80f4cb84d274",
+        "company_id": "pack-ingecart",
+        "name": "Paco Maintenance",
+        "email": "service@ingecart.eu",
+        "role": "Maintenance Leader",
+        "department": "Support",
+        "is_default_handler": false,
+        "notes": "Coordinates field interventions and installed-base follow-up.",
+        "created_at": "2026-04-10T08:10:00Z",
+        "updated_at": "2026-04-10T08:10:00Z"
+      },
+      {
+        "id": "a4d98765-c9f0-4fe2-8f01-732932bdd86a",
+        "company_id": "pack-ingecart",
+        "name": "Maria Jesus Garcia",
+        "email": "admin@ingecart.eu",
+        "role": "Administration & Finance",
+        "department": "Finance",
+        "is_default_handler": false,
+        "notes": "Supports financial coordination, contracts, and approvals.",
+        "created_at": "2026-04-10T08:15:00Z",
+        "updated_at": "2026-04-10T08:15:00Z"
+      }
+    ],
+    "social_media_accounts": [
+      {
+        "id": "a1c90e33-4a56-4611-b63a-29c1962b36b8",
+        "company_id": "pack-ingecart",
+        "platform": "linkedin",
+        "profile_url": "https://es.linkedin.com/company/ingecart",
+        "account_name": "Ingecart",
+        "is_enabled": true,
+        "api_credentials": {},
+        "posting_preferences": {
+          "auto_post": false,
+          "content_types": [
+            "article",
+            "product_news",
+            "industry_insight"
+          ],
+          "frequency": "weekly"
+        },
+        "notes": "Main corporate thought-leadership channel.",
+        "created_at": "2026-04-12T09:00:00Z",
+        "updated_at": "2026-04-12T09:00:00Z"
+      },
+      {
+        "id": "338d216e-7b1a-4b83-9e47-9257ed91df5c",
+        "company_id": "pack-ingecart",
+        "platform": "facebook",
+        "profile_url": "https://www.facebook.com/ingecart",
+        "account_name": "Ingecart Automation",
+        "is_enabled": false,
+        "api_credentials": {},
+        "posting_preferences": {
+          "auto_post": false,
+          "content_types": [
+            "update",
+            "event"
+          ],
+          "frequency": "manual"
+        },
+        "notes": "Kept as secondary channel for events and employer-branding.",
+        "created_at": "2026-04-12T09:05:00Z",
+        "updated_at": "2026-04-12T09:05:00Z"
+      }
+    ],
+    "marketing_content": [
+      {
+        "id": "0d382950-5f41-4fa0-a785-4c6b9a184ad4",
+        "company_id": "pack-ingecart",
+        "title": "Why corrugated plants are accelerating end-of-line automation in 2026",
+        "body": "Corrugated groups are under pressure to improve OEE, reduce scrap, and respond faster to packaging mix changes. Ingecart helps plants act on those priorities with agile end-of-line automation, fast ROI pilots, and sector-specific engineering expertise.",
+        "summary": "Thought-leadership article on automation urgency in corrugated packaging.",
+        "content_type": "industry_insight",
+        "platform": "linkedin",
+        "hashtags": [
+          "#corrugated",
+          "#automation",
+          "#OEE",
+          "#packaging"
+        ],
+        "call_to_action": "Book a 20-minute discovery call to assess your current bottleneck.",
+        "suggested_image_description": "Modern corrugated plant with automated end-of-line system and KPI overlay.",
+        "alternative_versions": [
+          {
+            "platform": "newsletter",
+            "body": "Shorter newsletter-style version focused on ROI and recent market trends."
+          }
+        ],
+        "intelligence_sources": {
+          "topic": "Corrugated automation priorities",
+          "marketSignals": [
+            "PPWR pressure",
+            "post-M&A plant rationalization",
+            "fast ROI demand"
+          ]
+        },
+        "status": "draft",
+        "scheduled_at": "2026-05-20T08:00:00Z",
+        "published_at": null,
+        "created_at": "2026-05-01T09:00:00Z",
+        "updated_at": "2026-05-01T09:00:00Z"
+      },
+      {
+        "id": "fd989239-80d8-4c7d-99d2-65dc8f6b42ce",
+        "company_id": "pack-ingecart",
+        "title": "AMR routing for corrugated plants: where fast ROI really comes from",
+        "body": "AMR routing delivers value when it removes forklift friction, stabilizes flow, and protects throughput during mix changes. Ingecart's approach focuses on practical deployment, engineering robustness, and speed versus large OEM timelines.",
+        "summary": "Product-oriented post positioning AMR systems around practical ROI.",
+        "content_type": "product_news",
+        "platform": "linkedin",
+        "hashtags": [
+          "#AMR",
+          "#industrialautomation",
+          "#corrugated",
+          "#ROI"
+        ],
+        "call_to_action": "Ask for the Quick Throughput Pack concept note.",
+        "suggested_image_description": "Autonomous mobile robot moving pallet loads in a corrugated converting plant.",
+        "alternative_versions": [],
+        "intelligence_sources": {
+          "productFamily": "AMR Systems",
+          "customers": [
+            "Saica",
+            "DS Smith",
+            "Hinojosa"
+          ]
+        },
+        "status": "scheduled",
+        "scheduled_at": "2026-05-28T08:30:00Z",
+        "published_at": null,
+        "created_at": "2026-05-03T10:15:00Z",
+        "updated_at": "2026-05-03T10:15:00Z"
+      },
+      {
+        "id": "23312858-fbd0-4ec7-a5af-7a115f7f7c16",
+        "company_id": "pack-ingecart",
+        "title": "Monthly automation brief — Ingecart market pulse",
+        "body": "This month's market pulse covers corrugated consolidation, service revenue opportunities, and three high-probability modernization plays for Iberian plants. It closes with a short view on spare-parts availability and predictive service opportunities.",
+        "summary": "Newsletter-style recap for customers and prospects.",
+        "content_type": "article",
+        "platform": "newsletter",
+        "hashtags": [
+          "#marketpulse",
+          "#automation",
+          "#service"
+        ],
+        "call_to_action": "Reply if you want the full Top-10 account workshop deck.",
+        "suggested_image_description": "Editorial cover with charts, corrugated machinery, and service overlays.",
+        "alternative_versions": [],
+        "intelligence_sources": {
+          "topic": "Monthly market pulse",
+          "referenceUrls": [
+            "https://www.ingecart.eu/",
+            "https://es.linkedin.com/company/ingecart"
+          ]
+        },
+        "status": "draft",
+        "scheduled_at": null,
+        "published_at": null,
+        "created_at": "2026-05-04T07:30:00Z",
+        "updated_at": "2026-05-04T07:30:00Z"
+      }
+    ],
+    "business_intelligence_reports": [
+      {
+        "id": "b0f3a7a3-d9bb-4122-b91f-c5121fc81bfa",
+        "company_id": "pack-ingecart",
+        "target_company_name": "Saica Pack SL",
+        "target_company_website": "https://www.saica.com/",
+        "report_type": "company:full",
+        "status": "completed",
+        "executive_summary": "Saica remains a high-value strategic account for modular automation, scrap handling, and service upsell. The strongest path is a plant-by-plant expansion play after proving one repeatable AMR or Retal case.",
+        "company_profile": {
+          "size": "Tier 1",
+          "fit": "High",
+          "entry_route": "Operational pain + ROI-first pilot"
+        },
+        "financial_analysis": {
+          "confidence": "MEDIUM",
+          "signals": [
+            "Large capex discipline",
+            "Scale favors repeatable offers"
+          ]
+        },
+        "product_analysis": {
+          "bestFits": [
+            "Retal",
+            "AMR Systems",
+            "Service contracts"
+          ]
+        },
+        "market_analysis": {
+          "drivers": [
+            "throughput",
+            "waste reduction",
+            "M&A consolidation"
+          ]
+        },
+        "competitive_analysis": {
+          "risks": [
+            "Large OEM presence",
+            "price pressure from low-cost players"
+          ]
+        },
+        "strategic_analysis": {
+          "recommendedMotion": "Use a repeatable cross-plant value story with quantified OEE and scrap benefits."
+        },
+        "valuation": {
+          "priority": "A-tier"
+        },
+        "sale_propensity": {
+          "score": 78,
+          "confidence": "MEDIUM"
+        },
+        "future_scenarios": {
+          "base": "Single-site pilot",
+          "upside": "Multi-plant rollout"
+        },
+        "recommendations": [
+          "Secure one ROI-backed pilot",
+          "Build stakeholder map for corporate sponsorship"
+        ],
+        "data_sources": [
+          "Ingecart company pack",
+          "Internal strategic hypotheses"
+        ],
+        "hypothesis_log": [
+          {
+            "hypothesis": "Retal standardization can unlock repeatable wins",
+            "status": "testing"
+          }
+        ],
+        "created_at": "2026-05-02T11:00:00Z",
+        "updated_at": "2026-05-02T11:00:00Z"
+      },
+      {
+        "id": "2a794385-f5b9-4e80-9713-38eb7db3f455",
+        "company_id": "pack-ingecart",
+        "target_company_name": "Southern Europe corrugated automation market",
+        "target_company_website": "",
+        "report_type": "geographical:geographic-market",
+        "status": "completed",
+        "executive_summary": "Southern Europe remains attractive for agile automation specialists because plants need mid-sized ROI cases faster than large OEM programs can typically deliver.",
+        "company_profile": {
+          "scope": "Southern Europe",
+          "fit": "High"
+        },
+        "financial_analysis": {
+          "confidence": "LOW",
+          "signals": [
+            "Mid-market investment waves",
+            "Selective capex"
+          ]
+        },
+        "product_analysis": {
+          "bestFits": [
+            "Easy Pack",
+            "Retal",
+            "AMR Systems"
+          ]
+        },
+        "market_analysis": {
+          "drivers": [
+            "E-commerce demand",
+            "labor scarcity",
+            "sustainability regulation"
+          ]
+        },
+        "competitive_analysis": {
+          "risks": [
+            "Fragmented integrator landscape",
+            "OEM bundling"
+          ]
+        },
+        "strategic_analysis": {
+          "recommendedMotion": "Lead with problem-solving workshops and modular offer packages."
+        },
+        "valuation": {
+          "priority": "Expansion market"
+        },
+        "sale_propensity": {
+          "score": 72,
+          "confidence": "MEDIUM"
+        },
+        "future_scenarios": {
+          "base": "Regional agent network",
+          "upside": "Cross-border account program"
+        },
+        "recommendations": [
+          "Prioritize Iberia references",
+          "Expand distributor/agent scouting in Italy and France"
+        ],
+        "data_sources": [
+          "Company pack market context",
+          "Internal market hypotheses"
+        ],
+        "hypothesis_log": [
+          {
+            "hypothesis": "Speed-to-ROI beats corporate procurement complexity in this region",
+            "status": "active"
+          }
+        ],
+        "created_at": "2026-05-05T16:00:00Z",
+        "updated_at": "2026-05-05T16:00:00Z"
+      }
+    ],
+    "cost_rates": [
+      {
+        "id": "d4ab0214-064e-4b05-ae7f-0112908e693c",
+        "company_id": "pack-ingecart",
+        "department": "Engineering",
+        "geography": "Spain",
+        "project_type": "Automation",
+        "rate_name": "Mechanical engineering hour",
+        "rate_type": "labor",
+        "rate_unit": "hour",
+        "rate_value": 62,
+        "is_active": true,
+        "notes": "Standard internal engineering baseline.",
+        "valid_from": "2026-01-01",
+        "valid_until": null,
+        "version": 1,
+        "created_at": "2026-04-01T00:00:00Z",
+        "updated_at": "2026-04-01T00:00:00Z"
+      },
+      {
+        "id": "665ffdeb-b46d-4be4-8355-e967a4f9535c",
+        "company_id": "pack-ingecart",
+        "department": "Electrical",
+        "geography": "Spain",
+        "project_type": "Automation",
+        "rate_name": "Electrical engineering hour",
+        "rate_type": "labor",
+        "rate_unit": "hour",
+        "rate_value": 68,
+        "is_active": true,
+        "notes": "PLC and controls engineering reference.",
+        "valid_from": "2026-01-01",
+        "valid_until": null,
+        "version": 1,
+        "created_at": "2026-04-01T00:00:00Z",
+        "updated_at": "2026-04-01T00:00:00Z"
+      },
+      {
+        "id": "7f5b935a-8621-4a44-a9f1-a5ef57f850c0",
+        "company_id": "pack-ingecart",
+        "department": "Field Service",
+        "geography": "Europe",
+        "project_type": "Installation",
+        "rate_name": "Field technician day",
+        "rate_type": "service",
+        "rate_unit": "day",
+        "rate_value": 520,
+        "is_active": true,
+        "notes": "Travel excluded.",
+        "valid_from": "2026-01-01",
+        "valid_until": null,
+        "version": 1,
+        "created_at": "2026-04-01T00:00:00Z",
+        "updated_at": "2026-04-01T00:00:00Z"
+      },
+      {
+        "id": "771a3256-dfe9-4119-8500-aadfd5a9b2a8",
+        "company_id": "pack-ingecart",
+        "department": "Service",
+        "geography": "Spain",
+        "project_type": "After Sales",
+        "rate_name": "Remote support hour",
+        "rate_type": "service",
+        "rate_unit": "hour",
+        "rate_value": 95,
+        "is_active": true,
+        "notes": "For remote diagnostics and quick support interventions.",
+        "valid_from": "2026-01-01",
+        "valid_until": null,
+        "version": 1,
+        "created_at": "2026-04-01T00:00:00Z",
+        "updated_at": "2026-04-01T00:00:00Z"
+      }
+    ],
+    "offers": [
+      {
+        "id": "81307bbf-6fc4-463b-ad8d-a3efdf2a763b",
+        "company_id": "pack-ingecart",
+        "currency": "EUR",
+        "customer_name": "Saica Pack SL",
+        "notes": "Priority Top-10 account proposal aligned with standard product mix.",
+        "offer_number": "ING-OFR-2026-001",
+        "project_description": "Retal scrap management plus line-side automation package for one corrugator line.",
+        "status": "draft",
+        "title": "Saica Retal Efficiency Pack",
+        "created_at": "2026-05-06T09:00:00Z",
+        "updated_at": "2026-05-06T09:00:00Z"
+      },
+      {
+        "id": "67f688ee-c91b-4e02-bc17-2d47ef01d6a6",
+        "company_id": "pack-ingecart",
+        "currency": "EUR",
+        "customer_name": "Hinojosa Packaging Group",
+        "notes": "Expansion proposal for repeatable AMR routing configuration.",
+        "offer_number": "ING-OFR-2026-002",
+        "project_description": "AMR routing cell with quick deployment package and training.",
+        "status": "review",
+        "title": "Hinojosa Smart Flow Cell",
+        "created_at": "2026-05-07T10:00:00Z",
+        "updated_at": "2026-05-07T10:00:00Z"
+      }
+    ],
+    "offer_items": [
+      {
+        "id": "6601400a-5a9d-461b-9edf-7d04ed8ce1ec",
+        "offer_id": "81307bbf-6fc4-463b-ad8d-a3efdf2a763b",
+        "item_name": "Retal handling module",
+        "item_type": "product",
+        "quantity": 1,
+        "description": "Standardized scrap-management module with integration engineering.",
+        "created_at": "2026-05-06T09:00:00Z",
+        "updated_at": "2026-05-06T09:00:00Z"
+      },
+      {
+        "id": "f89f6764-fda9-44be-b08d-326f5f705f81",
+        "offer_id": "67f688ee-c91b-4e02-bc17-2d47ef01d6a6",
+        "item_name": "AMR smart flow package",
+        "item_type": "package",
+        "quantity": 1,
+        "description": "AMR cell, controls integration, commissioning, and training.",
+        "created_at": "2026-05-07T10:00:00Z",
+        "updated_at": "2026-05-07T10:00:00Z"
+      }
+    ],
+    "cost_breakdowns": [
+      {
+        "id": "75041943-7e72-4d76-84d8-1d7b6098df77",
+        "offer_item_id": "6601400a-5a9d-461b-9edf-7d04ed8ce1ec",
+        "category": "materials",
+        "line_item": "Retal mechanical module",
+        "quantity": 1,
+        "unit_cost": 46000,
+        "total_cost": 46000,
+        "hours": 0,
+        "hourly_rate": 0,
+        "days": 0,
+        "resources": 0,
+        "surcharge_pct": 0,
+        "notes": "Core module cost",
+        "created_at": "2026-05-06T09:00:00Z"
+      },
+      {
+        "id": "c2b990c1-0f3e-40b7-b93f-cdb5a798cf14",
+        "offer_item_id": "6601400a-5a9d-461b-9edf-7d04ed8ce1ec",
+        "category": "engineering",
+        "line_item": "Integration engineering",
+        "quantity": 1,
+        "unit_cost": 0,
+        "total_cost": 9920,
+        "hours": 160,
+        "hourly_rate": 62,
+        "days": 0,
+        "resources": 0,
+        "surcharge_pct": 0,
+        "notes": "Mechanical + electrical baseline",
+        "created_at": "2026-05-06T09:00:00Z"
+      },
+      {
+        "id": "59c7fe88-7844-46f6-b50d-91d427880e6f",
+        "offer_item_id": "f89f6764-fda9-44be-b08d-326f5f705f81",
+        "category": "materials",
+        "line_item": "AMR package hardware",
+        "quantity": 1,
+        "unit_cost": 108000,
+        "total_cost": 108000,
+        "hours": 0,
+        "hourly_rate": 0,
+        "days": 0,
+        "resources": 0,
+        "surcharge_pct": 0,
+        "notes": "Core AMR equipment",
+        "created_at": "2026-05-07T10:00:00Z"
+      },
+      {
+        "id": "f804eeaf-c391-4c90-a835-ec7bf02c19d9",
+        "offer_item_id": "f89f6764-fda9-44be-b08d-326f5f705f81",
+        "category": "installation",
+        "line_item": "Commissioning and ramp-up",
+        "quantity": 1,
+        "unit_cost": 520,
+        "total_cost": 6240,
+        "hours": 0,
+        "hourly_rate": 0,
+        "days": 6,
+        "resources": 2,
+        "surcharge_pct": 0,
+        "notes": "Field service team",
+        "created_at": "2026-05-07T10:00:00Z"
+      }
+    ],
+    "offer_scenarios": [
+      {
+        "id": "41b4c16f-77b1-4b5a-bdc1-7287d42ba7d0",
+        "offer_id": "81307bbf-6fc4-463b-ad8d-a3efdf2a763b",
+        "scenario_type": "target",
+        "total_cost": 55920,
+        "selling_price": 82000,
+        "margin_amount": 26080,
+        "margin_pct": 31.8,
+        "risk_level": "medium",
+        "adjustments": "Target margin aligned with repeatable standard offer.",
+        "created_at": "2026-05-06T09:00:00Z",
+        "updated_at": "2026-05-06T09:00:00Z"
+      },
+      {
+        "id": "d64f17cd-d868-4eb3-8b14-35132aaf5781",
+        "offer_id": "67f688ee-c91b-4e02-bc17-2d47ef01d6a6",
+        "scenario_type": "target",
+        "total_cost": 114240,
+        "selling_price": 168000,
+        "margin_amount": 53760,
+        "margin_pct": 32.0,
+        "risk_level": "medium",
+        "adjustments": "Includes field ramp-up and customer training package.",
+        "created_at": "2026-05-07T10:00:00Z",
+        "updated_at": "2026-05-07T10:00:00Z"
+      }
+    ],
+    "offer_scores": [
+      {
+        "id": "09cc13d0-a033-4148-9150-b1e9857338dc",
+        "offer_id": "81307bbf-6fc4-463b-ad8d-a3efdf2a763b",
+        "margin_score": "strong",
+        "risk_score": "medium",
+        "global_score": 84,
+        "recommendations": [
+          "Use Retal reference cases",
+          "Push quick-payback narrative"
+        ],
+        "risk_factors": [
+          {
+            "category": "stakeholder",
+            "description": "Corporate approval cycle may slow decision",
+            "severity": "medium"
+          }
+        ],
+        "created_at": "2026-05-06T09:00:00Z",
+        "updated_at": "2026-05-06T09:00:00Z"
+      },
+      {
+        "id": "f37e76cf-185f-4f41-b85a-80b942b8a3d9",
+        "offer_id": "67f688ee-c91b-4e02-bc17-2d47ef01d6a6",
+        "margin_score": "strong",
+        "risk_score": "medium",
+        "global_score": 86,
+        "recommendations": [
+          "Package training as value accelerator",
+          "Anchor on throughput gains"
+        ],
+        "risk_factors": [
+          {
+            "category": "execution",
+            "description": "Site readiness must be validated early",
+            "severity": "medium"
+          }
+        ],
+        "created_at": "2026-05-07T10:00:00Z",
+        "updated_at": "2026-05-07T10:00:00Z"
+      }
+    ],
+    "installed_base_assets": [
+      {
+        "id": "4b63de2a-4f32-48da-a22e-e35d310d7947",
+        "company_id": "pack-ingecart",
+        "asset_name": "Retal Line 1 — Saica Zaragoza",
+        "asset_type": "Retal",
+        "serial_number": "RETAL-SAICA-001",
+        "customer_name": "Saica Pack SL",
+        "customer_value_segment": "Top-10",
+        "region": "Spain",
+        "country": "Spain",
+        "location": "Zaragoza",
+        "installation_date": "2024-06-10",
+        "last_service_date": "2026-03-14",
+        "next_service_due": "2026-06-15",
+        "warranty_expiry": "2026-06-10",
+        "lifecycle_stage": "active",
+        "usage_intensity": "high",
+        "connection_status": "connected",
+        "risk_level": "medium",
+        "configuration": {
+          "line": "Corrugator 1",
+          "scope": "automatic trim handling"
+        },
+        "notes": "Reference asset for repeatable service offering.",
+        "created_at": "2026-04-02T09:00:00Z",
+        "updated_at": "2026-04-02T09:00:00Z"
+      },
+      {
+        "id": "75f4a1f8-e3db-45d7-9a67-c94117412d71",
+        "company_id": "pack-ingecart",
+        "asset_name": "Easy Pack Cell — Ondupack",
+        "asset_type": "Easy Pack",
+        "serial_number": "EP-ONDU-2025-01",
+        "customer_name": "Ondupack SAU",
+        "customer_value_segment": "Growth",
+        "region": "Spain",
+        "country": "Spain",
+        "location": "Navarra",
+        "installation_date": "2025-06-30",
+        "last_service_date": "2026-04-05",
+        "next_service_due": "2026-07-05",
+        "warranty_expiry": "2027-06-30",
+        "lifecycle_stage": "growth",
+        "usage_intensity": "medium",
+        "connection_status": "connected",
+        "risk_level": "low",
+        "configuration": {
+          "servicePackage": "12-month maintenance",
+          "module": "packing + changeover"
+        },
+        "notes": "Target case for service upsell and spare-parts bundling.",
+        "created_at": "2026-04-02T09:10:00Z",
+        "updated_at": "2026-04-02T09:10:00Z"
+      }
+    ],
+    "service_contracts": [
+      {
+        "id": "6043f522-c8b6-437f-af2b-a9ac4577c67b",
+        "company_id": "pack-ingecart",
+        "asset_id": "75f4a1f8-e3db-45d7-9a67-c94117412d71",
+        "contract_name": "Ondupack Easy Pack Care",
+        "contract_type": "Preventive Maintenance",
+        "customer_name": "Ondupack SAU",
+        "start_date": "2026-01-01",
+        "end_date": "2026-12-31",
+        "status": "active",
+        "annual_value": 18500,
+        "total_contract_value": 18500,
+        "recurring_revenue_type": "annual",
+        "sla_response_hours": 24,
+        "includes_remote": true,
+        "includes_predictive": true,
+        "includes_parts": true,
+        "parts_budget_annual": 4500,
+        "estimated_parts_cost": 3200,
+        "parts_consumption_forecast": {
+          "Q2": 900,
+          "Q3": 1100,
+          "Q4": 1200
+        },
+        "kpis": {
+          "targetUptime": "98%",
+          "maxUnplannedStops": 2
+        },
+        "notes": "Flagship recurring service contract for productized service model.",
+        "created_at": "2026-04-15T10:00:00Z",
+        "updated_at": "2026-04-15T10:00:00Z"
+      }
+    ],
+    "after_sales_opportunities": [
+      {
+        "id": "ab4a7b2c-4225-48c8-b31d-eb7e444b3963",
+        "company_id": "pack-ingecart",
+        "asset_id": "4b63de2a-4f32-48da-a22e-e35d310d7947",
+        "customer_name": "Saica Pack SL",
+        "title": "Remote monitoring upgrade for Retal line",
+        "description": "Expand installed Retal scope with remote monitoring and predictive alerts.",
+        "opportunity_type": "upgrade",
+        "status": "identified",
+        "estimated_value": 28000,
+        "probability": 65,
+        "trigger_signal": "High line utilization and recurring scrap spikes",
+        "recommended_action": "Position upgrade during next service review.",
+        "ai_generated": true,
+        "created_at": "2026-04-20T08:00:00Z",
+        "updated_at": "2026-04-20T08:00:00Z"
+      },
+      {
+        "id": "c80719e6-2d43-4f0e-8b27-93962f5b7bd0",
+        "company_id": "pack-ingecart",
+        "asset_id": "75f4a1f8-e3db-45d7-9a67-c94117412d71",
+        "customer_name": "Ondupack SAU",
+        "title": "Spare-parts subscription bundle",
+        "description": "Bundle critical Easy Pack components into a quarterly replenishment plan.",
+        "opportunity_type": "spare_parts",
+        "status": "proposal",
+        "estimated_value": 14000,
+        "probability": 55,
+        "trigger_signal": "Upcoming service due date and recurring wear parts usage",
+        "recommended_action": "Attach bundle to contract renewal discussion.",
+        "ai_generated": false,
+        "created_at": "2026-04-22T08:00:00Z",
+        "updated_at": "2026-04-22T08:00:00Z"
+      }
+    ],
+    "spare_parts": [
+      {
+        "id": "5246acaf-3936-4446-8d0c-1579d4df2ebe",
+        "company_id": "pack-ingecart",
+        "asset_type": "Retal",
+        "category": "wear",
+        "criticality": "high",
+        "demand_trend": "stable",
+        "description": "Standard cutting head spare for Retal trim system.",
+        "dynamic_price": 980,
+        "is_active": true,
+        "last_ordered_at": "2026-03-01",
+        "lead_time_days": 14,
+        "margin_pct": 38,
+        "min_stock_level": 2,
+        "part_name": "Retal cutting head",
+        "part_number": "RET-CUT-01",
+        "predicted_demand_monthly": 0.8,
+        "reorder_point": 2,
+        "reorder_quantity": 3,
+        "selling_price": 980,
+        "stock_quantity": 4,
+        "supplier": "Ingecart internal",
+        "total_units_sold": 9,
+        "unit_cost": 610,
+        "created_at": "2026-04-11T07:00:00Z",
+        "updated_at": "2026-04-11T07:00:00Z"
+      },
+      {
+        "id": "ef421340-4169-4248-99d4-bfdd5c128a3d",
+        "company_id": "pack-ingecart",
+        "asset_type": "Easy Pack",
+        "category": "electrical",
+        "criticality": "medium",
+        "demand_trend": "rising",
+        "description": "Drive module used in Easy Pack changeover assemblies.",
+        "dynamic_price": 1420,
+        "is_active": true,
+        "last_ordered_at": "2026-03-18",
+        "lead_time_days": 18,
+        "margin_pct": 34,
+        "min_stock_level": 1,
+        "part_name": "Easy Pack servo drive",
+        "part_number": "EP-SRV-04",
+        "predicted_demand_monthly": 0.5,
+        "reorder_point": 1,
+        "reorder_quantity": 2,
+        "selling_price": 1420,
+        "stock_quantity": 2,
+        "supplier": "Siemens",
+        "total_units_sold": 4,
+        "unit_cost": 930,
+        "created_at": "2026-04-11T07:10:00Z",
+        "updated_at": "2026-04-11T07:10:00Z"
+      },
+      {
+        "id": "e0d2f39d-fbda-48f7-8b10-c62e19b0fe6d",
+        "company_id": "pack-ingecart",
+        "asset_type": "AMR Systems",
+        "category": "consumable",
+        "criticality": "medium",
+        "demand_trend": "stable",
+        "description": "Battery maintenance kit for AMR routing fleet.",
+        "dynamic_price": 760,
+        "is_active": true,
+        "last_ordered_at": "2026-02-24",
+        "lead_time_days": 10,
+        "margin_pct": 31,
+        "min_stock_level": 3,
+        "part_name": "AMR battery care kit",
+        "part_number": "AMR-BAT-CARE",
+        "predicted_demand_monthly": 1.2,
+        "reorder_point": 3,
+        "reorder_quantity": 4,
+        "selling_price": 760,
+        "stock_quantity": 5,
+        "supplier": "Preferred OEM partner",
+        "total_units_sold": 12,
+        "unit_cost": 520,
+        "created_at": "2026-04-11T07:20:00Z",
+        "updated_at": "2026-04-11T07:20:00Z"
+      }
+    ]
+  }
 }

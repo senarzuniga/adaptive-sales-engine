@@ -7,17 +7,19 @@ import { DataPipelineStatusPanel } from '@/components/DataPipelineStatusPanel';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, Download, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, Database, Trash2, FolderOpen } from 'lucide-react';
+import { Upload, Download, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, Database, Trash2, FolderOpen, Building2 } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { toast } from '@/hooks/use-toast';
 import type { UploadLogEntry } from '@/store/DataStore';
 import { runDataManagementAgent } from '@/agents/dataManagementAgent';
 import { runCustomerEnrichmentAgent } from '@/agents/customerEnrichmentAgent';
+import { useNavigate } from 'react-router-dom';
 
 const DataUploadPage = () => {
   const { t } = useLanguage();
   const {
     data,
+    activeCompanyId,
     setOrders,
     setOpportunities,
     setProducts,
@@ -30,22 +32,47 @@ const DataUploadPage = () => {
     clearDataset,
     clearAll,
   } = useData();
+  const navigate = useNavigate();
   const [processing, setProcessing] = useState<string[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const activeCompanyLabel = activeCompanyId
+    ? data.companyProfile.company_name || 'the active company'
+    : 'the selected company';
 
   const templates = [
-    { key: 'orders', title: t.upload.templates.orders, desc: t.upload.templates.ordersDesc },
-    { key: 'opportunities', title: t.upload.templates.opportunities, desc: t.upload.templates.opportunitiesDesc },
-    { key: 'products', title: t.upload.templates.products, desc: t.upload.templates.productsDesc },
-    { key: 'strategy', title: t.upload.templates.strategy, desc: t.upload.templates.strategyDesc },
-    { key: 'leads', title: 'Leads', desc: 'Leads and potential accounts with commercial qualification fields.' },
-    { key: 'contacts', title: 'Contacts', desc: 'Contact directory linked to companies, regions, and ownership.' },
+    { key: 'orders', title: t.upload.templates.orders, desc: t.upload.templates.ordersDesc, count: data.orders.length },
+    { key: 'opportunities', title: t.upload.templates.opportunities, desc: t.upload.templates.opportunitiesDesc, count: data.opportunities.length },
+    { key: 'products', title: t.upload.templates.products, desc: t.upload.templates.productsDesc, count: data.products.length },
+    { key: 'strategy', title: t.upload.templates.strategy, desc: t.upload.templates.strategyDesc, count: data.strategy.length },
+    { key: 'leads', title: 'Leads', desc: 'Leads and potential accounts with commercial qualification fields.', count: data.leads.length },
+    { key: 'contacts', title: 'Contacts', desc: 'Contact directory linked to companies, regions, and ownership.', count: data.contacts.length },
   ];
 
-  const processFile = useCallback(async (file: File) => {
+  const processFile = useCallback(async (file: File, expectedType?: string) => {
+    if (!activeCompanyId) {
+      toast({ title: 'Select a company first', description: 'Open Saved Companies or use the top selector before uploading data.', variant: 'destructive' });
+      return;
+    }
     setProcessing(prev => [...prev, file.name]);
     try {
       const result = await parseExcelFile(file);
+      if (expectedType && result.type !== 'unknown' && result.type !== expectedType) {
+        addUploadLog({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          fileName: file.name,
+          detectedType: result.type,
+          rowCount: result.rowCount,
+          status: 'error',
+          errors: [`Expected ${expectedType} data but detected ${result.type}`],
+          timestamp: new Date().toISOString(),
+        });
+        toast({
+          title: `⚠️ ${file.name}`,
+          description: `This box is for ${expectedType}. The uploaded file was detected as ${result.type}.`,
+          variant: 'destructive',
+        });
+        return;
+      }
       const logEntry: UploadLogEntry = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         fileName: file.name,
@@ -80,7 +107,7 @@ const DataUploadPage = () => {
       }
 
       if (result.type !== 'unknown') {
-        toast({ title: `✅ ${file.name}`, description: `Detected as ${result.type} — ${result.rowCount} rows loaded and saved locally.` });
+        toast({ title: `✅ ${file.name}`, description: `Detected as ${result.type} — ${result.rowCount} rows loaded for ${activeCompanyLabel}.` });
       } else {
         toast({ title: `⚠️ ${file.name}`, description: result.errors.join('. '), variant: 'destructive' });
       }
@@ -93,7 +120,7 @@ const DataUploadPage = () => {
     } finally {
       setProcessing(prev => prev.filter(n => n !== file.name));
     }
-  }, [setOrders, setOpportunities, setProducts, setStrategy, setLeads, setContacts, setDataManagementResults, setEnrichedProfiles, addUploadLog, data]);
+  }, [activeCompanyId, addUploadLog, data, setContacts, setDataManagementResults, setEnrichedProfiles, setLeads, setOpportunities, setOrders, setProducts, setStrategy]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -103,6 +130,11 @@ const DataUploadPage = () => {
 
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     Array.from(e.target.files || []).forEach(processFile);
+    e.target.value = '';
+  }, [processFile]);
+
+  const handleTemplateUpload = useCallback((templateKey: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    Array.from(e.target.files || []).forEach((file) => processFile(file, templateKey));
     e.target.value = '';
   }, [processFile]);
 
@@ -146,6 +178,31 @@ const DataUploadPage = () => {
           <Trash2 className="h-3 w-3" /> Clear All
         </Button>
       </div>
+
+      <Card className="mb-6">
+        <CardContent className="pt-5 pb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Building2 className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                {activeCompanyId ? `Uploading into ${activeCompanyLabel}` : 'No active company selected'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {activeCompanyId
+                  ? 'Each dataset is isolated per company so teams can work across multiple accounts in parallel.'
+                  : 'Choose a company first to keep uploads, templates, actions, reports, and analysis scoped correctly.'}
+              </p>
+            </div>
+          </div>
+          {!activeCompanyId && (
+            <Button size="sm" onClick={() => navigate('/companies')}>
+              Select company
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="documents" className="space-y-6">
         <TabsList>
@@ -198,17 +255,61 @@ const DataUploadPage = () => {
           </div>
 
           {/* Upload Zone */}
+          <div>
+            <h3 className="text-lg font-semibold text-foreground mb-4">Content-Type Upload Boxes</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {templates.map((tmpl) => (
+                <Card key={`box-${tmpl.key}`} className="border-dashed">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <FileSpreadsheet className="h-4 w-4 text-primary" />
+                          <h4 className="font-semibold text-foreground">{tmpl.title}</h4>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">{tmpl.desc}</p>
+                      </div>
+                      <span className="text-xs rounded-full bg-muted px-2 py-1 text-muted-foreground">{tmpl.count} rows</span>
+                    </div>
+                    <div className="rounded-lg border border-dashed p-4 text-center bg-muted/20">
+                      <p className="text-xs text-muted-foreground mb-3">
+                        Upload CSV or Excel files that match the {tmpl.title.toLowerCase()} template.
+                      </p>
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        <label>
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept=".xlsx,.xls,.csv"
+                            onChange={(e) => handleTemplateUpload(tmpl.key, e)}
+                            disabled={!activeCompanyId}
+                          />
+                          <Button size="sm" variant="outline" className="cursor-pointer gap-1" asChild disabled={!activeCompanyId}>
+                            <span><Upload className="h-3 w-3" /> Upload</span>
+                          </Button>
+                        </label>
+                        <Button size="sm" variant="ghost" className="gap-1" onClick={() => downloadTemplate(tmpl.key)}>
+                          <Download className="h-3 w-3" /> Template
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
           <Card>
             <CardContent className="pt-6">
               <div onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${dragOver ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
+                className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${dragOver ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'} ${!activeCompanyId ? 'opacity-60' : ''}`}>
                 <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
                 <p className="text-foreground font-medium mb-1">{t.upload.dragDrop}</p>
                 <p className="text-xs text-muted-foreground mb-1">{t.upload.maxSize}</p>
                 <p className="text-xs text-muted-foreground mb-4">Auto-detects: Orders, Opportunities, Products, Strategy, Leads, Contacts</p>
                 <label>
-                  <input type="file" className="hidden" accept=".xlsx,.xls,.csv" multiple onChange={handleFileInput} />
-                  <Button variant="outline" className="cursor-pointer" asChild><span>{t.upload.browse}</span></Button>
+                  <input type="file" className="hidden" accept=".xlsx,.xls,.csv" multiple onChange={handleFileInput} disabled={!activeCompanyId} />
+                  <Button variant="outline" className="cursor-pointer" asChild disabled={!activeCompanyId}><span>{t.upload.browse}</span></Button>
                 </label>
               </div>
             </CardContent>
@@ -263,31 +364,6 @@ const DataUploadPage = () => {
               </Card>
             </div>
           )}
-
-          {/* Templates */}
-          <div>
-            <h3 className="text-lg font-semibold text-foreground mb-4">Excel Templates</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {templates.map((tmpl) => (
-                <Card key={tmpl.key}>
-                  <CardContent className="pt-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <FileSpreadsheet className="h-5 w-5 text-primary" />
-                          <h4 className="font-semibold text-foreground">{tmpl.title}</h4>
-                        </div>
-                        <p className="text-xs text-muted-foreground mb-3">{tmpl.desc}</p>
-                      </div>
-                      <Button size="sm" variant="outline" className="gap-1 flex-shrink-0" onClick={() => downloadTemplate(tmpl.key)}>
-                        <Download className="h-3 w-3" /> {t.upload.downloadTemplate}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
 
           {/* Upload History */}
           {data.uploadLog.length > 0 && (

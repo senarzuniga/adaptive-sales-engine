@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Zap } from 'lucide-react';
 
 // --- Delay Impact Simulation ---
 function DelaySimulation({ phases, milestones, gates, project }: { phases: any[]; milestones: any[]; gates: any[]; project: any }) {

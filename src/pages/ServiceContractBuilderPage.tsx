@@ -293,10 +293,10 @@ export default function ServiceContractBuilderPage() {
                 <div><label className="text-xs font-medium">{isEs ? 'Cliente' : 'Customer'}</label><Input value={contractDef.customer_name} onChange={e => setContractDef(p => ({ ...p, customer_name: e.target.value }))} /></div>
                 <div>
                   <label className="text-xs font-medium">{isEs ? 'Activo Vinculado' : 'Linked Asset'}</label>
-                  <Select value={contractDef.asset_id} onValueChange={v => setContractDef(p => ({ ...p, asset_id: v }))}>
+                  <Select value={contractDef.asset_id || '__none__'} onValueChange={v => setContractDef(p => ({ ...p, asset_id: v === '__none__' ? '' : v }))}>
                     <SelectTrigger><SelectValue placeholder={isEs ? 'Seleccionar...' : 'Select...'} /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">-</SelectItem>
+                      <SelectItem value="__none__">-</SelectItem>
                       {assets.map(a => <SelectItem key={a.id} value={a.id}>{a.asset_name} ({a.serial_number})</SelectItem>)}
                     </SelectContent>
                   </Select>
