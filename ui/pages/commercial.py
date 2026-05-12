@@ -118,8 +118,9 @@ def _persist_workspace_session(workspace: Dict[str, Any]) -> None:
 def _hydrate_workspace_supabase(company_id: str, workspace: Dict[str, Any]) -> None:
     """Persist workspace rows into Supabase for the imported company."""
     from infrastructure.supabase_client import get_supabase
+    from config import SUPABASE_CONFIGURED as _SUPABASE_CONFIGURED
 
-    if not SUPABASE_CONFIGURED:
+    if not _SUPABASE_CONFIGURED:
         return
     sb = get_supabase()
     if sb is None:

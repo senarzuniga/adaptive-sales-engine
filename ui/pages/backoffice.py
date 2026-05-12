@@ -1,7 +1,7 @@
 """Backoffice & admin pages."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 import pandas as pd
@@ -78,7 +78,7 @@ def _table_insert(table: str, company_id: str, payload: Dict[str, Any]) -> None:
 
     import uuid
 
-    now_iso = datetime.utcnow().isoformat()
+    now_iso = datetime.now(timezone.utc).isoformat()
     payload.setdefault("id", str(uuid.uuid4()))
     payload.setdefault("created_at", now_iso)
     payload.setdefault("updated_at", now_iso)
@@ -99,7 +99,7 @@ def _table_update(table: str, company_id: str, row_id: str, updates: Dict[str, A
     merged = []
     for row in rows:
         if str(row.get("id")) == str(row_id):
-            merged.append({**row, **updates, "updated_at": datetime.utcnow().isoformat()})
+            merged.append({**row, **updates, "updated_at": datetime.now(timezone.utc).isoformat()})
         else:
             merged.append(row)
     _workspace_save(table, merged)
