@@ -109,6 +109,7 @@ export default function SavedCompaniesPage() {
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [loadingIngecart, setLoadingIngecart] = useState(false);
+  const [loadingIngecartDemo, setLoadingIngecartDemo] = useState(false);
   // pendingExport tracks a company ID for which we want to export after switching
   const [pendingExport, setPendingExport] = useState<string | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
@@ -209,29 +210,47 @@ export default function SavedCompaniesPage() {
     }
   };
 
-  const handleLoadIngecartPack = async () => {
-    setLoadingIngecart(true);
+  const handleLoadBundledPack = async (
+    path: string,
+    successTitle: string,
+    setLoading: (value: boolean) => void,
+  ) => {
+    setLoading(true);
     try {
-      const response = await fetch('/company-packs/Ingecart/ingecart_pack.json');
+      const response = await fetch(path);
       if (!response.ok) {
-        if (response.status === 404) throw new Error('Ingecart pack file not found');
-        throw new Error(`Ingecart pack request failed (${response.status})`);
+        if (response.status === 404) throw new Error(`Pack file not found: ${path}`);
+        throw new Error(`Pack request failed (${response.status})`);
       }
       const text = await response.text();
       await importCompanyPack(text);
       await loadCompanies();
-      toast({ title: 'Ingecart pack loaded successfully' });
+      toast({ title: successTitle });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       toast({
-        title: 'Could not load Ingecart pack',
+        title: 'Could not load company pack',
         description: message,
         variant: 'destructive',
       });
     } finally {
-      setLoadingIngecart(false);
+      setLoading(false);
     }
   };
+
+  const handleLoadIngecartPack = async () =>
+    handleLoadBundledPack(
+      '/company-packs/Ingecart/ingecart_pack.json',
+      'Ingecart pack loaded successfully',
+      setLoadingIngecart,
+    );
+
+  const handleLoadIngecartDemoPack = async () =>
+    handleLoadBundledPack(
+      '/company-packs/IngecartDemo/ingecart_demo_pack.json',
+      'Ingecart Demo pack loaded successfully',
+      setLoadingIngecartDemo,
+    );
 
   const sc = t.savedCompanies;
 
@@ -274,6 +293,20 @@ export default function SavedCompaniesPage() {
               <Briefcase className="h-4 w-4" />
             )}
             Load Ingecart Pack
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="gap-1.5"
+            onClick={handleLoadIngecartDemoPack}
+            disabled={loadingIngecartDemo}
+          >
+            {loadingIngecartDemo ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Briefcase className="h-4 w-4" />
+            )}
+            Load Ingecart Demo Pack
           </Button>
           <Button
             variant="outline"
