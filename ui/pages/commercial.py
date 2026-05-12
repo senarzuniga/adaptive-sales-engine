@@ -111,7 +111,8 @@ def _load_company_pack_ui() -> None:
 
                     profile = pack.get("companyProfile", {})
                     if profile:
-                        _upsert_company(dict(profile))
+                        profile = dict(profile)  # mutable copy so _upsert_company can write back the id
+                        _upsert_company(profile)
                         st.session_state["active_company"] = profile
                         st.session_state["company_notes"] = profile.get("additional_notes", "")
 

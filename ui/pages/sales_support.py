@@ -326,7 +326,7 @@ def page_data_upload() -> None:
     df_current = st.session_state.get("uploaded_data_universal")
     if df_current is not None:
         st.divider()
-        st.subheader("📊 Datos actualmente en memoria (Histórico de ventas)")
+        st.subheader("📊 Datos actualmente en memoria")
         st.info(f"{df_current.shape[0]:,} filas × {df_current.shape[1]} columnas")
         if st.button("🗑️ Limpiar datos cargados", key="clear_data_btn"):
             st.session_state.uploaded_data_universal = None
