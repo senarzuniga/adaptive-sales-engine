@@ -15,19 +15,45 @@ def build_context(action: str, extra: Optional[Dict[str, Any]] = None) -> Dict[s
 
     This is the lightweight version used by the orchestrator panel.  For
     fully typed contexts, use ``build_business_context`` below.
+
+    ``uploaded_data`` is set to ``uploaded_data_universal`` when available.
+    If that slot is empty, the first non-empty named data slot is used as a
+    fallback so that agents always receive data regardless of which upload
+    slot the user chose.
     """
     try:
         import streamlit as st
+
+        # Primary data slot
+        uploaded_data = st.session_state.get("uploaded_data_universal")
+
+        # Fallback: use first populated named slot when universal is empty
+        if uploaded_data is None or (
+            isinstance(uploaded_data, pd.DataFrame) and uploaded_data.empty
+        ):
+            for _slot in (
+                "productos_data",
+                "oportunidades_data",
+                "estrategia_data",
+                "leads_data",
+                "contacts_data",
+                "uploaded_data_misc",
+            ):
+                _candidate = st.session_state.get(_slot)
+                if isinstance(_candidate, pd.DataFrame) and not _candidate.empty:
+                    uploaded_data = _candidate
+                    break
+
         ctx: Dict[str, Any] = {
             "action": action,
-            "uploaded_data":    st.session_state.get("uploaded_data_universal"),
-            "saved_companies":  st.session_state.get("saved_companies", []),
-            "estrategia_data":  st.session_state.get("estrategia_data"),
-            "productos_data":   st.session_state.get("productos_data"),
+            "uploaded_data":      uploaded_data,
+            "saved_companies":    st.session_state.get("saved_companies", []),
+            "estrategia_data":    st.session_state.get("estrategia_data"),
+            "productos_data":     st.session_state.get("productos_data"),
             "oportunidades_data": st.session_state.get("oportunidades_data"),
-            "portfolio_risk":   st.session_state.get("portfolio_risk"),
-            "active_company":   st.session_state.get("active_company"),
-            "company_notes":    st.session_state.get("company_notes", ""),
+            "portfolio_risk":     st.session_state.get("portfolio_risk"),
+            "active_company":     st.session_state.get("active_company"),
+            "company_notes":      st.session_state.get("company_notes", ""),
         }
     except Exception:
         ctx = {"action": action}

@@ -506,8 +506,6 @@ def show_sidebar() -> None:
                 unsafe_allow_html=True,
             )
             for page_name, icon in pages:
-                if page_name in ("Team Directory", "Email Cobot") and effective_role != "admin":
-                    continue
                 label = f"{icon} {page_name}"
                 btn_type = "primary" if current == page_name else "secondary"
                 if st.button(

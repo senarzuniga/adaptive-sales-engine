@@ -21,7 +21,7 @@ from application.services.offer_service import (
     update_offer_status,
     archive_offer,
 )
-from ui.components import _field, safe_execute, get_deadline_priority
+from ui.components import _field, safe_execute, get_deadline_priority, _render_orchestrator_panel
 
 
 # ──────────────────────────────────────────────────────────────
@@ -428,10 +428,32 @@ def page_list_offers() -> None:
 def page_offers() -> None:
     st.title("💼 Offer & Pricing")
 
+    # ── Dynamic Pricing recommendations ────────────────────────
+    last = st.session_state.get("last_analysis_results") or {}
+    dp = last.get("dynamic_pricing") or {}
+    if dp and dp.get("status") not in ("error", "timeout", "load_error"):
+        rec = dp.get("recommendation", {})
+        if rec:
+            with st.expander("💲 Recomendaciones de Dynamic Pricing", expanded=True):
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Precio recomendado", f"€ {rec.get('price', 0):,.0f}")
+                c2.metric("Estrategia", rec.get("strategy", "—"))
+                c3.metric("Confianza", f"{rec.get('confidence', 0):.0%}")
+                if rec.get("justification"):
+                    st.caption(rec["justification"])
+                all_strats = dp.get("all_strategies", [])
+                if all_strats:
+                    st.dataframe(pd.DataFrame(all_strats), use_container_width=True)
+        elif dp.get("output"):
+            with st.expander("💲 Dynamic Pricing"):
+                st.markdown(dp["output"])
+
     if not SUPABASE_CONFIGURED:
         st.warning("Funcionalidad completa requiere Supabase.")
         st.subheader("💰 Calculadora de costes (modo demo)")
         page_cost_engine_block()
+        st.divider()
+        _render_orchestrator_panel(action="offer_pricing")
         return
 
     m1, m2, m3 = st.columns(3)
@@ -453,3 +475,6 @@ def page_offers() -> None:
         page_upload_offer_document()
     else:
         page_list_offers()
+
+    st.divider()
+    _render_orchestrator_panel(action="offer_pricing")

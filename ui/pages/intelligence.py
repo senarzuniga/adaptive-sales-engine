@@ -131,5 +131,37 @@ def page_360_analysis() -> None:
             st.dataframe(df.head(8), use_container_width=True)
     else:
         st.info("📂 Sube datos en **Data Upload** o **Company Setup** para análisis 360º.")
+
+    # ── Inline results from pillar0_360_analysis agent ─────────
+    last = st.session_state.get("last_analysis_results") or {}
+    p0 = last.get("pillar0_360_analysis") or {}
+    if p0 and p0.get("status") not in ("error", "timeout", "load_error"):
+        st.subheader("📈 Resultados Análisis 360°")
+        kpis = p0.get("kpis", {})
+        if kpis:
+            k1, k2, k3, k4 = st.columns(4)
+            k1.metric("💶 Revenue Total", f"€ {kpis.get('total_revenue', 0):,.0f}")
+            k2.metric("📊 Margen Medio", f"{kpis.get('avg_margin_pct', 0):.1f}%")
+            k3.metric("📦 Transacciones", f"{kpis.get('n_transactions', 0):,}")
+            k4.metric("⏱ Lead Time Medio", f"{kpis.get('avg_lead_time_days', 0):.0f} días")
+
+        risk = p0.get("portfolio_risk", {})
+        if risk:
+            level = risk.get("risk_level", "")
+            color = "🔴" if level == "ALTO" else "🟡" if level == "MEDIO" else "🟢"
+            st.info(f"{color} **Riesgo de cartera: {level}** — "
+                    f"{risk.get('clients_80pct', 0)} clientes representan el 80% de ventas")
+
+        forecast = p0.get("forecast", [])
+        if forecast:
+            with st.expander("📅 Forecast", expanded=True):
+                st.dataframe(pd.DataFrame(forecast), use_container_width=True)
+
+        insights = p0.get("insights", [])
+        if insights:
+            with st.expander("💡 Insights clave"):
+                for ins in insights[:8]:
+                    st.markdown(f"• {ins}")
+
     st.divider()
     _render_orchestrator_panel(action="360_analysis")

@@ -496,8 +496,35 @@ def page_actions() -> None:
     from infrastructure.supabase_client import get_supabase
     supabase = get_supabase()
 
+    # ── Action Engine panel (always available) ──────────────────
+    last = st.session_state.get("last_analysis_results") or {}
+    engine_out = last.get("action_engine") or {}
+    if engine_out and engine_out.get("status") not in ("error", "timeout", "load_error"):
+        st.subheader("⚡ Acciones generadas por Action Engine")
+        actions_list = engine_out.get("actions", [])
+        if actions_list:
+            df_actions = pd.DataFrame(actions_list)
+            priority_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "PLANNED": 4}
+            if "priority_label" in df_actions.columns:
+                df_actions["_sort"] = df_actions["priority_label"].map(
+                    lambda x: priority_order.get(str(x).upper(), 5)
+                )
+                df_actions = df_actions.sort_values("_sort").drop(columns=["_sort"])
+            st.dataframe(df_actions, use_container_width=True)
+            st.download_button(
+                "📥 Exportar acciones (CSV)",
+                df_actions.to_csv(index=False).encode("utf-8"),
+                "action_engine_output.csv",
+                "text/csv",
+            )
+        elif engine_out.get("output"):
+            st.markdown(engine_out["output"])
+
+    _render_orchestrator_panel(action="commercial_actions")
+
     if not SUPABASE_CONFIGURED or supabase is None:
-        st.warning("Esta sección requiere conexión a Supabase.")
+        st.info("ℹ️ Supabase no configurado — repositorio de acciones en modo local. "
+                "Ejecuta el análisis con todos los agentes para generar acciones automáticas.")
         return
 
     with st.expander("➕ Crear acción", expanded=False):
