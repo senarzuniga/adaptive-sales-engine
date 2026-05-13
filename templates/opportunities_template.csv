@@ -1,0 +1,5 @@
+Opp/offer Number,Status,Est Revenue,Contract Prob,Margin,Customer,KAM,Product family,Expected close date,Stage,Notes
+OF-2024-0001,open,65000,0.75,16250,Cliente Potencial S.A.,Juan García,Maquinaria,2024-06-30,Proposal,Esperando respuesta
+OF-2024-0002,won,120000,1.0,30000,Industrial ABC S.L.,María López,Automatización,2024-05-15,Closed Won,Pedido confirmado
+OF-2024-0003,lost,45000,0.0,11250,Empresa Beta,Carlos Ruiz,Componentes,2024-04-20,Closed Lost,Precio no competitivo
+OF-2024-0004,open,89000,0.60,22250,Fabricante Gamma,Ana Martín,Sistemas,2024-07-31,Negotiation,
