@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ACS Orchestrator Panel</title>
+  <style>
+    :root {
+      --bg: #0f1117; --surface: #1a1d27; --card: #22263a;
+      --accent: #4f8ef7; --green: #22c55e; --red: #ef4444;
+      --yellow: #f59e0b; --text: #e2e8f0; --muted: #94a3b8;
+      --border: #2d3748;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; padding: 1.5rem; }
+    h1 { color: var(--accent); font-size: 1.6rem; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.5rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .kpi { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem; }
+    .kpi-val { font-size: 2rem; font-weight: 700; }
+    .kpi-label { color: var(--muted); font-size: 0.78rem; margin-top: 0.2rem; }
+    .green { color: var(--green); }
+    .red   { color: var(--red); }
+    .yellow{ color: var(--yellow); }
+    .accent{ color: var(--accent); }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem; margin-bottom: 1.2rem; }
+    .panel h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { text-align: left; color: var(--muted); font-weight: 500; padding: 0.5rem; border-bottom: 1px solid var(--border); }
+    td { padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--border); }
+    .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+    .badge-ok     { background: #14532d; color: var(--green); }
+    .badge-error  { background: #450a0a; color: var(--red); }
+    .badge-warn   { background: #451a03; color: var(--yellow); }
+    .links { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem; }
+    .link-btn { display: inline-block; background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+                padding: 0.6rem 1rem; color: var(--accent); text-decoration: none; font-size: 0.85rem;
+                transition: background 0.15s; }
+    .link-btn:hover { background: var(--border); }
+    .ts { color: var(--muted); font-size: 0.72rem; }
+    #refresh-btn { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 0.55rem 1.1rem;
+                   cursor: pointer; font-size: 0.85rem; margin-bottom: 1rem; }
+    #refresh-btn:hover { opacity: 0.88; }
+  </style>
+</head>
+<body>
+  <h1>⚙️ ACS Orchestrator Panel</h1>
+  <p class="subtitle" id="ts">Adaptive Commercial System — Panel de Control Central</p>
+
+  <button id="refresh-btn" onclick="loadData()">🔄 Actualizar</button>
+
+  <div class="grid" id="kpis">
+    <div class="kpi"><div class="kpi-val accent" id="kpi-agents">—</div><div class="kpi-label">Agentes activos</div></div>
+    <div class="kpi"><div class="kpi-val green"  id="kpi-ok">—</div><div class="kpi-label">Agentes OK</div></div>
+    <div class="kpi"><div class="kpi-val red"    id="kpi-err">—</div><div class="kpi-label">Agentes con error</div></div>
+    <div class="kpi"><div class="kpi-val yellow" id="kpi-run-ok">—</div><div class="kpi-label">Última ejecución OK</div></div>
+  </div>
+
+  <div class="panel">
+    <h2>🤖 Estado de Agentes</h2>
+    <table id="agents-table">
+      <thead><tr><th>Agente</th><th>Carpeta</th><th>Estado</th></tr></thead>
+      <tbody id="agents-tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <h2>🌐 Servicios</h2>
+    <div class="links" id="services-links"></div>
+  </div>
+
+  <div class="panel">
+    <h2>📊 Último resumen de ejecución</h2>
+    <pre id="summary-text" style="color:var(--muted);font-size:0.82rem;white-space:pre-wrap;"></pre>
+  </div>
+
+  <script>
+    const DATA_URL = '../data/orchestrator_panel_data.json';
+
+    async function loadData() {
+      document.getElementById('ts').textContent = 'Cargando...';
+      try {
+        const resp = await fetch(DATA_URL + '?t=' + Date.now());
+        if (!resp.ok) throw new Error('No se pudo cargar datos');
+        const d = await resp.json();
+        render(d);
+      } catch(e) {
+        renderOffline();
+      }
+    }
+
+    function render(d) {
+      document.getElementById('ts').textContent =
+        'Actualizado: ' + (d.generated_at ? new Date(d.generated_at).toLocaleString('es-ES') : '—');
+      document.getElementById('kpi-agents').textContent = d.agent_count ?? '—';
+      document.getElementById('kpi-ok').textContent = d.agents_ready ?? '—';
+      document.getElementById('kpi-err').textContent = d.agents_error ?? '—';
+      document.getElementById('kpi-run-ok').textContent = d.last_run?.successful ?? '—';
+
+      // Agents table
+      const tbody = document.getElementById('agents-tbody');
+      tbody.innerHTML = '';
+      (d.agents || []).forEach(a => {
+        const cls = a.status === 'ready' ? 'badge-ok' : 'badge-error';
+        const label = a.status === 'ready' ? 'OK' : 'ERROR';
+        tbody.innerHTML += `<tr>
+          <td>${a.name}</td>
+          <td style="color:var(--muted)">${a.folder}</td>
+          <td><span class="badge ${cls}">${label}</span></td>
+        </tr>`;
+      });
+
+      // Services
+      const svcDiv = document.getElementById('services-links');
+      svcDiv.innerHTML = '';
+      const svc = d.services || {};
+      const icons = { streamlit:'🎛️', nextjs:'⚛️', fastapi:'🐍', ingestion:'🔍' };
+      const names = { streamlit:'Streamlit App', nextjs:'Next.js Frontend', fastapi:'FastAPI', ingestion:'Ingestion Monitor' };
+      Object.entries(svc).forEach(([k, url]) => {
+        svcDiv.innerHTML += `<a class="link-btn" href="${url}" target="_blank">${icons[k]||'🔗'} ${names[k]||k}</a>`;
+      });
+
+      // Summary
+      document.getElementById('summary-text').textContent = d.last_run?.summary || '—';
+    }
+
+    function renderOffline() {
+      document.getElementById('ts').textContent =
+        'Sin datos (ejecuta: python scripts/update_all_panels.py)';
+      const agents = [
+        'action_engine','pillar0_360_analysis','excel_processor','dynamic_pricing',
+        'cross_selling_agent','request_management_agent','data_cleaner_agent',
+        'portfolio_risk_analyzer','pattern_recognizer','forecaster_agent',
+        'strategy_comparator','market_intelligence_agent','product_lifecycle_analyzer',
+        'weekly_task_planner','kam_mapper_agent','after_sales_opportunity_agent'
+      ];
+      document.getElementById('kpi-agents').textContent = agents.length;
+      document.getElementById('kpi-ok').textContent = '—';
+      document.getElementById('kpi-err').textContent = '—';
+      document.getElementById('kpi-run-ok').textContent = '—';
+      const tbody = document.getElementById('agents-tbody');
+      tbody.innerHTML = agents.map(a =>
+        `<tr><td>${a}</td><td style="color:var(--muted)">agents/</td><td><span class="badge badge-warn">pendiente</span></td></tr>`
+      ).join('');
+      const svcDiv = document.getElementById('services-links');
+      [
+        ['🎛️ Streamlit App','http://localhost:8501'],
+        ['⚛️ Next.js','http://localhost:8080'],
+        ['🐍 FastAPI','http://localhost:8000'],
+        ['🔍 Ingestion Monitor','http://localhost:8502'],
+      ].forEach(([label, url]) => {
+        svcDiv.innerHTML += `<a class="link-btn" href="${url}" target="_blank">${label}</a>`;
+      });
+      document.getElementById('summary-text').textContent =
+        'Ejecuta: python scripts/update_all_panels.py para obtener datos actualizados.';
+    }
+
+    loadData();
+    setInterval(loadData, 30000); // auto-refresh every 30s
+  </script>
+</body>
+</html>

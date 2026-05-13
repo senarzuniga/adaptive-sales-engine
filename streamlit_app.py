@@ -440,43 +440,39 @@ def show_debug_panel() -> None:
 # ──────────────────────────────────────────────────────────────
 
 _NAV_STRUCTURE: List[tuple] = [
-    ("📈 Intelligence & Planning", [
-        ("Dashboard",               "📊"),
-        ("Business Intelligence",   "🔍"),
-        ("Budget Command Center",   "💰"),
-        ("Portfolio Analysis",      "📁"),
-        ("Weekly Planner",          "📅"),
-    ]),
-    ("🎯 Core Sales Execution", [
-        ("Saved Companies",                 "🏢"),
-        ("Company Info",                    "ℹ️"),
-        ("360º Analysis",                   "🔄"),
-        ("Sales Architecture",              "🏗️"),
-        ("Key Account Management",          "🔑"),
-        ("Commercial Actions Repository",   "📋"),
-    ]),
-    ("⚙️ Sales Support & Enablement", [
-        ("AI-Augmented Sales",   "🤖"),
-        ("Behavioral Transform", "🧠"),
-        ("Product Strategy",     "📦"),
-        ("Monitoring",           "📡"),
-        ("Offer & Pricing",      "💼"),
-        ("Data Upload",          "📤"),
-        ("Company Setup",        "⚙️"),
+    ("🧭 Navigation", [
+        ("Saved Companies",             "🏢"),
+        ("Dashboard",                   "📊"),
+        ("Data Upload",                 "📤"),
+        ("Company Info",                "ℹ️"),
+        ("360º Analysis",               "🔄"),
+        ("Portfolio Analysis",          "📁"),
+        ("Sales Architecture",          "🏗️"),
+        ("Key Account Management",      "🔑"),
+        ("Budget Command Center",       "💰"),
+        ("Business Intelligence",       "🔍"),
     ]),
     ("🔄 After Sales", [
         ("After-Sales Engine", "🔧"),
     ]),
-    ("🏢 Backoffice & Operations", [
+    ("🤝 Sales Support", [
+        ("AI-Augmented Sales",              "🤖"),
+        ("Behavioral Transform",            "🧠"),
+        ("Product Strategy",                "📦"),
+        ("Monitoring",                      "📡"),
+        ("Weekly Planner",                  "📅"),
+        ("Offer & Pricing",                 "💼"),
+        ("Commercial Actions Repository",   "📋"),
+    ]),
+    ("🏢 Backoffice", [
         ("Team Directory",    "👥"),
         ("Email Cobot",       "📧"),
         ("Marketing Content", "📰"),
         ("Social Media",      "📱"),
         ("Project Management","🗂️"),
         ("Cost & Rates",      "💲"),
-    ]),
-    ("🤖 Autonomous Agents", [
-        ("Agent Hub", "⚡"),
+        ("Company Setup",     "⚙️"),
+        ("Agent Hub",         "⚡"),
     ]),
 ]
 
@@ -510,8 +506,6 @@ def show_sidebar() -> None:
                 unsafe_allow_html=True,
             )
             for page_name, icon in pages:
-                if page_name in ("Team Directory", "Email Cobot") and effective_role != "admin":
-                    continue
                 label = f"{icon} {page_name}"
                 btn_type = "primary" if current == page_name else "secondary"
                 if st.button(

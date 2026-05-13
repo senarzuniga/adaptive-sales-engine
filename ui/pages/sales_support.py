@@ -45,8 +45,58 @@ def page_ai_augmented_sales() -> None:
         "Este módulo combina el análisis de todos los agentes de IA para generar "
         "recomendaciones de acción específicas para cada oportunidad."
     )
+
+    # ── Cross-Selling results panel ─────────────────────────────
+    last = st.session_state.get("last_analysis_results") or {}
+    cross = last.get("cross_selling_agent") or {}
+    pricing = last.get("dynamic_pricing") or {}
+
+    if cross or pricing:
+        st.subheader("📊 Resultados de los agentes IA")
+        tabs = []
+        if cross:
+            tabs.append("🔀 Cross-Selling")
+        if pricing:
+            tabs.append("💲 Dynamic Pricing")
+        tab_objs = st.tabs(tabs) if tabs else []
+
+        tab_idx = 0
+        if cross and tab_objs:
+            with tab_objs[tab_idx]:
+                tab_idx += 1
+                opps = cross.get("opportunities", [])
+                if opps:
+                    st.success(f"✅ {len(opps)} oportunidades de venta cruzada identificadas")
+                    st.dataframe(pd.DataFrame(opps), use_container_width=True)
+                email_tpl = cross.get("email_template", "")
+                if email_tpl:
+                    with st.expander("📧 Plantilla de email de venta cruzada"):
+                        st.text(email_tpl)
+                sale_script = cross.get("sale_script", "")
+                if sale_script:
+                    with st.expander("📝 Script de venta"):
+                        st.text(sale_script)
+                if not opps and not email_tpl:
+                    out = cross.get("output", "")
+                    if out:
+                        st.markdown(out)
+
+        if pricing and tab_objs:
+            with tab_objs[tab_idx]:
+                rec = pricing.get("recommendation", {})
+                if rec:
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("💶 Precio recomendado", f"€ {rec.get('price', 0):,.0f}")
+                    c2.metric("📊 Estrategia", rec.get("strategy", "—"))
+                    c3.metric("🎯 Score confianza", f"{rec.get('confidence', 0):.0%}")
+                    with st.expander("Ver justificación"):
+                        st.markdown(rec.get("justification", "—"))
+                elif pricing.get("output"):
+                    st.markdown(pricing["output"])
+
     st.divider()
     _render_orchestrator_panel(action="ai_augmented_sales")
+
 
 
 def page_behavioral_transform() -> None:
@@ -322,7 +372,13 @@ def page_data_upload() -> None:
             _render_orchestrator_panel(
                 action="data_upload",
                 auto_run=True,
-                extra_context={"file_name": uploaded_file.name, "content_type": content_type_label},
+                extra_context={
+                    "file_name": uploaded_file.name,
+                    "content_type": content_type_label,
+                    # Ensure every agent receives the just-uploaded data
+                    # regardless of which session-state slot it was stored in.
+                    "uploaded_data": df,
+                },
             )
         else:
             st.error("No se pudo procesar el archivo. Formato no reconocido.")

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ACS Offers Panel</title>
+  <style>
+    :root {
+      --bg: #0f1117; --surface: #1a1d27; --card: #22263a;
+      --accent: #4f8ef7; --green: #22c55e; --red: #ef4444;
+      --yellow: #f59e0b; --purple: #a855f7; --text: #e2e8f0; --muted: #94a3b8;
+      --border: #2d3748;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; padding: 1.5rem; }
+    h1 { color: var(--accent); font-size: 1.6rem; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.5rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .kpi { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem; }
+    .kpi-val { font-size: 1.9rem; font-weight: 700; }
+    .kpi-label { color: var(--muted); font-size: 0.78rem; margin-top: 0.2rem; }
+    .green  { color: var(--green); }
+    .red    { color: var(--red); }
+    .yellow { color: var(--yellow); }
+    .purple { color: var(--purple); }
+    .accent { color: var(--accent); }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem; margin-bottom: 1.2rem; }
+    .panel h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+    th { text-align: left; color: var(--muted); font-weight: 500; padding: 0.5rem; border-bottom: 1px solid var(--border); }
+    td { padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+    .badge-draft    { background: #1e293b; color: var(--muted); }
+    .badge-open     { background: #1e3a5f; color: var(--accent); }
+    .badge-won      { background: #14532d; color: var(--green); }
+    .badge-lost     { background: #450a0a; color: var(--red); }
+    .badge-pending  { background: #451a03; color: var(--yellow); }
+    .badge-sent     { background: #2e1065; color: var(--purple); }
+    #refresh-btn { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 0.55rem 1.1rem;
+                   cursor: pointer; font-size: 0.85rem; margin-bottom: 1rem; }
+    #refresh-btn:hover { opacity: 0.88; }
+    .status-bar { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+    .status-pill { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <h1>📋 ACS Offers Panel</h1>
+  <p class="subtitle" id="ts">Adaptive Commercial System — Gestión de Ofertas</p>
+
+  <button id="refresh-btn" onclick="loadData()">🔄 Actualizar</button>
+
+  <div class="grid" id="kpis">
+    <div class="kpi"><div class="kpi-val accent" id="kpi-total">—</div><div class="kpi-label">Total ofertas</div></div>
+    <div class="kpi"><div class="kpi-val green"  id="kpi-won">—</div><div class="kpi-label">Ganadas</div></div>
+    <div class="kpi"><div class="kpi-val yellow" id="kpi-open">—</div><div class="kpi-label">En negociación</div></div>
+    <div class="kpi"><div class="kpi-val purple" id="kpi-value">—</div><div class="kpi-label">Valor total €</div></div>
+  </div>
+
+  <div class="panel">
+    <h2>📊 Estado del pipeline</h2>
+    <div class="status-bar" id="status-bar"></div>
+  </div>
+
+  <div class="panel">
+    <h2>🕐 Ofertas recientes</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Número</th><th>Empresa</th><th>Valor €</th><th>Estado</th><th>Categoría</th><th>Fecha</th>
+        </tr>
+      </thead>
+      <tbody id="offers-tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <h2>🛠️ Acciones rápidas</h2>
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+      <a class="badge badge-open" href="http://localhost:8501" target="_blank" style="text-decoration:none;padding:0.5rem 1rem;font-size:0.85rem;">🎛️ Abrir Streamlit App</a>
+      <a class="badge badge-sent" href="orchestrator_panel.html" style="text-decoration:none;padding:0.5rem 1rem;font-size:0.85rem;">⚙️ Orquestador</a>
+    </div>
+  </div>
+
+  <script>
+    const DATA_URL = '../data/offers_panel_data.json';
+    const STATUS_CLASSES = {
+      draft:'badge-draft', open:'badge-open', won:'badge-won',
+      lost:'badge-lost', pending:'badge-pending', sent:'badge-sent'
+    };
+    const STATUS_LABELS = {
+      draft:'Borrador', open:'Abierta', won:'Ganada',
+      lost:'Perdida', pending:'Pendiente', sent:'Enviada'
+    };
+
+    function fmt(v) {
+      if (v == null || v === '') return '—';
+      const n = parseFloat(v);
+      if (isNaN(n)) return v;
+      return new Intl.NumberFormat('es-ES').format(Math.round(n)) + ' €';
+    }
+
+    async function loadData() {
+      document.getElementById('ts').textContent = 'Cargando...';
+      try {
+        const resp = await fetch(DATA_URL + '?t=' + Date.now());
+        if (!resp.ok) throw new Error();
+        const d = await resp.json();
+        render(d);
+      } catch {
+        renderOffline();
+      }
+    }
+
+    function render(d) {
+      document.getElementById('ts').textContent =
+        'Actualizado: ' + (d.generated_at ? new Date(d.generated_at).toLocaleString('es-ES') : '—');
+
+      document.getElementById('kpi-total').textContent = d.total_offers ?? '—';
+      document.getElementById('kpi-won').textContent   = d.by_status?.won ?? '0';
+      document.getElementById('kpi-open').textContent  = d.by_status?.open ?? '0';
+      document.getElementById('kpi-value').textContent = d.total_value ? fmt(d.total_value) : '—';
+
+      // Status bar
+      const sb = document.getElementById('status-bar');
+      sb.innerHTML = '';
+      Object.entries(d.by_status || {}).forEach(([s, c]) => {
+        const label = STATUS_LABELS[s] || s;
+        sb.innerHTML += `<div class="status-pill">${label}: <strong>${c}</strong></div>`;
+      });
+
+      // Offers table
+      const tbody = document.getElementById('offers-tbody');
+      tbody.innerHTML = '';
+      (d.recent_offers || []).forEach(o => {
+        const cls = STATUS_CLASSES[o.status] || 'badge-draft';
+        const label = STATUS_LABELS[o.status] || o.status;
+        const date = o.created_at ? new Date(o.created_at).toLocaleDateString('es-ES') : '—';
+        tbody.innerHTML += `<tr>
+          <td style="font-family:monospace;color:var(--accent)">${o.offer_number || '—'}</td>
+          <td>${o.company || '—'}</td>
+          <td>${fmt(o.total)}</td>
+          <td><span class="badge ${cls}">${label}</span></td>
+          <td style="color:var(--muted)">${o.category || '—'}</td>
+          <td style="color:var(--muted)">${date}</td>
+        </tr>`;
+      });
+
+      if (!(d.recent_offers || []).length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:1rem">Sin ofertas. Ejecuta: python scripts/integrate_requests_to_offers.py</td></tr>';
+      }
+    }
+
+    function renderOffline() {
+      document.getElementById('ts').textContent = 'Sin datos — ejecuta: python scripts/update_all_panels.py';
+      document.getElementById('kpi-total').textContent = '—';
+      document.getElementById('kpi-won').textContent   = '—';
+      document.getElementById('kpi-open').textContent  = '—';
+      document.getElementById('kpi-value').textContent = '—';
+      const tbody = document.getElementById('offers-tbody');
+      tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:1.5rem">Ejecuta <code>python scripts/update_all_panels.py</code> para cargar datos.</td></tr>';
+    }
+
+    loadData();
+    setInterval(loadData, 30000);
+  </script>
+</body>
+</html>
