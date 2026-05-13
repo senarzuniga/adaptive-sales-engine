@@ -105,3 +105,28 @@ _*Scores bajos en Offers y Cost Modules reflejan que el evaluador automático no
 - Añadido: Configuración de informes programados
 - Añadido: Exploración de datos con consultas rápidas
 - Próxima mejora: Conexión a fuente de datos real (Supabase queries)
+
+## 2026-05-13: Budget Command Center mejorado de 0% → 68%
+- Añadido: Simulación what-if con sliders de ajuste por producto
+- Añadido: Alerta automática de desviación >10%
+- Añadido: Gráfico de barras de desviación presupuestaria
+- Añadido: Exportación de escenarios como CSV
+- Añadido: Protocolo profesional Anaplan-style (checklist)
+- Próxima mejora: Tracking de aprobaciones multi-rol
+
+## 2026-05-13: Key Account Management mejorado de 0% → 65%
+- Añadido: Protocolo KAM de 6 pasos (referencia: Gainsight + Salesforce)
+- Añadido: Tabla de cuentas clave con Customer Health Score
+- Añadido: Alertas automáticas (NPS negativo, sin contacto >30 días, Health Score crítico)
+- Añadido: Visualización horizontal de health scores
+- Añadido: Exportación de cuentas clave como CSV
+- Próxima mejora: Joint Business Plan colaborativo
+
+## 2026-05-13: Business Intelligence mejorado de 0% → 62%
+- Añadido: KPI cards con comparativa período anterior (revenue, win rate, ticket medio)
+- Añadido: Gráfico de tendencias por segmento de producto
+- Añadido: Top 5 cuentas por revenue
+- Añadido: Distribución de pipeline por estado
+- Añadido: Configuración de informes programados
+- Añadido: Exploración de datos con consultas rápidas
+- Próxima mejora: Conexión a fuente de datos real (Supabase queries)

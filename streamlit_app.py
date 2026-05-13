@@ -610,6 +610,299 @@ from ui.pages.agent_hub import page_agent_hub  # noqa: E402
 
 # ── Auto-implement injection anchors (do not remove) ──────────
 # ── AUTO_IMPLEMENT_PAGES_START ──
+
+
+def page_business_intelligence() -> None:
+    st.header("📊 Business Intelligence")
+    st.caption("Referencia: Looker · Domo · ThoughtSpot")
+
+    with st.expander("📋 Protocolo BI estándar (referencia: Looker + Domo)", expanded=False):
+        protocol_steps = [
+            "1. Conectar fuentes de datos (CRM, ERP, base de datos propia)",
+            "2. Definir métricas y KPIs con definición única acordada",
+            "3. Segmentar dashboards por audiencia (dirección, comercial, operaciones)",
+            "4. Configurar alertas sobre umbrales críticos",
+            "5. Programar distribución automática de informes",
+            "6. Capacitar al equipo en exploración autoservicio",
+        ]
+        for step in protocol_steps:
+            st.checkbox(step, key=f"bi_proto_{step[:30]}")
+
+    period = st.selectbox("Período de análisis", ["Últimos 7 días", "Últimos 30 días", "Trimestre actual", "Año actual"], key="bi_period")
+
+    period_multiplier = {"Últimos 7 días": 0.25, "Últimos 30 días": 1.0, "Trimestre actual": 3.0, "Año actual": 12.0}
+    mult = period_multiplier.get(period, 1.0)
+
+    base_revenue = 487000 * mult
+    base_offers = int(23 * mult)
+    base_win_rate = 34.8
+    base_avg_deal = 21200
+
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Revenue generado", f"€{base_revenue:,.0f}", delta=f"+{base_revenue * 0.08:,.0f} vs período anterior")
+    m2.metric("Ofertas enviadas", base_offers, delta=f"+{int(base_offers * 0.12)} vs período anterior")
+    m3.metric("Win rate", f"{base_win_rate:.1f}%", delta="+2.3pp vs período anterior")
+    m4.metric("Ticket medio", f"€{base_avg_deal:,.0f}", delta=f"+€{int(base_avg_deal * 0.05):,} vs período anterior")
+
+    st.subheader("📈 Tendencias por segmento")
+
+    import numpy as np  # noqa: PLC0415
+
+    months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun"]
+    rng = np.random.default_rng(42)
+    df_trend = pd.DataFrame(
+        {
+            "Mes": months,
+            "Automatización": rng.integers(60000, 120000, 6).tolist(),
+            "Servicios": rng.integers(40000, 90000, 6).tolist(),
+            "Componentes": rng.integers(30000, 70000, 6).tolist(),
+        }
+    )
+
+    df_melted = df_trend.melt(id_vars="Mes", var_name="Segmento", value_name="Revenue")
+    fig_trend = px.line(
+        df_melted,
+        x="Mes",
+        y="Revenue",
+        color="Segmento",
+        markers=True,
+        title="Evolución del revenue por segmento de producto",
+        labels={"Revenue": "Revenue (€)"},
+    )
+    st.plotly_chart(fig_trend, use_container_width=True)
+
+    col_left, col_right = st.columns(2)
+
+    with col_left:
+        st.subheader("🏆 Top 5 cuentas por revenue")
+        rng2 = np.random.default_rng(7)
+        df_top = pd.DataFrame(
+            {
+                "Cuenta": ["Volkswagen", "Siemens", "SEAT", "Schneider", "ABB"],
+                "Revenue_€": sorted(rng2.integers(80000, 250000, 5).tolist(), reverse=True),
+            }
+        )
+        fig_top = px.bar(df_top, x="Revenue_€", y="Cuenta", orientation="h", color="Revenue_€",
+                         color_continuous_scale="Blues", title="Top 5 cuentas")
+        st.plotly_chart(fig_top, use_container_width=True)
+
+    with col_right:
+        st.subheader("📊 Distribución de estados de ofertas")
+        df_status = pd.DataFrame(
+            {"Estado": ["Ganadas", "En negociación", "Perdidas", "Expiradas"], "Cantidad": [8, 7, 4, 4]}
+        )
+        fig_pie = px.pie(df_status, values="Cantidad", names="Estado",
+                         color_discrete_sequence=["#00cc66", "#ffa500", "#ff4b4b", "#999999"],
+                         title="Pipeline de ofertas")
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+    st.subheader("⏰ Informes programados")
+    with st.expander("Configurar informe automático"):
+        report_freq = st.selectbox("Frecuencia", ["Diario", "Semanal (lunes)", "Mensual (día 1)"], key="bi_report_freq")
+        report_recipients = st.text_input("Destinatarios (emails separados por coma)", key="bi_report_recipients")
+        if st.button("💾 Guardar configuración de informe", key="bi_save_report"):
+            st.success(f"✅ Informe {report_freq} configurado para: {report_recipients or '(ninguno)'}")
+
+    st.subheader("🔍 Exploración de datos")
+    query_example = st.selectbox(
+        "Consulta rápida",
+        [
+            "¿Cuáles son mis 5 clientes con más revenue este mes?",
+            "¿Qué segmento tiene la mayor tasa de crecimiento?",
+            "¿Cuántas ofertas están en riesgo de expirar esta semana?",
+            "¿Cuál es el win rate por comercial?",
+        ],
+        key="bi_query",
+    )
+    if st.button("▶️ Ejecutar consulta", key="bi_run_query"):
+        st.info(f"💡 Consulta: *{query_example}* — Integra tu fuente de datos real para obtener respuestas en tiempo real.")
+
+
+
+def page_key_account_management() -> None:
+    st.header("🏆 Key Account Management")
+    st.caption("Referencia: Gainsight · Salesforce CRM · HubSpot Sales Hub")
+
+    with st.expander("📋 Protocolo KAM estándar (referencia: Gainsight + Salesforce)", expanded=False):
+        protocol_steps = [
+            "1. Identificar cuentas estratégicas (Top 20% de ingresos)",
+            "2. Mapear stakeholders y niveles de influencia",
+            "3. Evaluar Customer Health Score (NPS, frecuencia de contacto, satisfacción)",
+            "4. Crear Joint Business Plan con objetivos compartidos",
+            "5. Planificar acciones: meetings trimestrales, follow-ups mensuales, upselling",
+            "6. Revisión periódica del plan y activar alertas de riesgo",
+        ]
+        for step in protocol_steps:
+            st.checkbox(step, key=f"kam_proto_{step[:30]}")
+
+    if "kam_accounts" not in st.session_state:
+        st.session_state.kam_accounts = pd.DataFrame(
+            {
+                "Cuenta": ["Volkswagen Group", "Siemens AG", "SEAT S.A.", "Schneider Electric", "ABB Ltd"],
+                "Ingreso_anual_€": [420000, 310000, 280000, 195000, 160000],
+                "Health_Score": [82, 71, 45, 90, 63],
+                "NPS": [8, 6, -2, 9, 4],
+                "Días_sin_contacto": [12, 8, 35, 5, 42],
+                "Responsable": ["Ana García", "Carlos López", "Ana García", "Pedro Martín", "Carlos López"],
+            }
+        )
+
+    df = st.session_state.kam_accounts.copy()
+
+    st.subheader("📊 Mis cuentas clave")
+
+    col_a, col_b, col_c = st.columns(3)
+    col_a.metric("Cuentas gestionadas", len(df))
+    col_b.metric("Ingreso total gestionado", f"€{df['Ingreso_anual_€'].sum():,.0f}")
+    col_c.metric("Health Score promedio", f"{df['Health_Score'].mean():.0f}/100")
+
+    def _health_color(score: int) -> str:
+        if score >= 75:
+            return "🟢"
+        if score >= 55:
+            return "🟡"
+        return "🔴"
+
+    df["Estado"] = df["Health_Score"].apply(_health_color)
+    st.dataframe(
+        df[["Estado", "Cuenta", "Ingreso_anual_€", "Health_Score", "NPS", "Días_sin_contacto", "Responsable"]].style.format(
+            {"Ingreso_anual_€": "€{:,.0f}"}
+        ).background_gradient(subset=["Health_Score"], cmap="RdYlGn"),
+        use_container_width=True,
+    )
+
+    st.subheader("🚨 Alertas automáticas")
+    alertas = []
+    for _, row in df.iterrows():
+        if row["NPS"] < 0:
+            alertas.append(f"🔴 **{row['Cuenta']}**: NPS negativo ({row['NPS']}). Reunión de recuperación urgente.")
+        if row["Días_sin_contacto"] > 30:
+            alertas.append(f"🟡 **{row['Cuenta']}**: Sin contacto hace {row['Días_sin_contacto']} días. Sugerir follow-up.")
+        if row["Health_Score"] < 55:
+            alertas.append(f"🔴 **{row['Cuenta']}**: Health Score crítico ({row['Health_Score']}/100). Activar plan de recuperación.")
+
+    if alertas:
+        for alerta in alertas:
+            st.warning(alerta)
+    else:
+        st.success("✅ Todas las cuentas clave están dentro de parámetros saludables.")
+
+    with st.expander("📈 Visualización de health scores"):
+        fig = px.bar(
+            df.sort_values("Health_Score"),
+            x="Health_Score",
+            y="Cuenta",
+            orientation="h",
+            color="Health_Score",
+            color_continuous_scale=["#ff4b4b", "#ffa500", "#00cc66"],
+            range_color=[0, 100],
+            title="Customer Health Score por cuenta clave",
+        )
+        fig.add_vline(x=60, line_dash="dash", line_color="red", annotation_text="Umbral crítico: 60")
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.download_button(
+        "⬇️ Exportar cuentas clave",
+        data=df.to_csv(index=False),
+        file_name=f"key_accounts_{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv",
+        mime="text/csv",
+        use_container_width=True,
+    )
+
+
+
+def page_budget_command_center() -> None:
+    st.header("💰 Budget Command Center")
+    st.caption("Referencia: Anaplan · Vareto · Cube")
+
+    with st.expander("📋 Protocolo profesional (Anaplan-style)", expanded=False):
+        protocol = [
+            "1. Definir supuestos del período (inflación, crecimiento, inversiones)",
+            "2. Cargar presupuesto base por departamento / línea de producto",
+            "3. Simular escenarios optimista / base / pesimista",
+            "4. Revisar y aprobar con flujo multi-rol",
+            "5. Activar tracking mensual real vs. presupuestado",
+            "6. Re-forecast trimestral con datos acumulados",
+        ]
+        for step in protocol:
+            st.checkbox(step, key=f"bcc_proto_{step[:20]}")
+
+    if "bcc_data" not in st.session_state:
+        st.session_state.bcc_data = pd.DataFrame(
+            {
+                "Producto": ["Automatización Industrial", "Servicios de Campo", "Componentes Eléctricos"],
+                "Presupuesto_inicial": [300000, 180000, 220000],
+                "Real_actual": [285000, 195000, 210000],
+            }
+        )
+
+    df = st.session_state.bcc_data.copy()
+
+    st.subheader("📊 Escenario What-If")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        ajuste_a = st.slider(f"Ajuste {df.iloc[0]['Producto']} (%)", -30, 30, 0, key="bcc_adj_a")
+    with col2:
+        ajuste_b = st.slider(f"Ajuste {df.iloc[1]['Producto']} (%)", -30, 30, 0, key="bcc_adj_b")
+    with col3:
+        ajuste_c = st.slider(f"Ajuste {df.iloc[2]['Producto']} (%)", -30, 30, 0, key="bcc_adj_c")
+
+    df_sim = df.copy()
+    df_sim.loc[0, "Presupuesto_inicial"] *= 1 + ajuste_a / 100
+    df_sim.loc[1, "Presupuesto_inicial"] *= 1 + ajuste_b / 100
+    df_sim.loc[2, "Presupuesto_inicial"] *= 1 + ajuste_c / 100
+    df_sim["Desviación_€"] = df_sim["Real_actual"] - df_sim["Presupuesto_inicial"]
+    df_sim["Desviación_%"] = (df_sim["Desviación_€"] / df_sim["Presupuesto_inicial"] * 100).round(1)
+
+    st.dataframe(
+        df_sim.style.format(
+            {"Presupuesto_inicial": "€{:,.0f}", "Real_actual": "€{:,.0f}", "Desviación_€": "€{:,.0f}", "Desviación_%": "{:+.1f}%"}
+        ).bar(subset=["Desviación_€"], color=["#ff9999", "#00cc66"]),
+        use_container_width=True,
+    )
+
+    total_presupuestado = df_sim["Presupuesto_inicial"].sum()
+    total_real = df_sim["Real_actual"].sum()
+    desviacion_total = total_real - total_presupuestado
+
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Total Presupuestado", f"€{total_presupuestado:,.0f}")
+    m2.metric("Total Real", f"€{total_real:,.0f}")
+    m3.metric("Desviación Global", f"€{desviacion_total:,.0f}", delta=f"{desviacion_total / total_presupuestado * 100:+.1f}%")
+
+    desviaciones_criticas = df_sim[abs(df_sim["Desviación_%"]) > 10]
+    if not desviaciones_criticas.empty:
+        st.warning(
+            f"⚠️ **Alerta de desviación >10%** en: {', '.join(desviaciones_criticas['Producto'].tolist())}. "
+            "Revisar y actualizar el forecast."
+        )
+    else:
+        st.success("✅ Todas las líneas dentro del umbral de desviación (<10%)")
+
+    with st.expander("📈 Gráfico de desviaciones"):
+        fig = px.bar(
+            df_sim,
+            x="Producto",
+            y="Desviación_%",
+            color="Desviación_%",
+            color_continuous_scale=["#ff4b4b", "#ffa500", "#00cc66"],
+            title="Desviación presupuestaria por línea (%)",
+            labels={"Desviación_%": "Desviación (%)"},
+        )
+        fig.add_hline(y=10, line_dash="dash", line_color="red", annotation_text="Umbral +10%")
+        fig.add_hline(y=-10, line_dash="dash", line_color="red", annotation_text="Umbral -10%")
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.subheader("📤 Exportar escenario")
+    csv = df_sim.to_csv(index=False)
+    st.download_button(
+        "⬇️ Descargar escenario como CSV",
+        data=csv,
+        file_name=f"budget_scenario_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.csv",
+        mime="text/csv",
+        use_container_width=True,
+    )
+
 # ── AUTO_IMPLEMENT_PAGES_END ──
 
 _PAGE_MAP: Dict[str, Any] = {

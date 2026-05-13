@@ -1,5 +1,5 @@
 # MATURITY REPORT
-_Generated: 2026-05-12 05:35 UTC_
+_Generated: 2026-05-13 05:45 UTC_
 
 ## Summary table
 
@@ -10,9 +10,9 @@ _Generated: 2026-05-12 05:35 UTC_
 | Offers | 0% | 0% | 0% | 0% |
 | Request Pool | 0% | 0% | 0% | 0% |
 | Cost Modules | 0% | 0% | 0% | 0% |
-| Business Intelligence | 80% | 0% | 100% | 70% |
-| Budget Command Center | 80% | 100% | 100% | 90% |
-| Key Account Management | 80% | 100% | 100% | 90% |
+| Business Intelligence | — | — | — | 62% | 0% | 0% | 0% |
+| Budget Command Center | — | — | — | 68% | 0% | 0% | 0% |
+| Key Account Management | — | — | — | 65% | 0% | 0% | 0% |
 | Pipeline Manager | 0% | 0% | 0% | 0% |
 | Market Intelligence | 0% | 0% | 0% | 0% |
 | Competitive Analysis | 0% | 0% | 0% | 0% |
@@ -65,42 +65,37 @@ _Generated: 2026-05-12 05:35 UTC_
 - **References**: Salesforce Service Cloud, Zendesk, HubSpot Service Hub
 
 ### Cost Modules
-- **Status**: ⬜ Not implemented
+- **Status**: ✅ Implemented
 - **functional_coverage**: 0%
 - **protocol_score**: 0%
 - **ux_score**: 0%
 - **overall**: 0%
 - **References**: Oracle Fusion Costing, SAP Product Costing, Epicor
+- **Missing**: Módulos predefinidos, Cálculo de flete, Porcentajes de coste, Exportación, Múltiples destinos
 
 ### Business Intelligence
-- **Status**: ✅ Implemented
-- **functional_coverage**: 80%
+- **Status**: ⬜ Not implemented
+- **functional_coverage**: 0%
 - **protocol_score**: 0%
-- **ux_score**: 100%
-- **overall**: 70%
+- **ux_score**: 0%
+- **overall**: 0%
 - **References**: Looker, Domo, ThoughtSpot
-- **Implemented**: Gráficos de tendencia, Segmentación de datos, Informes programados, Exploración de datos
-- **Missing**: KPI metrics
 
 ### Budget Command Center
-- **Status**: ✅ Implemented
-- **functional_coverage**: 80%
-- **protocol_score**: 100%
-- **ux_score**: 100%
-- **overall**: 90%
+- **Status**: ⬜ Not implemented
+- **functional_coverage**: 0%
+- **protocol_score**: 0%
+- **ux_score**: 0%
+- **overall**: 0%
 - **References**: Anaplan, Vareto, Cube
-- **Implemented**: Simulación what-if, Tracking de desviaciones, Exportación de escenarios, Visualización de barras
-- **Missing**: Alertas de desviación
 
 ### Key Account Management
-- **Status**: ✅ Implemented
-- **functional_coverage**: 80%
-- **protocol_score**: 100%
-- **ux_score**: 100%
-- **overall**: 90%
+- **Status**: ⬜ Not implemented
+- **functional_coverage**: 0%
+- **protocol_score**: 0%
+- **ux_score**: 0%
+- **overall**: 0%
 - **References**: Gainsight, Salesforce CRM, HubSpot Sales Hub
-- **Implemented**: Tabla de cuentas clave, Health Score, Visualización horizontal, Exportación
-- **Missing**: Alertas de riesgo
 
 ### Pipeline Manager
 - **Status**: ⬜ Not implemented
@@ -230,6 +225,6 @@ _Generated: 2026-05-12 05:35 UTC_
 
 ---
 
-**Modules implemented**: 3/22
-**Average maturity (implemented)**: 83%
+**Modules implemented**: 1/22
+**Average maturity (implemented)**: 0%
 **Total modules planned**: 22
