@@ -13,6 +13,21 @@ from ui.components import _field, safe_execute, _render_orchestrator_panel
 
 
 def page_placeholder(title: str, icon: str = "🚧", action: str = "") -> None:
+        # Onboarding y ayuda contextual
+        if st.session_state.get('onboard_backoffice', True):
+            with st.expander('👋 Bienvenido a Backoffice', expanded=True):
+                st.markdown('''
+    **¿Qué puedes hacer aquí?**
+    - Gestionar usuarios, accesos y configuración avanzada.
+    - Administrar módulos de costes, social media y proyectos.
+    - Acceder a herramientas de administración y soporte.
+
+    **Tips de productividad:**
+    - Usa los accesos rápidos para saltar entre paneles administrativos.
+    - Aprovecha la automatización de invitaciones y provisión de accesos.
+                ''')
+                if st.button('¡Entendido! Ocultar ayuda', key='hide_onboard_backoffice'):
+                    st.session_state['onboard_backoffice'] = False
     st.title(f"{icon} {title}")
     df = st.session_state.get("uploaded_data_universal")
     if df is not None:

@@ -9,6 +9,21 @@ from ui.components import _render_orchestrator_panel
 
 
 def page_portfolio_analysis() -> None:
+        # Onboarding y ayuda contextual
+        if st.session_state.get('onboard_intelligence', True):
+            with st.expander('👋 Bienvenido a Intelligence', expanded=True):
+                st.markdown('''
+    **¿Qué puedes hacer aquí?**
+    - Analizar tu portafolio de productos y clientes.
+    - Visualizar comparativas y tendencias clave.
+    - Acceder a métricas de negocio y plan estratégico.
+
+    **Tips de productividad:**
+    - Sube tus datos para obtener visualizaciones automáticas.
+    - Usa los selectores para personalizar los gráficos.
+                ''')
+                if st.button('¡Entendido! Ocultar ayuda', key='hide_onboard_intelligence'):
+                    st.session_state['onboard_intelligence'] = False
     st.title("📁 Portfolio Analysis")
     df = st.session_state.get("uploaded_data_universal")
     if df is not None and isinstance(df, pd.DataFrame) and not df.empty:
