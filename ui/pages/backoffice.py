@@ -137,7 +137,7 @@ def page_cost_modules() -> None:
     st.caption("Referencia de módulos y tasas base")
 
     df = pd.DataFrame(PREDEFINED_COST_MODULES)
-    st.dataframe(df, use_container_width=True)
+    st.dataframe(df, width='stretch')
 
     st.subheader("Simulador rápido")
     material = st.number_input("Materiales", min_value=0.0, value=10000.0)
@@ -186,7 +186,7 @@ def page_users() -> None:
                 index=0 if _field(row, "role", default="user") == "user" else 1,
                 key=f"usr_role_{row['id']}",
             )
-            if c3.button("Actualizar", key=f"usr_save_{row['id']}", use_container_width=True):
+            if c3.button("Actualizar", key=f"usr_save_{row['id']}", width='stretch'):
                 try:
                     supabase.table("profiles").update(
                         {"department": dep, "role": role_val}
@@ -284,9 +284,8 @@ def page_invites() -> None:
         }
         for u in users
     ]
-    st.dataframe(pd.DataFrame(preview_rows), use_container_width=True)
-
-    if st.button("🚀 Provision access + send all invites", type="primary", use_container_width=True):
+    st.dataframe(pd.DataFrame(preview_rows), width='stretch')
+    if st.button("🚀 Provision access + send all invites", type="primary", width='stretch'):
         if not app_url:
             st.error("Define la URL de acceso")
             return
@@ -342,7 +341,7 @@ def page_social_media_settings() -> None:
             profile_url = c1.text_input("URL del perfil", placeholder="https://...")
             enabled = c2.checkbox("Activa", value=True)
             notes = st.text_area("Notas", placeholder="API status, credenciales, owner...")
-            submitted = st.form_submit_button("Guardar", use_container_width=True)
+            submitted = st.form_submit_button("Guardar", width='stretch')
             if submitted:
                 _table_insert(
                     "social_media_accounts",
@@ -376,7 +375,7 @@ def page_social_media_settings() -> None:
             c1.caption(_field(row, "account_name", default=""))
             c2.write(_field(row, "profile_url", default="—"))
             c2.caption("🟢 Activa" if bool(row.get("is_enabled")) else "⚪ Inactiva")
-            if c3.button("🗑", key=f"sm_del_{row_id}", use_container_width=True):
+            if c3.button("🗑", key=f"sm_del_{row_id}", width='stretch'):
                 _table_delete("social_media_accounts", company_id, row_id)
                 st.rerun()
 
@@ -402,7 +401,7 @@ def page_marketing_content() -> None:
             body = st.text_area("Contenido", placeholder="Texto completo...", height=180)
             hashtags_txt = st.text_input("Hashtags (separados por coma)", placeholder="automation, industrial, ai")
             cta = st.text_input("Call to Action", placeholder="Agenda una demo")
-            submitted = st.form_submit_button("Guardar contenido", use_container_width=True)
+            submitted = st.form_submit_button("Guardar contenido", width='stretch')
             if submitted:
                 hashtags = [h.strip().lstrip("#") for h in hashtags_txt.split(",") if h.strip()]
                 _table_insert(
@@ -444,7 +443,7 @@ def page_marketing_content() -> None:
             c1.write(_field(row, "summary", default=""))
             if row.get("hashtags"):
                 st.caption(" ".join([f"#{h}" for h in (row.get("hashtags") or [])]))
-            if c2.button("🗑", key=f"mk_del_{row_id}", use_container_width=True):
+            if c2.button("🗑", key=f"mk_del_{row_id}", width='stretch'):
                 _table_delete("marketing_content", company_id, row_id)
                 st.rerun()
 
@@ -473,7 +472,7 @@ def page_project_management() -> None:
             planned_end = c3.text_input("Fin planificado (YYYY-MM-DD)", placeholder="2026-11-30")
             contract_value = st.number_input("Valor contrato", min_value=0.0, value=0.0, step=1000.0)
             notes = st.text_area("Notas")
-            submitted = st.form_submit_button("Guardar proyecto", use_container_width=True)
+            submitted = st.form_submit_button("Guardar proyecto", width='stretch')
             if submitted:
                 try:
                     _table_insert(
@@ -529,7 +528,7 @@ def page_project_management() -> None:
                 "Valor": float(r.get("contract_value") or 0),
             }
         )
-    st.dataframe(pd.DataFrame(table_rows), use_container_width=True)
+    st.dataframe(pd.DataFrame(table_rows), width='stretch')
 
     st.divider()
     _render_orchestrator_panel(action="project_management")

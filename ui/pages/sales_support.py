@@ -67,7 +67,7 @@ def page_ai_augmented_sales() -> None:
                 opps = cross.get("opportunities", [])
                 if opps:
                     st.success(f"✅ {len(opps)} oportunidades de venta cruzada identificadas")
-                    st.dataframe(pd.DataFrame(opps), use_container_width=True)
+                    st.dataframe(pd.DataFrame(opps), width='stretch')
                 email_tpl = cross.get("email_template", "")
                 if email_tpl:
                     with st.expander("📧 Plantilla de email de venta cruzada"):
@@ -123,7 +123,7 @@ def page_behavioral_transform() -> None:
                     names=kam_col,
                     title="Distribución de operaciones por KAM",
                 ),
-                use_container_width=True,
+                width='stretch',
             )
     st.divider()
     _render_orchestrator_panel(action="behavioral_transform")
@@ -161,7 +161,7 @@ def page_product_strategy() -> None:
             st.subheader("📊 Revenue por Familia de Producto")
             st.plotly_chart(
                 px.treemap(prod_rev, path=["Familia"], values="Revenue", title="Revenue por Familia"),
-                use_container_width=True,
+                width='stretch',
             )
     st.divider()
     _render_orchestrator_panel(action="product_strategy")
@@ -214,7 +214,7 @@ def page_monitoring_dashboard() -> None:
                     "Estado": "⚠️ Error de carga" if a.get("load_error") else "✅ Listo",
                     "Error": (a.get("load_error") or "")[:80],
                 })
-            st.dataframe(pd.DataFrame(agent_rows), use_container_width=True)
+            st.dataframe(pd.DataFrame(agent_rows), width='stretch')
         except Exception:
             pass
 
@@ -237,7 +237,7 @@ def page_monitoring_dashboard() -> None:
          "Filas": st.session_state.get("oportunidades_data", pd.DataFrame()).shape[0]
                   if isinstance(st.session_state.get("oportunidades_data"), pd.DataFrame) else 0},
     ]
-    st.dataframe(pd.DataFrame(data_rows), use_container_width=True)
+    st.dataframe(pd.DataFrame(data_rows), width='stretch')
 
     if last_results:
         st.subheader("📋 Último análisis ejecutado")
@@ -260,7 +260,7 @@ def page_monitoring_dashboard() -> None:
         c3.metric("Avg duración (ms)", summary.get("avg_duration_ms", 0))
         recent = observability.get_recent(10)
         if recent:
-            st.dataframe(pd.DataFrame(recent), use_container_width=True)
+            st.dataframe(pd.DataFrame(recent), width='stretch')
     except Exception as exc:
         st.caption(f"Observability no disponible: {exc}")
 
@@ -358,9 +358,9 @@ def page_data_upload() -> None:
             col2.metric("Columnas", df.shape[1])
             col3.metric("Valores nulos", int(df.isnull().sum().sum()))
             st.subheader("Vista previa")
-            st.dataframe(df.head(10), use_container_width=True)
+            st.dataframe(df.head(10), width='stretch')
             type_df = pd.DataFrame({"Columna": df.dtypes.index, "Tipo": df.dtypes.values.astype(str)})
-            st.dataframe(type_df, use_container_width=True)
+            st.dataframe(type_df, width='stretch')
             st.download_button(
                 "📥 Descargar como CSV",
                 df.to_csv(index=False).encode("utf-8"),
@@ -424,7 +424,7 @@ def page_company_setup() -> None:
                         file_name=f"{tpl_key}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         key=f"dl_{tpl_key}",
-                        use_container_width=True,
+                        width='stretch',
                     )
                 except Exception as exc:
                     st.error(f"Error generando plantilla: {exc}")
@@ -442,7 +442,7 @@ def page_company_setup() -> None:
                         file_name=tpl_file.name,
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         key=f"dl_{tpl_file.stem}",
-                        use_container_width=True,
+                        width='stretch',
                     )
         else:
             st.warning("Plantillas no disponibles. Instala openpyxl: pip install openpyxl")

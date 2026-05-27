@@ -178,7 +178,7 @@ def _load_company_pack_ui() -> None:
         with st.container(border=True):
             col1, col2 = st.columns([3, 1])
             col1.markdown(f"**{pack_name}** — Pack de empresa con datos históricos, oportunidades, productos y estrategia")
-            if col2.button(f"⬇️ Cargar {pack_name}", key=f"load_pack_{pack_name}", use_container_width=True):
+            if col2.button(f"⬇️ Cargar {pack_name}", key=f"load_pack_{pack_name}", width='stretch'):
                 try:
                     with pack_file.open("r", encoding="utf-8") as f:
                         pack = json.load(f)
@@ -293,12 +293,12 @@ def page_saved_companies() -> None:
                 label = f"**{cname}**" + (" ⭐ *Activa*" if is_active else "")
                 c1.markdown(label)
                 c1.caption(f"{industry} · {hq}" if industry or hq else "")
-                if c2.button("🎯 Activar", key=f"activate_{cid}", use_container_width=True):
+                if c2.button("🎯 Activar", key=f"activate_{cid}", width='stretch'):
                     st.session_state["active_company"] = company
                     st.session_state["company_notes"] = company.get("additional_notes", company.get("notes", ""))
                     st.success(f"Empresa activa: **{cname}**")
                     st.rerun()
-                if c3.button("🗑", key=f"del_company_{cid}", use_container_width=True):
+                if c3.button("🗑", key=f"del_company_{cid}", width='stretch'):
                     _delete_company(cid)
                     if is_active:
                         st.session_state["active_company"] = None
@@ -367,7 +367,7 @@ def page_company_info() -> None:
         linkedin_url            = c6.text_input("LinkedIn", value=prefill.get("linkedin_url", ""), placeholder="https://linkedin.com/company/acme")
         additional_notes        = st.text_area("Notas adicionales / contexto", value=prefill.get("additional_notes", prefill.get("notes", "")), height=100, placeholder="Información relevante sobre la cuenta…")
 
-        submitted = st.form_submit_button("💾 Guardar empresa", use_container_width=True)
+        submitted = st.form_submit_button("💾 Guardar empresa", width='stretch')
 
     if submitted and company_name:
         company_data: Dict[str, Any] = {
@@ -436,7 +436,7 @@ def page_sales_architecture() -> None:
                 st.plotly_chart(
                     px.bar(counts.reset_index(), x=matched[0], y="count",
                            title=f"Top 10 {matched[0]}"),
-                    use_container_width=True,
+                    width='stretch',
                 )
                 shown = True
                 break
@@ -479,7 +479,7 @@ def page_key_account_management() -> None:
             st.plotly_chart(
                 px.bar(top_df, x="Cliente", y="Revenue Total",
                        color="Revenue Total", color_continuous_scale="Blues"),
-                use_container_width=True,
+                width='stretch',
             )
     else:
         st.info("Sube datos en **Data Upload** para ver el ranking de cuentas clave.")
@@ -510,7 +510,7 @@ def page_actions() -> None:
                     lambda x: priority_order.get(str(x).upper(), 5)
                 )
                 df_actions = df_actions.sort_values("_sort").drop(columns=["_sort"])
-            st.dataframe(df_actions, use_container_width=True)
+            st.dataframe(df_actions, width='stretch')
             st.download_button(
                 "📥 Exportar acciones (CSV)",
                 df_actions.to_csv(index=False).encode("utf-8"),
@@ -537,7 +537,7 @@ def page_actions() -> None:
             importance = st.slider("Importance score", 0, 100, 70)
             strategy_alignment = st.slider("Strategy alignment", 0, 100, 70)
             estimated_hours = st.number_input("Horas estimadas", min_value=0.0, step=1.0, value=0.0)
-            submitted = st.form_submit_button("Guardar", use_container_width=True)
+            submitted = st.form_submit_button("Guardar", width='stretch')
 
             if submitted:
                 if not name or not goal:
@@ -571,7 +571,7 @@ def page_actions() -> None:
     st.subheader("🔁 Sync Excel (bidireccional)")
     s1, s2 = st.columns([1, 1])
     with s1:
-        if st.button("Exportar acciones a Excel", use_container_width=True):
+        if st.button("Exportar acciones a Excel", width='stretch'):
             try:
                 import io
                 rows = supabase.table("actions").select("*").order("created_at", desc=True).execute().data or []
@@ -584,7 +584,7 @@ def page_actions() -> None:
                     data=buffer.getvalue(),
                     file_name=f"Actions_{department.replace(' ', '')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True,
+                    width='stretch',
                 )
             except Exception as exc:
                 st.error(f"Error exportando: {exc}")
@@ -655,6 +655,6 @@ def page_actions() -> None:
                     {"comments": comments_val, "last_modified": datetime.now(timezone.utc).isoformat()}
                 ).eq("id", action["id"]).execute()
 
-            if c4.button("🗑", key=f"act_del_{action['id']}", use_container_width=True):
+            if c4.button("🗑", key=f"act_del_{action['id']}", width='stretch'):
                 supabase.table("actions").delete().eq("id", action["id"]).execute()
                 st.rerun()

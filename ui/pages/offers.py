@@ -86,7 +86,7 @@ def page_requests() -> None:
             contact_phone = st.text_input("Teléfono contacto")
             description = st.text_area("Descripción")
             days_to_deadline = st.number_input("Días para deadline", min_value=1, max_value=180, value=7)
-            submitted = st.form_submit_button("Guardar", use_container_width=True)
+            submitted = st.form_submit_button("Guardar", width='stretch')
 
             if submitted:
                 now = datetime.now(timezone.utc)
@@ -127,12 +127,12 @@ def page_requests() -> None:
         if _field(req, "status") == "declined":
             continue
         css_class, emoji, days_left = get_deadline_priority(
-            str(_field(req, "deadline_preliminary_budget", default=""))
+                                if c2.button("Procesar", key=f"req_process_{req['id']}", width='stretch'):
         )
         with st.container():
             st.markdown(f'<div class="{css_class}">', unsafe_allow_html=True)
             c1, c2, c3 = st.columns([4, 1, 1])
-            company_name = _field(req, "company", default="")
+                                if c3.button("Declinar", key=f"req_decline_btn_{req['id']}", width='stretch'):
             contact = _field(req, "contact", "contact_name", default="")
             desc = _field(req, "description", default="")
             deadline_txt = _field(req, "deadline_preliminary_budget", default="")
@@ -143,12 +143,12 @@ def page_requests() -> None:
             c1.write(f"Deadline: {deadline_txt} ({days_left} días)")
             c1.write(f"Estado: {_field(req, 'status', default='new')}")
 
-            if c2.button("Procesar", key=f"req_process_{req['id']}", use_container_width=True):
+            if c2.button("Procesar", key=f"req_process_{req['id']}", width='stretch'):
                 st.session_state.current_request = req
                 st.session_state.offer_mode = "from_request"
                 st.rerun()
 
-            if c3.button("Declinar", key=f"req_decline_btn_{req['id']}", use_container_width=True):
+            if c3.button("Declinar", key=f"req_decline_btn_{req['id']}", width='stretch'):
                 st.session_state[f"declining_{req['id']}"] = True
 
             if st.session_state.get(f"declining_{req['id']}"):
@@ -179,7 +179,7 @@ def page_create_offer_manual() -> None:
         customer_contact = st.text_input("Contacto")
         description = st.text_area("Descripción")
         valid_days = st.number_input("Validez (días)", min_value=1, max_value=365, value=60)
-        submitted = st.form_submit_button("Continuar a cálculo", use_container_width=True)
+        submitted = st.form_submit_button("Continuar a cálculo", width='stretch')
 
     if submitted:
         st.session_state.manual_offer_draft = {
@@ -193,7 +193,7 @@ def page_create_offer_manual() -> None:
     draft = st.session_state.get("manual_offer_draft")
     if draft:
         calc = page_cost_engine_block(default_materials=0.0)
-        if st.button("Guardar oferta", use_container_width=True):
+        if st.button("Guardar oferta", width='stretch'):
             payload = {
                 "serial_number": next_offer_serial(),
                 "title": draft["title"],
@@ -271,7 +271,7 @@ def page_create_offer_from_request() -> None:
     calc = page_cost_engine_block(default_materials=0.0)
 
     c1, c2 = st.columns(2)
-    if c1.button("Crear oferta desde solicitud", use_container_width=True):
+        if c1.button("Crear oferta desde solicitud", width='stretch'):
         try:
             created = create_offer({
                 "serial_number": next_offer_serial(),
@@ -307,9 +307,9 @@ def page_create_offer_from_request() -> None:
             st.error(f"Error: {exc}")
 
     if c2.button("Cancelar", use_container_width=True):
-        st.session_state.current_request = None
-        st.session_state.offer_mode = None
-        st.rerun()
+            st.session_state.current_request = None
+            st.session_state.offer_mode = None
+            st.rerun()
 
 
 def page_upload_offer_document() -> None:
@@ -344,7 +344,7 @@ def page_upload_offer_document() -> None:
 
     calc = page_cost_engine_block(default_materials=0.0)
 
-    if st.button("Crear oferta desde upload", use_container_width=True):
+    if st.button("Crear oferta desde upload", width='stretch'):
         try:
             create_offer({
                 "serial_number": next_offer_serial(),
@@ -405,7 +405,7 @@ def page_list_offers() -> None:
                 update_offer_status(offer["id"], new_status)
                 st.rerun()
 
-            if c2.button("Nueva versión", key=f"off_version_{offer['id']}", use_container_width=True):
+            if c2.button("Nueva versión", key=f"off_version_{offer['id']}", width='stretch'):
                 try:
                     new_payload = dict(offer)
                     for remove_key in ["id", "created_at", "updated_at"]:
@@ -420,7 +420,7 @@ def page_list_offers() -> None:
                 except Exception as exc:
                     st.error(f"No se pudo versionar: {exc}")
 
-            if c3.button("Archivar", key=f"off_archive_{offer['id']}", use_container_width=True):
+            if c3.button("Archivar", key=f"off_archive_{offer['id']}", width='stretch'):
                 archive_offer(offer["id"])
                 st.rerun()
 
@@ -443,7 +443,7 @@ def page_offers() -> None:
                     st.caption(rec["justification"])
                 all_strats = dp.get("all_strategies", [])
                 if all_strats:
-                    st.dataframe(pd.DataFrame(all_strats), use_container_width=True)
+                    st.dataframe(pd.DataFrame(all_strats), width='stretch')
         elif dp.get("output"):
             with st.expander("💲 Dynamic Pricing"):
                 st.markdown(dp["output"])
@@ -457,11 +457,11 @@ def page_offers() -> None:
         return
 
     m1, m2, m3 = st.columns(3)
-    if m1.button("📝 Crear manual", use_container_width=True):
+    if m1.button("📝 Crear manual", width='stretch'):
         st.session_state.offer_mode = "manual"
-    if m2.button("📥 Desde request", use_container_width=True):
+    if m2.button("📥 Desde request", width='stretch'):
         st.session_state.offer_mode = "from_request_select"
-    if m3.button("📎 Upload", use_container_width=True):
+    if m3.button("📎 Upload", width='stretch'):
         st.session_state.offer_mode = "upload"
 
     mode = st.session_state.get("offer_mode")
