@@ -19,6 +19,60 @@ except ImportError:  # pragma: no cover — pydantic is in requirements.txt
 
 import pandas as pd
 
+# ──────────────────────────────────────────────────────────────
+# Enums y modelos auxiliares para acciones y feedback
+# ──────────────────────────────────────────────────────────────
+from enum import Enum
+
+class EntityType(str, Enum):
+    ACCOUNT = "account"
+    OPPORTUNITY = "opportunity"
+    OFFER = "offer"
+    PROJECT = "project"
+    SERVICE = "service"
+    SUPPLIER = "supplier"
+    PART = "part"
+    USER = "user"
+
+class ActionType(str, Enum):
+    TASK = "task"
+    CALL = "call"
+    MEETING = "meeting"
+    EMAIL = "email"
+    OFFER = "offer"
+    PURCHASE = "purchase"
+    COST = "cost"
+    PROJECT = "project"
+    SERVICE = "service"
+    MONITORING = "monitoring"
+    ALLIANCE = "alliance"
+
+class ActionStatus(str, Enum):
+    OPEN = "open"
+    IN_PROGRESS = "in_progress"
+    WAITING = "waiting"
+    CLOSED = "closed"
+    ESCALATED = "escalated"
+
+class FeedbackType(str, Enum):
+    POSITIVE = "positive"
+    NEGATIVE = "negative"
+    NEUTRAL = "neutral"
+    IMPROVEMENT = "improvement"
+
+class Feedback(BaseModel):
+    action_id: str
+    user: str
+    feedback_type: FeedbackType
+    comments: str = ""
+    created_at: Optional[datetime] = None
+
+class Scoring(BaseModel):
+    action_id: str
+    score: int = 0
+    rationale: str = ""
+    created_at: Optional[datetime] = None
+
 
 # ──────────────────────────────────────────────────────────────
 # Core business entities

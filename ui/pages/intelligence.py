@@ -22,13 +22,13 @@ def page_portfolio_analysis() -> None:
             color_col = None if col_color == "Ninguno" else col_color
             st.plotly_chart(
                 px.scatter(df, x=col_x, y=col_y, color=color_col, title=f"{col_x} vs {col_y}"),
-                use_container_width=True,
+                width='stretch',
             )
         if cat_cols and numeric_cols:
             st.plotly_chart(
                 px.bar(df, x=cat_cols[0], y=numeric_cols[0],
                        title=f"Bar: {cat_cols[0]} / {numeric_cols[0]}"),
-                use_container_width=True,
+                width='stretch',
             )
     else:
         st.info("Sube datos en **Data Upload** para visualizarlos aquí.")
@@ -50,12 +50,12 @@ def page_business_intelligence() -> None:
             agg = df.groupby(col_x)[col_y].sum().sort_values(ascending=False).head(15)
             st.plotly_chart(
                 px.bar(agg.reset_index(), x=col_x, y=col_y, title=f"{col_y} por {col_x}"),
-                use_container_width=True,
+                width='stretch',
             )
         if len(numeric_cols) >= 2:
             st.plotly_chart(
                 px.scatter_matrix(df[numeric_cols[:4]], title="Matriz de correlación"),
-                use_container_width=True,
+                width='stretch',
             )
     else:
         st.info("Sube datos en **Data Upload** para activar Business Intelligence.")
@@ -108,7 +108,7 @@ def page_weekly_planner() -> None:
         tasks = planner_out.get("tasks", [])
         if tasks:
             st.success(f"✅ {len(tasks)} tareas generadas automáticamente")
-            st.dataframe(pd.DataFrame(tasks), use_container_width=True)
+            st.dataframe(pd.DataFrame(tasks), width='stretch')
     else:
         st.info("Ejecuta el análisis con todos los agentes para generar el plan semanal.")
     st.divider()
@@ -128,7 +128,7 @@ def page_360_analysis() -> None:
         c2.metric("Variables", df.shape[1])
         c3.metric("Registros nulos", int(df.isnull().sum().sum()))
         with st.expander("📊 Vista previa de datos"):
-            st.dataframe(df.head(8), use_container_width=True)
+            st.dataframe(df.head(8), width='stretch')
     else:
         st.info("📂 Sube datos en **Data Upload** o **Company Setup** para análisis 360º.")
 
@@ -155,7 +155,7 @@ def page_360_analysis() -> None:
         forecast = p0.get("forecast", [])
         if forecast:
             with st.expander("📅 Forecast", expanded=True):
-                st.dataframe(pd.DataFrame(forecast), use_container_width=True)
+                st.dataframe(pd.DataFrame(forecast), width='stretch')
 
         insights = p0.get("insights", [])
         if insights:

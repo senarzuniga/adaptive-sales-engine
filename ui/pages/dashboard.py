@@ -19,17 +19,19 @@ def page_dashboard() -> None:
     from infrastructure.supabase_client import get_supabase
     supabase = get_supabase()
 
+    # Panel de histórico centralizado y buscador global
+    st.subheader("🔎 Histórico y buscador global de acciones, contactos y comunicaciones")
+    search_query = st.text_input("Buscar por palabra clave, usuario, estado o tipo", key="dashboard_search")
+    filter_status = st.selectbox("Filtrar por estado", ["Todos", "open", "on-going", "close"], key="dashboard_status")
+    filter_user = st.text_input("Filtrar por usuario asignado", key="dashboard_user")
+
     if not SUPABASE_CONFIGURED or supabase is None:
         st.info("ℹ️ Supabase no configurado. Mostrando datos de demostración.")
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Total Actions", 0)
-        c2.metric("Open", 0)
-        c3.metric("On Going", 0)
-        c4.metric("Close", 0)
+        actions = []
         df_loaded = st.session_state.get("uploaded_data_universal")
         if df_loaded is not None:
             st.subheader("Datos cargados en memoria")
-            st.dataframe(df_loaded.head(10), use_container_width=True)
+            st.dataframe(df_loaded.head(10), width='stretch')
         st.divider()
         _render_orchestrator_panel(action="dashboard")
         return
@@ -38,18 +40,25 @@ def page_dashboard() -> None:
         lambda: supabase.table("actions").select("*").execute().data or [], []
     )
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Total Actions", len(actions))
-    c2.metric("Open",     len([a for a in actions if _field(a, "status") == "open"]))
-    c3.metric("On Going", len([a for a in actions if _field(a, "status") == "on-going"]))
-    c4.metric("Close",    len([a for a in actions if _field(a, "status") == "close"]))
+    # Filtros de búsqueda
+    filtered_actions = actions
+    if search_query:
+        filtered_actions = [a for a in filtered_actions if search_query.lower() in str(a).lower()]
+    if filter_status != "Todos":
+        filtered_actions = [a for a in filtered_actions if _field(a, "status") == filter_status]
+    if filter_user:
+        filtered_actions = [a for a in filtered_actions if filter_user.lower() in str(_field(a, "assigned_to", default="")).lower()]
 
-    if actions:
-        df = pd.DataFrame(actions)
-        if "status" in df.columns:
-            st.plotly_chart(px.pie(df, names="status", title="Actions by status"), use_container_width=True)
+    st.markdown(f"**{len(filtered_actions)} resultados encontrados**")
+    if filtered_actions:
+        df = pd.DataFrame(filtered_actions)
+        st.dataframe(df, width='stretch')
+    else:
+        st.info("No hay resultados para los filtros aplicados.")
 
-    st.subheader("Últimas acciones")
+    st.divider()
+    # Panel de actividad reciente y accesos rápidos
+    st.subheader("🕒 Actividad reciente y accesos rápidos")
     recent = sorted(
         actions,
         key=lambda x: _field(x, "last_modified", "created_at", default=""),
@@ -60,8 +69,11 @@ def page_dashboard() -> None:
         emoji = "🔴" if status == "open" else "🟡" if status == "on-going" else "✅"
         st.write(
             f"{emoji} **{_field(row, 'name', default='(sin nombre)')}** — "
-            f"{_field(row, 'goal', default='')}"
+            f"{_field(row, 'goal', default='')} | Asignado: {_field(row, 'assigned_to', default='')} | {_field(row, 'created_at', default='')}"
         )
+        # Acceso rápido al detalle
+        if st.button(f"Ver detalle de {_field(row, 'name', default='(sin nombre)')}", key=f"ver_detalle_{_field(row, 'id', default='')}" ):
+            st.json(row)
 
     st.divider()
     _render_orchestrator_panel(action="dashboard")

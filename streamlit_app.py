@@ -25,6 +25,10 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+import pandas as pd
+
+import plotly.express as px
+
 import streamlit as st
 from dotenv import load_dotenv
 
@@ -254,6 +258,7 @@ def _quick_access_login() -> None:
     st.session_state.session = None
     st.session_state.profile = guest_profile
     st.session_state.is_quick_access = True
+    st.session_state.active_page = "CRM"
     _logger.info("Quick access session created for KeyAdministrator user")
     st.rerun()
 
@@ -451,6 +456,10 @@ _NAV_STRUCTURE: List[tuple] = [
         ("Key Account Management",      "🔑"),
         ("Budget Command Center",       "💰"),
         ("Business Intelligence",       "🔍"),
+        ("CRM",                         "🧑‍💼"),
+        ("ERP",                         "🏭"),
+        ("Finanzas",                   "💶"),
+        ("ACSSUPPORT",                 "🛡️"),
     ]),
     ("🔄 After Sales", [
         ("After-Sales Engine", "🔧"),
@@ -926,6 +935,10 @@ _PAGE_MAP: Dict[str, Any] = {
     "Project Management":               page_project_management,
     "Cost & Rates":                     page_cost_modules,
     "Agent Hub":                        page_agent_hub,
+    "CRM":                              __import__('ui.pages.crm').pages.crm.page_crm,
+    "ERP":                              __import__('ui.pages.erp').pages.erp.page_erp,
+    "Finanzas":                         __import__('ui.pages.finance').pages.finance.page_finance,
+    "ACSSUPPORT":                       __import__('ui.pages.acssupport').pages.acssupport.page_acssupport,
 }
 
 # ── Professional routing anchors (auto-implement compatibility) ──
