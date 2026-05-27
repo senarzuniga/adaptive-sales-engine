@@ -1,0 +1,12 @@
+poDate,firstOfferDate,oppNumber,region,country,customerName,scope,productFamily,segment,purchasingYear,purchasingQuarter,purchasingMonth,sellingPrice,margin,kam
+2024-03-15,2023-12-01,ING-2024-001,USA,USA,Packaging Corp of America,Ingetrans heavy board transport system — full project,Ingetrans,Corrugated Packaging,2024,Q1,March,1200000,28,Michael Korchega
+2024-06-10,2024-03-20,ING-2024-002,Spain,Spain,Saica Pack SL,Retal scrap management system — automatic trim handling corrugator #1,Retal,Corrugated Packaging,2024,Q2,June,90000,32,Diego Garcia
+2024-07-22,2024-05-15,ING-2024-003,Spain,Spain,DS Smith Packaging,AMR automated routing system — end-of-line integration,AMR Systems,Corrugated Packaging,2024,Q3,July,200000,30,Diego Garcia
+2024-09-05,2024-07-01,ING-2024-004,Spain,Spain,Cartonajes La Plana SL,Easy Pack automated packing system,Easy Pack,Box Converter,2024,Q3,September,150000,35,Diego Garcia
+2024-11-18,2024-08-20,ING-2024-005,Spain,Spain,Hinojosa Packaging Group,Robotic palletizer — high-speed end-of-line,Palletizer,Corrugated Packaging,2024,Q4,November,450000,27,Diego Garcia
+2024-12-10,2024-10-05,ING-2024-006,Spain,Spain,Cartonajes Santorromán SA,Retal scrap system + Easy Pack integration,Retal,Box Converter,2024,Q4,December,90000,33,Diego Garcia
+2025-02-20,2024-11-15,ING-2025-001,USA,USA,Graphic Packaging International,AMR system + custom conveyor integration,AMR Systems,Corrugated Packaging,2025,Q1,February,240000,29,Michael Korchega
+2025-04-14,2025-01-10,ING-2025-002,Spain,Spain,Smurfit WestRock España,Retal trim management — 2 corrugator lines,Retal,Corrugated Packaging,2025,Q2,April,180000,31,Diego Garcia
+2025-06-30,2025-03-20,ING-2025-003,Spain,Spain,Ondupack SAU,Easy Pack + 12-month maintenance contract,Easy Pack,Box Converter,2025,Q2,June,165000,34,Diego Garcia
+2025-09-12,2025-06-01,ING-2025-004,Spain,Spain,Klingele Embalajes Iberia,AMR automated routing — new plant installation,AMR Systems,Corrugated Packaging,2025,Q3,September,200000,30,Diego Garcia
+2025-11-05,2025-07-15,ING-2025-005,Europe,France,Papresa,Custom project: logistics flow optimization + conveyor retrofit,Custom Engineering,Paper / Corrugated,2025,Q4,November,320000,24,Diego Garcia

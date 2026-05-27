@@ -126,13 +126,10 @@ def page_requests() -> None:
     for req in rows:
         if _field(req, "status") == "declined":
             continue
-        css_class, emoji, days_left = get_deadline_priority(
-                                if c2.button("Procesar", key=f"req_process_{req['id']}", width='stretch'):
-        )
+        css_class, emoji, days_left = get_deadline_priority(req)
         with st.container():
             st.markdown(f'<div class="{css_class}">', unsafe_allow_html=True)
             c1, c2, c3 = st.columns([4, 1, 1])
-                                if c3.button("Declinar", key=f"req_decline_btn_{req['id']}", width='stretch'):
             contact = _field(req, "contact", "contact_name", default="")
             desc = _field(req, "description", default="")
             deadline_txt = _field(req, "deadline_preliminary_budget", default="")
@@ -271,7 +268,7 @@ def page_create_offer_from_request() -> None:
     calc = page_cost_engine_block(default_materials=0.0)
 
     c1, c2 = st.columns(2)
-        if c1.button("Crear oferta desde solicitud", width='stretch'):
+    if c1.button("Crear oferta desde solicitud", width='stretch'):
         try:
             created = create_offer({
                 "serial_number": next_offer_serial(),

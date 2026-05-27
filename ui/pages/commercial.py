@@ -238,21 +238,21 @@ def _load_company_pack_ui() -> None:
 
 
 def page_saved_companies() -> None:
-        # Onboarding y ayuda contextual
-        if st.session_state.get('onboard_commercial', True):
-            with st.expander('👋 Bienvenido a Commercial', expanded=True):
-                st.markdown('''
-    **¿Qué puedes hacer aquí?**
-    - Gestionar empresas y packs de datos comerciales.
-    - Seleccionar la empresa activa para análisis y reporting.
-    - Sincronizar datos con Supabase o trabajar en modo local.
+    # Onboarding y ayuda contextual
+    if st.session_state.get('onboard_commercial', True):
+        with st.expander('👋 Bienvenido a Commercial', expanded=True):
+            st.markdown('''
+**¿Qué puedes hacer aquí?**
+- Gestionar empresas y packs de datos comerciales.
+- Seleccionar la empresa activa para análisis y reporting.
+- Sincronizar datos con Supabase o trabajar en modo local.
 
-    **Tips de productividad:**
-    - Usa los packs demo para explorar funcionalidades rápidamente.
-    - Cambia de empresa activa para comparar resultados.
-                ''')
-                if st.button('¡Entendido! Ocultar ayuda', key='hide_onboard_commercial'):
-                    st.session_state['onboard_commercial'] = False
+**Tips de productividad:**
+- Usa los packs demo para explorar funcionalidades rápidamente.
+- Cambia de empresa activa para comparar resultados.
+            ''')
+            if st.button('¡Entendido! Ocultar ayuda', key='hide_onboard_commercial'):
+                st.session_state['onboard_commercial'] = False
     st.title("🏢 Saved Companies — Empresas Guardadas")
     st.markdown("Selecciona la empresa activa. Todos los análisis y agentes usarán su contexto.")
 
