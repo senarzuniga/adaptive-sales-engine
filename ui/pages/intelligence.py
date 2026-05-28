@@ -24,6 +24,7 @@ def page_portfolio_analysis() -> None:
             ''')
             if st.button('¡Entendido! Ocultar ayuda', key='hide_onboard_intelligence'):
                 st.session_state['onboard_intelligence'] = False
+
     st.title("📁 Portfolio Analysis")
     df = st.session_state.get("uploaded_data_universal")
     if df is not None and isinstance(df, pd.DataFrame) and not df.empty:

@@ -11,21 +11,21 @@ from infrastructure.file_parser import parse_file_to_df, is_safe_url, fetch_url_
 
 
 def page_after_sales_engine() -> None:
-        # Onboarding y ayuda contextual
-        if st.session_state.get('onboard_sales_support', True):
-            with st.expander('👋 Bienvenido a Sales Support', expanded=True):
-                st.markdown('''
-    **¿Qué puedes hacer aquí?**
-    - Analizar oportunidades postventa y monetizar la base instalada.
-    - Acceder a recomendaciones de IA para cross-selling y upselling.
-    - Visualizar cuentas clave y potencial de negocio.
+    # Onboarding y ayuda contextual
+    if st.session_state.get('onboard_sales_support', True):
+        with st.expander('👋 Bienvenido a Sales Support', expanded=True):
+            st.markdown('''
+**¿Qué puedes hacer aquí?**
+- Analizar oportunidades postventa y monetizar la base instalada.
+- Acceder a recomendaciones de IA para cross-selling y upselling.
+- Visualizar cuentas clave y potencial de negocio.
 
-    **Tips de productividad:**
-    - Sube tus datos históricos para obtener análisis automáticos.
-    - Usa los accesos rápidos del panel inferior para navegar entre módulos.
-                ''')
-                if st.button('¡Entendido! Ocultar ayuda', key='hide_onboard_sales_support'):
-                    st.session_state['onboard_sales_support'] = False
+**Tips de productividad:**
+- Sube tus datos históricos para obtener análisis automáticos.
+- Usa los accesos rápidos del panel inferior para navegar entre módulos.
+            ''')
+            if st.button('¡Entendido! Ocultar ayuda', key='hide_onboard_sales_support'):
+                st.session_state['onboard_sales_support'] = False
     st.title("🔧 After-Sales Engine — Motor de Beneficio Postventa")
     st.markdown(
         "**Pilar 3** — Monetizar la base instalada: contratos de mantenimiento, "
