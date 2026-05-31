@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useData } from '@/store/DataStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Building2, Plus, Trash2, Download, Upload, Loader2, Sparkles, Globe, Linkedin } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
-export function CompanySelector() {
+const CompanySelectorComponent = () => {
   const { companies, activeCompanyId, setActiveCompany, createCompany, deleteCompany, exportCompanyPack, importCompanyPack, triggerEnrichment, loading } = useData();
   const [newName, setNewName] = useState('');
   const [newWebsite, setNewWebsite] = useState('');
@@ -191,3 +191,5 @@ export function CompanySelector() {
     </div>
   );
 }
+
+export const CompanySelector = React.memo(CompanySelectorComponent);

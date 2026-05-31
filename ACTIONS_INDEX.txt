@@ -1,0 +1,39 @@
+# ÍNDICE DE ACCIONES (MAPA RÁPIDO)
+
+## LEAD_ACQUISITION
+- IDENTIFICAR_NUEVO_LEAD: Identify high-fit lead
+- CALIFICAR_LEAD_IA: AI lead qualification
+
+## PIPELINE_EXECUTION
+- SEGUIMIENTO_OFERTA_CRITICA: Critical offer follow-up
+- PLAN_MEJORA: Health score improvement plan
+- IDENTIFICAR_UPSELL: Detect upsell expansion
+- PRIORIZAR_POR_SCORE: Prioritize by goal impact score
+
+## CUSTOMER_SUCCESS
+- FIDELIZACION_NPS_RECOVERY: NPS recovery action
+- RENOVACION_CONTRATO: Proactive renewal motion
+
+## ACCOUNT_GROWTH
+- EXPANSION_PLAYBOOK: Expansion playbook
+- CASO_EXITO_REFERENCIABLE: Build referenceable success case
+
+## REVOPS_INTELLIGENCE
+- REVOPS_CASCADE_RECALC: Cascade recalculation
+- CHURN_RISK_ALERT: Churn risk alert
+
+---
+
+Cada acción está asociada a:
+- Triggers/eventos
+- Entradas y salidas
+- KPIs
+- Rol responsable
+- Contenido de soporte (scripts, emails, notas)
+
+La búsqueda y filtrado se realiza por etapa, evento, KPI o rol.
+
+---
+
+Flujo validado: open → on-going → close, con triggers y sincronización bidireccional.
+No se detectan duplicados ni acciones huérfanas en el core.

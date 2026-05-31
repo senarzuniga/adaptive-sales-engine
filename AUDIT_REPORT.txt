@@ -1,0 +1,88 @@
+# AUDIT_REPORT.txt — Adaptive Sales Engine
+
+## 1. ¿Qué se intentó construir? (Visión original)
+
+**Adaptive Sales Engine** es una plataforma modular CRM/ERP con agentes de IA, orientada a triplicar la productividad de equipos comerciales, financieros y de soporte. Su visión es:
+- Digitalizar y optimizar todos los procesos clave de ventas, postventa, análisis y gestión.
+- Integrar módulos independientes (CRM, ERP, Finanzas, Soporte, Backoffice) con paneles, KPIs, rankings, alertas y recomendaciones.
+- Automatizar análisis, scoring, generación de acciones y feedback en bucle mediante agentes de IA.
+- Ofrecer onboarding, ayuda contextual y experiencia mobile-first.
+- Permitir operación multiusuario, trazabilidad, automatización y extensibilidad.
+- Arquitectura: Streamlit (frontend), Supabase (persistencia), Python (agentes), orquestador de agentes, integración con React/Vite para UI avanzada.
+
+## 2. ¿Qué está funcionando actualmente?
+
+- **Infraestructura de mejora continua**: scripts de evaluación de madurez, priorización e implementación automática de mejoras.
+- **Módulos implementados** (según MATURITY_REPORT.md y código):
+  - **Key Account Management**: 90% madurez, incluye tabla de cuentas clave, health score, visualización, exportación.
+  - **Budget Command Center**: 90% madurez, simulación what-if, alertas de desviación, visualización de barras.
+  - **Business Intelligence**: 70% madurez, KPIs, gráficos de tendencia, segmentación, exploración de datos.
+  - **Cost Modules**: Implementado, aunque con cobertura funcional baja según el evaluador automático.
+- **Orquestador de agentes**: ejecución paralela, consolidación de resultados, resiliencia ante fallos de agentes.
+- **Agentes de negocio**: action_engine, kam_mapper_agent, product_lifecycle_analyzer, weekly_task_planner, after_sales_opportunity_agent, entre otros.
+- **Frontend React/Vite**: paneles de análisis, dashboards, visualización de KPIs, gestión de tareas y acciones.
+- **Persistencia Supabase**: integración activa para acciones, ofertas, perfiles, solicitudes.
+- **Automatización de pruebas y validación**: scripts para backup, rollback, verificación de sintaxis.
+- **Documentación técnica y de usuario**: README, DESCRIPCION_TECNICA_APLICACION.txt, STREAMLIT_COMPLETE_USER_GUIDE.txt, best_practices/*.
+
+## 3. ¿Qué no funciona o está incompleto?
+
+- **Módulos no implementados o incompletos** (ver MATURITY_REPORT.md, 18/22 módulos sin cobertura funcional):
+  - Dashboard, Actions, Offers, Request Pool, Pipeline Manager, Market Intelligence, Competitive Analysis, Customer Success, Revenue Forecasting, Portfolio Analysis, Weekly Planner, Saved Companies, Sales Analytics, Territory Management, Campaign Manager, Contract Management, Product Catalog, Team Management.
+- **Cobertura funcional baja** en algunos módulos marcados como "implementados" (ej. Cost Modules, Offers), por limitaciones del evaluador automático.
+- **Faltan capacidades clave** en la mayoría de módulos: vista kanban, forecast, alertas, análisis de conversión, battlecards, health score en tiempo real, simulación de riesgo, automatización de secuencias, integración con calendario, dashboards de performance, onboarding checklist, etc.
+- **Backlog de mejoras**: IMPROVEMENT_PLAN.md y scripts de priorización muestran muchas mejoras pendientes (ej. escenarios what-if, protocolos KAM, conexión real a Supabase).
+- **Testing**: No se detecta infraestructura de tests automatizados (ver .ai/run_team.py).
+- **Algunos agentes** están definidos pero no implementados o con lógica placeholder (ver dashboard/orchestrator_panel.html).
+
+## 4. ¿Qué archivos son basura o están duplicados?
+
+- **Archivos duplicados o residuales**:
+  - Duplicados de configuración: components.json en raíz y en adaptive-sales-engine/.
+  - Archivos de backup: outputs/, logs/, .auto_implement_backups/, f(1).txt, f(2).txt, ..., f(21).txt, etc.
+  - Archivos de ejemplo o pruebas: Adaptive Sales Engine - Lovable.html, Adaptive Sales Engine - Lovable_files/, js, js(1), f.txt, f(1).txt, etc.
+  - Scripts legacy o no referenciados: algunos scripts en scripts/ parecen obsoletos o no integrados.
+  - Archivos de despliegue multiplataforma (ps1/sh) redundantes si no se usan ambos entornos.
+- **Archivos de documentación obsoletos**: README_ADAPTIVE_SALES_ENGINE.txt y README.md contienen solapamientos; mantener solo uno actualizado.
+- **Archivos de configuración no usados**: revisar si todos los tsconfig, postcss, tailwind, vite config son necesarios en ambas ubicaciones.
+
+## 5. ¿Qué conflictos existen entre agentes?
+
+- **Solapamiento de responsabilidades**:
+  - Varios agentes cubren análisis similares (ej. market_intelligence_agent vs. strategy_comparator vs. product_lifecycle_analyzer).
+  - Orquestador ejecuta todos los agentes en paralelo, pero no hay control de dependencias ni de secuenciación lógica (pueden generarse outputs redundantes o inconsistentes).
+  - Algunos agentes (ej. DataValidator, HealthMonitor, PerformanceOptimizer) tienen funciones de autocuración que pueden interferir con la operación normal si no están bien coordinados.
+  - Falta de control de versiones y de compatibilidad entre agentes de /agents y /ai-factory-v2.
+- **Conflictos de outputs**:
+  - No hay un mecanismo robusto de resolución de conflictos cuando dos agentes generan acciones/opiniones contradictorias.
+  - El orquestador solo consolida por resumen, pero no detecta ni resuelve inconsistencias semánticas.
+- **Agentes con lógica placeholder**: algunos devuelven siempre éxito o resultados dummy, lo que puede falsear el estado de la plataforma.
+
+## 6. ¿Qué objetivos no se han alcanzado?
+
+- **Cobertura funcional**: solo 4 de 22 módulos están implementados con madurez aceptable; el resto está ausente o en estado inicial.
+- **Automatización de procesos**: muchas automatizaciones recomendadas en best_practices/* no están implementadas (notificaciones, re-asignaciones, dashboards automáticos, etc.).
+- **Integración real de datos**: la conexión a fuentes reales (Supabase, CRM externo) está pendiente en varios módulos.
+- **Testing y calidad**: no hay tests automatizados ni validación continua real.
+- **UX y onboarding**: aunque hay paneles de ayuda, muchos módulos carecen de onboarding efectivo y experiencia consistente.
+- **Gestión de duplicados y residuos**: persisten archivos basura y duplicados, lo que dificulta el mantenimiento.
+- **Roadmap y backlog**: IMPROVEMENT_PLAN.md y scripts muestran un backlog extenso de mejoras críticas aún no abordadas.
+- **Resolución de conflictos entre agentes**: no existe un sistema de arbitraje o priorización de outputs de agentes.
+
+---
+
+## Diagnóstico final
+
+- **Fortalezas**: arquitectura modular, orquestador de agentes funcional, integración básica con Supabase, documentación técnica y de usuario, infraestructura de mejora continua.
+- **Debilidades**: baja cobertura funcional, muchos módulos ausentes/incompletos, falta de automatización y testing, residuos y duplicados, conflictos no resueltos entre agentes, backlog de mejoras críticas.
+- **Recomendaciones**:
+  1. Priorizar la implementación de módulos core ausentes (Dashboard, Actions, Offers, Pipeline, etc.).
+  2. Eliminar archivos basura y unificar documentación.
+  3. Implementar tests automatizados y validación continua.
+  4. Mejorar la coordinación y resolución de conflictos entre agentes.
+  5. Completar automatizaciones recomendadas y conectar fuentes de datos reales.
+  6. Mantener el backlog de mejoras actualizado y priorizado.
+
+---
+
+**Este informe es crítico y exhaustivo, basado en el análisis de código, documentación, scripts, frontend, backend, agentes y dependencias a fecha 2026-05-31.**

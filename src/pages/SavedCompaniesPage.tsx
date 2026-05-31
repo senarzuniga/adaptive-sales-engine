@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData, CompanyProfile } from '@/store/DataStore';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -83,7 +83,7 @@ function EnrichmentBadge({ status }: { status: string | null | undefined }) {
   }
 }
 
-export default function SavedCompaniesPage() {
+const SavedCompaniesPageComponent = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const {
@@ -267,6 +267,7 @@ export default function SavedCompaniesPage() {
   const activeCompany = companies.find((c) => c.id === activeCompanyId);
 
   return (
+    <Suspense fallback={<div>Loading companies...</div>}>
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -694,5 +695,8 @@ export default function SavedCompaniesPage() {
         onChange={handleImportFile}
       />
     </div>
+    </Suspense>
   );
 }
+
+export default React.memo(SavedCompaniesPageComponent);

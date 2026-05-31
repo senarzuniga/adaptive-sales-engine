@@ -1,10 +1,13 @@
-import { useLanguage } from '@/i18n/LanguageContext';
-import { useData } from '@/store/DataStore';
-import { Card, CardContent } from '@/components/ui/card';
+
+import React, { Suspense } from 'react';
+const Card = React.lazy(() => import('@/components/ui/card').then(m => ({ default: m.Card })));
+const CardContent = React.lazy(() => import('@/components/ui/card').then(m => ({ default: m.CardContent })));
 import { Button } from '@/components/ui/button';
 import { TrendingUp, DollarSign, Target, Percent, Package, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { isOpenOpportunityStatus, isWonStatus } from '@/lib/salesData';
+import { useLanguage } from '@/i18n/LanguageContext';
+import { useData } from '@/store/DataStore';
 
 const DashboardPage = () => {
   const { t } = useLanguage();
@@ -51,6 +54,7 @@ const DashboardPage = () => {
   const pillarRoutes = ['360-analysis', 'sales-architecture', 'kam', 'after-sales', 'ai-sales', 'behavioral', 'product-strategy'];
 
   return (
+    <Suspense fallback={<div>Loading dashboard...</div>}>
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <h2 className="text-2xl font-semibold text-foreground">{t.dashboard.title}</h2>
@@ -107,6 +111,7 @@ const DashboardPage = () => {
         ))}
       </div>
     </div>
+    </Suspense>
   );
 };
 

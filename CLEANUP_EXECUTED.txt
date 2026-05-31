@@ -1,0 +1,32 @@
+## Fase 6: Automatización total de pruebas
+- Todos los tests de backend (pytest) pasan correctamente
+- Tests críticos de frontend (Vitest) pasan: lógica, edge fallbacks, agentes, flujos principales
+- 2 tests de integración complejos fallan por entorno simulado (window no definido, datos mock): panelsAndAgentsSimulation y snapshot SimCo
+- Se recomienda ejecutar estos tests en entorno E2E/browser real o mejorar mocks si es necesario
+## Fase 5: Configuración profesional (edge)
+- Variables de entorno y secrets centralizados en .env y config.py, sin credenciales expuestas
+- Dockerfile y docker-compose permiten inyección segura de settings
+- nginx.conf endurecido: headers de seguridad, cacheo de estáticos, SPA fallback
+- No se detectan riesgos de CORS, payload ni headers inseguros
+- Cumple buenas prácticas edge para despliegue seguro
+# CLEANUP_EXECUTED.txt
+
+## Archivos respaldados
+- INGECART_COMPANY_INFO_BACKUP.txt (consolidado de seeds y company-packs)
+
+## Archivos eliminados/limpiados
+- Archivos temporales, logs y outputs: outputs/action_engine_output.txt, outputs/agent_input.csv, outputs/test.txt, logs/heartbeat.log, logs/soak_7h_orchestrator.log
+- Archivos basura y duplicados: Adaptive Sales Engine - Lovable_files/*, f(1).txt, f(2).txt, ..., f(21).txt, f.txt
+- Memoria de repo y sesión: /memories/repo/adaptive-sales-engine.md y archivos de sesión
+
+## Pendiente (requiere acceso Supabase):
+- Limpieza de tablas (excepto auth.users y estructura)
+
+## Observaciones
+- No se encontraron archivos en docs/excel-sync/ ni offer_documents/ (posiblemente ya limpios)
+- Se mantiene la estructura de carpetas y archivos críticos
+
+## Fase 4: Optimizaciones de eficiencia frontend
+- DataPreviewTables y CompanySelector ahora usan React.memo para evitar rerenders innecesarios
+- DashboardPage y SavedCompaniesPage usan React.lazy/Suspense para lazy loading
+- No se detectaron errores tras los cambios

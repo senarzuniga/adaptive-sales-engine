@@ -1,0 +1,45 @@
+# ARCHITECTURE_RECOMMENDATION.txt
+
+## Hipótesis evaluadas
+
+| Hipótesis | Descripción | Ventajas | Desventajas |
+|-----------|-------------|----------|-------------|
+| H1: Agentes independientes (actual) | Cada agente tiene su propio loop, se comunican por eventos | Modular, fácil de depurar individualmente | Riesgo de incoherencia, coordinación compleja |
+| H2: Agente único supervisor + workers | Un agente orquesta a los demás (centralizado) | Consistente, fácil de auditar | Cuello de botella, punto único de fallo |
+| H3: Agente único todo-en-uno | Un solo agente con todas las capacidades | Máxima simplicidad, sin coordinación | Acoplamiento extremo, difícil de escalar |
+
+## Simulación y análisis
+
+### Métricas evaluadas
+- Latencia de respuesta
+- Tasa de errores
+- Facilidad de mantenimiento
+- Capacidad de escalado
+
+### Resultados
+
+**H1: Agentes independientes**
+- Latencia: baja en tareas simples, pero puede aumentar por falta de coordinación.
+- Errores: riesgo de outputs contradictorios, difícil arbitraje.
+- Mantenimiento: modular, pero debugging de flujos cruzados es complejo.
+- Escalado: bueno en teoría, pero la coordinación se degrada con el número de agentes.
+
+**H2: Supervisor + workers**
+- Latencia: ligeramente mayor por orquestación, pero predecible.
+- Errores: menor tasa de conflictos, fácil de auditar y trazar.
+- Mantenimiento: centralizado, más sencillo de actualizar reglas de coordinación.
+- Escalado: limitado por el supervisor, pero suficiente para la mayoría de escenarios B2B.
+
+**H3: Todo-en-uno**
+- Latencia: mínima, pero solo para sistemas pequeños.
+- Errores: bajo riesgo de conflicto, pero alto riesgo de bugs globales.
+- Mantenimiento: difícil, acoplamiento extremo.
+- Escalado: muy limitado, no recomendable para sistemas multi-módulo.
+
+## Recomendación final
+
+**Implementar H2: Agente único supervisor + workers.**
+
+- Justificación: Maximiza la coherencia, facilita la auditoría y el control de calidad, y permite escalar con lógica clara. El supervisor puede aplicar reglas de arbitraje y priorización, y los workers pueden ser modulares y reemplazables. Es el patrón más robusto para sistemas multi-agente B2B con requisitos de trazabilidad y control.
+
+- Siguiente paso: Refactorizar la arquitectura de agentes para que todo pase por un supervisor central, con workers desacoplados y bien definidos.

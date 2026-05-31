@@ -1,9 +1,10 @@
+
+import React, { useState } from 'react';
 import { useData } from '@/store/DataStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -13,7 +14,7 @@ function fmt(n: number) {
   return n >= 1000000 ? `${(n / 1000000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}K` : n.toFixed(0);
 }
 
-export function DataPreviewTables() {
+const DataPreviewTablesComponent = () => {
   const { data } = useData();
   const [page, setPage] = useState<Record<string, number>>({ orders: 0, opportunities: 0, products: 0, strategy: 0, leads: 0, contacts: 0 });
 
@@ -280,3 +281,5 @@ export function DataPreviewTables() {
     </Card>
   );
 }
+
+export const DataPreviewTables = React.memo(DataPreviewTablesComponent);
