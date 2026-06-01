@@ -134,7 +134,8 @@ def page_requests() -> None:
             desc = _field(req, "description", default="")
             deadline_txt = _field(req, "deadline_preliminary_budget", default="")
 
-            c1.markdown(f"**{emoji} {company_name}**")
+            company_label = _field(req, "company", "customer_name", default="(sin empresa)")
+            c1.markdown(f"**{emoji} {company_label}**")
             c1.caption(desc)
             c1.write(f"Contacto: {contact}")
             c1.write(f"Deadline: {deadline_txt} ({days_left} días)")
