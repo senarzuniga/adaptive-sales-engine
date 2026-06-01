@@ -1,0 +1,120 @@
+ADAPTIVE SALES ENGINE
+CONCLUSIONES Y RECOMENDACIONES
+Fecha: 2026-06-01
+
+=================================================================
+1) CONTEXTO
+=================================================================
+Se analizaron las dos interfaces activas del proyecto:
+- Lovable/React (Vite) en localhost:8080
+- Streamlit en localhost:8501
+
+Conclusión general:
+Ambas aplicaciones comparten repositorio, pero NO son la misma aplicación ni
+consumen/gestionan datos exactamente igual. Por eso muestran diferencias en
+funcionalidades, navegación, y datasets visibles.
+
+=================================================================
+2) CONCLUSIONES CLAVE
+=================================================================
+1. Arquitectura distinta:
+   - Lovable usa frontend React + rutas del cliente (SPA).
+   - Streamlit usa enrutado propio por mapa de páginas en Python.
+   Resultado: hay páginas y flujos que existen en una y no en la otra.
+
+2. Persistencia no homogénea:
+   - React puede operar en modo local (localStorage) cuando no aplica Supabase.
+   - Streamlit usa session_state y servicios Python.
+   Resultado: el estado visible de usuario/sesión puede divergir.
+
+3. Estrategia de acceso a datos diferente:
+   - Streamlit aplica filtrado por usuario en carga de compañías.
+   - React no siempre aplica el mismo criterio de filtrado en los mismos puntos.
+   Resultado: un usuario puede ver conjuntos de datos distintos según interfaz.
+
+4. Feature flags y control de acceso en Streamlit:
+   QUICK_ACCESS_ENABLED y FULL_ACCESS_ALL_USERS afectan visibilidad y permisos.
+   Resultado: la experiencia funcional puede diferir incluso con el mismo backend.
+
+5. Supabase compartido, pero capa de aplicación distinta:
+   Aunque ambas apps pueden conectar a Supabase, no siempre lo hacen con la
+   misma lógica de negocio, validaciones, ni secuencia de operaciones.
+
+=================================================================
+3) RIESGOS ACTUALES
+=================================================================
+- Inconsistencia operativa: usuarios toman decisiones con datos no equivalentes.
+- Mayor carga de soporte: "en una app aparece / en la otra no".
+- Riesgo de gobernanza: permisos y visibilidad diferentes por canal.
+- Dificultad de auditoría: dos fuentes de verdad percibidas.
+
+=================================================================
+4) RECOMENDACIONES PRIORIZADAS
+=================================================================
+PRIORIDAD ALTA (Semana 1)
+1. Definir una fuente de verdad única para producción:
+   - Recomendado: Supabase como única persistencia operativa.
+   - Limitar localStorage a modo demo/dev explícito.
+
+2. Unificar criterio de visibilidad de compañías y registros:
+   - Estandarizar filtro por user_id/rol/departamento en ambas apps.
+   - Documentar reglas de acceso por perfil.
+
+3. Congelar una matriz de paridad funcional:
+   - Tabla por módulo: React vs Streamlit (Existe/No existe/Parcial).
+   - Decidir qué canal será "referencia" por cada funcionalidad.
+
+PRIORIDAD MEDIA (Semana 2)
+4. Contrato de datos compartido:
+   - Definir esquema canónico (campos obligatorios, enums, estados).
+   - Versionar DTOs/eventos para evitar divergencias por cambios locales.
+
+5. Observabilidad mínima cruzada:
+   - Registro de operaciones clave (lectura/escritura, usuario, compañía, módulo).
+   - Tablero de discrepancias (conteos por tabla y por compañía).
+
+6. Política de flags uniforme:
+   - QUICK_ACCESS_ENABLED/FULL_ACCESS_ALL_USERS con criterios de entorno.
+   - Valores explícitos por dev/staging/prod.
+
+PRIORIDAD BAJA (Semana 3+)
+7. Plan de convergencia UX:
+   - Homologar navegación, nombres de módulos y estados de proceso.
+   - Reducir fricción cognitiva al cambiar entre interfaces.
+
+8. Suite de pruebas de paridad:
+   - Pruebas E2E de flujos críticos en ambos frontends.
+   - Pruebas de consistencia de datos post-operación.
+
+=================================================================
+5) PLAN DE EJECUCION SUGERIDO
+=================================================================
+Fase 1 (2-3 dias)
+- Inventario funcional completo.
+- Inventario de tablas y operaciones por app.
+- Aprobación de reglas de acceso unificadas.
+
+Fase 2 (3-5 dias)
+- Implementar filtros/roles homogéneos.
+- Desactivar escrituras locales en entornos no-demo.
+- Alinear módulos críticos: Companies, Offers, Actions, Dashboard.
+
+Fase 3 (2-4 dias)
+- Dashboard de control de consistencia.
+- Pruebas de regresión y paridad.
+- Checklist de salida a producción.
+
+=================================================================
+6) CRITERIOS DE EXITO
+=================================================================
+- Misma empresa/usuario => mismo conjunto de datos visible en ambas apps.
+- Misma operación (crear/editar/borrar) => mismo resultado persistido.
+- Diferencia funcional justificada y documentada por diseño (no por accidente).
+- Soporte reporta reducción de incidencias de inconsistencia.
+
+=================================================================
+7) DECISION RECOMENDADA
+=================================================================
+Adoptar Supabase como backend único operativo y ejecutar un plan de paridad por
+módulos críticos durante 2-3 semanas, empezando por filtros de acceso y flujo de
+compañías/ofertas. Esto maximiza consistencia con mínimo riesgo de ruptura.
