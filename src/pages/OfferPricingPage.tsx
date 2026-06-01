@@ -102,6 +102,11 @@ const newCostLine = (category: string): CostLine => ({
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 
+const isMissingRelationError = (error: any) => {
+  const msg = String(error?.message || error || '').toLowerCase();
+  return msg.includes('does not exist') || msg.includes('could not find') || msg.includes('relation') || msg.includes('schema cache');
+};
+
 export default function OfferPricingPage() {
   const navigate = useNavigate();
   const { language } = useLanguage();
@@ -245,6 +250,116 @@ export default function OfferPricingPage() {
     return { byCat, total, sellingPrice: total * (1 + targetMargin / 100), margin: total * targetMargin / 100 };
   }, [items, targetMargin]);
 
+  const requestOfferAnalysis = async (): Promise<AnalysisResult> => {
+    const costBreakdown = {
+      items: items.map(item => ({
+        name: item.name || 'Unnamed Item',
+        type: item.type,
+        quantity: item.quantity,
+        costs: Object.fromEntries(
+          CATEGORIES.map(c => [c.value, item.costLines.filter(cl => cl.category === c.value).map(cl => ({
+            lineItem: cl.lineItem,
+            quantity: cl.quantity,
+            unitCost: cl.unitCost,
+            totalCost: cl.totalCost,
+            hours: cl.hours,
+            hourlyRate: cl.hourlyRate,
+            days: cl.days,
+            resources: cl.resources,
+            surchargePct: cl.surchargePct,
+          }))])
+        ),
+      })),
+      totalCost: totals.total,
+      targetMargin,
+      currency,
+    };
+
+    const ratesContext = companyRates.length > 0 ? companyRates.map(r => ({
+      type: r.rate_type,
+      name: r.rate_name,
+      value: r.rate_value,
+      unit: r.rate_unit,
+      department: r.department,
+      projectType: r.project_type,
+      geography: r.geography,
+    })) : null;
+
+    const data = await invokeEdgeWithRetry<any>('analyze-offer', {
+      costBreakdown,
+      offerContext: { title: offerTitle, customer: customerName, project: projectDesc, offerNumber },
+      companyRates: ratesContext,
+    }, { fallbackLabel: 'local offer analysis' });
+
+    if (data?.analysis) {
+      return data.analysis as AnalysisResult;
+    }
+
+    return buildFallbackOfferAnalysis({ totalCost: totals.total, targetMargin, currency }) as AnalysisResult;
+  };
+
+  const syncRequestFromOffer = async (offer: any) => {
+    const sb: any = supabase as any;
+
+    try {
+      const { data: existing, error: lookupError } = await sb
+        .from('customer_requests')
+        .select('id,status')
+        .eq('linked_offer_id', offer.id)
+        .maybeSingle();
+
+      if (lookupError) {
+        if (isMissingRelationError(lookupError)) return;
+        throw lookupError;
+      }
+
+      const payload = {
+        company: customerName || data.companyProfile.company_name || '',
+        contact_name: data.companyProfile.primary_contact_name || '',
+        contact_email: data.companyProfile.email || '',
+        contact_phone: data.companyProfile.phone || '',
+        description: projectDesc || offerTitle || 'Offer pipeline request',
+        status: 'new',
+        linked_offer_id: offer.id,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (!existing) {
+        await sb.from('customer_requests').insert({
+          ...payload,
+          created_by: null,
+          source_app: 'lovable',
+          received_date: new Date().toISOString().slice(0, 10),
+        });
+      } else if (existing.status !== 'declined') {
+        await sb.from('customer_requests').update(payload).eq('id', existing.id);
+      }
+    } catch (error) {
+      console.warn('[offers] customer_requests sync failed', error);
+    }
+  };
+
+  const enqueuePipelineJob = async (jobType: string, entityId: string, payload: Record<string, any>) => {
+    const sb: any = supabase as any;
+    try {
+      const { error } = await sb.from('pipeline_jobs').insert({
+        job_type: jobType,
+        entity_type: 'offer',
+        entity_id: entityId,
+        company_id: selectedCompanyId,
+        source_app: 'lovable',
+        status: 'pending',
+        priority: 50,
+        payload,
+      });
+      if (error && !isMissingRelationError(error)) {
+        throw error;
+      }
+    } catch (error) {
+      console.warn('[offers] pipeline enqueue failed', error);
+    }
+  };
+
   const runAnalysis = async () => {
     if (totals.total === 0) {
       toast({ title: isEs ? 'Sin datos de costes' : 'No cost data', description: isEs ? 'Añade líneas de coste primero' : 'Add cost lines first', variant: 'destructive' });
@@ -252,38 +367,10 @@ export default function OfferPricingPage() {
     }
     setAnalyzing(true);
     try {
-      const costBreakdown = {
-        items: items.map(item => ({
-          name: item.name || 'Unnamed Item',
-          type: item.type,
-          quantity: item.quantity,
-          costs: Object.fromEntries(
-            CATEGORIES.map(c => [c.value, item.costLines.filter(cl => cl.category === c.value).map(cl => ({
-              lineItem: cl.lineItem, quantity: cl.quantity, unitCost: cl.unitCost, totalCost: cl.totalCost,
-              hours: cl.hours, hourlyRate: cl.hourlyRate, days: cl.days, resources: cl.resources, surchargePct: cl.surchargePct,
-            }))])
-          ),
-        })),
-        totalCost: totals.total,
-        targetMargin,
-        currency,
-      };
-
-      const ratesContext = companyRates.length > 0 ? companyRates.map(r => ({
-        type: r.rate_type, name: r.rate_name, value: r.rate_value, unit: r.rate_unit,
-        department: r.department, projectType: r.project_type, geography: r.geography,
-      })) : null;
-
-      const data = await invokeEdgeWithRetry<any>('analyze-offer', {
-        costBreakdown,
-        offerContext: { title: offerTitle, customer: customerName, project: projectDesc, offerNumber },
-        companyRates: ratesContext,
-      }, { fallbackLabel: 'local offer analysis' });
-      if (data?.analysis) {
-        setAnalysis(data.analysis);
-        setActiveTab('analysis');
-        toast({ title: isEs ? 'Análisis completado' : 'Analysis complete' });
-      }
+      const result = await requestOfferAnalysis();
+      setAnalysis(result);
+      setActiveTab('analysis');
+      toast({ title: isEs ? 'Análisis completado' : 'Analysis complete' });
     } catch (e: any) {
       const details = classifyEdgeRuntimeError(e, 'local offer analysis');
       setAnalysis(buildFallbackOfferAnalysis({ totalCost: totals.total, targetMargin, currency }));
@@ -301,6 +388,17 @@ export default function OfferPricingPage() {
     }
     setSaving(true);
     try {
+      let analysisToPersist = analysis;
+      if (!analysisToPersist && totals.total > 0) {
+        try {
+          analysisToPersist = await requestOfferAnalysis();
+          setAnalysis(analysisToPersist);
+        } catch {
+          analysisToPersist = buildFallbackOfferAnalysis({ totalCost: totals.total, targetMargin, currency }) as AnalysisResult;
+          setAnalysis(analysisToPersist);
+        }
+      }
+
       const { data: offer, error: offerErr } = await supabase.from('offers').insert({
         company_id: selectedCompanyId, offer_number: offerNumber, title: offerTitle,
         customer_name: customerName, project_description: projectDesc, currency, status: 'draft',
@@ -326,8 +424,8 @@ export default function OfferPricingPage() {
         }
       }
 
-      if (analysis) {
-        for (const s of analysis.scenarios) {
+      if (analysisToPersist) {
+        for (const s of analysisToPersist.scenarios) {
           await supabase.from('offer_scenarios').insert({
             offer_id: offer.id, scenario_type: s.type, total_cost: s.totalCost,
             selling_price: s.sellingPrice, margin_amount: s.marginAmount,
@@ -335,12 +433,19 @@ export default function OfferPricingPage() {
           });
         }
         await supabase.from('offer_scores').insert({
-          offer_id: offer.id, margin_score: analysis.scoring.marginScore,
-          risk_score: analysis.scoring.riskScore, global_score: analysis.scoring.globalScore,
-          risk_factors: analysis.riskFactors, recommendations: analysis.recommendations,
-          ai_explanation: analysis.scoring.explanation,
+          offer_id: offer.id, margin_score: analysisToPersist.scoring.marginScore,
+          risk_score: analysisToPersist.scoring.riskScore, global_score: analysisToPersist.scoring.globalScore,
+          risk_factors: analysisToPersist.riskFactors, recommendations: analysisToPersist.recommendations,
+          ai_explanation: analysisToPersist.scoring.explanation,
         });
       }
+
+      await syncRequestFromOffer(offer);
+      await enqueuePipelineJob('offer_saved', offer.id, {
+        offer_number: offer.offer_number || '',
+        status: offer.status || 'draft',
+        has_analysis: Boolean(analysisToPersist),
+      });
 
       toast({ title: isEs ? 'Oferta guardada' : 'Offer saved' });
       loadOffers();
@@ -355,6 +460,7 @@ export default function OfferPricingPage() {
 
   const updateOfferStatus = async (offerId: string, status: string) => {
     await supabase.from('offers').update({ status }).eq('id', offerId);
+    await enqueuePipelineJob('offer_status_changed', offerId, { status });
     loadOffers();
   };
 
@@ -364,6 +470,7 @@ export default function OfferPricingPage() {
     try {
       // Mark offer as won
       await supabase.from('offers').update({ status: 'won' }).eq('id', offer.id);
+      await enqueuePipelineJob('offer_status_changed', offer.id, { status: 'won' });
 
       // Load offer items & costs for budget breakdown
       const { data: offerItems } = await supabase.from('offer_items').select('*').eq('offer_id', offer.id);
