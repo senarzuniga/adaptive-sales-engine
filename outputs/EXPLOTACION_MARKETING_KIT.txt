@@ -1,0 +1,25 @@
+# Cómo explotar los contenidos del marketing kit Ingecart
+
+1. **Acciones de marketing y ventas**
+   - Usa los textos de /content-kit/00-resumen-ejecutivo.md y 01-propuesta-valor-completa.md para campañas de email, LinkedIn y presentaciones comerciales.
+   - Los posts y noticias de /content-kit/08-noticias-y-redes.md pueden programarse en LinkedIn, blog y newsletter.
+   - Los casos de uso y soluciones de /content-kit/04-casos-de-uso.md y 02-soluciones-catalogo.md alimentan el panel de producto y argumentos de venta.
+
+2. **Activación de agentes**
+   - Los agentes de inteligencia pueden analizar los textos para generar insights automáticos y detectar oportunidades de acción.
+   - Los agentes de marketing pueden lanzar campañas automáticas usando los mensajes y plantillas del kit.
+   - Los agentes de producto pueden actualizar el catálogo y paneles con los nuevos contenidos.
+
+3. **Paneles y automatización**
+   - Panel de contenidos: muestra noticias, blogs y casos de éxito extraídos del kit.
+   - Panel de acciones: permite lanzar campañas y hacer seguimiento de leads y oportunidades generadas.
+   - Panel de inteligencia: visualiza insights generados automáticamente a partir de los contenidos.
+
+4. **Recomendaciones**
+   - Actualiza periódicamente los contenidos del kit para mantener la plataforma relevante y competitiva.
+   - Usa los insights generados para campañas de captación, fidelización y posicionamiento de producto.
+   - Sincroniza los paneles tras cada actualización para activar agentes y acciones en cascada.
+
+---
+
+Con este enfoque, Ingecart convierte su marketing kit en un motor de generación de negocio, inteligencia y posicionamiento.

@@ -1,0 +1,23 @@
+# Recomendaciones para potenciar la labor de Ingecart
+
+## 1. Activación de agentes clave
+- **enrich-company**: Enriquecimiento automático de perfil, contexto de mercado y competidores.
+- **enrich-data**: Completa datos de clientes, ofertas y oportunidades, detecta huecos y los rellena.
+- **process-document**: Analiza documentos estratégicos y genera acciones automáticas.
+- **generate-action-pool**: Crea un pool de acciones recomendadas para cada lead, cliente y proyecto.
+
+## 2. Paneles y acciones automáticas
+- Panel de oportunidades: Detecta oportunidades de cross-selling y upselling.
+- Panel de inteligencia: Muestra insights de mercado y competidores en tiempo real.
+- Panel de acciones: Permite lanzar campañas, seguimientos y alertas automáticas.
+- Panel de trazabilidad: Visualiza el flujo completo desde lead hasta proyecto cerrado.
+
+## 3. Sugerencias para resultados máximos
+- Automatiza el refresco de paneles tras cada inserción o enriquecimiento.
+- Usa los insights generados para campañas de fidelización y captación.
+- Activa alertas automáticas ante cambios relevantes en ofertas, clientes o mercado.
+- Revisa periódicamente los logs de agentes para detectar nuevas oportunidades.
+
+---
+
+Con este enfoque, Ingecart maximiza la utilidad de la plataforma y acelera la consecución de resultados comerciales y estratégicos.

@@ -1,0 +1,79 @@
+{
+  "actions": [
+    {
+      "title": "Campaña LinkedIn: Alianza KUKA + Ingecart",
+      "description": "Publicar post sobre la nueva alianza robótica en el sector corrugado. Objetivo: captar leads de plantas industriales.",
+      "category": "marketing",
+      "priority": "alta",
+      "status": "pendiente",
+      "due_date": "2026-06-10"
+    },
+    {
+      "title": "Seguimiento Lead: Proyecto IAR",
+      "description": "Contactar a leads interesados en IA industrial tras la campaña de noticias.",
+      "category": "comercial",
+      "priority": "media",
+      "status": "pendiente",
+      "due_date": "2026-06-15"
+    }
+  ],
+  "agent_insights": [
+    {
+      "agent": "intelligence",
+      "insights": [
+        "Ingecart es líder en automatización y auditoría industrial para el corrugado, con 28 años de experiencia y 1.268 proyectos ejecutados.",
+        "La alianza con KUKA permite ofrecer robótica de clase mundial integrada en procesos de corrugado, diferenciando a Ingecart en el mercado europeo."
+      ]
+    },
+    {
+      "agent": "market",
+      "insights": [
+        "El proyecto IAR introduce IA generativa y predictiva en planta, logrando reducciones de paradas y merma superiores al 10%."
+      ]
+    }
+  ],
+  "opportunities": [
+    {
+      "opp_number": "OPP-2026-001",
+      "customer_name": "Cliente Alfa",
+      "product_family": "Robótica KUKA",
+      "est_revenue": 120000,
+      "contract_prob": 80,
+      "status": "en negociación"
+    },
+    {
+      "opp_number": "OPP-2026-002",
+      "customer_name": "Cliente Beta",
+      "product_family": "IA Industrial",
+      "est_revenue": 95000,
+      "contract_prob": 60,
+      "status": "propuesta enviada"
+    }
+  ],
+  "leads": [
+    {
+      "lead_name": "Planta Corrugados Norte",
+      "contact": "jefe.planta@corrugadosnorte.com",
+      "interest": "Automatización robótica",
+      "source": "Campaña LinkedIn KUKA"
+    },
+    {
+      "lead_name": "Cartonajes Sur",
+      "contact": "direccion@cartonajessur.es",
+      "interest": "IA predictiva para mantenimiento",
+      "source": "Noticia Proyecto IAR"
+    }
+  ],
+  "contents": [
+    {
+      "type": "news",
+      "title": "KUKA + Ingecart: Nueva Alianza Robótica",
+      "body": "La colaboración entre Ingecart y KUKA abre una nueva dimensión de automatización robótica en plantas de corrugado europeas..."
+    },
+    {
+      "type": "blog",
+      "title": "Proyecto IAR: IA Industrial en Turno de Noche",
+      "body": "El proyecto IAR de Ingecart lleva la IA generativa y predictiva al corazón de la operación de planta..."
+    }
+  ]
+}

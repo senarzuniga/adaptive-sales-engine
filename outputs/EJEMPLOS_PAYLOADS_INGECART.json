@@ -1,0 +1,45 @@
+{
+  "ofertas": [
+    {
+      "offer_number": "OF-2026-001",
+      "customer_name": "Cliente Alfa",
+      "status": "Pendiente",
+      "title": "Suministro de equipos industriales",
+      "project_description": "Proyecto de automatización de planta",
+      "currency": "EUR"
+    },
+    {
+      "offer_number": "OF-2026-002",
+      "customer_name": "Cliente Beta",
+      "status": "Aceptada",
+      "title": "Consultoría energética",
+      "project_description": "Optimización de consumo eléctrico",
+      "currency": "EUR"
+    },
+    {
+      "offer_number": "OF-2026-003",
+      "customer_name": "Cliente Gamma",
+      "status": "Rechazada",
+      "title": "Mantenimiento predictivo",
+      "project_description": "Implantación de sensores IoT",
+      "currency": "EUR"
+    }
+  ],
+  "clientes": [
+    {
+      "customer_name": "Cliente Alfa",
+      "country": "España",
+      "industry": "Automoción"
+    },
+    {
+      "customer_name": "Cliente Beta",
+      "country": "Portugal",
+      "industry": "Energía"
+    },
+    {
+      "customer_name": "Cliente Gamma",
+      "country": "España",
+      "industry": "Tecnología"
+    }
+  ]
+}

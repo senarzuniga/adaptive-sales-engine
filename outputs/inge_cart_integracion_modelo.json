@@ -1,0 +1,34 @@
+{
+  "company": {
+    "company_name": "Ingecart",
+    "industry": "Ingeniería",
+    "created_at": "<auto>"
+  },
+  "ofertas": [
+    // Inserta aquí los registros extraídos del Excel, ejemplo:
+    // {
+    //   "offer_number": "...",
+    //   "customer_name": "...",
+    //   "status": "...",
+    //   ...
+    // }
+  ],
+  "clientes": [
+    // Inserta aquí los registros extraídos del Excel, ejemplo:
+    // {
+    //   "customer_name": "...",
+    //   "country": "...",
+    //   ...
+    // }
+  ],
+  "plan_estrategico": "<Texto clave extraído del Word>",
+  "competidores": "<Texto clave extraído del Word>"
+}
+
+// Instrucciones de integración:
+// 1. Inserta la empresa en la tabla companies (si no existe).
+// 2. Inserta las ofertas en la tabla offers, asociando company_id.
+// 3. Inserta los clientes en la tabla customers, asociando company_id.
+// 4. Inserta el plan estratégico y competidores en las tablas de inteligencia o insights, asociando company_id.
+// 5. Lanza los agentes de enriquecimiento y cascada (en backend o panel) para completar y activar los paneles.
+// 6. Valida la actualización de los paneles y la trazabilidad del flujo leads → oferta → proyecto.
