@@ -73,7 +73,7 @@ def _save_results(results: Dict[str, Any], output_dir: Path) -> Path:
             safe[k] = row
         else:
             safe[k] = v
-    out_path.write_text(json.dumps(safe, indent=2, ensure_ascii=False, default=str))
+    out_path.write_text(json.dumps(safe, indent=2, ensure_ascii=False, default=str), encoding="utf-8")
     return out_path
 
 
