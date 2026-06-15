@@ -26,6 +26,18 @@ class MaximumOrchestrator:
     """Orquesta la ejecución de TODOS los agentes para cada acción del usuario."""
 
     def __init__(self) -> None:
+        # Ensure ai-factory-v2 and ingestion package directories are importable
+        try:
+            import sys as _sys
+
+            ai_root = str(APP_ROOT / "ai-factory-v2")
+            ingestion_dir = str(APP_ROOT / "ai-factory-v2" / "ingestion")
+            for _p in (ai_root, ingestion_dir):
+                if _p not in _sys.path:
+                    _sys.path.insert(0, _p)
+        except Exception:
+            pass
+
         self.agents: List[Dict[str, Any]] = self._load_all_agents()
         logger.info(
             "MaximumOrchestrator: %d agentes cargados", len(self.agents)
@@ -74,9 +86,26 @@ class MaximumOrchestrator:
             # Add the agent's parent directory AND grandparent to sys.path
             # so that intra-package imports (e.g. `from ingestion import …`) work.
             import sys as _sys
-            extra_paths = [str(py_file.parent), str(py_file.parent.parent)]
-            _added = []
+            # Add the agent's directory, its parent and grandparent to sys.path
+            # so imports like `import ingestion` resolve when the package
+            # lives at ai-factory-v2/ingestion
+            extra_paths = [str(py_file.parent)]
+            # parent
+            if py_file.parent.parent is not None:
+                extra_paths.append(str(py_file.parent.parent))
+            # grandparent
+            if py_file.parent.parent.parent is not None:
+                extra_paths.append(str(py_file.parent.parent.parent))
+            # preserve order and remove duplicates
+            seen_paths: list[str] = []
+            filtered_paths: list[str] = []
             for p in extra_paths:
+                if p not in seen_paths:
+                    seen_paths.append(p)
+                    filtered_paths.append(p)
+
+            _added = []
+            for p in filtered_paths:
                 if p not in _sys.path:
                     _sys.path.insert(0, p)
                     _added.append(p)
@@ -85,6 +114,15 @@ class MaximumOrchestrator:
             if spec is None or spec.loader is None:
                 return None
             module = importlib.util.module_from_spec(spec)
+            # Register module in sys.modules so decorators (e.g., @dataclass)
+            # that inspect the module can find it during execution.
+            try:
+                import sys as _sys_inner
+
+                _sys_inner.modules[stem] = module
+            except Exception:
+                pass
+
             spec.loader.exec_module(module)  # type: ignore[union-attr]
 
             # Restore sys.path
