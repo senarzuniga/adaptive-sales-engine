@@ -73,3 +73,38 @@ class IntelligenceAgent:
     async def run_analysis_cycle(self) -> None:
         # Hook point for batch-level synthesis (daily/weekly digests).
         return
+
+
+def run(context: dict | None = None):
+    """Wrapper to run a single-record analysis synchronously.
+
+    Expects `context['payload']` to be a dict with the record to analyze.
+    """
+    try:
+        inst = IntelligenceAgent(None)
+        if not context or not isinstance(context, dict) or not context.get("payload"):
+            return {"status": "no_run", "output": "IntelligenceAgent requires 'payload' in context to analyze.", "insights": []}
+
+        payload = context.get("payload")
+        source_id = context.get("source_id", "unknown")
+        source_name = context.get("source_name", "unknown")
+        source_url = context.get("source_url", "")
+
+        import asyncio
+
+        loop = asyncio.new_event_loop()
+        try:
+            res = loop.run_until_complete(inst.analyze_record(source_id, source_name, source_url, payload))
+        finally:
+            loop.close()
+
+        serialized = []
+        for o in res:
+            try:
+                serialized.append(o.__dict__)
+            except Exception:
+                serialized.append(str(o))
+
+        return {"status": "success", "output": "analysis done", "insights": [f"{len(serialized)} items"], "analysis": serialized}
+    except Exception as e:
+        return {"status": "error", "error": str(e), "output": str(e), "insights": []}

@@ -50,3 +50,36 @@ class ScraperAgent:
             status_code=status,
             scraper_type=scraper_type,
         )
+
+
+def run(context: dict | None = None):
+    """Synchronous wrapper to run a scrape given `context['url']`.
+
+    Returns a serialized `ScrapingResult` when possible.
+    """
+    try:
+        inst = ScraperAgent()
+        if not context or not isinstance(context, dict) or not context.get("url"):
+            return {"status": "no_run", "output": "ScraperAgent needs 'url' in context.", "insights": []}
+
+        url = context.get("url")
+        source_id = context.get("source_id", "unknown")
+        source_name = context.get("source_name", "unknown")
+        scraper_type = context.get("scraper_type", "static")
+
+        import asyncio
+
+        loop = asyncio.new_event_loop()
+        try:
+            res = loop.run_until_complete(inst.scrape(url, source_id, source_name, scraper_type))
+        finally:
+            loop.close()
+
+        try:
+            data = res.__dict__
+        except Exception:
+            data = str(res)
+
+        return {"status": "success", "output": "scraped", "insights": [], "result": data}
+    except Exception as e:
+        return {"status": "error", "error": str(e), "output": str(e), "insights": []}

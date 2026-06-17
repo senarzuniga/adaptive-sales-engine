@@ -50,3 +50,33 @@ class NormalizerAgent:
             confidence_score=extracted.confidence_score,
             dedupe_key=dedupe_key,
         )
+
+
+def run(context: dict | None = None):
+    """Synchronous wrapper to normalize a single ExtractedData-like object.
+
+    Expects `context['extracted']` to be an object compatible with
+    `ExtractedData` or a dict-like with required fields.
+    """
+    try:
+        inst = NormalizerAgent()
+        if not context or not isinstance(context, dict) or not context.get("extracted"):
+            return {"status": "no_run", "output": "NormalizerAgent requires 'extracted' in context.", "insights": []}
+
+        extracted = context.get("extracted")
+        import asyncio
+
+        loop = asyncio.new_event_loop()
+        try:
+            res = loop.run_until_complete(inst.normalize(extracted))
+        finally:
+            loop.close()
+
+        try:
+            normalized = res.__dict__
+        except Exception:
+            normalized = str(res)
+
+        return {"status": "success", "output": "normalized", "insights": [], "normalized": normalized}
+    except Exception as e:
+        return {"status": "error", "error": str(e), "output": str(e), "insights": []}

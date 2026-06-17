@@ -132,15 +132,86 @@ class MaximumOrchestrator:
                 except ValueError:
                     pass
 
-            if hasattr(module, "run"):
+            # Detect a callable run function or adapt class-based agents
+            run_fn = None
+
+            # 1) Module-level `run` function
+            if hasattr(module, "run") and callable(getattr(module, "run")):
                 run_fn = module.run
-            elif hasattr(module, "Agent"):
-                try:
-                    run_fn = module.Agent().run
-                except Exception:
-                    run_fn = None
             else:
-                run_fn = None
+                # 2) Conventional `Agent` class
+                AgentCls = getattr(module, "Agent", None)
+                if inspect.isclass(AgentCls):
+                    try:
+                        inst = AgentCls()
+                        if hasattr(inst, "run") and callable(getattr(inst, "run")):
+                            run_fn = inst.run
+                    except Exception:
+                        run_fn = None
+
+            # 3) Search for any class named *Agent or *Orchestrator and adapt it
+            if run_fn is None:
+                for name, obj in vars(module).items():
+                    if not inspect.isclass(obj):
+                        continue
+                    if not (name.endswith("Agent") or name.endswith("Orchestrator")):
+                        continue
+
+                    inst = None
+                    try:
+                        sig = inspect.signature(obj)
+                        ctor_kwargs = {}
+                        for p in sig.parameters.values():
+                            if p.default is inspect._empty:
+                                ctor_kwargs[p.name] = None
+                            else:
+                                ctor_kwargs[p.name] = p.default
+                        inst = obj(**ctor_kwargs)
+                    except Exception:
+                        try:
+                            inst = obj()
+                        except Exception:
+                            inst = None
+
+                    if inst is None:
+                        continue
+
+                    # Prefer an existing `run` method
+                    if hasattr(inst, "run") and callable(getattr(inst, "run")):
+                        run_fn = inst.run
+                        break
+
+                    # Common alternative: planner-style async cycle
+                    if hasattr(inst, "run_planning_cycle") and callable(getattr(inst, "run_planning_cycle")):
+                        def _planning_wrapper(context=None, inst=inst):
+                            try:
+                                coro = inst.run_planning_cycle(events=context.get("events") if isinstance(context, dict) else None)
+                                import asyncio
+                                loop = asyncio.new_event_loop()
+                                try:
+                                    return loop.run_until_complete(coro)
+                                finally:
+                                    loop.close()
+                            except Exception as e:
+                                return {"status": "error", "error": str(e), "output": str(e), "insights": []}
+
+                        run_fn = _planning_wrapper
+                        break
+
+                    # Self-healing orchestrators expose status reports
+                    if hasattr(inst, "get_status_report") and callable(getattr(inst, "get_status_report")):
+                        def _status_wrapper(context=None, inst=inst):
+                            try:
+                                return inst.get_status_report()
+                            except Exception as e:
+                                return {"status": "error", "error": str(e), "output": str(e), "insights": []}
+
+                        run_fn = _status_wrapper
+                        break
+
+                    # Generic fallback: create a minimal stub mentioning the class
+                    run_fn = _make_stub_run(name)
+                    break
 
             if run_fn is None:
                 # Provide a stub so the agent still appears in results

@@ -42,3 +42,27 @@ class SalesAgent:
             except Exception:
                 continue
         return created
+
+
+def run(context: dict | None = None):
+    """Wrapper to persist intelligence outputs as actions (synchronous).
+
+    Expects `context['intelligence_outputs']` to be a list of IntelligenceOutput-like objects.
+    """
+    try:
+        inst = SalesAgent(None)
+        if not context or not isinstance(context, dict) or not context.get("intelligence_outputs"):
+            return {"status": "no_run", "output": "SalesAgent requires 'intelligence_outputs' in context.", "insights": []}
+
+        outputs = context.get("intelligence_outputs")
+        import asyncio
+
+        loop = asyncio.new_event_loop()
+        try:
+            created = loop.run_until_complete(inst.create_actions(outputs))
+        finally:
+            loop.close()
+
+        return {"status": "success", "output": f"created {created} actions", "created": created}
+    except Exception as e:
+        return {"status": "error", "error": str(e), "output": str(e), "insights": []}
