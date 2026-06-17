@@ -289,3 +289,26 @@ def get_orchestrator() -> SelfHealingOrchestrator:
     if _orchestrator is None:
         _orchestrator = SelfHealingOrchestrator()
     return _orchestrator
+
+
+def run(context: dict | None = None):
+    """Expose a simple run interface for the self-healing orchestrator.
+
+    If `context` contains `action: 'start'` or `'stop'` the orchestrator
+    will start/stop the background agents. Otherwise it returns a status
+    report.
+    """
+    try:
+        orch = get_orchestrator()
+        if isinstance(context, dict):
+            action = context.get("action")
+            if action == "start":
+                orch.start()
+                return {"status": "success", "output": "SelfHealingOrchestrator started", "insights": []}
+            if action == "stop":
+                orch.stop()
+                return {"status": "success", "output": "SelfHealingOrchestrator stopped", "insights": []}
+
+        return orch.get_status_report()
+    except Exception as e:
+        return {"status": "error", "error": str(e), "output": str(e), "insights": []}

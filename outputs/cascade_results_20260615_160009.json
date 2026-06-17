@@ -1,0 +1,458 @@
+{
+  "market_intelligence_agent": {
+    "status": "success",
+    "output": "Informe de mercado generado. 3 sectores analizados.",
+    "insights": [
+      "Automatización Industrial: Inversión en robótica colaborativa +18% YoY",
+      "Oportunidad prioritaria: Clientes con líneas de producción legacy — modernización",
+      "Riesgo principal: Ciclos de compra largos (18-36 meses)",
+      "Fuente: Base de conocimiento sectorial B2B industrial"
+    ],
+    "report": "## Informe de Inteligencia de Mercado — 2026-06-15\n\n### 📊 Tendencias clave B2B Industrial\n- **Automatización Industrial**: Inversión en robótica colaborativa +18% YoY | Oportunidad: Clientes con líneas de producción legacy — modernización | ⚠️ Competencia asiática con precios 30% menores\n- **Energía & Utilities**: Descarbonización impulsa proyectos de eficiencia energética | Oportunidad: Auditorías energéticas + soluciones de monitorización | ⚠️ Ciclos de compra largos (18-36 meses)\n- **Food & Beverage**: Demanda de trazabilidad y seguridad alimentaria | Oportunidad: Sistemas de visión artificial y control de calidad | ⚠️ Presión en márgenes por inflación de materias primas\n\n### 💡 Recomendaciones estratégicas\n1. Priorizar propuestas de valor en eficiencia y ROI medible\n2. Desarrollar casos de éxito cuantificados por sector\n3. Alinear roadmap de producto con tendencias de automatización\n4. Establecer alianzas con integradores locales en mercados clave",
+    "market_signals": [
+      {
+        "sector": "Automatización Industrial",
+        "trend": "Inversión en robótica colaborativa +18% YoY",
+        "opportunity": "Clientes con líneas de producción legacy — modernización",
+        "threat": "Competencia asiática con precios 30% menores"
+      },
+      {
+        "sector": "Energía & Utilities",
+        "trend": "Descarbonización impulsa proyectos de eficiencia energética",
+        "opportunity": "Auditorías energéticas + soluciones de monitorización",
+        "threat": "Ciclos de compra largos (18-36 meses)"
+      },
+      {
+        "sector": "Food & Beverage",
+        "trend": "Demanda de trazabilidad y seguridad alimentaria",
+        "opportunity": "Sistemas de visión artificial y control de calidad",
+        "threat": "Presión en márgenes por inflación de materias primas"
+      }
+    ],
+    "sectors_in_portfolio": [],
+    "generated_at": "2026-06-15T14:00:09.773747"
+  },
+  "after_sales_opportunity_agent": {
+    "status": "success",
+    "output": "2 oportunidades post-venta identificadas en 1 cuentas.",
+    "insights": [
+      "Base instalada identificada: 1 clientes",
+      "Oportunidades detectadas: 2 (0 alta, 2 media prioridad)",
+      "Mayor potencial: Contratos de mantenimiento preventivo",
+      "Quick win: Upgrades en cuentas sin contrato activo",
+      "Estrategia: Segmentar base instalada por antigüedad de compra"
+    ],
+    "opportunities": [
+      {
+        "customer": "Cliente con Base Instalada A",
+        "opportunity_type": "mantenimiento_preventivo",
+        "label": "🔧 Mantenimiento Preventivo",
+        "description": "Contrato anual de mantenimiento + diagnóstico remoto",
+        "estimated_value_range": "15-25% del valor de venta original",
+        "trigger": "Equipos con >1 año de antigüedad sin contrato activo",
+        "base_revenue": null,
+        "priority": "Media"
+      },
+      {
+        "customer": "Cliente con Base Instalada A",
+        "opportunity_type": "upgrade_software",
+        "label": "💻 Upgrade de Software / Firmware",
+        "description": "Actualización a última versión con nuevas funcionalidades",
+        "estimated_value_range": "10-15% del valor original",
+        "trigger": "Versión instalada con >18 meses sin actualizar",
+        "base_revenue": null,
+        "priority": "Media"
+      }
+    ],
+    "installed_base_count": 1,
+    "opportunity_types": [
+      "🔧 Mantenimiento Preventivo",
+      "💻 Upgrade de Software / Firmware",
+      "📈 Expansión de Capacidad",
+      "🎓 Formación y Certificación",
+      "🔗 Producto Complementario"
+    ],
+    "total_opportunities": 2
+  },
+  "dynamic_pricing": {
+    "status": "success",
+    "output": "Dynamic Pricing: Sin catálogo de productos. Cargue productos para análisis de precios.",
+    "insights": [
+      "🗓️ Factor estacionalidad (6/12): 0.95x",
+      "🎯 Segmento cliente: standard | Elasticidad: 25%",
+      "📊 Multiplicador valor cliente: 0.97x",
+      "📂 Cargue el catálogo de productos (plantilla templates/products_template.csv)"
+    ],
+    "portfolio_pricing": [],
+    "season_factor": 0.95,
+    "client_segment": "standard",
+    "client_value_multiplier": 0.97,
+    "strategies": [
+      "penetracion",
+      "skimming",
+      "competitiva",
+      "valor"
+    ]
+  },
+  "kam_mapper_agent": {
+    "status": "success",
+    "output": "KAM maps generados para 2 cuentas clave.",
+    "insights": [
+      "Cuentas clave mapeadas: 2",
+      "Roles de stakeholder identificados: 5 por cuenta",
+      "Prioridad: Economic Buyer + Champion/Coach son los perfiles clave",
+      "Acción inmediata: identificar y confirmar contactos por rol en cada cuenta",
+      "Total acciones recomendadas: 8"
+    ],
+    "account_maps": [
+      {
+        "account": "Cuenta Clave A",
+        "stakeholders": [
+          {
+            "account": "Cuenta Clave A",
+            "role": "Economic Buyer",
+            "influence": "Alta",
+            "focus": "ROI y presupuesto",
+            "contact_identified": false
+          },
+          {
+            "account": "Cuenta Clave A",
+            "role": "Technical Buyer",
+            "influence": "Alta",
+            "focus": "Especificaciones y compliance",
+            "contact_identified": false
+          },
+          {
+            "account": "Cuenta Clave A",
+            "role": "User Buyer",
+            "influence": "Media",
+            "focus": "Usabilidad y soporte",
+            "contact_identified": false
+          },
+          {
+            "account": "Cuenta Clave A",
+            "role": "Champion/Coach",
+            "influence": "Alta",
+            "focus": "Aliado interno — facilitador",
+            "contact_identified": false
+          },
+          {
+            "account": "Cuenta Clave A",
+            "role": "Blocker",
+            "influence": "Media",
+            "focus": "Resistencia al cambio — gestionar",
+            "contact_identified": false
+          }
+        ],
+        "recommended_actions": [
+          "Organizar workshop técnico con equipo de ingeniería",
+          "Presentar business case con ROI cuantificado",
+          "Proponer prueba piloto de bajo riesgo",
+          "Compartir caso de éxito de cliente similar"
+        ],
+        "relationship_score": "Medio",
+        "next_milestone": "Reunión de descubrimiento de necesidades"
+      },
+      {
+        "account": "Cuenta Estratégica B",
+        "stakeholders": [
+          {
+            "account": "Cuenta Estratégica B",
+            "role": "Economic Buyer",
+            "influence": "Alta",
+            "focus": "ROI y presupuesto",
+            "contact_identified": false
+          },
+          {
+            "account": "Cuenta Estratégica B",
+            "role": "Technical Buyer",
+            "influence": "Alta",
+            "focus": "Especificaciones y compliance",
+            "contact_identified": false
+          },
+          {
+            "account": "Cuenta Estratégica B",
+            "role": "User Buyer",
+            "influence": "Media",
+            "focus": "Usabilidad y soporte",
+            "contact_identified": false
+          },
+          {
+            "account": "Cuenta Estratégica B",
+            "role": "Champion/Coach",
+            "influence": "Alta",
+            "focus": "Aliado interno — facilitador",
+            "contact_identified": false
+          },
+          {
+            "account": "Cuenta Estratégica B",
+            "role": "Blocker",
+            "influence": "Media",
+            "focus": "Resistencia al cambio — gestionar",
+            "contact_identified": false
+          }
+        ],
+        "recommended_actions": [
+          "Organizar workshop técnico con equipo de ingeniería",
+          "Presentar business case con ROI cuantificado",
+          "Proponer prueba piloto de bajo riesgo",
+          "Compartir caso de éxito de cliente similar"
+        ],
+        "relationship_score": "Medio",
+        "next_milestone": "Reunión de descubrimiento de necesidades"
+      }
+    ],
+    "total_accounts": 2,
+    "stakeholder_roles": [
+      "Economic Buyer",
+      "Technical Buyer",
+      "User Buyer",
+      "Champion/Coach",
+      "Blocker"
+    ]
+  },
+  "intelligence_agent": {
+    "status": "no_run",
+    "output": "IntelligenceAgent requires 'payload' in context to analyze.",
+    "insights": []
+  },
+  "excel_processor": {
+    "status": "success",
+    "output": "Excel Processor — No hay datos cargados. Suba un archivo Excel para procesarlo.",
+    "insights": [
+      "📂 Use el uploader principal para cargar cualquier archivo Excel o CSV"
+    ],
+    "cleaned_data": null
+  },
+  "data_cleaner_agent": {
+    "status": "success",
+    "output": "No hay datos cargados. Sube un Excel/CSV para limpiar.",
+    "insights": [
+      "Detecta y renombra columnas usando sinónimos del sector comercial",
+      "Rellena nulos: texto → 'N/A', numéricos → 0",
+      "Unifica formatos de fecha a YYYY-MM-DD"
+    ],
+    "cleaned_data": null,
+    "changes_report": []
+  },
+  "extractor_agent": {
+    "status": "no_run",
+    "output": "ExtractorAgent requires 'html' in context to run.",
+    "insights": []
+  },
+  "weekly_task_planner": {
+    "status": "success",
+    "output": "Plan semanal con 6 tareas para 3 cuentas.",
+    "insights": [
+      "Plan semanal generado: 6 tareas",
+      "🔴 Alta prioridad: 3 tareas",
+      "🟡 Media prioridad: 2 tareas",
+      "🟢 Baja prioridad: 1 tareas",
+      "Semana del 2026-06-15 — 2026-06-21"
+    ],
+    "tasks": [
+      {
+        "week_day": "Wednesday",
+        "due_date": "2026-06-17",
+        "type": "follow_up",
+        "priority": "Alta",
+        "task": "Seguimiento oferta OFR-2024 con Cliente Principal — confirmar decisión de compra",
+        "customer": "Cliente Principal"
+      },
+      {
+        "week_day": "Thursday",
+        "due_date": "2026-06-18",
+        "type": "cross_sell",
+        "priority": "Alta",
+        "task": "Propuesta cross-selling Solución Estándar para Cliente Estratégico — alineado a su segmento",
+        "customer": "Cliente Estratégico"
+      },
+      {
+        "week_day": "Friday",
+        "due_date": "2026-06-19",
+        "type": "upsell",
+        "priority": "Alta",
+        "task": "Identificar oportunidad upsell en cuenta Cliente Estratégico — análisis de base instalada",
+        "customer": "Cliente Estratégico"
+      },
+      {
+        "week_day": "Saturday",
+        "due_date": "2026-06-20",
+        "type": "loyalty",
+        "priority": "Media",
+        "task": "Llamada de valor con Cuenta Clave A — revisar satisfacción y próximas necesidades",
+        "customer": "Cuenta Clave A"
+      },
+      {
+        "week_day": "Monday",
+        "due_date": "2026-06-22",
+        "type": "friendship",
+        "priority": "Baja",
+        "task": "Enviar artículo de interés / novedad de sector a Cliente Principal",
+        "customer": "Cliente Principal"
+      },
+      {
+        "week_day": "Monday",
+        "due_date": "2026-06-29",
+        "type": "review",
+        "priority": "Media",
+        "task": "Revisión QBR con Cuenta Clave A — presentar métricas de valor entregado",
+        "customer": "Cuenta Clave A"
+      }
+    ],
+    "week_start": "2026-06-15",
+    "summary": {
+      "total": 6,
+      "alta": 3,
+      "media": 2,
+      "baja": 1
+    }
+  },
+  "product_lifecycle_analyzer": {
+    "status": "success",
+    "output": "Sin catálogo de productos. Sube template_productos.xlsx para clasificar.",
+    "insights": [
+      "Clasifica productos: Innovación (>30% margen), Commodity (15-30%), Declive (<15%)",
+      "Usa keywords: 'legacy', 'new', 'standard' para clasificación automática",
+      "Genera matriz de posición y acciones estratégicas por producto"
+    ],
+    "matrix": [],
+    "counts": {
+      "innovacion": 0,
+      "commodity": 0,
+      "declive": 0
+    }
+  },
+  "portfolio_risk_analyzer": {
+    "status": "success",
+    "output": "Sin datos. Sube histórico de ventas para análisis Pareto.",
+    "insights": [
+      "Identifica los clientes que generan el 80% del revenue (Pareto)",
+      "Clasifica riesgo: Alto (>40% en 1 cliente), Medio, Bajo",
+      "Lista clientes críticos con % de concentración"
+    ],
+    "risk_level": "unknown",
+    "critical_clients": [],
+    "pareto_threshold": 0.8
+  },
+  "action_engine": {
+    "status": "success",
+    "output": "Action Engine generó 0 acciones en cascada desde 1 evento(s).",
+    "insights": [
+      "⚡ 0 acciones generadas para 1 disparador(es): cascade_all",
+      "📋 Distribución por rol: "
+    ],
+    "actions": [],
+    "triggers": [
+      "cascade_all"
+    ],
+    "summary": {
+      "total": 0,
+      "by_priority": {
+        "CRITICAL": 0,
+        "HIGH": 0,
+        "MEDIUM": 0,
+        "LOW": 0,
+        "PLANNED": 0
+      },
+      "by_role": {}
+    }
+  },
+  "forecaster_agent": {
+    "status": "success",
+    "output": "Sin datos históricos. Sube datos para generar forecast.",
+    "insights": [
+      "Proyección trimestral basada en tendencia histórica",
+      "Forecast semestral con intervalo de confianza",
+      "Predicción anual con nivel de confianza por R²"
+    ],
+    "forecast": {
+      "Q": null,
+      "H": null,
+      "Y": null
+    },
+    "confidence": "N/A"
+  },
+  "strategy_comparator": {
+    "status": "success",
+    "output": "Sube datos históricos y plantilla estratégica para comparar.",
+    "insights": [
+      "Compara ventas reales vs objetivos del plan estratégico",
+      "Gap analysis por familia de producto y área geográfica",
+      "Semáforo de desviación: verde <10%, amarillo <20%, rojo >20%"
+    ],
+    "gaps": [],
+    "overall_gap_pct": null,
+    "status_label": "sin_datos"
+  },
+  "request_management_agent": {
+    "status": "success",
+    "output": "Request Management Agent: No hay texto de solicitud en el contexto. Proporcione un texto de solicitud.",
+    "insights": [
+      "📝 Añada el texto de la solicitud en 'Notas de empresa' o use el campo dedicado",
+      "📄 Compatible con texto libre, emails y documentos"
+    ],
+    "processed_request": null
+  },
+  "pattern_recognizer": {
+    "status": "success",
+    "output": "Sin datos históricos. Sube datos de ventas para detectar patrones.",
+    "insights": [
+      "Detecta estacionalidad mensual/trimestral en ventas",
+      "Identifica tendencias crecientes/decrecientes por segmento",
+      "Señala anomalías (valores atípicos ±2σ)"
+    ],
+    "patterns": [],
+    "anomalies": [],
+    "trend": "unknown"
+  },
+  "cross_selling_agent": {
+    "status": "success",
+    "output": "Cross-Selling Agent: No hay datos de ventas. Cargue el histórico para identificar oportunidades.",
+    "insights": [
+      "📂 Cargue histórico de ventas con columnas cliente y producto"
+    ],
+    "opportunities": []
+  },
+  "pillar0_360_analysis": {
+    "status": "success",
+    "output": "Pilar 0 — No se encontraron datos de ventas. Cargue el histórico de ventas para análisis 360°.",
+    "insights": [
+      "📂 Cargue datos usando la plantilla templates/sales_results_template.csv",
+      "📊 Campos mínimos: PO date, Customer name, Selling price, Margin, KAM"
+    ],
+    "period_analyzed": "sin datos"
+  },
+  "normalizer_agent": {
+    "status": "no_run",
+    "output": "NormalizerAgent requires 'extracted' in context.",
+    "insights": []
+  },
+  "sales_agent": {
+    "status": "no_run",
+    "output": "SalesAgent requires 'intelligence_outputs' in context.",
+    "insights": []
+  },
+  "scraper_agent": {
+    "status": "no_run",
+    "output": "ScraperAgent needs 'url' in context.",
+    "insights": []
+  },
+  "self_improving_orchestrator": {
+    "active_agents": 0,
+    "total_agents": 0,
+    "is_running": false,
+    "started_at": null,
+    "agents": []
+  },
+  "planner_agent": {
+    "status": "no_run",
+    "output": "PlannerAgent requires sources config at config\\sources.yaml.",
+    "insights": []
+  },
+  "_agent_count": 23,
+  "_successful_agents": 23,
+  "_failed_agents": 0,
+  "_failed_agent_names": [],
+  "_summary": "## 📊 RESULTADO DE ORQUESTACIÓN MÁXIMA\n✅ **23 de 23 agentes ejecutados correctamente**\n🎯 **Acción solicitada:** `cascade_all`\n\n### 🔍 Insights principales por agente\n- **market_intelligence_agent**: Automatización Industrial: Inversión en robótica colaborativa +18% YoY\n- **after_sales_opportunity_agent**: Base instalada identificada: 1 clientes\n- **dynamic_pricing**: 🗓️ Factor estacionalidad (6/12): 0.95x\n- **kam_mapper_agent**: Cuentas clave mapeadas: 2\n- **intelligence_agent**: IntelligenceAgent requires 'payload' in context to analyze.\n- **excel_processor**: 📂 Use el uploader principal para cargar cualquier archivo Excel o CSV\n- **data_cleaner_agent**: Detecta y renombra columnas usando sinónimos del sector comercial\n- **extractor_agent**: ExtractorAgent requires 'html' in context to run.\n- **weekly_task_planner**: Plan semanal generado: 6 tareas\n- **product_lifecycle_analyzer**: Clasifica productos: Innovación (>30% margen), Commodity (15-30%), Declive (<15%)\n- **portfolio_risk_analyzer**: Identifica los clientes que generan el 80% del revenue (Pareto)\n- **action_engine**: ⚡ 0 acciones generadas para 1 disparador(es): cascade_all\n- **forecaster_agent**: Proyección trimestral basada en tendencia histórica\n- **strategy_comparator**: Compara ventas reales vs objetivos del plan estratégico\n- **request_management_agent**: 📝 Añada el texto de la solicitud en 'Notas de empresa' o use el campo dedicado\n- **pattern_recognizer**: Detecta estacionalidad mensual/trimestral en ventas\n- **cross_selling_agent**: 📂 Cargue histórico de ventas con columnas cliente y producto\n- **pillar0_360_analysis**: 📂 Cargue datos usando la plantilla templates/sales_results_template.csv\n- **normalizer_agent**: NormalizerAgent requires 'extracted' in context.\n- **sales_agent**: SalesAgent requires 'intelligence_outputs' in context.\n- **scraper_agent**: ScraperAgent needs 'url' in context.\n- **self_improving_orchestrator**: Análisis completado\n- **planner_agent**: PlannerAgent requires sources config at config\\sources.yaml.\n\n📁 **Resultados detallados disponibles en las pestañas de agentes.**"
+}
