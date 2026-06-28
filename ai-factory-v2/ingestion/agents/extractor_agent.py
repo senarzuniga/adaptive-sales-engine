@@ -41,3 +41,38 @@ class ExtractorAgent:
             confidence_score=confidence,
             content_hash=content_hash,
         )
+
+
+def run(context: dict | None = None):
+    """Simple wrapper so the orchestrator can call this extractor.
+
+    Expects `context` to contain a key `html` (string). Returns a
+    minimal serializable result or a helpful 'no_run' message.
+    """
+    try:
+        inst = ExtractorAgent(None)
+        if not context or not isinstance(context, dict) or not context.get("html"):
+            return {"status": "no_run", "output": "ExtractorAgent requires 'html' in context to run.", "insights": []}
+
+        html = context.get("html")
+        source_id = context.get("source_id", "unknown")
+        source_name = context.get("source_name", "unknown")
+        url = context.get("url", "")
+        data_type = context.get("data_type", "product")
+
+        import asyncio
+
+        loop = asyncio.new_event_loop()
+        try:
+            res = loop.run_until_complete(inst.extract(html, source_id, source_name, url, data_type))
+        finally:
+            loop.close()
+
+        try:
+            serialized = res.__dict__
+        except Exception:
+            serialized = str(res)
+
+        return {"status": "success", "output": "extracted", "insights": ["extracted content"], "extracted": serialized}
+    except Exception as e:
+        return {"status": "error", "error": str(e), "output": str(e), "insights": []}

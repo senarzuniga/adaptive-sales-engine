@@ -1,0 +1,3 @@
+https://industry-connect-pro.lovable.app/auth
+usuario: info@iar-soft.com
+contraseña: admin@2026

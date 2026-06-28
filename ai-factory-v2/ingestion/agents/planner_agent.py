@@ -120,3 +120,39 @@ class PlannerAgent:
                 return None
             _, _, _, job = heapq.heappop(self._priority_heap)
             return job
+
+
+def run(context: dict | None = None):
+    """Minimal runner for PlannerAgent used by the orchestrator.
+
+    Returns counts of due and triggered sources (if any). This is a
+    non-blocking synchronous wrapper so the orchestrator can call it.
+    """
+    import pathlib
+
+    # If the sources config is missing, return a helpful no_run message instead of erroring.
+    cfg_path = pathlib.Path("config") / "sources.yaml"
+    if not cfg_path.exists():
+        return {"status": "no_run", "output": f"PlannerAgent requires sources config at {cfg_path}.", "insights": []}
+
+    try:
+        inst = PlannerAgent(None)
+    except Exception as e:
+        return {"status": "error", "error": str(e), "output": str(e), "insights": []}
+
+    try:
+        due = inst.get_due_sources()
+    except Exception:
+        due = []
+    try:
+        triggered = inst.get_triggered_sources(context.get("events") if isinstance(context, dict) else [])
+    except Exception:
+        triggered = []
+
+    return {
+        "status": "success",
+        "output": f"Planner: due={len(due)} triggered={len(triggered)}",
+        "insights": [f"Due sources: {len(due)}", f"Triggered sources: {len(triggered)}"],
+        "due_count": len(due),
+        "triggered_count": len(triggered),
+    }
