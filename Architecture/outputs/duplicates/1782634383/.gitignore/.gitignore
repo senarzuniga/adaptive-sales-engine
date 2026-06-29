@@ -1,0 +1,60 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Environment variables – never commit secrets
+.env
+.env.local
+.env.*.local
+
+# Bun lock files (project uses npm / package-lock.json)
+bun.lockb
+bun.lock
+
+# Docker
+.dockerignore
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Local exports and temp workspaces
+Adaptive Sales Engine - Lovable.html
+Adaptive Sales Engine - Lovable_files/
+adaptive-sales-engine/
+adaptive-sales-engine/dist/
+dist/
+adaptive-sales-engine/public/
+public/
+supabase/.temp/
+middleware.ts
+page.tsx
+src/utils/supabase/
+
+# Runtime artefacts – not tracked by git
+cache/
+uploads/
+data/web_scraped/
+
