@@ -1,0 +1,32 @@
+{
+  "generated_at": 1782713000,
+  "agents": [
+    {
+      "id": "after_sales_opportunity_agent",
+      "path": "agents/after_sales_opportunity_agent.py",
+      "status": "candidate",
+      "owner": "",
+      "description": "",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "id": "action_engine",
+      "path": "agents/action_engine.py",
+      "status": "candidate",
+      "owner": "",
+      "description": "",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "id": "cross_selling_agent",
+      "path": "agents/cross_selling_agent.py",
+      "status": "candidate",
+      "owner": "",
+      "description": "",
+      "inputs": [],
+      "outputs": []
+    }
+  ]
+}
