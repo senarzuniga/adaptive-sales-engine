@@ -1,0 +1,4 @@
+- Confirm CI passes after artifact removal.
+- Verify no functional files were removed accidentally.
+- Confirm `.gitignore` contains all necessary patterns for local builds.
+- Confirm that build outputs are produced by the project's build pipeline.
