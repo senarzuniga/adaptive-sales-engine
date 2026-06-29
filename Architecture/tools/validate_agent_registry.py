@@ -24,17 +24,30 @@ def discover_agents_dir():
     base = Path("agents")
     if not base.exists():
         return []
-    return sorted([str(p) for p in base.glob("*.py") if p.is_file()])
+    # Normalize to POSIX-style relative paths (agents/filename.py)
+    return sorted([p.as_posix() for p in base.glob("*.py") if p.is_file()])
+
+
+def normalize_registry_paths(reg):
+    agents = reg.get("agents", [])
+    normalized = []
+    for a in agents:
+        p = a.get("path", "")
+        if not p:
+            continue
+        # Normalize any platform-specific separators and remove redundant ./
+        normalized.append(Path(p).as_posix())
+    return normalized
 
 
 def main():
     reg = load_registry()
-    reg_agents = {a.get("path"): a for a in reg.get("agents", [])}
+    reg_paths = set(normalize_registry_paths(reg))
 
-    disk = discover_agents_dir()
+    disk = set(discover_agents_dir())
 
-    missing_in_registry = [d for d in disk if d not in reg_agents]
-    missing_on_disk = [p for p in reg_agents.keys() if p not in disk]
+    missing_in_registry = sorted(disk - reg_paths)
+    missing_on_disk = sorted(reg_paths - disk)
 
     if missing_in_registry:
         print("ERROR: Agents found on disk but missing from registry:")
