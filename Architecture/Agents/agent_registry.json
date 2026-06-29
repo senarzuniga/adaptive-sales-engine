@@ -1,0 +1,167 @@
+{
+  "generated_at": 1782713000,
+  "agents": [
+    {
+      "id": "__init__",
+      "path": "agents/__init__.py",
+      "status": "meta",
+      "owner": "",
+      "description": "package marker",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "id": "action_engine",
+      "path": "agents/action_engine.py",
+      "status": "candidate",
+      "owner": "",
+      "description": "",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "id": "after_sales_opportunity_agent",
+      "path": "agents/after_sales_opportunity_agent.py",
+      "status": "candidate",
+      "owner": "",
+      "description": "",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "id": "cross_selling_agent",
+      "path": "agents/cross_selling_agent.py",
+      "status": "candidate",
+      "owner": "",
+      "description": "",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "id": "data_cleaner_agent",
+      "path": "agents/data_cleaner_agent.py",
+      "status": "candidate",
+      "owner": "",
+      "description": "",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "id": "dynamic_pricing",
+      "path": "agents/dynamic_pricing.py",
+      "status": "candidate",
+      "owner": "",
+      "description": "",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "id": "excel_processor",
+      "path": "agents/excel_processor.py",
+      "status": "candidate",
+      "owner": "",
+      "description": "",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "id": "forecaster_agent",
+      "path": "agents/forecaster_agent.py",
+      "status": "candidate",
+      "owner": "",
+      "description": "",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "id": "kam_mapper_agent",
+      "path": "agents/kam_mapper_agent.py",
+      "status": "candidate",
+      "owner": "",
+      "description": "",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "id": "market_intelligence_agent",
+      "path": "agents/market_intelligence_agent.py",
+      "status": "candidate",
+      "owner": "",
+      "description": "",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "id": "pattern_recognizer",
+      "path": "agents/pattern_recognizer.py",
+      "status": "candidate",
+      "owner": "",
+      "description": "",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "id": "pillar0_360_analysis",
+      "path": "agents/pillar0_360_analysis.py",
+      "status": "candidate",
+      "owner": "",
+      "description": "",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "id": "portfolio_risk_analyzer",
+      "path": "agents/portfolio_risk_analyzer.py",
+      "status": "candidate",
+      "owner": "",
+      "description": "",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "id": "product_lifecycle_analyzer",
+      "path": "agents/product_lifecycle_analyzer.py",
+      "status": "candidate",
+      "owner": "",
+      "description": "",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "id": "request_management_agent",
+      "path": "agents/request_management_agent.py",
+      "status": "candidate",
+      "owner": "",
+      "description": "",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "id": "self_improving_orchestrator",
+      "path": "agents/self_improving_orchestrator.py",
+      "status": "candidate",
+      "owner": "",
+      "description": "",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "id": "strategy_comparator",
+      "path": "agents/strategy_comparator.py",
+      "status": "candidate",
+      "owner": "",
+      "description": "",
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "id": "weekly_task_planner",
+      "path": "agents/weekly_task_planner.py",
+      "status": "candidate",
+      "owner": "",
+      "description": "",
+      "inputs": [],
+      "outputs": []
+    }
+  ]
+}
