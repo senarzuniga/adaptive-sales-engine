@@ -1,0 +1,10 @@
+policies:
+  - id: canonical-layout
+    title: Canonical repository layout
+    description: "All repositories must follow the enterprise canonical layout defined in ADRs."
+    level: mandatory
+
+  - id: agent-lifecycle
+    title: Agent lifecycle policy
+    description: "Agents must be registered and promoted through the agent_registry.yaml lifecycle stages."
+    level: mandatory

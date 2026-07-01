@@ -1,0 +1,37 @@
+repository_dependencies:
+  adaptive-sales-engine:
+    depends_on: [ai-factory-v2, supabase, agents]
+    evidence:
+      - file: Architecture/Agents/agent_registry.json
+      - file: orchestrator.py
+
+  ai-factory-v2:
+    depends_on: [supabase]
+    evidence:
+      - file: ai-factory-v2/ingestion/agents/planner_agent.py
+
+  ing_support_agent:
+    depends_on: [adaptive-sales-engine]
+    evidence:
+      - file: ing_support_agent/orchestrator_service.py
+
+module_graph: {}
+
+agent_graph:
+  orchestrator:
+    runs: all agents
+    evidence:
+      - file: orchestrator.py
+
+service_graph:
+  ing_support_agent:
+    depends_on: [orchestrator]
+
+data_source_map:
+  ingecart_website:
+    platform: ai-factory-v2
+    evidence:
+      - file: ai-factory-v2/config/sources.yaml
+
+notes:
+  - This is an initial dependency map inferred from static code references and registry artifacts. It is intentionally conservative.

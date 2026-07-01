@@ -1,0 +1,132 @@
+organizations:
+- id: cta
+  name: CTA Enterprise
+  status: active
+- id: ingecart
+  name: Ingecart
+  status: active
+  registered_at: '2026-06-30T15:26:45.206222+00:00'
+  registered_by: ASE_ARCHITECT_ASSISTANT
+  source_of_truth: USER_INPUT_FINANCIALS
+- id: iar
+  name: IAR
+  status: active
+- id: agilpack
+  name: AGILPACK
+  status: active
+- id: sifise
+  name: SIFISE
+  status: active
+- id: ingtrialdata
+  name: ING Trial Data Demo
+  status: active
+  type: DEMO
+  owner: CTA
+  environment: Sandbox
+  purpose: Enterprise Platform Validation
+  registered_at: '2026-06-30T06:42:35.892719'
+repositories:
+- id: adaptive-sales-engine
+  path: .
+  languages:
+  - python
+  - typescript
+  - javascript
+  manifests:
+  - package.json
+  - requirements.txt
+  notes: Primary repository. Contains subprojects and architecture outputs.
+- id: ai-factory-v2
+  path: ai-factory-v2
+  languages:
+  - python
+  manifests:
+  - ai-factory-v2/requirements.txt
+  notes: Ingestion and knowledge pipeline scaffold.
+- id: supabase
+  path: supabase
+  languages:
+  - typescript
+  - sql
+  manifests:
+  - supabase/config.toml
+- id: ing_support_agent
+  path: ing_support_agent
+  languages:
+  - python
+  manifests:
+  - ing_support_agent/orchestrator_service.py
+- id: agents
+  path: agents
+  languages:
+  - python
+  manifests:
+  - agents/__init__.py
+- id: ''
+  path: .
+  manifests: []
+platforms:
+- name: Streamlit
+  evidence:
+  - streamlit_app.py
+  - requirements.txt
+- name: React / Vite
+  evidence:
+  - package.json
+  - vite.config.ts
+- name: Supabase
+  evidence:
+  - supabase/config.toml
+- name: FastAPI / Uvicorn
+  evidence:
+  - ing_support_agent/orchestrator_service.py
+- name: Docker
+  evidence:
+  - Dockerfile
+  - docker-compose.yml
+business_modules:
+- name: Dashboard
+  maturity: 0
+- name: Actions
+  maturity: 0
+- name: Offers
+  maturity: 0
+- name: Request Pool
+  maturity: 0
+- name: Cost Modules
+  maturity: 0
+- name: Business Intelligence
+  maturity: 70
+- name: Budget Command Center
+  maturity: 90
+- name: Key Account Management
+  maturity: 90
+- name: Pipeline Manager
+  maturity: 0
+- name: Market Intelligence
+  maturity: 0
+shared_components:
+- components_json: components.json
+- templates: templates/
+- architecture: Architecture/
+ai_agents:
+- source: Architecture/Agents/agent_registry.json
+  note: See agent list in Architecture/Agents/agent_registry.json
+workflows:
+- .github/workflows/ci.yml
+- .github/workflows/ai-agent.yml
+data_sources:
+- source: ai-factory-v2/config/sources.yaml
+  note: Configured scrapers and source registry
+external_integrations:
+- name: Supabase
+  evidence:
+  - supabase/config.toml
+  project_id: vrrwvqbnuvkzrlpaejbf
+- name: External web scrapers
+  evidence:
+  - ai-factory-v2/config/sources.yaml
+notes:
+- This file is an initial enterprise registry generated from repository artifacts
+  and Architecture audit outputs.
+default_organization: cta

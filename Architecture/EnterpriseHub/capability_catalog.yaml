@@ -1,0 +1,57 @@
+capabilities:
+  business:
+    sales:
+      - name: Key Account Management
+        status: implemented
+        maturity: 90
+      - name: Pipeline Manager
+        status: missing
+        maturity: 0
+      - name: Offers
+        status: missing
+        maturity: 0
+
+    finance:
+      - name: Budget Command Center
+        status: implemented
+        maturity: 90
+      - name: Cost Modules
+        status: partially
+        maturity: 10
+
+    intelligence:
+      - name: Business Intelligence
+        status: implemented
+        maturity: 70
+      - name: Market Intelligence
+        status: missing
+        maturity: 0
+
+  platform:
+    - name: Agent Orchestration
+      status: implemented
+      maturity: 60
+    - name: Knowledge Ingestion
+      status: scaffold
+      maturity: 10
+    - name: Knowledge Index / Semantic Search
+      status: missing
+      maturity: 0
+
+  shared:
+    - name: Supabase Integration
+      status: implemented
+      maturity: 50
+    - name: CI (Lint/Build)
+      status: implemented
+      maturity: 60
+
+duplicates:
+  - name: package.json and package-lock.json
+    affected_repos: [adaptive-sales-engine, adaptive-sales-engine/adaptive-sales-engine]
+
+planned_capabilities:
+  - name: Agent Arbitration Service
+    planned: true
+  - name: Vector Store Adapter
+    planned: true

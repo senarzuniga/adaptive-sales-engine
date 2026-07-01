@@ -1,0 +1,8 @@
+{
+  "financial_data_not_altered": true,
+  "backup_used_only_for_enrichment": true,
+  "company_entity_unique": true,
+  "cgo_panel_active": true,
+  "cfo_module_reflects_user_values": true,
+  "company_accessible_in_ui": true
+}

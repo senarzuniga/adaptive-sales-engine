@@ -1,0 +1,9 @@
+{
+  "id": "ingecart",
+  "risk_profile": {
+    "contract_risk": "HIGH",
+    "cashflow": "HIGH",
+    "client_concentration": "UNKNOWN"
+  },
+  "notes": "Preliminary risk summary derived from locked financial fields and enrichment."
+}

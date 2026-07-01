@@ -1,0 +1,190 @@
+SITUACIÓN FINANCIERA ACTUAL (INGECART)
+1. RESUMEN EJECUTIVO (DIAGNÓSTICO REAL)
+
+Ingecart se encuentra en una situación clásica de empresa:
+
+“rentable pero muy tensionada en caja en fase de escalado”
+
+Los datos históricos (2022) muestran una empresa con:
+
+Rentabilidad alta (ROE ~98%)
+Baja deuda estructural
+Buen margen operativo (~38%)
+Alta rotación de activos
+
+Pero con una estructura financiera muy frágil para crecimiento acelerado:
+
+Alto peso de pasivo corriente (77,8%)
+Dependencia de financiación a corto plazo
+Fondo de maniobra positivo pero reducido (~105K€)
+2. BALANCE (SITUACIÓN ESTRUCTURAL)
+Activo
+Muy intensivo en circulante (≈93% activo corriente)
+Muy pocos activos fijos
+
+👉 Implicación:
+
+Empresa ligera en activos, flexible, pero sin colchón estructural.
+
+Pasivo y patrimonio
+Patrimonio neto: ~22%
+Deuda a corto plazo: ~78%
+Deuda a largo plazo: baja
+
+👉 Implicación crítica:
+
+La empresa depende del ciclo de cobros para sobrevivir.
+
+3. TESORERÍA (SITUACIÓN ACTUAL 2026 – DESCRIPCIÓN OPERATIVA)
+
+Según la información que aportas:
+
+Situación actual
+Crecimiento fuerte de ventas 2026
+Anticipo medio cliente: 30% a la firma
+Cobro restante: 60–90 días
+Ejecución en curso sin ingresos adicionales de servicio relevantes
+Estado de caja
+Caja en tensión estructural
+Consumo de caja creciente por:
+ejecución simultánea de proyectos
+desfase entre compras y cobros
+crecimiento del volumen
+Hecho clave (CRÍTICO)
+
+“El crecimiento ya no está siendo financiado por el beneficio, sino por la caja.”
+
+Esto cambia completamente el modelo.
+
+Situación inmediata
+Necesidad de financiación puente en agosto
+Probable uso de crédito circulante / póliza
+Posible presión adicional en Q3-Q4 si se activan proyectos grandes
+4. ESTRUCTURA FINANCIERA EXTERNA
+
+(No aportado explícito, pero inferido del modelo actual y necesario para el playbook)
+
+Instrumentos utilizados o necesarios
+Líneas de crédito circulante
+Pólizas de crédito bancarias
+Posible factoring / confirming
+Avales de ejecución (probablemente necesarios en grandes clientes USA)
+Financiación de circulante creciente
+5. ESTRUCTURA ORGANIZATIVA (COSTE FIJO)
+Socios
+María Jesús: >100.000 €
+Diego García: >100.000 €
+Dirección operativa
+Jefe mantenimiento: 80.000 €
+Jefe ingeniería: ~60.000 €
+Jefe programación: ~60.000 €
+Equipo técnico
+2 técnicos taller (medio)
+2 técnicos mantenimiento (medio)
+1 administrativa
+1 becaria ingeniería
+Servicios externos
+Consultor externo: 6.000 €/mes (~72.000 €/año)
+Consultor financiero: ~2.000 €/mes (~24.000 €/año aprox.)
+Estructura indirecta adicional
+3 vehículos (2 alta gama + 1 trabajo)
+Lectura financiera clave
+
+Estructura fija relativamente alta para empresa que históricamente operaba a 2 M€
+
+Pero aún razonable si escala a 10–15 M€
+
+6. RIESGO FINANCIERO REAL (LO IMPORTANTE)
+
+Aquí está el núcleo del análisis.
+
+1. Riesgo de cash flow (ALTO)
+Cobros tardíos (60–90 días)
+Anticipos bajos (30%)
+Compras y ejecución adelantadas
+
+👉 Resultado:
+
+Gap estructural de financiación en cada proyecto
+
+2. Riesgo de concentración de proyectos (ALTO)
+
+Nueva cartera:
+
+Sterner Global: 3,1 M€
+Pacific Southwest: 7 M€
+President Container: 4–5 M€
+
+👉 Consecuencia:
+
+Muy pocos proyectos = mucho impacto de cualquier retraso
+
+3. Riesgo geográfico (MEDIO-ALTO)
+Expansión fuerte a EE.UU.
+Mayor exigencia contractual
+Mayor presión de postventa
+Mayor complejidad logística y financiera
+4. Riesgo operativo (MEDIO-ALTO)
+Crecimiento más rápido que la estructura
+Necesidad de gestión simultánea de grandes proyectos
+Necesidad de soporte en cliente 24/7 (USA)
+7. CONCLUSIÓN FINANCIERA (MUY IMPORTANTE)
+
+Ingecart NO tiene un problema de negocio.
+
+Tiene un problema de:
+
+“transformación de estructura financiera no acompañada por la evolución del modelo de ingresos”
+
+Situación real:
+Empresa rentable ✔
+Empresa con demanda creciente ✔
+Empresa con fuerte tracción internacional ✔
+Empresa con tensión de caja estructural ⚠
+Empresa sin estructura de financiación industrial avanzada ⚠
+8. PUNTO CRÍTICO DE LA TRANSICIÓN
+
+El punto de inflexión es este:
+
+Ingecart ha pasado de vender proyectos financiables internamente
+a ejecutar proyectos que requieren ingeniería financiera externa.
+
+9. IMPLICACIONES PARA EL PROJECT FINANCE PLAYBOOK
+
+Este bloque nos define claramente qué debe incluir el sistema:
+
+Obligatorio:
+Curva de caja por proyecto
+Necesidad máxima de financiación por proyecto
+Control de anticipos mínimos (no negociable)
+Evaluación de cliente (riesgo de pago)
+Exposición acumulada por cliente
+Simulación de retrasos de 30/60/90 días
+Modelo de cash conversion cycle
+10. ALERTA ESTRATÉGICA
+
+Hay una frase que resume todo el bloque:
+
+“El crecimiento de Ingecart no está limitado por el mercado ni por la capacidad técnica, sino por la capacidad de financiar el crecimiento sin destruir la caja.”
+
+SIGUIENTE PASO (RECOMENDADO)
+
+Para completar el sistema, el siguiente bloque crítico sería:
+
+BLOQUE 2 – “MODELO DE CAJA POR PROYECTO”
+
+Ahí es donde podemos construir:
+
+cuánto dinero consume cada proyecto
+cuándo lo consume
+cuándo lo recupera
+y cuál es el riesgo real de liquidez
+
+Si quieres, en el siguiente paso puedo convertir esto directamente en:
+
+Dashboard financiero tipo “CFO control panel”
+Modelo de scoring de proyectos (Go / No-Go automático)
+Simulación de tensión de caja a 6–12 meses
+Estructura de financiación recomendada por tipo de proyecto
+
+Solo dime por dónde quieres seguir.

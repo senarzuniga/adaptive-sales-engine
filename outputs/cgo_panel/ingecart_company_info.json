@@ -1,0 +1,20 @@
+{
+  "id": "ingecart",
+  "commercial_name": "Ingecart",
+  "legal_name": "Ingecart 2018 SL",
+  "financials": {
+    "revenue_estimate": "2000000",
+    "pipeline_estimate": "15000000-17000000",
+    "cash_position": "UNKNOWN",
+    "cash_burn_risk": "HIGH",
+    "financing_need": "SHORT_TERM_CRITICAL",
+    "payment_terms_avg": "60-90",
+    "customer_advances": "30%",
+    "retention": "POSSIBLE",
+    "contract_risk": "HIGH"
+  },
+  "enrichment": {},
+  "backup_file": "C:/Users/Inaki Senar/Documents/GitHub/adaptive-sales-engine/INGECART_COMPANY_INFO_BACKUP.txt",
+  "backup_hash": "3980b22660631fc9e0013f11116a687b",
+  "notes": "Backup used only for non-financial enrichment. Financials locked to USER input."
+}

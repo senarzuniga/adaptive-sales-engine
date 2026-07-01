@@ -1,0 +1,9 @@
+{
+  "org_id": "ingecart",
+  "action": "SAFE_COMPANY_INSTANTIATION",
+  "mode": "GOVERNED_FULL_LOAD",
+  "assistant": "ASE_ARCHITECT_ASSISTANT",
+  "source": "C:/Users/Inaki Senar/Documents/GitHub/adaptive-sales-engine/INGECART_COMPANY_INFO_BACKUP.txt",
+  "timestamp": "2026-06-30T15:26:45.206222+00:00",
+  "status": "CREATED"
+}

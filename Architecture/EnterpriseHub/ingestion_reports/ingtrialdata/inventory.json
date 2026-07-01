@@ -1,0 +1,863 @@
+{
+  "generated_at": "2026-06-30T06:42:35.695833",
+  "files": [
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\GitHub\\adaptive-sales-engine\\INGECART_COMPANY_INFO_BACKUP.txt",
+      "exists": true,
+      "size": 5354,
+      "sha256": "ea19b147dfbc8ed5894c6895262cd75f117b4827672656615085293df01ab248",
+      "snippet": "# INGECART_COMPANY_INFO_BACKUP.txt\n\n## Fuente: seeds/ingecart_pack.json y public/company-packs/Ingecart/company_profile.json\n\n{\n  \"company_name\": \"Ingecart\",\n  \"industry\": \"Industrial Automation & Engineering\",\n  \"sub_sector\": \"Corrugated Packaging / End-of-Line Integration\",\n  \"headquarters\": \"Subirats, Barcelona, Espa\u00f1a\",\n  \"operating_regions\": \"Spain (Catalunya), Europe, USA\",\n  \"employee_count\": \"9\",\n  \"annual_revenue\": \"\u20ac2.5M average (target \u20ac3.5M by 2028)\",\n  \"main_products\": \"AMR Systems, Easy Pack, Palletizer, Ingetrans, Retal (Scrap Management), Service & Maintenance, Custom Engineering Projects\",\n  \"main_customer_segments\": \"Corrugated packaging plants, Box converters/printers, Large packaging groups (Saica, DS Smith, Smurfit WestRock, Hinojosa, Klingele), USA packaging integrators\",\n  \"main_competitors\": \"CORE: Ducker, Harmax, Funce, Serra, Cermex, TOSA Group, Cartec, Boix Europe, Columbia Okura | AUTOMATION: ProMach, Coesia, ABB, KUKA, ATS | OEM INDIRECT: Bobst, Krones, Syn\u2026",
+      "keywords": [
+        "usa",
+        "europe",
+        "packaging",
+        "spain",
+        "service",
+        "custom",
+        "projects",
+        "json"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\GitHub\\adaptive-sales-engine\\Architecture\\outputs\\archives\\1782712887\\public\\company-packs\\IngecartDemo\\ingecart_demo_pack.json",
+      "exists": true,
+      "size": 16648,
+      "sha256": "974a3664942923a85c55739cc27b4d51d4ba4d9156ec3018434736e7844b0506",
+      "snippet": "{\n  \"companyProfile\": {\n    \"company_name\": \"Ingecart\",\n    \"industry\": \"Industrial Automation & Engineering\",\n    \"sub_sector\": \"Corrugated Packaging / End-of-Line Integration\",\n    \"headquarters\": \"Subirats, Barcelona, Espa\u00f1a\",\n    \"operating_regions\": \"Spain (Catalunya), Europe, USA\",\n    \"employee_count\": \"9\",\n    \"annual_revenue\": \"\u20ac2.5M average (target \u20ac3.5M by 2028)\",\n    \"main_products\": \"AMR Systems, Easy Pack, Palletizer, Ingetrans, Retal (Scrap Management), Service & Maintenance, Custom Engineering Projects\",\n    \"main_customer_segments\": \"Corrugated packaging plants, Box converters/printers, Large packaging groups (Saica, DS Smith, Smurfit WestRock, Hinojosa, Klingele), USA packaging integrators\",\n    \"main_competitors\": \"CORE: Ducker, Harmax, Funce, Serra, Cermex, TOSA Group, Cartec, Boix Europe, Columbia Okura | AUTOMATION: ProMach, Coesia, ABB, KUKA, ATS | OEM INDIRECT: Bobst, Krones, Syntegon, IMA | LOW COST: Asian integrators\",\n    \"sales_team_size\": \"3 (Diego Garcia +\u2026",
+      "keywords": [
+        "usa",
+        "europe",
+        "packaging",
+        "spain",
+        "service",
+        "custom",
+        "projects",
+        "automation"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\ADECUACION RD1215 DEPURADORA MUELLE DE CARGA CELULAS MONTAJE OFF-2026-S102.docx",
+      "exists": true,
+      "size": 847277,
+      "sha256": "c950046eac784abbdd079e1cbe17f33872c323a75bdc9d053af63b93d3efa35e",
+      "snippet": "   \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\t\n\nADECUACION RD1215 DEPURADORA MUELLE DE CARGA CELULAS MONTAJE\n\n\nEstimaci\u00f3n trabajos a realizar seg\u00fan informe preliminar adecuaci\u00f3n equipos:\n\nProtecciones, vallados parciales\nAdaptaci\u00f3n micros, cierres a norma\nMateriales\nMano de \n\nResumen econ\u00f3mico \n\nTOTAL \u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026.. 14.500\u20ac\n\nCONDICIONES DE PAGO:\n\n40 % mediante transferencia bancaria a la recepci\u00f3n de la Orden de Compra (OC).\n60 % mediante transferencia bancaria a 60 d\u00edas desde la fecha de emisi\u00f3n de la Orden de Compra (OC).\n\n\n\n\n\n\n\n\n\n\n\n\nSPECIAL CONDITIONS:\nThe equipment is owned by INGECART until the order is paid in full.\nAny variation to the agreed design will affect our supply and quoted price.\nTechnical and preliminary engineering studies for project preparation and drawings were not charged separately and are included in the price of the equipment.\nTHE OFFER EXCLUDES:\nAny work or material not specifically described in this offer is not included.\nThe customer will provide a mechanic\u2026",
+      "keywords": [
+        "not",
+        "offer",
+        "will",
+        "included",
+        "ingecart",
+        "customer",
+        "mediante",
+        "transferencia"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\ADECUACION RD1215 DEPURADORA MUELLE DE CARGA CELULAS MONTAJE OFF-2026-S102.pdf",
+      "exists": true,
+      "size": 1084235,
+      "sha256": "e751e80b1502f661a808f5ea178ea5f155222905cf310de932b6c91670c2897f",
+      "snippet": "                                    \nADECUACION RD1215 DEPURADORA MUELLE DE CARGA CELULAS MONTAJE DS Smith OFF-2026-S102 \n     Ingecart           https://www.ingecart.eu/ \n2 \nDS Smith OFF-2026-S102 \n \n1. ADECUACION RD1215 DEPURADORA MUELLE DE CARGA \nCELULAS MONTAJE \n \n \nEstimaci\u00f3n trabajos a realizar seg\u00fan informe preliminar adecuaci\u00f3n equipos: \n \n- Protecciones, vallados parciales \n- Adaptaci\u00f3n micros, cierres a norma \n- Materiales \n- Mano de  \n \n2. Resumen econ\u00f3mico  \n \nTOTAL \u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026.. 14.500\u20ac  \nCONDICIONES DE PAGO: \n \n40 % mediante transferencia bancaria a la recepci\u00f3n de la Orden de Compra (OC). \n60 % mediante transferencia bancaria a 60 d\u00edas desde la fecha de emisi\u00f3n de la Orden de \nCompra (OC).           \n3 \nDS Smith OFF-2026-S102 \n  SPECIAL CONDITIONS: The equipment is owned by INGECART until the order is paid in full. Any variation to the agreed design will affect our supply and quoted price. Technical and preliminary engineering studies for project preparation \u2026",
+      "keywords": [
+        "not",
+        "will",
+        "offer",
+        "ingecart",
+        "included",
+        "smith",
+        "off",
+        "2026"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\ADECUACION RD1215 LINEA GOPFERT OFF-2026-S101.docx",
+      "exists": true,
+      "size": 846960,
+      "sha256": "b7d24c93dc57a9e1245b51b429d3f176f84a35ce43dab5beccd25f731a39c61f",
+      "snippet": "   \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\t\nADECUACION RD1215 LINEA GOPFERT:\n\nEstimaci\u00f3n trabajos a realizar seg\u00fan informe preliminar adecuaci\u00f3n equipos:\n\nVallados parciales\nAdaptaci\u00f3n micros, cierres a norma\nPLC\nMateriales\nMano de obra\n\nResumen econ\u00f3mico \n\nTOTAL \u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026.. 32.000\u20ac\n\nCONDICIONES DE PAGO:\n\n40 % mediante transferencia bancaria a la recepci\u00f3n de la Orden de Compra (OC).\n60 % mediante transferencia bancaria a 60 d\u00edas desde la fecha de emisi\u00f3n de la Orden de Compra (OC).\n\n\n\n\n\n\n\n\n\n\n\n\nSPECIAL CONDITIONS:\nThe equipment is owned by INGECART until the order is paid in full.\nAny variation to the agreed design will affect our supply and quoted price.\nTechnical and preliminary engineering studies for project preparation and drawings were not charged separately and are included in the price of the equipment.\nTHE OFFER EXCLUDES:\nAny work or material not specifically described in this offer is not included.\nThe customer will provide a mechanical support workshop to carry out sma\u2026",
+      "keywords": [
+        "not",
+        "offer",
+        "will",
+        "included",
+        "ingecart",
+        "customer",
+        "mediante",
+        "transferencia"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\ADECUACION RD1215 LINEA GOPFERT OFF-2026-S101.pdf",
+      "exists": true,
+      "size": 1085365,
+      "sha256": "98e9f7f261ad7b04e0355bf4c4338111a280643726a4c46e93ca427984351c6b",
+      "snippet": "                                    \nADECUACION RD1215 LINEA GOPFERT  DS Smith OFF-2026-S101 \n     Ingecart           https://www.ingecart.eu/ \n2 \nADECUACION RD1215 LINEA GOPFERT DS Smith OFF-2026-S101 \n1. ADECUACION RD1215 LINEA GOPFERT: \n \nEstimaci\u00f3n trabajos a realizar seg\u00fan informe preliminar adecuaci\u00f3n equipos: \n \n- Vallados parciales \n- Adaptaci\u00f3n micros, cierres a norma \n- PLC \n- Materiales \n- Mano de obra \n \n2. Resumen econ\u00f3mico  \n \nTOTAL \u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026.. 32.000\u20ac  \nCONDICIONES DE PAGO: \n \n40 % mediante transferencia bancaria a la recepci\u00f3n de la Orden de Compra (OC). \n60 % mediante transferencia bancaria a 60 d\u00edas desde la fecha de emisi\u00f3n de la Orden de \nCompra (OC).             \n3 \nADECUACION RD1215 LINEA GOPFERT DS Smith OFF-2026-S101 \nSPECIAL CONDITIONS: The equipment is owned by INGECART until the order is paid in full. Any variation to the agreed design will affect our supply and quoted price. Technical and preliminary engineering studies for project preparation \u2026",
+      "keywords": [
+        "not",
+        "will",
+        "offer",
+        "ingecart",
+        "adecuacion",
+        "rd1215",
+        "linea",
+        "gopfert"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\BHS Corrugator Line OFF-2026-85 V1.docx",
+      "exists": true,
+      "size": 2042552,
+      "sha256": "3502ad521223dc23496c8e2f159da05d7096c3d7e44bff42253e609e95586334",
+      "snippet": "   \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\t\nCustomer: PACIFIC SOUTHWEST CONTAINER                                            Date: Jun 6,2026\n             \n\n\n\nDear Sirs at Pacific Southwest Packaging:\n\nINGECART is honored to present this proposal for the relocation of the BHS corrugator from its current facilities in Turkey to your plant in Visalia, California.\n\nOur proposal is structured as a turnkey project, with INGECART acting as the main contractor, guaranteeing the proper execution of all phases of the project.\n\nBest regards, Diego.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nEquipment/Services description:\nBHS Corrugator Line\n\nGeneral information\n\nModel:\u00a0BHS JETS 300\nWorking Width:\u00a02500 mm\nMaximum Operating Speed:\u00a0300 m/min\nCurrent Location:\u00a0Turkey\nTarget Location:\u00a0Visalia, California, USA \u2013 Pacific Southwest Packaging\n\nGeneral Overview\n\nThe subject equipment is a complete BHS corrugator line, originally manufactured in 1997 and subsequently upgraded through multiple retrofit campaigns (2007\u20132017). The line is \u2026",
+      "keywords": [
+        "bhs",
+        "corrugator",
+        "line",
+        "pacific",
+        "southwest",
+        "ingecart",
+        "visalia",
+        "california"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\BHS Corrugator Line OFF-2026-85 V1.pdf",
+      "exists": true,
+      "size": 1997458,
+      "sha256": "7e47bc7c78f62cc28e6237f1a64bc8c08f990fc7dff71849394fe33b7af69667",
+      "snippet": " \n \n                                  \nPACIFIC SOUTHWEST CONTAINER  BHS Corrugator Line OFF-2026-85 V1 \n     Ingecart           https://www.ingecart.eu/ \n \n2 \nBHS Corrugator Line OFF-2026-85 V1 \n  Customer: PACIFIC SOUTHWEST CONTAINER                                            Date: Jun 6,2026                  Dear Sirs at Pacific Southwest Packaging:  INGECART is honored to present this proposal for the relocation of the BHS corrugator from its current facilities in Turkey to your plant in Visalia, California.  Our proposal is structured as a turnkey project, with INGECART acting as the main contractor, guaranteeing the proper execution of all phases of the project.  Best regards, Diego.                   \n \n3 \nBHS Corrugator Line OFF-2026-85 V1 \n 1. Equipment/Services description: 1.1 BHS Corrugator Line  1.1.1 General information  Model: BHS JETS 300 Working Width: 2500 mm Maximum Operating Speed: 300 m/min Current Location: Turkey Target Location: Visalia, California, USA \u2013 Pacific\u2026",
+      "keywords": [
+        "bhs",
+        "corrugator",
+        "line",
+        "2026",
+        "ingecart",
+        "pacific",
+        "southwest",
+        "off"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\IIM Conveyor Line Commercial Offer  OFF-2026-107.docx",
+      "exists": true,
+      "size": 1056637,
+      "sha256": "b8feabadbe8193c0e7bd0ea835ae30c18780ac66d754d53fd27658522f1df864",
+      "snippet": "   \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nCustomer: EMPACAR\t\t\t\t                                                 Date: JUNE, 2026.\n           \nIIM Rollstand Commercial Offer       #OFF-2026-100\nIIM Conveyor Line Offer       #OFF-2026-107\n\nIIM Conveyor Line: Product description/Specification.\n\n\n\nPreliminary drawing:\n\n\nProduct technical details\nPlastic bundle conveyor\n*Basic parameters:\n-Motor power: 0.7KW\n-Mesh belt speed: 20~35 m/min (variable frequency speed)\n-Load bearing capacity: 400 KG/M \u00b2\n-Installation height 850mm\n-Height adjustable range: \u00b1 50mm\n-Mesh belt sprocket: 19 teeth (split type sprocket easy to maintain)\n-Mesh belt cushion plate: multi-layer board thickness 20mm\n\n\n\n\n90\u00b0C Bend Roller Conveyor\n\nMotor Power\uff1a1.5KW\nBelt Speed\uff1a20~35 m/min -\tBear the load\uff1a300 KG/M\u00b2\nHeight\uff1a850mm\uff08Adjustable range: 50mm\uff09\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nTotal price Ex works (Ingecart)\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026 79.000,00\u20ac\n\n\nOffer Validity: 30 days.\nPayment terms: \n- 30.000\u20ac  with the purchase order. Net  0 days bank transfer. \u2026",
+      "keywords": [
+        "conveyor",
+        "belt",
+        "payment",
+        "customer",
+        "2026",
+        "iim",
+        "offer",
+        "mesh"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\IIM Conveyor Line Commercial Offer  OFF-2026-107.pdf",
+      "exists": true,
+      "size": 1314207,
+      "sha256": "915e7fc7568843276ba36ea2802bbd2e0483686420a452c785d44cb7204a7f73",
+      "snippet": " \nIngecart | TAILORED AUTOMATION & INTRALOGISTICS                                           www.ingecart.eu  \n                                  \nIIM Conveyor Line Commercial Offer       #OFF-2026-107 \n\n \nIngecart | TAILORED AUTOMATION & INTRALOGISTICS                                           www.ingecart.eu  \n  Customer: EMPACAR                                                     Date: JUNE, 2026.             IIM Rollstand Commercial Offer       #OFF-2026-100 IIM Conveyor Line Offer       #OFF-2026-107  IIM Conveyor Line: Product description/Specification.  No. Product name Specification Quantity (mm) 1 90\u00b0Bend Roller conveyor W1400*R800* H870 2 2 Plastic bundle conveyor W1600*L300 0 *H870 1 3 Plastic bundle conveyor W1600*L200 0 *H870 2 4 Ball table W1600*L160 0*H870 1 5 Electrical Control PLC 1   Preliminary drawing: \n\n \nIngecart | TAILORED AUTOMATION & INTRALOGISTICS                                           www.ingecart.eu  \n  Product technical details Plastic bundle conveyor *Bas\u2026",
+      "keywords": [
+        "ingecart",
+        "conveyor",
+        "tailored",
+        "automation",
+        "intralogistics",
+        "www",
+        "iim",
+        "offer"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\IIM Rollstand Commercial Offer       #OFF-2026-100.docx",
+      "exists": true,
+      "size": 1319319,
+      "sha256": "913414835462525f616ff5f2b8321e13d56fd1090d53deef8c5119fa58ce5f1d",
+      "snippet": "   \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nCustomer: MTorres                                                 Date: April 29, 2026.\n           \nIIM Rollstand Commercial Offer       #OFF-2026-100\nIIM Rollstand Commercial Offer       #OFF-2026-100\n\nIIM Rollstand: Product description/Specification.\n\n\n\n\nA reliable rollstand which give you excellent returns of investment \nSpecification \uff1a \n\t2500mm width, shaftless hydraulic \tRoll stand   \t \nRE Chucks; 3inch & 6inch core chuck \nRE Brakes\nAtos hydraulic station \nM-18 detectors with cable length request to the control cabinet \nRoll stand with center roller at 1350mm to floor,160mm diameter of roller \nMaximum distance between arms with loaded roll (1500mm diameter) will be 2400mm  \nMaximum distance between chucks(X) and roll max reel width 1650mm with double chuck 6+3 inch will be less 150mm (75mm or gap between 6inch chuck and roll when have min reel width 915mm) \n Electrical drawing supplied by MTorres\n  \n\n\nThe offer includes:\nIIM Rollstand as defined\u2026",
+      "keywords": [
+        "rollstand",
+        "offer",
+        "roll",
+        "price",
+        "iim",
+        "ddp",
+        "delivery",
+        "2026"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\IIM Rollstand Commercial Offer OFF-2026-100.docx",
+      "exists": true,
+      "size": 1320712,
+      "sha256": "927485a8d3dfe014509620074ab855ab158204db3d04ca9137bdd2731660d99f",
+      "snippet": "   \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nCustomer: MTorres                                                 Date: April 29, 2026.\n           \nIIM Rollstand Commercial Offer       #OFF-2026-100\nIIM Rollstand Commercial Offer       #OFF-2026-100\n\nIIM Rollstand: Product description/Specification.\n\n\n\n\nA reliable rollstand which give you excellent returns of investment \nSpecification \uff1a \n\t2500mm width, shaftless hydraulic \tRoll stand  \n\nReel Max width at the center line. 1.830 mm\nReel Min width at the center line: 915mm\nReel Max diameter :1525mm\nReel Min diameter: 400mm\nRell  weight :2000Kg\nMachine speed: 305 m/min\nWeb max tension 700N total band width\nPLC: Allen Bradlley without program\nHydraulic pack by Atos M-18\n\n4 M-18 detectors with 6 meters of cable to connect to the splicer to be placed at each chuck to calculate the roll diameter: 1 pulse per turn on 2 of these sensors and 4 pulses per turn on the other2 sensors. Roll stand with center roll at 1525 mm to floor 160mm diameter of roller\nChuc\u2026",
+      "keywords": [
+        "roll",
+        "width",
+        "reel",
+        "diameter",
+        "rollstand",
+        "iim",
+        "max",
+        "center"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\IIM Rollstand Commercial Offer OFF-2026-100.dotm",
+      "exists": true,
+      "size": 1318965,
+      "sha256": "a4fb7e73dd76fd9c6d3602317325967676885f21ac022f26741c83cb635fd6a4",
+      "snippet": "",
+      "keywords": []
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\IIM Rollstand Commercial Offer OFF-2026-100.pdf",
+      "exists": true,
+      "size": 1430734,
+      "sha256": "f97ca94d1e2829789a20fb522f792272f58a4d3a5b21029322c32afccf17e7d7",
+      "snippet": "   \nIngecart | TAILORED AUTOMATION & INTRALOGISTICS                                           www.ingecart.eu C/ Aldaravi 9-10 , 08739  Subirats \u2013 Barcelona Sales@ingecart.es Tel: (+34) 609483835\n\nCustomer: MTorres                                                 Date: May 05, 2026.\n           \nIIM Rollstand Commercial Offer       #OFF-2026-100 \nIIM Rollstand Commercial Offer       #OFF-2026-100\nIIM Rollstand: Product description/Speci\ufb01cation.\nA reliable rollstand which give you excellent returns of investment \nSpeci\ufb01cation \uff1a 2500mm width, shaftless hydraulic Roll stand  \nReel Max width at the center line. 1.830 mm\nReel Min width at the center line: 915mm\nReel Max diameter :1525mm\nReel Min diameter: 400mm\nRell  weight :2000Kg\nMachine speed: 305 m/min\nWeb max tension 700N total band width\nPLC: Allen Bradlley without program\nHydraulic pack by Atos M-18\nIngecart | TAILORED AUTOMATION & INTRALOGISTICS                                           www.ingecart.eu \nIIM Rollstand Commercial Offer \u2026",
+      "keywords": [
+        "roll",
+        "width",
+        "reel",
+        "diameter",
+        "ingecart",
+        "rollstand",
+        "2026",
+        "iim"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\Ingecart Quotation IC-DR-12.25 v3.pdf",
+      "exists": true,
+      "size": 1806118,
+      "sha256": "9a232f0627607d5f8f135f26c49185d410929539e44c9a0c4dc3b1ac947ba523",
+      "snippet": " \nPage 1 of 17 \n                           \nQUOTATION AUTOMATIC ROBOT PALLETIZER SYSTEM (4-SIDE SQUARING)  Quotation No. IC-DR-12.25 v3   \n     Ingecart           https://www.ingecart.eu/ \n \nPage 2 of 17 \nCustomer:     Date: Jun16,2026                     TAX472749089     \nQUOTATION \nAUTOMATIC ROBOT PALLETIZER \nSYSTEM (4-SIDE SQUARING) \n \n \nQuotation No. IC-DR-12.25 v3 \nDate Jun 16th, 2026 \nFinal Destination  Cascades (Piscataway, NJ) \nDelivery Terms (Incoterm) DDU  Barcelona (BCN), Spain to (NJ ) USA \nCurrency EUR (EURO) \n \n \n \n \n \n \n \n \n \n\n \nPage 3 of 17 \n \n \n1. Scope of Supply \nThis quotation covers the supply of an automatic robot palletizer system including conveyors, bundle \nstacker, two (2) robotic palletizing units, pad paper handling, 4-sides squaring device, safety components \nand the control integration system, as detailed in the equipment list below. \n \nIt\ne\nm \nDescription Specification \n(mm) \nSpecification (in) Qt\ny \nUnit \nA\n1 \nAuto Roller Conveyor L5400*W1000*\nH900 212.60\u2026",
+      "keywords": [
+        "set",
+        "conveyor",
+        "auto",
+        "h900",
+        "roller",
+        "w1000",
+        "quotation",
+        "page"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\LINEA GOPFERT MEJORA TRANSFER MESA DE RODILLOS TINTERO A APILADOR off 2026 s104.pdf",
+      "exists": true,
+      "size": 1082267,
+      "sha256": "569dc6dc36a73e004477abf2561f638f3ecb77937adec47f784a5eaae34b39f8",
+      "snippet": "                                    \nLINEA GOPFERT MEJORA TRANSFER MESA DE RODILLOS TINTERO A APILADOR DS Smith OFF-2026-S104 \n     Ingecart           https://www.ingecart.eu/ \n2 \nDS Smith OFF-2026-S104 \n1. LINEA GOPFERT MEJORA TRANSFER MESA DE RODILLOS \nTINTERO A APILADOR \n \n \nEstimaci\u00f3n trabajos a realizar seg\u00fan informe preliminar adecuaci\u00f3n equipos: \n \n- REPOSICION DE RODILLOS \n- MEJORA DE MOTORIZAZION DE TRACCION Y SU SISTEMA DE \nTRANSMISION \n \n2. Resumen econ\u00f3mico  \n \nTOTAL \u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026.. 8.500\u20ac  \nCONDICIONES DE PAGO:  \n \n40 % mediante transferencia bancaria a la recepci\u00f3n de la Orden de Compra (OC). \n60 % mediante transferencia bancaria a 60 d\u00edas desde la fecha de emisi\u00f3n de la Orden de \nCompra (OC).             \n3 \nDS Smith OFF-2026-S104 \nSPECIAL CONDITIONS: The equipment is owned by INGECART until the order is paid in full. Any variation to the agreed design will affect our supply and quoted price. Technical and preliminary engineering studies for project preparation\u2026",
+      "keywords": [
+        "not",
+        "will",
+        "offer",
+        "ingecart",
+        "included",
+        "mejora",
+        "rodillos",
+        "smith"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\LINEA GOPFERT MEJORA TRANSFER MESA DE RODILLOS TINTERO A APILADOR OFF-2026-S104.docx",
+      "exists": true,
+      "size": 847491,
+      "sha256": "81a9167a2973788c10cd3ce1dced2e099c75614f5e320e6a3a8cd2c57870f7f0",
+      "snippet": "   \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\t\nLINEA GOPFERT MEJORA TRANSFER MESA DE RODILLOS TINTERO A APILADOR\n\n\nEstimaci\u00f3n trabajos a realizar seg\u00fan informe preliminar adecuaci\u00f3n equipos:\n\nREPOSICION DE RODILLOS\nMEJORA DE MOTORIZAZION DE TRACCION Y SU SISTEMA DE TRANSMISION\n\nResumen econ\u00f3mico \n\nTOTAL \u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026.. 8.500\u20ac\n\nCONDICIONES DE PAGO:\t\n\n40 % mediante transferencia bancaria a la recepci\u00f3n de la Orden de Compra (OC).\n60 % mediante transferencia bancaria a 60 d\u00edas desde la fecha de emisi\u00f3n de la Orden de Compra (OC).\n\n\n\n\n\n\n\n\n\n\n\n\nSPECIAL CONDITIONS:\nThe equipment is owned by INGECART until the order is paid in full.\nAny variation to the agreed design will affect our supply and quoted price.\nTechnical and preliminary engineering studies for project preparation and drawings were not charged separately and are included in the price of the equipment.\nTHE OFFER EXCLUDES:\nAny work or material not specifically described in this offer is not included.\nThe customer will provide a mechan\u2026",
+      "keywords": [
+        "not",
+        "offer",
+        "will",
+        "included",
+        "ingecart",
+        "customer",
+        "mejora",
+        "rodillos"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\MEJORA TRANSFER COSEDORA A FLEJADORA DS Smith OFF-2026-S103.pdf",
+      "exists": true,
+      "size": 1077936,
+      "sha256": "67f18af1d53f86dcc0d8515553fca75c5c0b699e52cdb21f4c2063f8da2f0435",
+      "snippet": "                                    \nMEJORA TRANSFER COSEDORA A FLEJADORA           DS Smith OFF-2026-S103 \n     Ingecart           https://www.ingecart.eu/ \n2 \nMEJORA TRANSFER COSEDORA A FLEJADORA DS Smith OFF-2026-S103 \n1. MEJORA TRANSFER COSEDORA A FLEJADORA: \n \nEstimaci\u00f3n trabajos a realizar seg\u00fan informe preliminar adecuaci\u00f3n equipos: \n \n- SUSTITUCION TAPICES FLEJADORA A CAMINOS \n- PLC, FOTOCELULAS CUADROS DE COMANDO \n- MATE \n \n2. Resumen econ\u00f3mico  \n \nTOTAL \u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026.. 45.000\u20ac  \nCONDICIONES DE PAGO:  \n \n40 % mediante transferencia bancaria a la recepci\u00f3n de la Orden de Compra (OC). \n60 % mediante transferencia bancaria a 60 d\u00edas desde la fecha de emisi\u00f3n de la Orden de \nCompra (OC).              \n3 \nMEJORA TRANSFER COSEDORA A FLEJADORA DS Smith OFF-2026-S103 \nSPECIAL CONDITIONS: The equipment is owned by INGECART until the order is paid in full. Any variation to the agreed design will affect our supply and quoted price. Technical and preliminary engineering studies \u2026",
+      "keywords": [
+        "not",
+        "will",
+        "offer",
+        "flejadora",
+        "ingecart",
+        "mejora",
+        "transfer",
+        "cosedora"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\MEJORA TRANSFER COSEDORA A FLEJADORA OFF-2026-S103.docx",
+      "exists": true,
+      "size": 848227,
+      "sha256": "17a2d7611e685a650d01ede97286f29b6cc46331862173de25967701a55557de",
+      "snippet": "   \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\t\nCotizaci\u00f3n de transporte robot DOBOT:\n\nObjeto: Cotizaci\u00f3n de transporte de robot DOBOT Canutos desde Espa\u00f1a a Alemania.\n\nDatos del env\u00edo:\n\nOrigen: Troquel Servis, C/ Riera 11, 08775 Torrelavit (Barcelona, Espa\u00f1a)\n\nDestino: Dobot Europe GmbH, Att.: Mr. Yu Yunjie (Leo), Erdgeschoss, Werner-Heisenberg-Stra\u00dfe 2a, 63263 Neu-Isenburg, Alemania\n\nContenido: Robot DOBOT Canutos, completo y paletizado\n\nPeso aproximado: 30 kg\n\nEmbalaje: Paletizado, protegido con film y flejes para transporte seguro \n\nRecogida en origen, carga segura y transporte hasta destino final\nSeguro de transporte durante todo el trayecto\nEntrega con confirmaci\u00f3n de recepci\u00f3n en destino\nTiempo de tr\u00e1nsito estimado:\nDesde la llegada al almac\u00e9n de consolidaci\u00f3n en Espa\u00f1a hasta la entrega final, se estima un transit time de 4 a 6 d\u00edas h\u00e1biles\n\nResumen econ\u00f3mico \n\nTOTAL \u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026.. 295,22\u20ac\n\nCONDICIONES DE PAGO:\t\n\n40 % mediante transferencia bancaria a la recepci\u00f3n de la Orden de C\u2026",
+      "keywords": [
+        "not",
+        "transporte",
+        "dobot",
+        "included",
+        "offer",
+        "robot",
+        "desde",
+        "espa\u00f1a"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\Oferta Servicios de Auditor\u00eda  OFF-2026-S100.docx",
+      "exists": true,
+      "size": 846653,
+      "sha256": "8ea0fc58bd302fa04212d925606054c3417f13b97e189b1d9170641ecee9788c",
+      "snippet": "   \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nCustomer: Saica\t\t\t\t                                                 \tDate: JUNE, 2026.\n           \nIIM Rollstand Commercial Offer       #OFF-2026-100\nOferta Servicios de Auditor\u00eda          #OFF-2026-S100\n\nOFERTA DE SERVICIOS DE AUDITOR\u00cdA T\u00c9CNICA\nCliente\nSAICA PACK BARCELONA\nAtt.: Sr. Domingo\n\nAUDITOR\u00cdA T\u00c9CNICA DE LA PARTE H\u00daMEDA DE LA L\u00cdNEA ASITRADE\n\nOBJETO DE LA AUDITOR\u00cdA\n\nIngecart presenta la siguiente propuesta de servicios de auditor\u00eda t\u00e9cnica para la evaluaci\u00f3n del estado operativo de la parte h\u00fameda de la l\u00ednea Asitrade instalada en SAICA Pack Barcelona.\n\nEl objetivo de esta actuaci\u00f3n es realizar una validaci\u00f3n t\u00e9cnica preliminar de la instalaci\u00f3n, identificar posibles desviaciones mec\u00e1nicas y funcionales, y establecer una primera valoraci\u00f3n de las causas que puedan estar afectando al comportamiento operativo de esta secci\u00f3n de la l\u00ednea.\n\nALCANCE DE LOS TRABAJOS\n\nLos trabajos contemplan el desplazamiento de un t\u00e9cnico auditor especializado de I\u2026",
+      "keywords": [
+        "auditor\u00eda",
+        "saica",
+        "t\u00e9cnica",
+        "para",
+        "una",
+        "posibles",
+        "2026",
+        "servicios"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\Oferta Servicios de Auditor\u00eda  OFF-2026-S100.pdf",
+      "exists": true,
+      "size": 1057593,
+      "sha256": "f8ea240383fe2bc7a91864f576800090546a6067be430a452e92ecc0ff76c5a1",
+      "snippet": " \nIngecart | TAILORED AUTOMATION & INTRALOGISTICS                                           www.ingecart.eu  \n                                  \nOferta Servicios de Auditor\u00eda          #OFF-2026-S100 \n\n \nIngecart | TAILORED AUTOMATION & INTRALOGISTICS                                           www.ingecart.eu  \n  Customer: Saica                                                      Date: JUNE, 2026.             IIM Rollstand Commercial Offer       #OFF-2026-100 Oferta Servicios de Auditor\u00eda          #OFF-2026-S100  OFERTA DE SERVICIOS DE AUDITOR\u00cdA T\u00c9CNICA Cliente SAICA PACK BARCELONA Att.: Sr. Domingo  AUDITOR\u00cdA T\u00c9CNICA DE LA PARTE H\u00daMEDA DE LA L\u00cdNEA ASITRADE  1. OBJETO DE LA AUDITOR\u00cdA  Ingecart presenta la siguiente propuesta de servicios de auditor\u00eda t\u00e9cnica para la evaluaci\u00f3n del estado operativo de la parte h\u00fameda de la l\u00ednea Asitrade instalada en SAICA Pack Barcelona.  El objetivo de esta actuaci\u00f3n es realizar una validaci\u00f3n t\u00e9cnica preliminar de la instalaci\u00f3n, identificar posibles \u2026",
+      "keywords": [
+        "ingecart",
+        "auditor\u00eda",
+        "servicios",
+        "2026",
+        "saica",
+        "t\u00e9cnica",
+        "tailored",
+        "automation"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\Oferta ServiciosSpare Parts  OFF-2026-R103.docx",
+      "exists": true,
+      "size": 1064582,
+      "sha256": "1e50e2ec766e109a40b6d6a35fb69b9304493580cb3e096ee938c1195a3b57ee",
+      "snippet": "   \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nCustomer: PCM\t\t\t\t                                                 \t\t\t\t\t       \tDate: JUNE, 2026.\n           \nIIM Rollstand Commercial Offer       #OFF-2026-100\nOferta Servicios: Spare Parts          #OFF-2026-R103\n\nRECOMMENDED SPARE PARTS PACKAGE\nPCM M\u00c9XICO\nProposal for Critical Spare Parts Stock\nAttention: Mr. Pulido\n\n\nComo parte del compromiso de Ingecart con la continuidad operativa, la confiabilidad de los equipos y la reducci\u00f3n de riesgos productivos, presentamos nuestra propuesta de refacciones recomendadas para los sistemas instalados en PCM M\u00e9xico.\nEl objetivo de esta propuesta es garantizar la disponibilidad de componentes cr\u00edticos que permitan:\nMinimizar paros no programados.\nReducir tiempos de respuesta ante fallas.\nAsegurar la continuidad de producci\u00f3n.\nOptimizar las actividades de mantenimiento.\nDisminuir el impacto de posibles retrasos en el suministro de componentes.\nEn entornos industriales de alta exigencia, la disponibilidad inmedia\u2026",
+      "keywords": [
+        "refacciones",
+        "componentes",
+        "producci\u00f3n",
+        "pcm",
+        "2026",
+        "spare",
+        "parts",
+        "propuesta"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\Oferta ServiciosSpare Parts  OFF-2026-R103.pdf",
+      "exists": true,
+      "size": 1230254,
+      "sha256": "b5ee2e09409805344519f7a3741ef0f2e53146010c6892ac3a3f6dc374ba8487",
+      "snippet": " \nIngecart | TAILORED AUTOMATION & INTRALOGISTICS                                           www.ingecart.eu  \n                                  \nOferta Servicios: Spare Parts          #OFF-2026-R103 \n\n \nIngecart | TAILORED AUTOMATION & INTRALOGISTICS                                           www.ingecart.eu  \n  Customer: PCM                                                                  Date: JUNE, 2026.             IIM Rollstand Commercial Offer       #OFF-2026-100 Oferta Servicios: Spare Parts          #OFF-2026-R103  RECOMMENDED SPARE PARTS PACKAGE PCM M\u00c9XICO Proposal for Critical Spare Parts Stock Attention: Mr. Pulido   Como parte del compromiso de Ingecart con la continuidad operativa, la confiabilidad de los equipos y la reducci\u00f3n de riesgos productivos, presentamos nuestra propuesta de refacciones recomendadas para los sistemas instalados en PCM M\u00e9xico. El objetivo de esta propuesta es garantizar la disponibilidad de componentes cr\u00edticos que permitan: \uf0b7 Minimizar paros no pro\u2026",
+      "keywords": [
+        "ingecart",
+        "spare",
+        "parts",
+        "2026",
+        "off",
+        "pcm",
+        "propuesta",
+        "disponibilidad"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\OFFER TEMPLATE.docx",
+      "exists": true,
+      "size": 847265,
+      "sha256": "643b3ce2f3af8f161ec8c4b6586ef9410f1cabde9c0c2e7c52e6fca8cd776c68",
+      "snippet": "   \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\t\nCustomer: \u20b5\t\t\t\t\t\t\t\t\t\t\tDate: \u2122\n             \n\n\n\nDear Sirs at \u20b5:\n\nINGECART is honored to present \u221e\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nEquipment/Services description:\n\nPrice Summary_ \u20ae\n\nTOTAL \u20ae\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026\u2026.. \u03c0\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nSPECIAL CONDITIONS:\nThe equipment is owned by INGECART until the order is paid in full.\nAny variation to the agreed design will affect our supply and quoted price.\nTechnical and preliminary engineering studies for project preparation and drawings were not charged separately and are included in the price of the equipment.\nTHE OFFER EXCLUDES:\nAny work or material not specifically described in this offer is not included.\nThe customer will provide a mechanical support workshop to carry out small modification work required.\nThe costs of cranes, forklifts or lifts that may be required for the intervention are not included. INGECART will inform you well in advance to carry out the necessary logistics.\nConnections derived from this of\u2026",
+      "keywords": [
+        "not",
+        "offer",
+        "will",
+        "included",
+        "customer",
+        "ingecart",
+        "equipment",
+        "price"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\PCS BHS Corrugator Line OFF-2026-109.docx",
+      "exists": true,
+      "size": 1243576,
+      "sha256": "1b7f392a2d6602ff72b634e16eee0f5e3006b404a25071b3f7fc512aecaecc3b",
+      "snippet": "   \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\t\nCustomer: Antonio Ram\u00edrez                                            \t\t\t\tDate: Jun 26,2026\n             \n\n\nAsunto: Propuesta de equipamiento Prefeeder \u2013 Ingecart\n\nEstimado Sr. Ram\u00edrez,\n\nINGECART se honra en presentar esta propuesta para el suministro de nuestro equipo Prefeeder para sus operaciones. Valoramos enormemente la oportunidad de colaborar con usted como socio estrat\u00e9gico para el desarrollo de negocio, y estamos plenamente comprometidos con el \u00e9xito de este proyecto.\n\nNuestra propuesta est\u00e1 estructurada como un proyecto llave en mano, actuando INGECART como contratista principal, garantizando la ejecuci\u00f3n adecuada y la coordinaci\u00f3n perfecta de todas las fases de la implementaci\u00f3n.\n\nQuedamos a la espera de sus comentarios y de hacer avanzar esta colaboraci\u00f3n.\n\nAtentamente,\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nEquipment/Services description:\nBHS Corrugator Line\nGeneral information\n\nYear of construction: 1999 for the Wet End equipment\n\t\t\t     2014 for the Dry End\u2026",
+      "keywords": [
+        "ingecart",
+        "equipment",
+        "bhs",
+        "end",
+        "propuesta",
+        "para",
+        "como",
+        "corrugator"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\PCS BHS Corrugator Line OFF-2026-109.pdf",
+      "exists": true,
+      "size": 1742160,
+      "sha256": "9fa987ae07facd8179d5f002246ea0ae7870d25abd5132fb197829ee74eefaef",
+      "snippet": "                                    \nPACIFIC SOUTHWEST CONTAINER  BHS Corrugator Line OFF-2026-109 \n     Ingecart           https://www.ingecart.eu/ \n2 \nPCS BHS Corrugator Line OFF-2026-109 \nCustomer: PACIFIC SOUTHWEST CONTAINER                                            Date: Jun 17,2026                  Dear Sirs at Pacific Southwest Packaging:  INGECART is honored to present this proposal for the relocation of a BHS corrugator, revised and guaranteed by BHS Service Department, to your plant in Visalia, California.  Our proposal is structured as a turnkey project, with INGECART acting as the main contractor, guaranteeing the proper execution of all phases of the project.  Best regards, Diego.                   \n3 \nPCS BHS Corrugator Line OFF-2026-109 \n 1. Equipment/Services description: 1.1 BHS Corrugator Line 1.1.1 General information  Year of construction: 1999 for the Wet End equipment         2014 for the Dry End Equipment Working width: 2.500 mm Drive side: left hand in paper go\u2026",
+      "keywords": [
+        "bhs",
+        "corrugator",
+        "ingecart",
+        "line",
+        "2026",
+        "equipment",
+        "off",
+        "109"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\Proposal BHS Corrugator Line OFF-2026-85 V1 06.08.26 mike review.docx",
+      "exists": true,
+      "size": 2039168,
+      "sha256": "77b4cd530d582949d96cf2d5fd4272f5ad68091dfd028fb1dd39f5e2d6605f35",
+      "snippet": "   \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\t\nCustomer: PACIFIC SOUTHWEST CONTAINER                                            Date: Jun 6,2026\n             \n\n\n\nDear Sirs at Pacific Southwest Packaging:\n\nINGECART is honored to present this proposal for the relocation of the BHS corrugator from its current facilities in Turkey to your plant in Visalia, California.\n\nOur proposal is structured as a turnkey project, with INGECART acting as the main contractor, guaranteeing the proper execution of all phases of the project.\n\nBest regards, Diego.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nEquipment/Services description:\nBHS Corrugator Line\n\nGeneral information\n\nModel:\u00a0BHS JETS 300\nWorking Width:\u00a02500 mm\nMaximum Operating Speed:\u00a0300 m/min\nCurrent Location:\u00a0Turkey\nTarget Location:\u00a0Visalia, California, USA \u2013 Pacific Southwest Packaging\n\nGeneral Overview\n\nThe subject equipment is a complete BHS corrugator line, originally manufactured in 1997 and subsequently upgraded through multiple retrofit campaigns (2007\u20132017). The line is ful\u2026",
+      "keywords": [
+        "bhs",
+        "corrugator",
+        "line",
+        "pacific",
+        "southwest",
+        "ingecart",
+        "visalia",
+        "california"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\Proposal BHS Corrugator Line OFF-2026-85 V1mk.pdf",
+      "exists": true,
+      "size": 2000875,
+      "sha256": "94306f2db75aa151b9be6376684d588d65fa631a653e93af1ba4667843b7405f",
+      "snippet": " \n \n                                  \nPACIFIC SOUTHWEST CONTAINER  BHS Corrugator Line OFF-2026-85 V1 \n     Ingecart           https://www.ingecart.eu/ \n \n2 \nBHS Corrugator Line OFF-2026-85 V1 \n  Customer: PACIFIC SOUTHWEST CONTAINER                                            Date: Jun 6,2026                  Dear Sirs at Pacific Southwest Packaging:  INGECART is honored to present this proposal for the relocation of the BHS corrugator from its current facilities in Turkey to your plant in Visalia, California.  Our proposal is structured as a turnkey project, with INGECART acting as the main contractor, guaranteeing the proper execution of all phases of the project.  Best regards, Diego.                   \n \n3 \nBHS Corrugator Line OFF-2026-85 V1 \n 1. Equipment/Services description: 1.1 BHS Corrugator Line  1.1.1 General information  Model: BHS JETS 300 Working Width: 2500 mm Maximum Operating Speed: 300 m/min Current Location: Turkey Target Location: Visalia, California, USA \u2013 Pacific\u2026",
+      "keywords": [
+        "bhs",
+        "corrugator",
+        "line",
+        "2026",
+        "ingecart",
+        "pacific",
+        "southwest",
+        "off"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\Proposal Cascades - Dual Robotic Palletizer IC-DR-12.25 v3 MJ2.docx",
+      "exists": true,
+      "size": 906352,
+      "sha256": "ee2b5c0111c1b10263a005053439d677085f646378c99b30d133ecff70641261",
+      "snippet": "   \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nCustomer: \t\t\t\tDate: Jun16,2026\n\n  \n\n             \n\tTAX472749089\n\n\n\n\nQUOTATION\nAUTOMATIC ROBOT PALLETIZER SYSTEM (4-SIDE SQUARING)\n\n\n\n\n\n\n\n\n\n\n\n\n\nScope of Supply\nThis quotation covers the supply of an automatic robot palletizer system including conveyors, bundle stacker, two (2) robotic palletizing units, pad paper handling, 4-sides squaring device, safety components and the control integration system, as detailed in the equipment list below.\n\n\n\n\n\n\n\n\n\n\n\nPrice \nTotal price system : EUR \u20ac 870.567- EXW Barcelona (BCN), Spain \nTotal price  Installation : EUR 55.000 \nTotal price  hotels flights food : Euro 38.000 \nTotal price Transport & packaging: Euro 64.000\nTotal price DDU Cascade  : Euro \u20ac 1.027.567. \n\n\nUL-standard electrical parts are included in the offer.\nparts.\n Ocean freight quotation is requested, any indicative freight rate is subject to change and, as per the original offer, was indicated as valid until the end of January.\nPayment Terms\n80%: Bank transfer\u2026",
+      "keywords": [
+        "price",
+        "total",
+        "installation",
+        "days",
+        "buyer",
+        "system",
+        "quotation",
+        "two"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\Proposal Cascades - Dual Robotic Palletizer IC-DR-12.25 v3.pdf",
+      "exists": true,
+      "size": 1806230,
+      "sha256": "ecc9e03b9c126d793a068480da421d166c3d9bf78e9c71200bf9995d5b44f00c",
+      "snippet": " \nPage 1 of 17 \n                           \nQUOTATION AUTOMATIC ROBOT PALLETIZER SYSTEM (4-SIDE SQUARING)  Quotation No. IC-DR-12.25 v3   \n     Ingecart           https://www.ingecart.eu/ \n \nPage 2 of 17 \nCustomer:     Date: Jun16,2026                     TAX472749089     \nQUOTATION \nAUTOMATIC ROBOT PALLETIZER \nSYSTEM (4-SIDE SQUARING) \n \n \nQuotation No. IC-DR-12.25 v3 \nDate Jun 16th, 2026 \nFinal Destination  Cascades (Piscataway, NJ) \nDelivery Terms (Incoterm) DDU  Barcelona (BCN), Spain to (NJ ) USA \nCurrency EUR (EURO) \n \n \n \n \n \n \n \n \n \n\n \nPage 3 of 17 \n \n \n1. Scope of Supply \nThis quotation covers the supply of an automatic robot palletizer system including conveyors, bundle \nstacker, two (2) robotic palletizing units, pad paper handling, 4-sides squaring device, safety components \nand the control integration system, as detailed in the equipment list below. \n \nIt\ne\nm \nDescription Specification \n(mm) \nSpecification (in) Qt\ny \nUnit \nA\n1 \nAuto Roller Conveyor L5400*W1000*\nH900 212.60\u2026",
+      "keywords": [
+        "set",
+        "conveyor",
+        "auto",
+        "h900",
+        "roller",
+        "w1000",
+        "quotation",
+        "page"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\Propuesta de equipamiento Prefeeder \u2013 Ingecart OFF 2029-112.docx",
+      "exists": true,
+      "size": 3713210,
+      "sha256": "7b3920e0c44008fe682662cb5fbdb1a175423045a5fc8a7124a0e11e09f2ebb4",
+      "snippet": "   \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\t\nCustomer: Antonio Ram\u00edrez                                            \t\t\t\tDate: Jun 26,2026\n             \n\n\nAsunto: Propuesta de equipamiento Prefeeder \u2013 Ingecart\n\nEstimado Sr. Ram\u00edrez,\n\nINGECART se honra en presentar esta propuesta para el suministro de nuestro equipo Prefeeder para sus operaciones. Valoramos enormemente la oportunidad de colaborar con usted como socio estrat\u00e9gico para el desarrollo de negocio, y estamos plenamente comprometidos con el \u00e9xito de este proyecto.\n\nNuestra propuesta est\u00e1 estructurada como un proyecto llave en mano, actuando INGECART como contratista principal, garantizando la ejecuci\u00f3n adecuada y la coordinaci\u00f3n perfecta de todas las fases de la implementaci\u00f3n.\n\nQuedamos a la espera de sus comentarios y de hacer avanzar esta colaboraci\u00f3n.\n\nAtentamente,\nI\u00f1aki Senar, Director Comercial\n\n\n\n\n\n\n\n\n\n\nEquipment/Services description:\nPrefeeder\nGeneral information\n\n\n\n*Printer needs to be equipped with side guiding plate on both sid\u2026",
+      "keywords": [
+        "not",
+        "ingecart",
+        "prefeeder",
+        "equipment",
+        "included",
+        "propuesta",
+        "para",
+        "como"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\PSC VISALIA BHS98 complete offer.pdf",
+      "exists": true,
+      "size": 1984679,
+      "sha256": "689f0c8f4a9a9b2c796891a4a0b48c660e96259a59b0dc021225ff0e9f57c63c",
+      "snippet": " \n \n                                  \nPACIFIC SOUTHWEST CONTAINER  BHS Corrugator Line OFF-2026-85 V1 \n     Ingecart           https://www.ingecart.eu/ \n \n2 \nBHS Corrugator Line OFF-2026-85 V1 \n  Customer: PACIFIC SOUTHWEST CONTAINER                                            Date: Jun 6,2026                  Dear Sirs at Pacific Southwest Packaging:  INGECART is honored to present this proposal for the relocation of the BHS corrugator from its current facilities in Turkey to your plant in Visalia, California.  Our proposal is structured as a turnkey project, with INGECART acting as the main contractor, guaranteeing the proper execution of all phases of the project.  Best regards, Diego.                   \n \n3 \nBHS Corrugator Line OFF-2026-85 V1 \n 1. Equipment/Services description: 1.1 BHS Corrugator Line  1.1.1 General information  Model: BHS JETS 300 Working Width: 2500 mm Maximum Operating Speed: 300 m/min Current Location: Turkey Target Location: Visalia, California, USA \u2013 Pacific\u2026",
+      "keywords": [
+        "bhs",
+        "corrugator",
+        "line",
+        "2026",
+        "ingecart",
+        "pacific",
+        "southwest",
+        "off"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\SISTEMA RETAL 1400   OFF-2026-108.docx",
+      "exists": true,
+      "size": 980455,
+      "sha256": "d60bb1338e5318751302aaa89aa7421068749091bf1a0f4b79b8b73265c5bccc",
+      "snippet": "   \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nCustomer: Line Text ( SIGMAQ )                                     \t\t\t\t                                                 Date: JUNE, 2026.\n           \n\nIM Rollstand -2026-100\nSISTEMA RETAL 1400                      #OFF-2026-108\nSISTEMA INGECART SR-1400\n\nLa soluci\u00f3n final la gesti\u00f3n completa, recogida y transporte, de todo el retal que se genera en planta y hasta un punto de reuni\u00f3n y salida de la f\u00e1brica: \n\u2022 Desperdicio en Casemakers\n\u2022 Desperdicio en Troqueladoras\n\u2022 Desperdicio en Onduladora\n\nPreliminary drawing:\n\n\n\n\n\n\nDescripci\u00f3n t\u00e9cnica producto\nMaterial incluido l\u00ednea principal de 114 metros.\n228 metros de cadena paso 125 Soldada. - Eslabones.\n1 Pi\u00f1\u00f3n Z3.\n1 Cepillo arrastre\n228 Brazos de arrastre largos con deslidur de apoyo. \n228 Brazos de arrastre cortos con deslidur de apoyo.\n1 Motor reductor Satelital.\n1 Bomba de engrase.\nCuadro el\u00e9ctrico seg\u00fan normativa CE.\n228 metros chapas de canalizaci\u00f3n en espesor de 2,5 mm.\n112 metros chapa cobertura a\u00e9r\u2026",
+      "keywords": [
+        "metros",
+        "arrastre",
+        "instalaci\u00f3n",
+        "228",
+        "brazos",
+        "con",
+        "deslidur",
+        "apoyo"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\OneDrive\\INGECART\\OFERTAS INGECART\\OFERTAS ENVIADAS 2026\\SISTEMA RETAL 1400   OFF-2026-108.pdf",
+      "exists": true,
+      "size": 1351926,
+      "sha256": "7c4731faf25024080ce2fb737437e91ac4b0f3c6f948d286dffb8a9819e159b5",
+      "snippet": " \nIngecart | TAILORED AUTOMATION & INTRALOGISTICS                                           www.ingecart.eu  \n                                  \n SISTEMA RETAL 1400                      #OFF-2026-108 \n\n \nIngecart | TAILORED AUTOMATION & INTRALOGISTICS                                           www.ingecart.eu  \n  Customer: Line Text ( SIGMAQ )                                                                                          Date: JUNE, 2026.              IM Rollstand -2026-100 SISTEMA RETAL 1400                      #OFF-2026-108 SISTEMA INGECART SR-1400  La soluci\u00f3n final la gesti\u00f3n completa, recogida y transporte, de todo el retal que se genera en planta y hasta un punto de reuni\u00f3n y salida de la f\u00e1brica:  \u2022 Desperdicio en Casemakers \u2022 Desperdicio en Troqueladoras \u2022 Desperdicio en Onduladora  Preliminary drawing:    \n  \n\n \nIngecart | TAILORED AUTOMATION & INTRALOGISTICS                                           www.ingecart.eu  \n 1. Descripci\u00f3n t\u00e9cnica producto Material incluid\u2026",
+      "keywords": [
+        "metros",
+        "ingecart",
+        "arrastre",
+        "2026",
+        "228",
+        "brazos",
+        "con",
+        "deslidur"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\competitors\\1776254699629_Posibles_competidores_INGECART.docx",
+      "exists": true,
+      "size": 24434,
+      "sha256": "adc6a508594d225599475226ea1e795e2d4a35f513254ee8974f7774afc79e8d",
+      "snippet": "POSICIONAMIENTO DE INGECART (CLAVE PARA ENTENDER COMPETIDORES)\nIngecart compite en un nicho muy concreto:\n\ud83d\udc49 Ingenier\u00eda + integraci\u00f3n + automatizaci\u00f3n\n\ud83d\udc49 Industria: cart\u00f3n ondulado / packaging\n\ud83d\udc49 Especialidad:\nFin de l\u00ednea \nManipulaci\u00f3n / log\u00edstica interna \nRetrofit / mejora de l\u00edneas existentes \nProyectos r\u00e1pidos con ROI \n\u26a0\ufe0f Esto es clave porque:\n\ud83d\udc49 NO compite directamente con OEM core (corrugadoras)\n\ud83d\udc49 Compite con:\nIntegradores \nAutomatizadores \nEspecialistas en end-of-line \nIngenier\u00edas industriales \u00e1giles \n\n\ud83c\udfed 2. COMPETIDORES DIRECTOS (MISMO MODELO QUE INGECART)\n\ud83d\udc49 Este es el grupo M\u00c1S importante (y donde est\u00e1n los que t\u00fa mencionas)\n\ud83d\udd27 Integradores / especialistas en corrugado\nDucker (Ducker / Ducker Ringwood Automation) \nHarmax \nFunce \nSerra \nPara (probablemente ingenier\u00eda local / integrador) \n\ud83d\udc49 Validaci\u00f3n:\nEmpresas como Ducker est\u00e1n centradas en material handling en corrugado \n\n\ud83d\udd25 Otros competidores directos (misma l\u00f3gica de negocio)\nCartec \u2192 retrofit + mejora de l\u00edneas corrugado \nColumbia\u2026",
+      "keywords": [
+        "competidores",
+        "ingecart",
+        "packaging",
+        "integraci\u00f3n",
+        "fin",
+        "l\u00ednea",
+        "l\u00edneas",
+        "ducker"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\customers\\1777958036456_INITIAL_INGECART_CUSTOMERS.xlsx",
+      "exists": true,
+      "size": 9668,
+      "sha256": "ac3526662890a3d7b73a7b00514288e9f8e29311a7e315dd3eed50f8e3ce80c1",
+      "snippet": "",
+      "keywords": []
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\hierarchy\\1776180467140_Jerarquia Ingecart.pdf",
+      "exists": true,
+      "size": 48360,
+      "sha256": "70a5665a8d1e55fdb0649c7814baa462e26060b4e6a9e833fa927908a3de989b",
+      "snippet": "                          Owner & General Manager \n                              Diego Garcia \n                                      \u2502 \n        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510 \n        \u2502                             \u2502                             \u2502 \nCo-owner & Admin Manager      Engineering Department        Operations / Service \n   Mar\u00eda Jes\u00fas Garcia                 \u2502                             \u2502 \n        \u2502                             \u2502                             \u2502 \n   Back O\u01afice (2)        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510        Maintenance Leader \n                          \u2502                       \u2502              (Paco) \n              Mechanical Engineering     Electrical Engineering        \u2502 \n                     Leader                     Leader                  \u2502 \n                                                                       \u2502 \n                                                           \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510 \n                                      \u2026",
+      "keywords": [
+        "engineering",
+        "leader",
+        "owner",
+        "manager",
+        "garcia",
+        "technician",
+        "general",
+        "diego"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\hierarchy\\1776254790793_Jerarquia_Ingecart.docx",
+      "exists": true,
+      "size": 14088,
+      "sha256": "24e7c813d7ec9a2ca641ee7f2375729bad69a83afa29a69df10e4adf4ff44912",
+      "snippet": "                          Owner & General Manager\n                              Diego Garcia\n                                      \u2502\n        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n        \u2502                             \u2502                             \u2502\nCo-owner & Admin Manager      Engineering Department        Operations / Service\n   Mar\u00eda Jes\u00fas Garcia                 \u2502                             \u2502\n        \u2502                             \u2502                             \u2502\n   Back Office (2)        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510        Maintenance Leader\n                          \u2502                       \u2502              (Paco)\n              Mechanical Engineering     Electrical Engineering        \u2502\n                     Leader                     Leader                  \u2502\n                                                                       \u2502\n                                                           \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                                   \u2026",
+      "keywords": [
+        "engineering",
+        "leader",
+        "owner",
+        "manager",
+        "garcia",
+        "technician",
+        "general",
+        "diego"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\hierarchy\\1777218695351_Ingecart_Commercial_Structure.xlsx",
+      "exists": true,
+      "size": 9153,
+      "sha256": "6fcc7a95eab3170243febebbd616917ee7d8d0c6e45ab61d912dc0ec1b831391",
+      "snippet": "",
+      "keywords": []
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\leads\\1776180480395_Super Corr Expo Orlando 2024_ List.xlsx",
+      "exists": true,
+      "size": 1583945,
+      "sha256": "5429997594a87cc7e8c3ef4226a68ec990c01d6a70b32efeadfbcb31c3e798b4",
+      "snippet": "",
+      "keywords": []
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254860994_Company_Plastic_Reduction_2024_12.xlsx",
+      "exists": true,
+      "size": 318854,
+      "sha256": "fd046fec6e8a31f17e6f61250a37e9c110d7541ba25b03a92e65a804f018bc20",
+      "snippet": "",
+      "keywords": []
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254876367_Countries_vs_GDP_2024_2025_vs_CBoard_2024.xlsx",
+      "exists": true,
+      "size": 9633,
+      "sha256": "e1962a59a4c2bf10bbd67b98e4b24ea92875aa6e12cabda5c218b2f7a4e63e1a",
+      "snippet": "",
+      "keywords": []
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254885246_Desempeno_bolsa_grandes_Papel_2024_2_.xlsx",
+      "exists": true,
+      "size": 11330,
+      "sha256": "b7c73ecc8e81bd04808c8e04a8fcdf402542abca3caddd272fb63ec6b2940fb6",
+      "snippet": "",
+      "keywords": []
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254914367_GDP_Global_2018_2023.xlsx",
+      "exists": true,
+      "size": 16192,
+      "sha256": "c9baeeb304f1a001d35be0429c88157eb5b1686b66eaac94c0036616a0ab7174",
+      "snippet": "",
+      "keywords": []
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254919217_gdp_forecast.xlsx",
+      "exists": true,
+      "size": 44244,
+      "sha256": "42df2bdd762dfee40788f925041373fe180b57925e1a76b3db0c8e38786a36c0",
+      "snippet": "",
+      "keywords": []
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254925563_informe_folding_carton.pdf",
+      "exists": true,
+      "size": 2853,
+      "sha256": "6e495224d2cc8ccd20c9eda135d10b537cf4503001aadb37bbaaf937fe9bc9d1",
+      "snippet": "Informe sobre el mercado de Folding Carton\nEste informe presenta un an\u00e1lisis detallado del mercado de folding carton (cart\u00f3n plegable) en los\nsectores de cereales, snacks, cuidado personal (personal care) y farmac\u00e9utico (pharma). Se\nincluyen tendencias de demanda, tipos de envases utilizados, empresas l\u00edderes y un benchmark\npor volumen de producci\u00f3n.\nProductos que m\u00e1s demandan Folding Carton\n1. Cereales para desayuno: cajas con extremo sellado y bolsa interior.\n2. Galletas y crackers: cajas tipo funda o con ventana transparente.\n3. Snacks y barritas energ\u00e9ticas: cajas tipo sleeve o auto-lock bottom.\n4. Alimentos congelados y preparados: cart\u00f3n con revestimiento resistente a la humedad.\n5. Productos de conveniencia: crecimiento por cambio en h\u00e1bitos de consumo.\nTipos de envases de Folding Carton m\u00e1s utilizados\n1. Caja de extremo recto (STE)\n2. Caja de extremo inverso (RTE)\n3. Caja con fondo autom\u00e1tico (auto-lock bottom)\n4. Caja con ventana\n5. Caja tipo sleeve (funda)\n6. Caja con tapa a \u2026",
+      "keywords": [
+        "con",
+        "personal",
+        "productos",
+        "para",
+        "caja",
+        "folding",
+        "carton",
+        "pharma"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254928868_Informe_Mercado_Carton_Papel_2024.pptx",
+      "exists": true,
+      "size": 5368884,
+      "sha256": "8dfbc5f8c717f7b5daf7a5df814c2b01236cf6565e73db69f860dd14ddede824",
+      "snippet": "",
+      "keywords": []
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254943481_Inversiones_en_Equipamiento_Industrial_2003-2023.xlsx",
+      "exists": true,
+      "size": 15955,
+      "sha256": "68fb292fc654b735aae1eb7ab7f35b686f5827315ec6f0ee9ca8159d5c1a1c53",
+      "snippet": "",
+      "keywords": []
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254945712_major_threats_or_opportunities_facing_FC_2024_survey.xlsx",
+      "exists": true,
+      "size": 29544,
+      "sha256": "04b5df72074d6f1ba32a242a7d0fa193e531a47d1849c3d4b9c82c1aa6e4c3ed",
+      "snippet": "",
+      "keywords": []
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254950491_Overcoming_the_Top_5_Hurdles_to_Digital....pdf",
+      "exists": true,
+      "size": 949654,
+      "sha256": "e9113b35aeabcd6b9bce2a80dfeb69c9909acc1e64b6d5fd3a4d166a2b04d030",
+      "snippet": "/0 /1 /2 /0 /3 /2 /4 /3 /4 /5\n/6 /7 /8 /9 /10 /11 /12/13 /14 /15 \u25a1 /17 /18 /8 \u25a1 /19 /11 /20 \u25a1 /21 \u25a1 /22 /23 /9 /24 /25 /8 /26 \u25a1 /17 /11 \u25a1 /27 /13 /15 /13 /17 /28 /25 \u25a1 /19 /9 /28 /14 /26 /29 /11 /9 /12/28 /17/13 /11 /14 \u25a1 /13 /14\n/30 /9 /13 /14 /17 \u25a1 /28 /14 /24 \u25a1 /30 /28 /10 /31 /28 /15 /13 /14 /15\n/32 /33 /34 /33 /35 /36 /37 \u25a1 /35 /39 /36 /40 /41 /42 /43 /39 /44/36 /35 /33 /43 /40\u25a1 /46 /40 /43 /47 /37 /48 /49 /34 /48\n/50 /51/52 /53 /54 /55 /56 /57 /58 \u25a1 /60 /57 \u25a1 /53 \u25a1 /61 /56 /58 /56 /62 /53 /63 \u25a1 /62 /54 /53 /57 /64 /65 /60 /54 /51/53 /62 /56 /60 /57 \u25a1 /66 /60 /67 /54 /57 /68 /69 \u25a1 /70 /53 /57 \u25a1 /65/68 /68 /63 \u25a1 /63 /56 /55 /68 \u25a1 /57 /53 /71 /56 /58 /53 /62 /56 /57 /58 \u25a1 /62 /72 /54 /60 /67 /58 /72 \u25a1 /53 \u25a1 /70 /60 /51/73 /63 /68 /74\n/51/53 /75 /68 /76 \u25a1 /77 /62 /78 /64 \u25a1 /79 /63 /63 /68 /61 \u25a1 /80 /56 /62 /72 \u25a1 /62 /80 /56 /64 /62 /64 /81 \u25a1 /62 /67 /54 /57 /64 \u25a1 /53 /57 /61 \u25a1 /67 /57 /68 /74 /73 /68 /70 /62 /68 /61 \u25a1/60 /52 /64 /62 /53 /70 /63 /68 /64 \u25a1 /53 /57 /61 \u25a1 /80 /72 /56 /63\u2026",
+      "keywords": []
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254975789_PACKAGING_SECTOR_SEGMENTATION.jpeg",
+      "exists": true,
+      "size": 4370552,
+      "sha256": "e657101c9a7d1fd98210d299f49dbaa831181e290406e275bbb448489188a29c",
+      "snippet": "",
+      "keywords": []
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254986686_Produccion_de_Carton_Europa_y_USA_2003-2023.xlsx",
+      "exists": true,
+      "size": 16411,
+      "sha256": "201e6f35960addbfa531d21f7cb3da3d7c8a01e8b3c83e00749043dbb0724de7",
+      "snippet": "",
+      "keywords": []
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254988776_Produccion_de_Folding_Carton_Europa_y_USA_2003-2023.xlsx",
+      "exists": true,
+      "size": 16123,
+      "sha256": "5a77854a5096a264e2682fe6d3d122448d4a3cf485c42a8dbb98bd7c155ea928",
+      "snippet": "",
+      "keywords": []
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254995113_Report_Current_Trends_and_Strategies_in_the_European_Cartonboard_Industry_10_2024.docx",
+      "exists": true,
+      "size": 20569,
+      "sha256": "f6a3aec7b1437d478b5b64af074ff1941c65ae1c3b4a85bfa4a0c39187e8356a",
+      "snippet": "Report: Current Trends and Strategies in the European Cartonboard Industry\n1. Industry Consolidation and Market Concentration\nKey Mergers and Acquisitions:\nSmurfit Kappa and WestRock: This merger created Smurfit WestRock, a global leader in sustainable packaging, with over 500 sites and 63 paper mills across 40 countries, and projected revenues exceeding $32 billion.\nAutajon and Simply Cartons: Strengthened Autajon\u2019s position in the luxury packaging market.\nVan Genechten and Dot2Dot: Expanded Van Genechten\u2019s footprint in the European market, particularly in the folding carton segment.\nSalinas and Arteos Digital: Enhanced Salinas\u2019 digital printing capabilities.\nMarket Share:\nTop Players in Europe: The top players, including Smurfit Kappa, WestRock, and Mayr-Melnhof Karton AG, control around 60-70% of the market.\nCombined Market Share: Including DS Smith, Mondi Group, Saica Group, Model Group, and Dunapack Packaging, these eight companies collectively dominate approximately 80-85% of the\u2026",
+      "keywords": [
+        "market",
+        "group",
+        "companies",
+        "european",
+        "industry",
+        "smurfit",
+        "packaging",
+        "cartonboard"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776255009150_Top_Packaging_Giants_of_2025_.docx",
+      "exists": true,
+      "size": 13973,
+      "sha256": "372a37e6e56dfb7a1e127105d7b41772c10f2f6b88a9f7b4d999e40f0c9ca7bf",
+      "snippet": "\ud835\udc13\ud835\udc28\ud835\udc29 \ud835\udc0f\ud835\udc1a\ud835\udc1c\ud835\udc24\ud835\udc1a\ud835\udc20\ud835\udc22\ud835\udc27\ud835\udc20 \ud835\udc06\ud835\udc22\ud835\udc1a\ud835\udc27\ud835\udc2d\ud835\udc2c \ud835\udc28\ud835\udc1f \ud835\udfd0\ud835\udfce\ud835\udfd0\ud835\udfd3 \u2013 \ud835\udc01\ud835\udc32 \ud835\udc11\ud835\udc1e\ud835\udc2f\ud835\udc1e\ud835\udc27\ud835\udc2e\ud835\udc1e! \n\nThe packaging industry continues to scale new heights, with global leaders driving innovation, sustainability, and operational excellence. According to the latest data, here are the Top 5 Packaging Companies in the World by Revenue (2024):\n\n\ud83d\udd39 WestRock (USA) \u2013 $20.3 Billion\n \ud83d\udd39 International Paper (USA) \u2013 $18.6 Billion\n \ud83d\udd39 Amcor (Switzerland/USA) \u2013 $13.6 Billion\n \ud83d\udd39 Berry Global (USA) \u2013 $12.3 Billion\n \ud83d\udd39 Ball Corporation (USA) \u2013 $11.8 Billion\u2026",
+      "keywords": [
+        "usa",
+        "billion",
+        "packaging",
+        "global",
+        "\ud835\udc13\ud835\udc28\ud835\udc29",
+        "\ud835\udc0f\ud835\udc1a\ud835\udc1c\ud835\udc24\ud835\udc1a\ud835\udc20\ud835\udc22\ud835\udc27\ud835\udc20",
+        "\ud835\udc06\ud835\udc22\ud835\udc1a\ud835\udc27\ud835\udc2d\ud835\udc2c",
+        "\ud835\udfd0\ud835\udfce\ud835\udfd0\ud835\udfd3"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\offers\\1778048575914_ESTADO_DE_OFERTAS_05_2026_INGECART.xlsx",
+      "exists": true,
+      "size": 13869,
+      "sha256": "089d310a88682c5a0aca5cbd14c82302be78572d0afa49ad458ebe19f8608f71",
+      "snippet": "",
+      "keywords": []
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\products\\1776180397583_PRODUCTOS INGECART.xlsx",
+      "exists": true,
+      "size": 95531,
+      "sha256": "dd159314197f10931d42a0e520ede7408331df709406a2ec34ffe4440bd3c5db",
+      "snippet": "",
+      "keywords": []
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\reports\\1776254715119_Plan_Ingecart_Trabajo_Master_ISenar_2026_v1.docx",
+      "exists": true,
+      "size": 107638,
+      "sha256": "be18a2807f497c2e23745f119814129bedd1ed4e74dd7ac3ca29241c972775e3",
+      "snippet": "Plan de Expansi\u00f3n 2026\u20132030 para Ingecart 2018 S.L.\n\nAutor: I\u00f1aki Senar \nFecha: 17 de enero de 2026\nVersi\u00f3n: 1.0\n\n**\u00cdndice (manual)**\n1. Introducci\u00f3n y alcance\n2. Contexto sectorial y tendencias\n3. Metodolog\u00eda aplicada (desde caso de estudio)\n4. Hoja de ruta 18 meses (base del plan 2026\u20132030)\n5. Paquetes de valor de Ingecart\n6. Hitos, duraci\u00f3n y dedicaci\u00f3n (tabla)\n7. Equipo comercial y agentes (estructura y roles)\n9. Gobernanza por KPIs y cadencias\n10. Riesgos y mitigaciones\n\n1. Introducci\u00f3n y alcance\nEste documento consolida el plan de expansi\u00f3n de Ingecart aplicando la metodolog\u00eda del caso de estudio: diagn\u00f3stico 360\u00ba, estrategia dual (engagement/prospecci\u00f3n), organizaci\u00f3n en 3 niveles, despliegue por fases y gobierno por KPIs. El objetivo es habilitar el crecimiento USA/Europa/LATAM con proyectos de alto ROI (retal, paletizado, INGETRANS, Customizaci\u00f3n , Digitalizaci\u00f3n (el dato como leva) ).\n2. Contexto sectorial y tendencias\nEl mercado del cart\u00f3n ondulado muestra crecimiento modera\u2026",
+      "keywords": [
+        "por",
+        "para",
+        "crecimiento",
+        "plan",
+        "2026",
+        "ingecart",
+        "metodolog\u00eda",
+        "base"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\sales\\1776338259530_SALES_INGECART_APRIL_2026.xlsx",
+      "exists": true,
+      "size": 12963,
+      "sha256": "f2484fe77abf3d12222bebea8abc64ee14f34a173ec5dd693881c77042b34f03",
+      "snippet": "",
+      "keywords": []
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\strategy\\1776180406754_Ingecart Strategic Commercial Transformation Report.pdf",
+      "exists": true,
+      "size": 27157,
+      "sha256": "595c280854aaebc4ff46e88cf1c074820a33bd7f8eae417c756c7d5393bee060",
+      "snippet": "Ingecart Strategic Internal Report\nCommercial & Operational Transformation Roadmap (2026\u20132029)\n1. Executive Summary\nIngecart currently operates with a predominantly project-based model (~\u20ac2.0M annual average revenue),\ndriven by custom engineering (~85%) and limited, non-structured service activity.\nThe company aims to evolve into a  scalable, product-driven and service-enabled business, targeting\n~\u20ac3.5M annual revenue within 3 years.\nThis transformation is based on three pillars: - Standardized product sales (core growth engine) - Controlled\ncustom projects (strategic role) - Scalable service & maintenance business (recurring revenue engine)\nAdditionally, the company will leverage its strong engineering DNA and flexibility to position itself as a high-\nROI industrial partner in the corrugated packaging sector.\n2. Company Overview\nOrganization (Current)\nTotal employees: 9\nOwner & General Manager: Diego Garcia\nCo-owner & Admin Manager: Mar\u00eda Jes\u00fas Garcia\n2 Back Office\nMechanical Engineer\u2026",
+      "keywords": [
+        "revenue",
+        "engineering",
+        "driven",
+        "custom",
+        "service",
+        "company",
+        "current",
+        "model"
+      ]
+    },
+    {
+      "path": "C:\\Users\\Inaki Senar\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\strategy\\1776180406755_Ingecart_Strategic_Plan.xlsx",
+      "exists": true,
+      "size": 8749,
+      "sha256": "1e41d8349562baaf63c2fa2881e41cdc335fcaa2244effe45dbdc9ad28b6cf2f",
+      "snippet": "",
+      "keywords": []
+    }
+  ],
+  "missing": []
+}

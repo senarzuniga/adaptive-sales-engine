@@ -9,12 +9,71 @@ import streamlit as st
 
 from config import SUPABASE_CONFIGURED
 from ui.components import _field, safe_execute, _render_orchestrator_panel
+from config import APP_ROOT
+from pathlib import Path
+
+
+REG_PATH = APP_ROOT / "Architecture" / "EnterpriseHub" / "enterprise_registry.yaml"
+
+
+def _load_registry():
+    try:
+        import yaml
+
+        if not REG_PATH.exists():
+            return {}
+        return yaml.safe_load(REG_PATH.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return {}
 
 
 def page_dashboard() -> None:
     profile = st.session_state.profile or {}
     department = profile.get("department", "")
     st.title(f"📊 Dashboard — {department}")
+
+    # --- Enterprise summary (MVP additions) -----------------
+    reg = _load_registry()
+    default_org = reg.get("default_organization") or "CTA"
+    active_org = st.session_state.get("active_organization") or next(
+        (o for o in (reg.get("organizations") or []) if o.get("id") == default_org), None
+    )
+
+    col_a, col_b, col_c = st.columns([3, 4, 3])
+    with col_a:
+        st.subheader("🏛️ Organización activa")
+        if active_org:
+            st.markdown(f"**{active_org.get('name')}** (`{active_org.get('id')}`) — {active_org.get('status')}")
+        else:
+            st.info(f"Organización por defecto: {default_org}")
+
+    with col_b:
+        st.subheader("📂 Repositorios registrados")
+        repos = reg.get("repositories", []) or []
+        if repos:
+            for r in repos[:6]:
+                st.write(f"• **{r.get('id')}** — {r.get('path')} ")
+            if len(repos) > 6:
+                st.caption(f"Mostrando 6 de {len(repos)} repositorios. Ver Repository Manager para todos.")
+        else:
+            st.info("No hay repositorios registrados. Usa Repository Manager para registrar.")
+
+    with col_c:
+        st.subheader("🤖 Agentes & Salud")
+        try:
+            from orchestrator import get_max_orchestrator
+
+            orch = get_max_orchestrator()
+            n_agents = len(orch.agents)
+            st.metric("Agentes cargados", n_agents)
+            try:
+                st.json(orch.get_status_report())
+            except Exception:
+                st.caption("Estado del orquestador disponible")
+        except Exception:
+            st.warning("Orquestador no disponible")
+
+    st.divider()
 
     from infrastructure.supabase_client import get_supabase
     supabase = get_supabase()

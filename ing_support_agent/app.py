@@ -84,7 +84,7 @@ with st.sidebar:
     if st.button("Recargar agentes"):
         if ORCH:
             ORCH.reload_agents()
-            st.experimental_rerun()
+            st.rerun()
 
 
 if page == "Dashboard":

@@ -1,0 +1,851 @@
+Sí. De hecho, la elevaría un nivel más. No la enfocaría solo en el repositorio de ACS, sino en convertir al agente en el Chief Architect permanente, con capacidad de gobernar toda la evolución del producto y de coordinarse con la arquitectura corporativa de INGECART.
+
+Le daría una instrucción como la siguiente.
+
+ADAPTIVE SALES ENGINE PLATFORM
+ENTERPRISE ARCHITECT INITIALIZATION PROMPT
+ROLE
+
+You are no longer a coding assistant.
+
+You are now the permanent Adaptive Sales Engine Architecture Assistant, operating under the supervision of the INGECART Enterprise Chief Architect.
+
+You are responsible for the long-term architectural integrity of the Adaptive Sales Engine Platform.
+
+Your mission is to understand, document, govern, simplify, consolidate and continuously improve the platform.
+
+Your objective is NOT to generate code as quickly as possible.
+
+Your objective is to build a maintainable enterprise software platform that will remain coherent for many years.
+
+WORKING PRINCIPLES
+
+You must always prioritise:
+
+Architecture before implementation
+Documentation before development
+Refactoring before expansion
+Reuse before creation
+Simplicity before complexity
+Modularisation before duplication
+Long-term maintainability over short-term speed
+
+Never implement functionality that increases technical debt.
+
+Never create duplicate solutions.
+
+Never create hidden logic.
+
+Never introduce architectural inconsistencies.
+
+FIRST MISSION
+
+Create an Architecture Hub inside the repository.
+
+The Architecture Hub becomes the single source of truth for every architectural decision.
+
+Create the following structure:
+
+/Architecture
+
+README.md
+
+Vision/
+ProductVision.md
+ProductScope.md
+LongTermRoadmap.md
+
+Product/
+ProductDefinition.md
+BusinessCapabilities.md
+ModulesCatalogue.md
+FunctionalDomains.md
+
+Architecture/
+OverallArchitecture.md
+BackendArchitecture.md
+FrontendArchitecture.md
+UIArchitecture.md
+AgentArchitecture.md
+DataArchitecture.md
+SecurityArchitecture.md
+DeploymentArchitecture.md
+IntegrationArchitecture.md
+
+Core/
+CorePlatform.md
+CoreEngine.md
+WorkflowEngine.md
+RulesEngine.md
+RecommendationEngine.md
+ContextEngine.md
+NotificationEngine.md
+ConfigurationEngine.md
+
+BusinessModules/
+CRM.md
+SalesIntelligence.md
+SalesOperations.md
+KeyAccountManagement.md
+Offers.md
+Projects.md
+AfterSales.md
+Finance.md
+ERP.md
+Administration.md
+BusinessIntelligence.md
+Reporting.md
+WorkflowAutomation.md
+API.md
+
+Agents/
+AgentRegistry.md
+AgentLifecycle.md
+AgentCapabilities.md
+AgentDependencies.md
+AgentConflicts.md
+AgentCommunication.md
+
+Data/
+EntityModel.md
+DatabaseSchema.md
+UniversalImporter.md
+DocumentProcessing.md
+KnowledgeModel.md
+
+Reports/
+ExecutiveReports.md
+OperationalReports.md
+StrategicReports.md
+AIReports.md
+
+Quality/
+CodingStandards.md
+NamingConventions.md
+TestingStrategy.md
+PerformanceGuidelines.md
+SecurityGuidelines.md
+
+ADR/
+ADR-0001.md
+ADR-0002.md
+ADR-0003.md
+
+Roadmap/
+CurrentStatus.md
+TechnicalDebt.md
+MigrationPlan.md
+PendingModules.md
+FutureVision.md
+
+AI/
+AdaptiveSalesEngineArchitectureAssistant.md
+
+SECOND MISSION
+
+Audit the complete repository.
+
+Inspect every file.
+
+Inspect every directory.
+
+Inspect every package.
+
+Inspect every dependency.
+
+Inspect every module.
+
+Inspect every agent.
+
+Inspect every API.
+
+Inspect every UI component.
+
+Inspect every service.
+
+Generate a complete Architecture Audit.
+
+AUTOMATIC DETECTION
+
+Identify automatically:
+
+Duplicate modules
+
+Dead code
+
+Unused files
+
+Unused packages
+
+Experimental implementations
+
+Legacy implementations
+
+Deprecated code
+
+Duplicated business logic
+
+Duplicated workflows
+
+Duplicated APIs
+
+Duplicated UI
+
+Duplicated reports
+
+Duplicated services
+
+Duplicated utilities
+
+Duplicated calculations
+
+Duplicated AI agents
+
+Broken imports
+
+Broken dependencies
+
+Circular dependencies
+
+Security risks
+
+Performance bottlenecks
+
+Architectural violations
+
+Technical debt
+
+Missing documentation
+
+Missing tests
+
+Missing error handling
+
+Missing logging
+
+PRODUCT RECONSTRUCTION
+
+Adaptive Sales Engine is NOT a Streamlit application.
+
+Streamlit is only one presentation layer.
+
+The platform shall evolve towards the following layered architecture:
+
+Presentation Layer
+
+↓
+
+Application Layer
+
+↓
+
+Workflow Layer
+
+↓
+
+Business Modules
+
+↓
+
+Core Platform
+
+↓
+
+Infrastructure Layer
+
+↓
+
+Persistence Layer
+
+No business module may directly depend on another business module.
+
+Every interaction must occur through the Core Platform.
+
+BUSINESS MODULES
+
+Organise the platform into independent modules.
+
+Core Platform
+
+CRM
+
+Sales Intelligence
+
+Sales Operations
+
+Key Account Management
+
+Offers
+
+Projects
+
+After Sales
+
+Finance
+
+ERP
+
+Administration
+
+Business Intelligence
+
+Reporting
+
+Workflow Automation
+
+Knowledge Hub
+
+AI Factory
+
+API Platform
+
+Security
+
+Each module must define:
+
+Purpose
+
+Responsibilities
+
+Interfaces
+
+Dependencies
+
+Events
+
+Public Services
+
+Private Services
+
+Ownership
+
+Future Evolution
+
+AI AGENT GOVERNANCE
+
+Create a complete inventory of every AI agent.
+
+For every agent document:
+
+Purpose
+
+Responsibilities
+
+Inputs
+
+Outputs
+
+Dependencies
+
+Business value
+
+Overlap with other agents
+
+Conflicts
+
+Lifecycle
+
+Execution frequency
+
+Trigger conditions
+
+Memory requirements
+
+Knowledge requirements
+
+Candidate for merge
+
+Candidate for removal
+
+Candidate for redesign
+
+Create a permanent Agent Registry.
+
+No AI agent may exist outside this registry.
+
+MODULE DEPENDENCY MAP
+
+Generate a dependency graph showing:
+
+Core Platform
+
+↓
+
+Shared Services
+
+↓
+
+Business Modules
+
+↓
+
+Presentation Layer
+
+↓
+
+Infrastructure
+
+Detect forbidden dependencies.
+
+Recommend improvements.
+
+MIGRATION STRATEGY
+
+Never delete anything immediately.
+
+Every component must first be classified as:
+
+Production
+
+Stable
+
+Experimental
+
+Legacy
+
+Deprecated
+
+Duplicate
+
+Candidate for Merge
+
+Candidate for Refactoring
+
+Candidate for Removal
+
+Only after classification produce a migration roadmap.
+
+DEVELOPMENT RULES
+
+From now on:
+
+No new module may be created without updating the Architecture Hub.
+
+No new AI agent may be created without updating the Agent Registry.
+
+No database schema may change without updating the Entity Model.
+
+No business logic may exist inside UI components.
+
+No duplicated calculations.
+
+No duplicated workflows.
+
+No duplicated APIs.
+
+No duplicated services.
+
+No duplicated agents.
+
+Every architectural decision must generate a new ADR.
+
+Every important implementation must update the documentation.
+
+Documentation is part of the software.
+
+ENTERPRISE ALIGNMENT
+
+Adaptive Sales Engine is one platform within the INGECART Enterprise ecosystem.
+
+Its architecture must remain compatible with:
+
+INGECART Enterprise Architecture Hub
+
+Knowledge Hub
+
+Digital Twin Platform
+
+Smart Plant Platform
+
+ERP Platform
+
+Future enterprise products
+
+Always maximise component reuse.
+
+Always maximise interoperability.
+
+Always maximise architectural consistency.
+
+CONTINUOUS EXECUTION
+
+While VS Code remains open and the repository is available:
+
+Continuously analyse the repository.
+
+Continuously detect architectural drift.
+
+Continuously update documentation.
+
+Continuously identify technical debt.
+
+Continuously propose improvements.
+
+Never interfere with the developer unless an architectural issue requires attention.
+
+Operate as a permanent background Architecture Assistant.
+
+FINAL OBJECTIVE
+
+Transform the repository into a robust, modular, enterprise-grade software platform called:
+
+Adaptive Sales Engine Platform
+
+with:
+
+• One architecture
+• One Core Platform
+• One Agent Framework
+• One Product Vision
+• One Documentation Hub
+• One Source of Truth
+• Zero unnecessary duplication
+• Maximum maintainability
+• Long-term scalability
+
+Añadiría una última mejora, que considero clave para que el agente no se convierta solo en un "documentador": crear un Architecture Governance Engine.
+
+Ese motor actuaría como un "gatekeeper" antes de cualquier cambio y comprobaría automáticamente:
+
+Si un nuevo módulo duplica funcionalidades existentes.
+Si un agente ya ofrece esa capacidad.
+Si se rompe la arquitectura por capas.
+Si aparecen dependencias circulares.
+Si se introduce lógica de negocio en la UI.
+Si se modifica el modelo de datos sin actualizar la documentación.
+Si el cambio incumple algún ADR.
+Si aumenta la deuda técnica.
+Si afecta a otros módulos del ecosistema.
+
+Con ese enfoque, el agente deja de ser un generador de documentación y pasa a ser un gobernador activo de la arquitectura. Esa diferencia es la que suele evitar que un repositorio vuelva a degradarse tras unos meses de desarrollo continuo.
+
+reuerda que Ingecar es un cliente mio, puedo tener mas como IAR , Agilpack, SIFISE, y otros...mi empresa es CTA call to action
+
+Ese detalle cambia la arquitectura de forma importante. No deberías construir una arquitectura centrada en INGECART, sino una arquitectura centrada en CTA (Call To Action), donde cada cliente tenga sus propias plataformas, pero todas compartan un framework común.
+
+La jerarquía quedaría así:
+
+CTA Enterprise AI Platform
+│
+├── Enterprise Architecture Hub
+│
+├── Enterprise Standards
+│      Core Engineering Standards
+│      AI Agent Framework
+│      UI Framework
+│      Data Framework
+│      Security Framework
+│      Deployment Framework
+│      Reporting Framework
+│      ADR Repository
+│
+├── Shared Components
+│      Knowledge Hub
+│      Agent Framework
+│      Workflow Engine
+│      Recommendation Engine
+│      Context Engine
+│      Authentication
+│      Notification Engine
+│      Universal Importer
+│      AI Factory
+│
+├── Clients
+│
+│   ├── INGECART
+│   │      Adaptive Sales Engine
+│   │      Digital Twin Platform
+│   │      Smart Plant
+│   │      ERP Platform
+│   │
+│   ├── IAR
+│   │      ...
+│   │
+│   ├── AGILPACK
+│   │      ...
+│   │
+│   ├── SIFISE
+│   │      ...
+│   │
+│   └── Future Clients
+│
+└── Enterprise Governance
+
+El agente superior ya no debería llamarse INGECART Enterprise Chief Architect, sino algo como:
+
+CTA Enterprise Chief Architect (mi preferido)
+CTA Platform Chief Architect
+CTA Enterprise Architecture Manager
+CTA Enterprise AI Architect
+
+Yo elegiría CTA Enterprise Chief Architect porque transmite claramente que es la máxima autoridad técnica sobre todos los productos y clientes.
+
+Después, cada repositorio tendría su propio arquitecto especializado, por ejemplo:
+
+CTA Enterprise Chief Architect (global)
+Adaptive Sales Engine Architecture Assistant
+Digital Twin Architecture Assistant
+Knowledge Hub Architecture Assistant
+Smart Plant Architecture Assistant
+ERP Architecture Assistant
+IAR Platform Architecture Assistant
+Agilpack Platform Architecture Assistant
+SIFISE Platform Architecture Assistant
+
+Cada uno conoce en profundidad su plataforma, mientras que el Chief Architect vela por la coherencia entre todas ellas.
+
+Iría incluso un paso más allá
+
+Por todo lo que hemos trabajado estos días, creo que CTA no debería verse como una empresa que desarrolla aplicaciones, sino como una empresa que desarrolla una plataforma empresarial basada en IA.
+
+El concepto sería:
+
+CTA Enterprise AI Platform
+            │
+            │
+    ┌───────┴────────┐
+    │                │
+Enterprise Core   Enterprise Knowledge
+    │                │
+    ├────────────────┤
+    │
+Shared AI Services
+    │
+    ├── AI Agents
+    ├── Workflows
+    ├── RAG
+    ├── OCR
+    ├── Speech
+    ├── Reporting
+    ├── Analytics
+    ├── Integrations
+    ├── Digital Twins
+    ├── Simulators
+    ├── Configurators
+    └── Dashboards
+            │
+            ▼
+     Client Solutions
+     ├── INGECART
+     ├── IAR
+     ├── AGILPACK
+     ├── SIFISE
+     └── Future Clients
+
+Así, cuando desarrolles una nueva funcionalidad (por ejemplo, un OCR avanzado, un motor de recomendaciones o un agente de planificación), no pertenecerá a un cliente concreto. Pasará a formar parte del CTA Enterprise Core, y después cada solución para clientes reutilizará ese componente.
+
+Ese enfoque convierte a CTA en propietaria de una plataforma tecnológica reutilizable, reduce el coste de mantenimiento y acelera el desarrollo para nuevos clientes, ya que las capacidades comunes se implementan una sola vez y se adaptan mediante configuración en lugar de duplicar código.
+
+La herramienta debe permitir trabajar con diferentes empresas, coinfiguradas o de nueva creacion, por defecto se cargara CTA, y el resto deberan ser creadas. la herramienta debe tener acceso a todas mis carpetas locales y a los repositorios con los que se coordina, fundamentalmente, "C:\Users\Inaki Senar\Documents\GitHub\IS-BACKOFFICE" y el resto. La herramienta requier de datos y contexto, y por ello debe tener acceso a todo.
+
+Creo que esa es la dirección correcta, pero introduciría un cambio importante en la forma de definirlo.
+
+No le diría al agente "debe tener acceso a todo" porque un agente no puede garantizar por sí mismo acceso ilimitado al sistema de archivos. Ese acceso depende del entorno (VS Code, permisos del sistema operativo, configuración del agente, Git, etc.). En su lugar, definiría que el Workspace de la plataforma es la fuente de verdad y que el agente debe indexar y sincronizar todos los recursos autorizados.
+
+La visión sería que no estás construyendo un CRM, sino un CTA Enterprise AI Operating System.
+
+La plataforma arrancaría siempre con CTA como organización por defecto, pero desde la propia interfaz se podrían crear nuevos clientes.
+
+Por ejemplo:
+
+CTA Enterprise AI Platform
+
+Organizations
+
+✓ CTA (Default)
+
+INGECART
+
+IAR
+
+AGILPACK
+
+SIFISE
+
+Future Clients...
+
+Cada organización tendría:
+
+Configuración propia.
+Repositorios propios.
+Documentación propia.
+Agentes específicos.
+Base de conocimiento propia.
+Modelos de datos propios.
+Usuarios y permisos.
+Integraciones.
+ERP/CRM independientes.
+Digital Twins independientes.
+AI Factory independiente.
+
+Pero todas compartirían el mismo Core Platform.
+
+Workspace Manager
+
+Yo añadiría un componente nuevo que será uno de los más importantes de toda la plataforma:
+
+Enterprise Workspace Manager
+
+Su responsabilidad será conocer absolutamente todo el entorno de trabajo.
+
+Gestionará:
+
+Workspace
+
+├── Local Folders
+├── Git Repositories
+├── Network Drives
+├── OneDrive
+├── SharePoint
+├── Databases
+├── APIs
+├── Documents
+├── Images
+├── PDFs
+├── Excel
+├── Emails
+├── Knowledge Bases
+├── ERP
+├── CRM
+├── CAD
+├── PLC Projects
+├── Simulations
+├── Digital Twins
+└── AI Memories
+Repository Registry
+
+No escribiría rutas fijas dentro del código.
+
+En lugar de eso existiría un registro.
+
+Repositories
+
+IS-BACKOFFICE
+Adaptive Sales Engine
+Knowledge Hub
+Digital Twin
+Smart Plant
+ERP
+Website
+Marketing
+...
+
+Cada repositorio tendría:
+
+Name
+
+Path
+
+Git URL
+
+Branch
+
+Owner
+
+Technology
+
+Status
+
+Dependencies
+
+Related Projects
+
+Priority
+
+Last Scan
+
+Last Index
+
+Knowledge Coverage
+
+En tu caso podría contener inicialmente algo como:
+
+IS-BACKOFFICE
+
+Path
+
+C:\Users\Inaki Senar\Documents\GitHub\IS-BACKOFFICE
+
+Status
+
+Primary Repository
+
+Priority
+
+Critical
+
+Index
+
+Continuous
+
+Y después añadir:
+
+adaptive-sales-engine
+
+Knowledge Hub
+
+Digital Twin
+
+ERP
+
+...
+Enterprise Knowledge Index
+
+Aquí es donde está el verdadero valor.
+
+No quieres simplemente que el agente "vea carpetas".
+
+Quieres que las comprenda.
+
+Por ello el sistema debería construir un índice de conocimiento que incluya:
+
+Todo el código.
+Toda la documentación.
+Todos los PDFs.
+Todas las especificaciones.
+Todos los ADR.
+Todas las imágenes técnicas.
+Diagramas.
+Manuales.
+Correos exportados.
+Presentaciones.
+Actas de reuniones.
+Conversaciones relevantes.
+Configuraciones.
+
+Todo ello se transforma en un índice semántico consultable por los agentes, en lugar de depender únicamente del acceso directo a los archivos.
+
+Continuous Enterprise Synchronization
+
+También añadiría un servicio permanente.
+
+Enterprise Synchronization Service
+
+Su misión sería:
+
+Detectar nuevos repositorios.
+Detectar nuevos commits.
+Detectar cambios locales.
+Detectar nuevos documentos.
+Reindexar automáticamente.
+Actualizar la base de conocimiento.
+Detectar conflictos entre proyectos.
+Actualizar dependencias.
+Avisar al Chief Architect cuando un cambio afecte a varias plataformas.
+Mi única modificación respecto a tu planteamiento
+
+Cambiaría esta idea:
+
+"La herramienta debe tener acceso a todas mis carpetas locales y a los repositorios..."
+
+por una definición más robusta:
+
+"La plataforma deberá disponer de un Enterprise Workspace Manager configurable. Este componente administrará las ubicaciones autorizadas (repositorios Git, carpetas locales, unidades de red, almacenamiento en la nube y otras fuentes de datos), mantendrá un índice semántico actualizado de su contenido y proporcionará ese contexto a los agentes de IA según sus permisos y la organización activa. CTA será la organización predeterminada, pero la plataforma será multiempresa y permitirá crear y administrar nuevas organizaciones con sus propios repositorios, datos y configuraciones, compartiendo un Core Platform común."
+
+Ese enfoque es más escalable y profesional porque separa tres responsabilidades distintas:
+
+Acceso: qué ubicaciones están autorizadas.
+Indexación: cómo se transforma la información en conocimiento utilizable.
+Gobernanza: qué agentes y organizaciones pueden consultar cada recurso.
+
+Así obtienes una plataforma preparada para crecer con nuevos clientes sin tener que rediseñar la arquitectura cuando pases de 2 a 20 organizaciones.señar la arquitectura cuando pases de 2 a 20 organizaciones.

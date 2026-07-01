@@ -1,0 +1,47 @@
+
+
+Checklist antes de ofertar.
+Matriz de aprobación de ofertas.
+Modelo estándar de cálculo de margen.
+Modelo de cálculo del flujo de caja del proyecto.
+Necesidad máxima de financiación.
+Curva S de costes e ingresos.
+Matriz de riesgos.
+Procedimiento de negociación de contratos.
+
+Productos
+
+Aquí quiero hacer algo diferente.
+
+No quiero pensar en proyectos.
+
+Quiero pensar en líneas de negocio.
+
+Por ejemplo:
+
+Robot Paletizador
+
+INGEPACK
+
+Sistema Retal
+
+AMRs
+
+Ingetrans
+
+Carga automática
+
+Retrofit
+
+Ingeniería
+
+Consultoría
+
+Postventa
+
+Cada línea tendrá:
+
+margen
+riesgo
+necesidad financiera
+escalabilidad

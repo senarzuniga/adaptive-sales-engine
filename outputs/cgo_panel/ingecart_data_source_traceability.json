@@ -1,0 +1,24 @@
+{
+  "id": "ingecart",
+  "user_financial_source": "CLI_INPUT",
+  "backup_source": "C:/Users/Inaki Senar/Documents/GitHub/adaptive-sales-engine/INGECART_COMPANY_INFO_BACKUP.txt",
+  "backup_hash": "3980b22660631fc9e0013f11116a687b",
+  "timestamp": "2026-06-30T15:26:45.206222+00:00",
+  "applied_rules": [
+    "User financial data locked and not modified",
+    "Backup file used only for non-financial enrichment"
+  ],
+  "conflicts_detected": true,
+  "conflict_details": {
+    "revenue": [
+      {
+        "found": "2028",
+        "against": "2000000"
+      },
+      {
+        "found": "80",
+        "against": "2000000"
+      }
+    ]
+  }
+}

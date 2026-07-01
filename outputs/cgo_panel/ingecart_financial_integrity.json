@@ -1,0 +1,23 @@
+{
+  "id": "ingecart",
+  "checked_at": "2026-06-30T15:26:45.206222+00:00",
+  "financials_locked": true,
+  "financial_data_status": "USER_VALIDATED_LOCKED",
+  "integrity_ok": true,
+  "details": "Values stored match user-provided inputs and were not recalculated.",
+  "warnings": {
+    "backup_file_conflicts": {
+      "revenue": [
+        {
+          "found": "2028",
+          "against": "2000000"
+        },
+        {
+          "found": "80",
+          "against": "2000000"
+        }
+      ]
+    },
+    "resolution": "User data prevails; backup not applied to financial fields."
+  }
+}

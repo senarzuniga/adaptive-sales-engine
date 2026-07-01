@@ -461,6 +461,15 @@ _NAV_STRUCTURE: List[tuple] = [
         ("Finanzas",                   "💶"),
         ("ACSSUPPORT",                 "🛡️"),
     ]),
+    ("🏛️ Enterprise", [
+        ("Organization Workspace", "🏢"),
+        ("Organization Manager", "🏢"),
+        ("Repository Manager", "📁"),
+        ("Workspace Manager", "🗂️"),
+        ("Knowledge Hub", "📚"),
+        ("Activity Center", "🕒"),
+        ("Settings", "⚙️"),
+    ]),
     ("🔄 After Sales", [
         ("After-Sales Engine", "🔧"),
     ]),
@@ -610,6 +619,13 @@ except (ImportError, ModuleNotFoundError):  # pragma: no cover - runtime safety 
 
     page_placeholder = _fallback_page_placeholder
 from ui.pages.agent_hub import page_agent_hub  # noqa: E402
+from ui.pages.org_manager import page_organization_manager  # noqa: E402
+from ui.pages.org_workspace import page_org_workspace  # noqa: E402
+from ui.pages.repo_manager import page_repository_manager  # noqa: E402
+from ui.pages.workspace_manager import page_workspace_manager  # noqa: E402
+from ui.pages.knowledge_hub import page_knowledge_hub  # noqa: E402
+from ui.pages.activity_center import page_activity_center  # noqa: E402
+from ui.pages.settings import page_settings  # noqa: E402
 
 # ── Auto-implement injection anchors (do not remove) ──────────
 # ── AUTO_IMPLEMENT_PAGES_START ──
@@ -935,6 +951,13 @@ _PAGE_MAP: Dict[str, Any] = {
     "Project Management":               page_project_management,
     "Cost & Rates":                     page_cost_modules,
     "Agent Hub":                        page_agent_hub,
+    "Organization Manager":             page_organization_manager,
+    "Organization Workspace":           page_org_workspace,
+    "Repository Manager":               page_repository_manager,
+    "Workspace Manager":                page_workspace_manager,
+    "Knowledge Hub":                    page_knowledge_hub,
+    "Activity Center":                  page_activity_center,
+    "Settings":                         page_settings,
     "CRM":                              __import__('ui.pages.crm').pages.crm.page_crm,
     "ERP":                              __import__('ui.pages.erp').pages.erp.page_erp,
     "Finanzas":                         __import__('ui.pages.finance').pages.finance.page_finance,

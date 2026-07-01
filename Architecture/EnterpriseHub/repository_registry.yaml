@@ -1,0 +1,9 @@
+repositories:
+  - id: adaptive-sales-engine
+    name: Adaptive Sales Engine
+    owner: senarzuniga
+    local_path: C:\Users\Inaki Senar\Documents\GitHub\adaptive-sales-engine
+    default_branch: main
+    description: Core repository for the Adaptive Sales Engine project
+    last_scanned: null
+    status: active

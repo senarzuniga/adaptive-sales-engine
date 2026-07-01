@@ -1,0 +1,26 @@
+[ENTITY]
+type = COMPANY
+id = ingecart
+commercial_name = Ingecart
+legal_name = Ingecart 2018 SL
+status = ACTIVE
+default = FALSE
+source_of_truth = USER_INPUT_FINANCIALS
+
+[FINANCE]
+revenue_estimate = 2000000
+pipeline_estimate = 15000000-17000000
+cash_position = UNKNOWN
+cash_burn_risk = HIGH
+financing_need = SHORT_TERM_CRITICAL
+payment_terms_avg = 60-90
+customer_advances = 30%
+retention = POSSIBLE
+contract_risk = HIGH
+FLAG:financial_data_status = USER_VALIDATED_LOCKED
+
+[COMPANY_INFO]
+ingestion_source = C:/Users/Inaki Senar/Documents/GitHub/adaptive-sales-engine/INGECART_COMPANY_INFO_BACKUP.txt
+governance = CHIEF_ARCHITECT_CONTROLLED
+created_at = 2026-06-30T15:26:45.191954+00:00
+updated_at = 2026-06-30T15:26:45.191954+00:00

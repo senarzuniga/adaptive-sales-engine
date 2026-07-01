@@ -1,0 +1,24 @@
+organizations:
+  - id: cta
+    name: CTA Enterprise
+    description: "Default enterprise organization for internal projects and governance"
+    contacts:
+      - role: Chief Architect
+        person: ""
+    status: active
+  - id: ingecart
+    name: INGECART
+    description: "Customer / organization: INGECART"
+    status: active
+  - id: iar
+    name: IAR
+    description: "Customer / organization: IAR"
+    status: active
+  - id: agilpack
+    name: AGILPACK
+    description: "Customer / organization: AGILPACK"
+    status: active
+  - id: sifise
+    name: SIFISE
+    description: "Customer / organization: SIFISE"
+    status: active
