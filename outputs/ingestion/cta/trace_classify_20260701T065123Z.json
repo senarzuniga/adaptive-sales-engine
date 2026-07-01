@@ -1,0 +1,34 @@
+{
+  "step": "classify",
+  "trace": [
+    {
+      "step": "discover",
+      "result": {
+        "status": "OK",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "source_id": "is-backoffice",
+            "type": "folder",
+            "path": "C:\\Users\\Inaki Senar\\Documents\\GitHub\\IS-BACKOFFICE",
+            "noted_at": "2026-07-01T06:51:23.845218+00:00"
+          }
+        ]
+      },
+      "timestamp": "2026-07-01T06:51:23.845231+00:00"
+    },
+    {
+      "step": "classify",
+      "result": {
+        "status": "OK",
+        "classifications": {
+          "offers": 0,
+          "contracts": 0,
+          "presentations": 0,
+          "other": 1
+        }
+      },
+      "timestamp": "2026-07-01T06:51:23.847361+00:00"
+    }
+  ]
+}

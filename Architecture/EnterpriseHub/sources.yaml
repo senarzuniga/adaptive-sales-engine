@@ -1,0 +1,11 @@
+sources:
+- id: is-backoffice
+  name: IS-BACKOFFICE
+  type: folder
+  path: C:\Users\Inaki Senar\Documents\GitHub\IS-BACKOFFICE
+  owner: Inaki
+  frequency: daily
+  priority: high
+  rules: {}
+  last_sync: null
+  last_status: null
