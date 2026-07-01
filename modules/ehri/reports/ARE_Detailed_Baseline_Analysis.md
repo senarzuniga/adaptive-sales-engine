@@ -1,6 +1,6 @@
 # ARE Detailed Baseline Analysis
 
-Total captured events: 36
+Total captured events: 68
 
 ## ASE Readiness Score (ARS)
 
@@ -15,7 +15,7 @@ Total captured events: 36
     "architecture_purity": 10.0
   },
   "violations": [],
-  "total_events": 36
+  "total_events": 68
 }
 
 ## Coverage (workflows)
@@ -81,3 +81,45 @@ Overall workflow coverage: 94.44%
 - Knowledge: 100.0% (4/4)
 - Execution Console: 100.0% (3/3)
 - Reporting: 100.0% (1/1)
+
+## Context Coverage
+
+- session: present_in 2 contexts, avg_confidence=0.95
+- user: present_in 2 contexts, avg_confidence=0.95
+- company: present_in 2 contexts, avg_confidence=0.8
+- crm: present_in 2 contexts, avg_confidence=0.8
+- opportunity: present_in 2 contexts, avg_confidence=0.8
+- product: present_in 2 contexts, avg_confidence=0.5
+- project: present_in 2 contexts, avg_confidence=0.5
+- enterprise_memory: present_in 2 contexts, avg_confidence=0.8
+- truth_graph: present_in 2 contexts, avg_confidence=0.5
+- knowledge_hub: present_in 2 contexts, avg_confidence=0.85
+- business_rules: present_in 2 contexts, avg_confidence=0.5
+- market: present_in 2 contexts, avg_confidence=0.6
+- conversation: present_in 2 contexts, avg_confidence=0.9
+
+## Traceability Coverage
+
+- total_decisions: 2
+- decisions_with_trace: 1
+- decisions_with_evidence: 0
+
+## Fact Checker Coverage
+
+- total_validations: 4
+- passed: 0
+- pass_rate: 0.0
+
+Common issues:
+- {'type': 'missing_numeric', 'path': '/outputs/pricing-intel/pricing_recommendation/recommended_price', 'value': None}
+- {'type': 'no_evidence', 'detail': 'No evidence found in fusion output'}
+- {'type': 'low_confidence_agents', 'agents': ['fact-checker', 'quality-assurance']}
+- {'type': 'missing_numeric', 'path': '/outputs/pricing-intel/pricing_recommendation/recommended_price', 'value': None}
+- {'type': 'no_evidence', 'detail': 'No evidence found in fusion output'}
+- {'type': 'low_confidence_agents', 'agents': ['fact-checker', 'quality-assurance', 'fact-checker', 'quality-assurance']}
+- {'type': 'missing_numeric', 'path': '/outputs/pricing-intel/pricing_recommendation/recommended_price', 'value': None}
+- {'type': 'no_evidence', 'detail': 'No evidence found in fusion output'}
+- {'type': 'low_confidence_agents', 'agents': ['fact-checker', 'quality-assurance']}
+- {'type': 'missing_numeric', 'path': '/outputs/pricing-intel/pricing_recommendation/recommended_price', 'value': None}
+- {'type': 'no_evidence', 'detail': 'No evidence found in fusion output'}
+- {'type': 'low_confidence_agents', 'agents': ['fact-checker', 'quality-assurance', 'fact-checker', 'quality-assurance']}

@@ -141,10 +141,84 @@ def analyze():
         'total_events': len(events),
     }
 
+    # Additional coverage reports: Context Coverage, Traceability Coverage, Fact Checker Coverage
+    # Context Coverage: analyze AI_CONTEXT_BUILT events
+    ctx_built = events_by_type.get('AI_CONTEXT_BUILT', [])
+    context_presence = {}
+    for cb in ctx_built:
+        ctx_summary = (cb.get('payload') or {}).get('context_summary') or {}
+        contexts = ctx_summary.get('contexts') if isinstance(ctx_summary, dict) else {}
+        for name, meta in (contexts or {}).items():
+            entry = context_presence.setdefault(name, {'count': 0, 'conf_sum': 0.0})
+            entry['count'] += 1
+            entry['conf_sum'] += meta.get('confidence', 0.0)
+
+    context_coverage = {name: {'count': v['count'], 'avg_confidence': round((v['conf_sum'] / v['count']) if v['count'] else 0.0, 3)} for name, v in context_presence.items()}
+
+    # Traceability Coverage: examine AI_EXECUTIVE_DECISION events
+    decisions = events_by_type.get('AI_EXECUTIVE_DECISION', [])
+    trace_coverage = {'total_decisions': len(decisions), 'decisions_with_trace': 0, 'decisions_with_evidence': 0}
+    for d in decisions:
+        dec = (d.get('payload') or {}).get('decision') or {}
+        trace = dec.get('traceability') if isinstance(dec, dict) else None
+        if trace:
+            trace_coverage['decisions_with_trace'] += 1
+            evmap = trace.get('evidence_map') or {}
+            if any(evmap.values()):
+                trace_coverage['decisions_with_evidence'] += 1
+
+    # Fact Checker Coverage
+    fc_events = events_by_type.get('AI_FACT_CHECK_VALIDATION', [])
+    fc_total = len(fc_events)
+    fc_pass = sum(1 for f in fc_events if (f.get('payload') or {}).get('validation', {}).get('passed'))
+    fc_issues = []
+    for f in fc_events:
+        v = (f.get('payload') or {}).get('validation', {})
+        for iss in v.get('issues', []):
+            fc_issues.append(iss)
+
+    fact_checker_coverage = {'total_validations': fc_total, 'passed': fc_pass, 'pass_rate': (fc_pass / fc_total * 100) if fc_total else None, 'common_issues': fc_issues}
+
+    # attach these to the summary
+    summary['context_coverage'] = context_coverage
+    summary['trace_coverage'] = trace_coverage
+    summary['fact_checker_coverage'] = fact_checker_coverage
+
+    
+
     # write detailed JSON and MD
     out_dir = os.path.join(os.path.dirname(__file__), '..', 'reports')
     out_dir = os.path.normpath(out_dir)
     os.makedirs(out_dir, exist_ok=True)
+    # Also write separate coverage reports for quick access
+    ctx_path = os.path.join(out_dir, 'Context_Coverage_Report.md')
+    with open(ctx_path, 'w', encoding='utf-8') as cf:
+        cf.write('# Context Coverage Report\n\n')
+        if context_coverage:
+            for n, v in context_coverage.items():
+                cf.write(f'- **{n}**: present_in {v["count"]}, avg_confidence={v["avg_confidence"]}\n')
+        else:
+            cf.write('- None\n')
+
+    tr_path = os.path.join(out_dir, 'Traceability_Coverage_Report.md')
+    with open(tr_path, 'w', encoding='utf-8') as tf:
+        tf.write('# Traceability Coverage Report\n\n')
+        tf.write(f"- total_decisions: {trace_coverage.get('total_decisions', 0)}\n")
+        tf.write(f"- decisions_with_trace: {trace_coverage.get('decisions_with_trace', 0)}\n")
+        tf.write(f"- decisions_with_evidence: {trace_coverage.get('decisions_with_evidence', 0)}\n")
+
+    fc_path = os.path.join(out_dir, 'Fact_Checker_Coverage_Report.md')
+    with open(fc_path, 'w', encoding='utf-8') as ff:
+        ff.write('# Fact Checker Coverage Report\n\n')
+        ff.write(f"- total_validations: {fact_checker_coverage.get('total_validations', 0)}\n")
+        ff.write(f"- passed: {fact_checker_coverage.get('passed', 0)}\n")
+        ff.write(f"- pass_rate: {fact_checker_coverage.get('pass_rate')}\n")
+        ff.write('\nCommon issues:\n')
+        if fact_checker_coverage.get('common_issues'):
+            for i in fact_checker_coverage.get('common_issues'):
+                ff.write(f"- {i}\n")
+        else:
+            ff.write('- None\n')
     jpath = os.path.join(out_dir, 'ARE_Detailed_Baseline_Analysis.json')
     mpath = os.path.join(out_dir, 'ARE_Detailed_Baseline_Analysis.md')
     with open(jpath, 'w', encoding='utf-8') as jf:
@@ -220,6 +294,31 @@ def analyze():
         mf.write('## Readiness by business domain\n\n')
         for d, v in readiness_by_domain.items():
             mf.write(f"- {d}: {v['coverage_pct']}% ({v['present']}/{v['required']})\n")
+
+        mf.write('\n## Context Coverage\n\n')
+        if summary.get('context_coverage'):
+            for n, v in summary.get('context_coverage', {}).items():
+                mf.write(f"- {n}: present_in {v['count']} contexts, avg_confidence={v['avg_confidence']}\n")
+        else:
+            mf.write('- None\n')
+
+        mf.write('\n## Traceability Coverage\n\n')
+        tc = summary.get('trace_coverage', {})
+        mf.write(f"- total_decisions: {tc.get('total_decisions', 0)}\n")
+        mf.write(f"- decisions_with_trace: {tc.get('decisions_with_trace', 0)}\n")
+        mf.write(f"- decisions_with_evidence: {tc.get('decisions_with_evidence', 0)}\n")
+
+        mf.write('\n## Fact Checker Coverage\n\n')
+        fc = summary.get('fact_checker_coverage', {})
+        mf.write(f"- total_validations: {fc.get('total_validations', 0)}\n")
+        mf.write(f"- passed: {fc.get('passed', 0)}\n")
+        mf.write(f"- pass_rate: {fc.get('pass_rate')}\n")
+        mf.write('\nCommon issues:\n')
+        if fc.get('common_issues'):
+            for i in fc.get('common_issues'):
+                mf.write(f"- {i}\n")
+        else:
+            mf.write('- None\n')
 
     # print a short summary
     print(json.dumps({

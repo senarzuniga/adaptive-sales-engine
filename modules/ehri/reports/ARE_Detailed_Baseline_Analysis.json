@@ -10,7 +10,7 @@
       "architecture_purity": 10.0
     },
     "violations": [],
-    "total_events": 36
+    "total_events": 68
   },
   "coverage_pct": 94.44,
   "failed_workflows": [
@@ -279,5 +279,139 @@
       "coverage_pct": 100.0
     }
   },
-  "total_events": 36
+  "total_events": 68,
+  "context_coverage": {
+    "session": {
+      "count": 2,
+      "avg_confidence": 0.95
+    },
+    "user": {
+      "count": 2,
+      "avg_confidence": 0.95
+    },
+    "company": {
+      "count": 2,
+      "avg_confidence": 0.8
+    },
+    "crm": {
+      "count": 2,
+      "avg_confidence": 0.8
+    },
+    "opportunity": {
+      "count": 2,
+      "avg_confidence": 0.8
+    },
+    "product": {
+      "count": 2,
+      "avg_confidence": 0.5
+    },
+    "project": {
+      "count": 2,
+      "avg_confidence": 0.5
+    },
+    "enterprise_memory": {
+      "count": 2,
+      "avg_confidence": 0.8
+    },
+    "truth_graph": {
+      "count": 2,
+      "avg_confidence": 0.5
+    },
+    "knowledge_hub": {
+      "count": 2,
+      "avg_confidence": 0.85
+    },
+    "business_rules": {
+      "count": 2,
+      "avg_confidence": 0.5
+    },
+    "market": {
+      "count": 2,
+      "avg_confidence": 0.6
+    },
+    "conversation": {
+      "count": 2,
+      "avg_confidence": 0.9
+    }
+  },
+  "trace_coverage": {
+    "total_decisions": 2,
+    "decisions_with_trace": 1,
+    "decisions_with_evidence": 0
+  },
+  "fact_checker_coverage": {
+    "total_validations": 4,
+    "passed": 0,
+    "pass_rate": 0.0,
+    "common_issues": [
+      {
+        "type": "missing_numeric",
+        "path": "/outputs/pricing-intel/pricing_recommendation/recommended_price",
+        "value": null
+      },
+      {
+        "type": "no_evidence",
+        "detail": "No evidence found in fusion output"
+      },
+      {
+        "type": "low_confidence_agents",
+        "agents": [
+          "fact-checker",
+          "quality-assurance"
+        ]
+      },
+      {
+        "type": "missing_numeric",
+        "path": "/outputs/pricing-intel/pricing_recommendation/recommended_price",
+        "value": null
+      },
+      {
+        "type": "no_evidence",
+        "detail": "No evidence found in fusion output"
+      },
+      {
+        "type": "low_confidence_agents",
+        "agents": [
+          "fact-checker",
+          "quality-assurance",
+          "fact-checker",
+          "quality-assurance"
+        ]
+      },
+      {
+        "type": "missing_numeric",
+        "path": "/outputs/pricing-intel/pricing_recommendation/recommended_price",
+        "value": null
+      },
+      {
+        "type": "no_evidence",
+        "detail": "No evidence found in fusion output"
+      },
+      {
+        "type": "low_confidence_agents",
+        "agents": [
+          "fact-checker",
+          "quality-assurance"
+        ]
+      },
+      {
+        "type": "missing_numeric",
+        "path": "/outputs/pricing-intel/pricing_recommendation/recommended_price",
+        "value": null
+      },
+      {
+        "type": "no_evidence",
+        "detail": "No evidence found in fusion output"
+      },
+      {
+        "type": "low_confidence_agents",
+        "agents": [
+          "fact-checker",
+          "quality-assurance",
+          "fact-checker",
+          "quality-assurance"
+        ]
+      }
+    ]
+  }
 }
