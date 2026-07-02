@@ -22,6 +22,16 @@ class TraceabilityEngine:
         # Map agent -> evidence
         evidence_map = {r.get("agent_name"): r.get("evidence", []) for r in agent_results}
 
+        # If EvidenceEngine annotations are present in evidence items, include summary
+        evidence_summary = None
+        try:
+            # look for evidence items that include 'evidence_id' or 'canonicalized_at'
+            found = [e for evs in evidence_map.values() for e in (evs or []) if isinstance(e, dict) and e.get("evidence_id")]
+            if found:
+                evidence_summary = {"sample_count": len(found)}
+        except Exception:
+            evidence_summary = None
+
         # Resolve evidence to events where possible
         events_by_evidence = {}
         try:
@@ -45,6 +55,7 @@ class TraceabilityEngine:
             "timestamp": now_iso(),
             "participating_agents": participating_agents,
             "evidence_map": evidence_map,
+            "evidence_summary": evidence_summary,
             "events_by_evidence": events_by_evidence,
             "knowledge_objects": knowledge_objs,
             "fusion_reasons": fusion_output.get("reasons"),

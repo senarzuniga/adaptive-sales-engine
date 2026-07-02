@@ -10,14 +10,16 @@ def now_iso():
 
 
 class FactCheckerEngine:
-    """
-    Lightweight fact checker that validates fused outputs and agent evidence
+    """Lightweight fact checker that validates fused outputs and agent evidence
     against the Event Capture Layer and context package. Returns a structured
     validation result with issues and a pass/fail flag.
+
+    Integrates with an EvidenceEngine when provided.
     """
 
-    def __init__(self, min_confidence: float = 0.2):
+    def __init__(self, min_confidence: float = 0.2, evidence_engine=None):
         self.min_confidence = min_confidence
+        self.evidence_engine = evidence_engine
 
     def _is_number(self, v):
         return isinstance(v, (int, float)) and not (isinstance(v, float) and math.isnan(v))
@@ -45,6 +47,18 @@ class FactCheckerEngine:
         if not evidence:
             issues.append({"type": "no_evidence", "detail": "No evidence found in fusion output"})
             score -= 30
+        else:
+            # if an EvidenceEngine is available, validate and attach scoring
+            try:
+                if self.evidence_engine:
+                    evv = self.evidence_engine.validate_evidence(evidence, storage=storage, context_package=context_package)
+                    issues.extend([{"type": "evidence_summary", "detail": evv}])
+                    # penalize if contradictions found
+                    if evv.get("contradictions"):
+                        score -= len(evv.get("contradictions")) * 10
+            except Exception:
+                # keep going if evidence engine fails
+                pass
 
         # 3) Agent confidence thresholds
         low_conf_agents = [r.get("agent_name") for r in agent_results if (r.get("confidence", 0) < self.min_confidence)]

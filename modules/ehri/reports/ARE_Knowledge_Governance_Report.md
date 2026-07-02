@@ -2,5 +2,5 @@
 
 This report summarizes knowledge governance coverage detected in events.
 
-- Total events: 68
+- Total events: 21
 - Violations: []

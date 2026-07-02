@@ -9,6 +9,11 @@ from .providers import create_default_providers
 from .fact_checker import FactCheckerEngine
 from .traceability import TraceabilityEngine
 from .decision import ExecutiveDecision
+from .intent_engine import IntentUnderstandingEngine
+from .planner import ExecutionPlanner
+from .execution_engine import ExecutionEngine
+from .evidence_engine import EvidenceEngine
+from .reasoning_validator import ReasoningValidator
 import time
 import statistics
 
@@ -91,14 +96,21 @@ class Orchestrator:
         self.service = EHRIService() if storage is None else None
         self.storage = storage if storage is not None else self.service.storage
         self.registry = AgentRegistry()
-        self.intent_analyzer = IntentAnalyzer()
+        # Replace local intent analyzer with the IntentUnderstandingEngine
+        self.intent_analyzer = IntentUnderstandingEngine()
+        # add planner and execution engine
+        self.planner = ExecutionPlanner()
+        self.execution_engine = ExecutionEngine()
         # Build a ContextBuilder with default providers that centralize storage access
         providers = create_default_providers(self.storage)
         self.context_builder = ContextBuilder(providers=providers)
         self.fusion = FusionEngine()
         self.qa = QualityAssessor()
-        self.fact_checker = FactCheckerEngine()
+        # instantiate EvidenceEngine and inject into FactChecker
+        self.evidence_engine = EvidenceEngine()
+        self.fact_checker = FactCheckerEngine(evidence_engine=self.evidence_engine)
         self.traceability = TraceabilityEngine()
+        self.reasoning_validator = ReasoningValidator()
 
     async def execute(self, user_request: str, tenant_id: str = "ACME", user: Optional[Dict[str, Any]] = None, extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         user = user or {"id": "sys_user", "role": "cg officer"}
@@ -112,32 +124,16 @@ class Orchestrator:
         ev_ctx = ASEEvent(event_type="AI_CONTEXT_BUILT", payload={"context_summary": context_pkg.summary()})
         self.storage.append_event(ev_ctx)
 
-        # Select agents
-        selected_agents = self.registry.find_by_intent(intent.get("intent"))
-        ev_agents = ASEEvent(event_type="AI_AGENTS_SELECTED", payload={"agents": [a.name for a in selected_agents]})
-        self.storage.append_event(ev_agents)
+        # Planning: decide which agents to run and produce an execution plan
+        plan = self.planner.plan(intent, self.registry, context_pkg)
+        ev_plan = ASEEvent(event_type="AI_EXECUTION_PLANNED", payload={"plan": plan})
+        self.storage.append_event(ev_plan)
 
-        # Execute agents in parallel; every agent receives the ContextPackage
-        agent_tasks = []
-        for ag in selected_agents:
-            async def run_agent(agent, ctx_pkg):
-                ev_start = ASEEvent(event_type="AI_AGENT_EXECUTION_STARTED", payload={"agent": agent.name})
-                self.storage.append_event(ev_start)
-                try:
-                    res = await agent.execute(ctx_pkg, {})
-                    # convert AgentResult to dict
-                    rdict = {"agent_name": res.agent_name, "output": res.output, "confidence": res.confidence, "evidence": res.evidence, "execution_metadata": res.execution_metadata, "reasoning": res.reasoning}
-                    ev_done = ASEEvent(event_type="AI_AGENT_EXECUTION_COMPLETED", payload={"agent": agent.name, "result": rdict})
-                    self.storage.append_event(ev_done)
-                    return rdict
-                except Exception as e:
-                    ev_err = ASEEvent(event_type="AI_AGENT_EXECUTION_FAILED", payload={"agent": agent.name, "error": str(e)})
-                    self.storage.append_event(ev_err)
-                    return {"agent_name": agent.name, "output": {}, "confidence": 0.0, "evidence": [], "execution_metadata": {"error": str(e)}, "reasoning": {}}
-
-            agent_tasks.append(run_agent(ag, context_pkg))
-
-        results = await asyncio.gather(*agent_tasks)
+        # Execution: run plan via ExecutionEngine
+        exec_result = await self.execution_engine.execute_plan(plan, self.registry, context_pkg)
+        results = exec_result.get("results", [])
+        ev_exec = ASEEvent(event_type="AI_EXECUTION_COMPLETED", payload={"plan": plan, "results_count": len(results)})
+        self.storage.append_event(ev_exec)
 
         # Fusion
         fusion_output = self.fusion.fuse(results)
@@ -145,6 +141,13 @@ class Orchestrator:
         self.storage.append_event(ev_fuse)
 
         # Fact checking (mandatory): validate fusion output and agent evidence
+        # First, canonicalize evidence using EvidenceEngine
+        try:
+            canon_evidences = [self.evidence_engine.canonicalize(e, agent_name=r.get("agent_name")) for r in results for e in (r.get("evidence") or [])]
+            fusion_output["evidence"] = canon_evidences
+        except Exception:
+            pass
+
         fc_validation = self.fact_checker.validate(context_pkg, fusion_output, results, self.storage)
         ev_fc = ASEEvent(event_type="AI_FACT_CHECK_VALIDATION", payload={"validation": fc_validation})
         self.storage.append_event(ev_fc)
@@ -168,7 +171,15 @@ class Orchestrator:
                 self.storage.append_event(ev_fc2)
 
         # Quality assessment
+        # Run reasoning validation and integrate into QA
+        rv = self.reasoning_validator.validate(context_pkg, fusion_output, results, self.storage)
+        ev_rv = ASEEvent(event_type="AI_REASONING_VALIDATION", payload={"validation": rv})
+        self.storage.append_event(ev_rv)
+
         qa_result = self.qa.assess(fusion_output, results)
+        # attach reasoning metrics
+        qa_result["reasoning_score"] = rv.get("score")
+        qa_result["reasoning_issues"] = rv.get("issues")
         ev_qa = ASEEvent(event_type="AI_QUALITY_VALIDATION", payload={"qa": qa_result})
         self.storage.append_event(ev_qa)
 
