@@ -205,15 +205,36 @@ class Orchestrator:
         trace = self.traceability.trace(context_pkg, fusion_output, results, self.storage)
 
         # Build structured Executive Decision object
+        # Enforce evidence policy: do not produce an unqualified executive
+        # recommendation when supporting evidence is missing. Mark numeric
+        # outputs as `derived` if no evidence supports them.
+        supporting_evidence = fusion_output.get("evidence") or []
+        derived_keys = []
+        outputs = fusion_output.get("outputs") or {}
+        # If there is no supporting evidence, flag numeric outputs as derived
+        if not supporting_evidence:
+            for k, v in list(outputs.items()):
+                if isinstance(v, (int, float)) and not (isinstance(v, float) and (v != v)):
+                    derived_keys.append(k)
+                    outputs[k] = {"value": v, "derived": True, "derived_reason": "no_supporting_evidence"}
+
+        # If still no evidence, set the recommendation to REVIEW and keep raw outputs
+        if not supporting_evidence:
+            recommendation_payload = {"decision": "REVIEW", "reason": "missing_supporting_evidence", "raw_outputs": outputs}
+            confidence_val = 0.0
+        else:
+            recommendation_payload = outputs
+            confidence_val = fusion_output.get("global_confidence") or 0.0
+
         decision = ExecutiveDecision(
             tenant_id=tenant_id,
-            recommendation=fusion_output.get("outputs"),
-            confidence=fusion_output.get("global_confidence") or 0.0,
+            recommendation=recommendation_payload,
+            confidence=confidence_val,
             quality_score=qa_result.get("quality_score"),
-            supporting_evidence=fusion_output.get("evidence"),
+            supporting_evidence=supporting_evidence,
             participating_agents=[r.get("agent_name") for r in results],
             traceability=trace,
-            metadata={"fact_check": fc_validation},
+            metadata={"fact_check": fc_validation, "derived_values": derived_keys},
         )
 
         ev_decision = ASEEvent(event_type="AI_EXECUTIVE_DECISION", payload={"decision": decision.to_dict()})
