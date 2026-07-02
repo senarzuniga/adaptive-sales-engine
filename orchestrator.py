@@ -11,6 +11,9 @@ import inspect
 import logging
 import os
 import traceback
+import threading
+import queue
+import asyncio
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -420,6 +423,127 @@ def _make_stub_run(stem: str, error_msg: str = "") -> Any:
         }
 
     return _stub
-def get_max_orchestrator() -> MaximumOrchestrator:
-    """Returns (and caches) the single MaximumOrchestrator instance."""
-    return MaximumOrchestrator()
+# ------------------------------------------------------------------
+# Cognitive Orchestrator Adapter
+# Provides a backwards-compatible facade used by the lightweight
+# ING support HTTP service while delegating execution to the
+# Enterprise Cognitive Orchestrator implemented in modules.orchestrator.
+try:
+    from modules.orchestrator.orchestrator import Orchestrator as CognitiveOrchestrator
+    from modules.orchestrator.registry import AgentRegistry
+except Exception:  # pragma: no cover - optional integration
+    CognitiveOrchestrator = None  # type: ignore
+    AgentRegistry = None  # type: ignore
+
+
+class CognitiveOrchestratorAdapter:
+    def __init__(self) -> None:
+        # instantiate cognitive orchestrator when available
+        self.cog = CognitiveOrchestrator() if CognitiveOrchestrator else None
+        self.registry = AgentRegistry() if AgentRegistry else None
+        self._build_agents_list()
+
+    def _build_agents_list(self) -> None:
+        self.agents: List[Dict[str, Any]] = []
+        if not self.registry:
+            return
+        for name in self.registry.list_agents():
+            inst = self.registry.get_agent(name)
+            self.agents.append({
+                "name": name,
+                "folder": "modules/orchestrator",
+                "file": "modules/orchestrator/agents.py",
+                "load_error": None,
+                "instance": inst,
+            })
+
+    def reload_agents(self) -> int:
+        if not self.registry:
+            return 0
+        self.registry = AgentRegistry()
+        self._build_agents_list()
+        return len(self.agents)
+
+    def _run_coro_sync(self, coro):
+        """Run an asyncio coroutine in a fresh thread + event loop and return result."""
+        q = queue.Queue()
+
+        def _target():
+            loop = asyncio.new_event_loop()
+            try:
+                asyncio.set_event_loop(loop)
+                res = loop.run_until_complete(coro)
+                q.put((True, res))
+            except Exception as e:
+                q.put((False, e))
+            finally:
+                try:
+                    loop.close()
+                except Exception:
+                    pass
+
+        t = threading.Thread(target=_target)
+        t.start()
+        t.join()
+        ok, payload = q.get()
+        if ok:
+            return payload
+        raise payload
+
+    def execute_all_agents(self, context: Dict[str, Any], timeout_seconds: int = 60) -> Dict[str, Any]:
+        """Delegate to the cognitive orchestrator's `execute` method.
+
+        The adapter exposes a synchronous API for backwards compatibility
+        with existing HTTP endpoints.
+        """
+        if not self.cog:
+            # fallback: return minimal info
+            return {"status": "no_cognitive_orchestrator", "agents": len(self.agents)}
+
+        user_request = context.get("action") if isinstance(context, dict) else str(context)
+        tenant = context.get("tenant_id", "ACME") if isinstance(context, dict) else "ACME"
+        user = context.get("user") if isinstance(context, dict) else None
+        coro = self.cog.execute(user_request, tenant_id=tenant, user=user, extra=context if isinstance(context, dict) else {})
+        result = self._run_coro_sync(coro)
+        return result
+
+    def _safe_run_agent(self, agent: Dict[str, Any], context: Dict[str, Any]) -> Any:
+        # agent is expected as the dict returned from self.agents
+        name = agent.get("name") if isinstance(agent, dict) else None
+        if not name or not self.registry:
+            return {"status": "error", "error": "agent not found"}
+        inst = self.registry.get_agent(name)
+        if not inst:
+            return {"status": "error", "error": "agent not found"}
+        try:
+            coro = inst.execute(context or {}, {})
+            res = self._run_coro_sync(coro)
+            # dataclass AgentResult -> dict-like
+            out = {
+                "agent_name": getattr(res, "agent_name", name),
+                "output": getattr(res, "output", {}),
+                "confidence": getattr(res, "confidence", 0.0),
+                "evidence": getattr(res, "evidence", []),
+                "execution_metadata": getattr(res, "execution_metadata", {}),
+                "reasoning": getattr(res, "reasoning", {}),
+            }
+            return out
+        except Exception as e:
+            return {"status": "error", "error": str(e), "output": f"Error executing agent {name}: {e}", "insights": []}
+
+
+_CACHED_MAX_ORCH = None
+
+
+def get_max_orchestrator() -> Any:
+    """Return a singleton adapter that exposes a Maximum-like API but
+    delegates to the Enterprise Cognitive Orchestrator implementation.
+    """
+    global _CACHED_MAX_ORCH
+    if _CACHED_MAX_ORCH is None:
+        try:
+            _CACHED_MAX_ORCH = CognitiveOrchestratorAdapter()
+        except Exception:
+            # last-resort fallback to the legacy MaximumOrchestrator
+            _CACHED_MAX_ORCH = MaximumOrchestrator()
+    return _CACHED_MAX_ORCH
