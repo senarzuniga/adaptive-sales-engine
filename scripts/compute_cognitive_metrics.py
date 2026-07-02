@@ -18,6 +18,10 @@ evidence_coverage = round(100.0 * len(evidence_events) / total, 2) if total else
 reasoning_events = [e for e in events if 'REASONING' in (e.get('event_type') or '') or 'AI_REASONING' in (e.get('event_type') or '')]
 reasoning_coverage = round(100.0 * len(reasoning_events) / total, 2) if total else 0.0
 
+# blocked decisions count
+blocked_events = [e for e in events if e.get('event_type') == 'AI_EXECUTIVE_DECISION_BLOCKED']
+blocked_decision_count = len(blocked_events)
+
 bypass_events = [e for e in events if (e.get('governance') or {}).get('bypassed_fact_checker') or (e.get('governance') or {}).get('raw_data_used')]
 bypass_modules = sorted(list({(e.get('context') or {}).get('module') for e in bypass_events if (e.get('context') or {}).get('module')}))
 
@@ -65,6 +69,7 @@ print('ARS score:', ars.get('score'))
 print('ARS delta vs baseline 88.54:', ars_delta)
 print('Evidence coverage (% events):', evidence_coverage)
 print('Reasoning validation coverage (% events):', reasoning_coverage)
+print('Blocked decision count:', blocked_decision_count)
 print('Workflows with raw assistant-style outputs (heuristic count):', raw_assistant_workflows_count)
 print('Modules bypassing cognitive pipeline (governance flags):', bypass_modules)
 print('Missing traceable offers count:', missing_trace_count)

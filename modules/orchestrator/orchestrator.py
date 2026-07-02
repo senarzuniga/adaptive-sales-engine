@@ -16,6 +16,7 @@ from .evidence_engine import EvidenceEngine
 from .reasoning_validator import ReasoningValidator
 import time
 import statistics
+from datetime import datetime, timezone
 
 
 class IntentAnalyzer:
@@ -205,36 +206,75 @@ class Orchestrator:
         trace = self.traceability.trace(context_pkg, fusion_output, results, self.storage)
 
         # Build structured Executive Decision object
-        # Enforce evidence policy: do not produce an unqualified executive
-        # recommendation when supporting evidence is missing. Mark numeric
-        # outputs as `derived` if no evidence supports them.
+        # Enforce evidence policy: block executive decision creation when
+        # supporting evidence is missing or insufficient. Produce a
+        # structured BLOCKED outcome that preserves traceability and
+        # diagnostics for later remediation.
         supporting_evidence = fusion_output.get("evidence") or []
+
+        # Compute an evidence validation summary (scoring + contradictions)
+        try:
+            evidence_validation = self.evidence_engine.validate_evidence(supporting_evidence, storage=self.storage, context_package=context_pkg)
+        except Exception:
+            evidence_validation = {"aggregated_count": 0, "score": {"evidence_score": 0.0}, "contradictions": [], "missing_refs": []}
+
+        # Blocking policy: require at least one aggregated evidence item and a minimal evidence score
+        EVIDENCE_SCORE_THRESHOLD = 50.0
+        ev_count = int(evidence_validation.get("aggregated_count", 0) or 0)
+        ev_score = 0.0
+        try:
+            ev_score = float((evidence_validation.get("score") or {}).get("evidence_score") or 0.0)
+        except Exception:
+            ev_score = 0.0
+
+        blocked_reasons = []
+        if ev_count == 0:
+            blocked_reasons.append("no_supporting_evidence")
+        if ev_score < EVIDENCE_SCORE_THRESHOLD:
+            blocked_reasons.append("insufficient_evidence_score")
+
+        # If blocked, emit a structured BLOCKED decision instead of an ExecutiveDecision
+        if blocked_reasons:
+            blocked = {
+                "status": "BLOCKED",
+                "reason": "INSUFFICIENT_EVIDENCE",
+                "blocked_reasons": blocked_reasons,
+                "evidence_validation": evidence_validation,
+                "fact_check": fc_validation,
+                "reasoning_validation": rv,
+                "quality_assessment": qa_result,
+                "traceability": trace,
+                "participating_agents": [r.get("agent_name") for r in results],
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "suggested_actions": ["gather_additional_evidence", "re-run_low_confidence_agents"],
+            }
+
+            ev_block = ASEEvent(event_type="AI_EXECUTIVE_DECISION_BLOCKED", payload={"blocked": blocked})
+            self.storage.append_event(ev_block)
+            # Also emit a lightweight readiness report event for ARE
+            ev_readiness = ASEEvent(event_type="AI_DECISION_BLOCKED_READINESS", payload={"blocked_reasons": blocked_reasons, "evidence_score": ev_score})
+            self.storage.append_event(ev_readiness)
+            return blocked
+
+        # Otherwise build a normal ExecutiveDecision
         derived_keys = []
         outputs = fusion_output.get("outputs") or {}
-        # If there is no supporting evidence, flag numeric outputs as derived
+        # Mark numeric keys as derived if no supporting evidence (defensive)
         if not supporting_evidence:
             for k, v in list(outputs.items()):
                 if isinstance(v, (int, float)) and not (isinstance(v, float) and (v != v)):
                     derived_keys.append(k)
                     outputs[k] = {"value": v, "derived": True, "derived_reason": "no_supporting_evidence"}
 
-        # If still no evidence, set the recommendation to REVIEW and keep raw outputs
-        if not supporting_evidence:
-            recommendation_payload = {"decision": "REVIEW", "reason": "missing_supporting_evidence", "raw_outputs": outputs}
-            confidence_val = 0.0
-        else:
-            recommendation_payload = outputs
-            confidence_val = fusion_output.get("global_confidence") or 0.0
-
         decision = ExecutiveDecision(
             tenant_id=tenant_id,
-            recommendation=recommendation_payload,
-            confidence=confidence_val,
+            recommendation=outputs,
+            confidence=fusion_output.get("global_confidence") or 0.0,
             quality_score=qa_result.get("quality_score"),
             supporting_evidence=supporting_evidence,
             participating_agents=[r.get("agent_name") for r in results],
             traceability=trace,
-            metadata={"fact_check": fc_validation, "derived_values": derived_keys},
+            metadata={"fact_check": fc_validation, "derived_values": derived_keys, "evidence_validation": evidence_validation},
         )
 
         ev_decision = ASEEvent(event_type="AI_EXECUTIVE_DECISION", payload={"decision": decision.to_dict()})
