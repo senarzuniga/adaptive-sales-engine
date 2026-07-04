@@ -93,6 +93,24 @@ class Account(BaseModel):
     created_at: Optional[datetime] = None
 
 
+class Company(BaseModel):
+    """Canonical enterprise/company record.
+
+    Supports both commercial and legal names, aliases and governance metadata.
+    """
+
+    id: str = ""
+    commercial_name: str
+    legal_name: str = ""
+    aliases: List[str] = Field(default_factory=list)
+    status: str = "active"  # active | archived | merged
+    source_of_truth: str = "local"  # e.g. 'local' | 'supabase' | 'erp'
+    provenance: Dict[str, Any] = Field(default_factory=dict)
+    locked_fields: List[str] = Field(default_factory=list)
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
 class Opportunity(BaseModel):
     """A sales opportunity linked to an account."""
 

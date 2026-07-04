@@ -81,9 +81,30 @@ st.caption("Five-layer ingestion audit, traceability, and storage preview")
 
 try:
     docs = fetch_rows("document_ingestion_overview", order="created_at.desc", limit=200)
-except Exception as exc:
-    st.error(f"Unable to load Supabase ingestion data: {exc}")
-    st.stop()
+    USING_LOCAL_DB = False
+except Exception:
+    # Fallback to local ingestion DB when Supabase isn't configured
+    try:
+        from scripts.ingestion_db import fetch_all
+
+        raw = fetch_all("file_ingestions", limit=200)
+        # Map local fields to the expected monitor fields
+        docs = []
+        for r in raw:
+            docs.append({
+                "document_id": r.get("id"),
+                "file_name": r.get("file_name"),
+                "processing_status": r.get("ingestion_status", "unknown"),
+                "section_count": 0,
+                "chunk_count": 0,
+                "entity_count": 0,
+                "relationship_count": 0,
+                "quality_score": None,
+            })
+        USING_LOCAL_DB = True
+    except Exception as exc:
+        st.error(f"Unable to load ingestion data: {exc}")
+        st.stop()
 
 with st.sidebar:
     st.header("Uploaded documents")
@@ -104,13 +125,61 @@ if not selected:
     st.stop()
 
 document_id = selected["document_id"]
-sections = fetch_rows("document_sections", document_id=document_id, order="order_index.asc", limit=300)
-chunks = fetch_rows("document_chunks", document_id=document_id, order="created_at.desc", limit=300)
-entities = fetch_rows("knowledge_entities", document_id=document_id, order="created_at.desc", limit=300)
-relationships = fetch_rows("knowledge_relationships", document_id=document_id, order="created_at.desc", limit=300)
-insights = fetch_rows("knowledge_insights", document_id=document_id, order="created_at.desc", limit=300)
-data_points = fetch_rows("knowledge_data_points", document_id=document_id, order="created_at.desc", limit=300)
-runs = fetch_rows("document_ingestion_runs", document_id=document_id, order="started_at.desc", limit=50)
+if not locals().get('USING_LOCAL_DB'):
+    sections = fetch_rows("document_sections", document_id=document_id, order="order_index.asc", limit=300)
+    chunks = fetch_rows("document_chunks", document_id=document_id, order="created_at.desc", limit=300)
+    entities = fetch_rows("knowledge_entities", document_id=document_id, order="created_at.desc", limit=300)
+    relationships = fetch_rows("knowledge_relationships", document_id=document_id, order="created_at.desc", limit=300)
+    insights = fetch_rows("knowledge_insights", document_id=document_id, order="created_at.desc", limit=300)
+    data_points = fetch_rows("knowledge_data_points", document_id=document_id, order="created_at.desc", limit=300)
+    runs = fetch_rows("document_ingestion_runs", document_id=document_id, order="started_at.desc", limit=50)
+else:
+    # Local DB fallback: synthesize monitor details from ingestion tables
+    from scripts.ingestion_db import fetch_one, fetch_all
+    from infrastructure.enterprise_store import get_company_by_id
+
+    file_row = fetch_one("file_ingestions", "id", document_id) or {}
+
+    # sections: simple split by markdown headings or paragraphs
+    raw = fetch_all("raw_extracts", limit=50)
+    raw_for_doc = [r for r in raw if r.get("ingestion_id") == document_id]
+    if raw_for_doc:
+        text = raw_for_doc[0].get("extracted_text") or ""
+        secs = []
+        for i, line in enumerate(text.splitlines()[:200]):
+            secs.append({"heading": line[:80], "level": 1, "section_type": "paragraph", "semantic_context": ""})
+        sections = secs
+    else:
+        sections = []
+
+    # chunks: text chunks
+    chunks = []
+    if raw_for_doc:
+        t = raw_for_doc[0].get("extracted_text") or ""
+        for i in range(0, min(len(t), 10000), 400):
+            chunks.append({"chunk_type": "text", "context": t[i:i+400], "confidence": 0.5, "source_ref": file_row.get("file_path"), "content": t[i:i+400]})
+
+    # entities: contextualized candidate companies
+    ctx = fetch_all("contextualized_data", limit=200)
+    ctx_for_doc = [r for r in ctx if r.get("ingestion_id") == document_id]
+    entities = []
+    if ctx_for_doc:
+        for c in ctx_for_doc:
+            links = c.get("context_links") or {}
+            candidate_ids = links.get("candidate_companies") if isinstance(links, dict) else []
+            for cid in candidate_ids or []:
+                comp = get_company_by_id(cid) or {"canonical_name": cid}
+                entities.append({"canonical_name": comp.get("commercial_name"), "entity_type": "company", "confidence": 0.9, "semantic_context": ""})
+
+    relationships = []
+
+    # insights: use fact_check_reports
+    facts = fetch_all("fact_check_reports", limit=200)
+    insights = [ {"insight_type": "fact_check", "summary": f.get("issues") or [], "confidence": f.get("confidence",0)} for f in facts if f.get("ingestion_id") == document_id]
+
+    data_points = []
+
+    runs = [ {"status": file_row.get("ingestion_status"), "pipeline_version": "local", "quality_score": None, "summary": "local ingestion", "completed_at": file_row.get("created_at")} ]
 
 col1, col2, col3, col4, col5 = st.columns(5)
 col1.metric("Sections", selected.get("section_count", 0))
