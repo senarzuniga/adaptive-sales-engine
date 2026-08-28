@@ -45,6 +45,10 @@ __pycache__/
 Adaptive Sales Engine - Lovable.html
 Adaptive Sales Engine - Lovable_files/
 adaptive-sales-engine/
+adaptive-sales-engine/dist/
+dist/
+adaptive-sales-engine/public/
+public/
 supabase/.temp/
 middleware.ts
 page.tsx
