@@ -1,0 +1,333 @@
+{
+  "companyProfile": {
+    "company_name": "CTA",
+    "industry": "Business Transformation, R&D Funding and AI-enabled Consulting",
+    "sub_sector": "SME consulting, growth architecture, digital operations, industrial funding",
+    "headquarters": "Barcelona, Spain",
+    "operating_regions": "Spain, remote delivery for EU clients",
+    "employee_count": "Core founder-led operating unit with scalable partner network",
+    "annual_revenue": "Pre-commercial / launch stage demo baseline",
+    "main_products": "CTA Diagnostic, Transformation Architecture, R&D Funding Engine, AI Sales Engine deployment, PMO and managed performance follow-up",
+    "main_customer_segments": "Spanish SMEs in industry, operations-heavy businesses, commercial teams requiring transformation, funding or AI-enabled execution support",
+    "main_competitors": "Generic consultancies, grant boutiques, digital agencies, low-value AI wrappers",
+    "sales_team_size": "Founder-led with assisted outreach and agent-supported delivery",
+    "kam_count": "1",
+    "sales_channels": "Direct founder-led sales, referrals, content-driven outbound, partner collaborations",
+    "current_challenges": "Need repeatable offer packaging, stronger qualification workflow, legal/eligibility rule depth, and a commercial operating cadence to convert expertise into scalable pipeline",
+    "strategic_goals": "1. Launch a precise CTA offer for SMEs. 2. Prioritize high-fit consulting and funding opportunities. 3. Convert knowledge into explainable actions. 4. Build a reusable operating model with agent supervision.",
+    "additional_notes": "CTA is modeled as a demo business unit focused on practical transformation and funding support. It should not behave like a generic chatbot-led consultancy.",
+    "website_url": "",
+    "linkedin_url": "",
+    "business_description": "CTA (Centro de Transformacion y Aceleracion) is a practical consulting and AI-enabled execution model for SMEs that need to improve operations, commercial performance, process maturity, funding readiness and measurable business execution without building large internal structures.",
+    "objectives": "Package diagnostics, transformation blueprints, modular implementations, and managed follow-up into a commercially viable service line connected to evidence, scoring and execution.",
+    "strategy_context": "Four-level offer architecture: initial diagnostic, transformation design, modular implementation, and managed operational support. Agents must support diagnosis, prioritization, proposal, PMO and KPI follow-up.",
+    "market_context": "SMEs need practical transformation support with funding awareness, commercial rigor, measurable KPIs and explainable recommendations rather than generic strategy decks.",
+    "enrichment_status": "completed",
+    "company_key": "cta-demo",
+    "record_stage": "demo version",
+    "validation_status": "ready_for_review",
+    "demo_origin": "local_pack"
+  },
+  "orders": [],
+  "products": [
+    {
+      "name": "CTA Diagnostic",
+      "average_value": 2500,
+      "type": "Service",
+      "comments": "Entry diagnostic offer"
+    },
+    {
+      "name": "Transformation Blueprint",
+      "average_value": 7500,
+      "type": "Service",
+      "comments": "Process and operating model design"
+    },
+    {
+      "name": "Funding Engine Support",
+      "average_value": 12000,
+      "type": "Service",
+      "comments": "Eligibility, prioritization and dossier support"
+    },
+    {
+      "name": "Managed AI Operating Support",
+      "average_value": 3000,
+      "type": "Retainer",
+      "comments": "Monthly follow-up and agent supervision"
+    }
+  ],
+  "opportunities": [
+    {
+      "oppNumber": "CTA-2026-001",
+      "status": "qualified",
+      "region": "Spain",
+      "country": "Spain",
+      "customerName": "Industrial SME target cluster",
+      "scope": "Diagnostic + funding prioritization for industrial innovation roadmap",
+      "productFamily": "CTA Diagnostic",
+      "segment": "Industrial SME",
+      "estPurchasingYear": "2026",
+      "estPurchasingQuarter": "Q4",
+      "estRevenue": 2500,
+      "contractProb": 0.45,
+      "margin": 65,
+      "contact": "Founder-led prospecting",
+      "kam": "CTA Founder"
+    },
+    {
+      "oppNumber": "CTA-2026-002",
+      "status": "proposed",
+      "region": "Spain",
+      "country": "Spain",
+      "customerName": "Growth-stage operations SME",
+      "scope": "Commercial process redesign and AI-supported weekly execution rhythm",
+      "productFamily": "Transformation Blueprint",
+      "segment": "Operations-heavy SME",
+      "estPurchasingYear": "2026",
+      "estPurchasingQuarter": "Q4",
+      "estRevenue": 7500,
+      "contractProb": 0.35,
+      "margin": 68,
+      "contact": "Founder-led prospecting",
+      "kam": "CTA Founder"
+    }
+  ],
+  "strategy": [
+    {
+      "product_family": "CTA Diagnostic",
+      "number_of_segment": "1",
+      "region": "Spain",
+      "est_purchasing_quarter": "Q4 2026",
+      "est_revenue": 25000,
+      "margin": 65,
+      "kam": "CTA Founder"
+    },
+    {
+      "product_family": "Funding Engine Support",
+      "number_of_segment": "2",
+      "region": "Spain",
+      "est_purchasing_quarter": "Q1 2027",
+      "est_revenue": 60000,
+      "margin": 62,
+      "kam": "CTA Founder"
+    }
+  ],
+  "leads": [
+    {
+      "company": "Spanish industrial SME",
+      "contact_name": "Pending discovery",
+      "status": "to_qualify",
+      "source": "CTA launch campaign",
+      "pain_point": "Needs operational and commercial transformation"
+    }
+  ],
+  "contacts": [
+    {
+      "name": "CTA Founder",
+      "role": "Lead consultant",
+      "relationship": "Commercial owner",
+      "email": "",
+      "country": "Spain",
+      "company": "CTA"
+    }
+  ],
+  "tasks": [
+    {
+      "title": "Package CTA diagnostic",
+      "description": "Define scope, pricing, evidence model and qualification checklist.",
+      "pillar": "cta_launch",
+      "status": "todo",
+      "priority": "high",
+      "category": "offer_design",
+      "assignee": "CTA Founder",
+      "due_date": "2026-09-15"
+    },
+    {
+      "title": "Close funding rule inventory",
+      "description": "Document eligibility, evidence, scoring and dossier requirements.",
+      "pillar": "funding_engine",
+      "status": "todo",
+      "priority": "high",
+      "category": "knowledge",
+      "assignee": "CTA Founder",
+      "due_date": "2026-09-30"
+    }
+  ],
+  "recommendedActionQueue": [
+    {
+      "title": "Package CTA diagnostic offer",
+      "score": 94,
+      "priority": "critical",
+      "domain": "offer_design",
+      "data_scope": "company",
+      "objective": "Turn CTA from a concept into a clear first commercial offer.",
+      "evidence": "The CTA plan defines a four-level model but warns against generic consulting positioning.",
+      "sequence": [
+        "Define deliverables, inputs, duration and price for the diagnostic package.",
+        "Create an explainable scoring matrix for friction, fit and urgency.",
+        "Prepare one proposal template and one qualification checklist."
+      ],
+      "confidence": 0.94
+    },
+    {
+      "title": "Build funding prioritization workflow",
+      "score": 91,
+      "priority": "high",
+      "domain": "funding",
+      "data_scope": "market",
+      "objective": "Operationalize help discovery, eligibility and go/no-go decisions.",
+      "evidence": "CTA funding gap notes require reproducible eligibility rules, scoring and dossier readiness.",
+      "sequence": [
+        "Create the canonical funding catalog schema with source, version and deadlines.",
+        "Implement eligibility criteria per company, project and cost type.",
+        "Expose a go/watch/no-go ranking with explainable rationale."
+      ],
+      "confidence": 0.92
+    },
+    {
+      "title": "Launch SME outreach cadence",
+      "score": 86,
+      "priority": "high",
+      "domain": "go_to_market",
+      "data_scope": "company",
+      "objective": "Create a repeatable prospecting rhythm for early CTA pipeline generation.",
+      "evidence": "The execution plan explicitly calls for the first CTA campaign and 5-10 opportunities.",
+      "sequence": [
+        "Define ideal customer profiles and qualification rules.",
+        "Build three outreach sequences linked to pain points and transformation outcomes.",
+        "Track responses, diagnostics sold and next-best actions weekly."
+      ],
+      "confidence": 0.87
+    }
+  ],
+  "sourceRegistry": {
+    "roots": [
+      "C:\\Users\\isena\\Documents\\GitHub\\IS-BACKOFFICE",
+      "C:\\Users\\isena\\Documents\\GitHub\\adaptive-sales-engine",
+      "C:\\Users\\isena\\Documents\\INGECART",
+      "C:\\Users\\isena\\Documents\\GitHub\\AI-FACTORY-v2",
+      "C:\\Users\\isena\\Documents\\GitHub\\ingesite.github.io"
+    ],
+    "matched_file_count": 33,
+    "categories": {
+      "customers": 1,
+      "offers": 1,
+      "other": 23,
+      "projects_funding": 3,
+      "reports": 5
+    },
+    "extensions": {
+      ".xlsx": 16,
+      ".txt": 5,
+      ".docx": 5,
+      ".pdf": 4,
+      ".zip": 1,
+      ".pptx": 1,
+      ".jpeg": 1
+    },
+    "example_files": [
+      "C:\\Users\\isena\\Documents\\GitHub\\AI-FACTORY-v2\\PLAN_ACCION_INGECART_4_PROYECTOS_AYUDAS_CTA_2026-08-17.txt",
+      "C:\\Users\\isena\\Documents\\GitHub\\AI-FACTORY-v2\\PLAN_EJECUCION_INGECART_PROYECTOS_Y_CTA_2026-08-17.txt",
+      "C:\\Users\\isena\\Documents\\GitHub\\ingesite.github.io\\CTA content.txt",
+      "C:\\Users\\isena\\Documents\\GitHub\\ingesite.github.io\\Navigation CTA application.txt",
+      "C:\\Users\\isena\\Documents\\GitHub\\IS-BACKOFFICE\\CTA_INDUSTRIAL_RND_FUNDING_ENGINE_GAPS.txt",
+      "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\competitors\\1776254699629_Posibles_competidores_INGECART.docx",
+      "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\customers\\1777958036456_INITIAL_INGECART_CUSTOMERS.xlsx",
+      "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\hierarchy\\1776180467140_Jerarquia Ingecart.pdf",
+      "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\hierarchy\\1776254790793_Jerarquia_Ingecart.docx",
+      "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\hierarchy\\1777218695351_Ingecart_Commercial_Structure.xlsx",
+      "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\leads\\1776180480395_Super Corr Expo Orlando 2024_ List.xlsx",
+      "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254860994_Company_Plastic_Reduction_2024_12.xlsx",
+      "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254876367_Countries_vs_GDP_2024_2025_vs_CBoard_2024.xlsx",
+      "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254885246_Desempeno_bolsa_grandes_Papel_2024_2_.xlsx",
+      "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254914367_GDP_Global_2018_2023.xlsx",
+      "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254919217_gdp_forecast.xlsx",
+      "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254925563_informe_folding_carton.pdf",
+      "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254928868_Informe_Mercado_Carton_Papel_2024.pptx",
+      "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254943481_Inversiones_en_Equipamiento_Industrial_2003-2023.xlsx",
+      "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254945712_major_threats_or_opportunities_facing_FC_2024_survey.xlsx"
+    ]
+  },
+  "evidenceHighlights": [
+    {
+      "title": "CTA capability and gaps",
+      "path": "C:\\Users\\isena\\Documents\\GitHub\\IS-BACKOFFICE\\CTA_INDUSTRIAL_RND_FUNDING_ENGINE_GAPS.txt",
+      "summary": "CTA Industrial R&D Funding Engine ================================= Estado del contexto ------------------- La aplicación CTA queda operativa con: - catálogo oficial versionado - cuatro proyectos INGECART - matriz explicable - simulador de liquidez - dossier documental - validación con 19 pruebas - diagnósticos limpios - validación real en navegador La herramienta ya tiene una base sólida para actuar como motor de ap",
+      "scope": "market"
+    },
+    {
+      "title": "CTA operating model inside Ingecart",
+      "path": "C:\\Users\\isena\\Documents\\GitHub\\AI-FACTORY-v2\\PLAN_ACCION_INGECART_4_PROYECTOS_AYUDAS_CTA_2026-08-17.txt",
+      "summary": "PLAN DE ACCIÓN PARA LA GESTIÓN DE AYUDAS Y FINANCIACIÓN DE LOS 4 PROYECTOS DE INGECART Fecha: 2026-08-17 Proyecto: AI-FACTORY-v2 Contexto: continuación del análisis previo sobre gestión de ayudas, financiación, cartera de proyectos, cultura de innovación y propuesta de negocio para CTA y consultoría a PYMEs. ==================================================================== 1. CONTEXTO Y BASE DEL ANÁLISIS PREVIO ==",
+      "scope": "company"
+    },
+    {
+      "title": "Funding engine vision",
+      "path": "C:\\Users\\isena\\Documents\\GitHub\\AI-FACTORY-v2\\PROYECTOS PARA GESTION AYUDAS Y REC.txt",
+      "summary": "PROYECTOS PARA GESTION AYUDAS Y RECURSOS INGENIERIA I+D Sí. Con el contenido que has definido, **no construiría un simple dashboard de subvenciones**. Construiría un **CTA Industrial R&D Funding Workbench**: un panel de trabajo que permita pasar desde una idea/proyecto industrial hasta un proyecto técnicamente estructurado, su elegibilidad I+D+i, el mapa de financiación y finalmente el expediente. La clave es que el ",
+      "scope": "market"
+    }
+  ],
+  "entityRegistries": {
+    "sourceRegistry": {
+      "roots": [
+        "C:\\Users\\isena\\Documents\\GitHub\\IS-BACKOFFICE",
+        "C:\\Users\\isena\\Documents\\GitHub\\adaptive-sales-engine",
+        "C:\\Users\\isena\\Documents\\INGECART",
+        "C:\\Users\\isena\\Documents\\GitHub\\AI-FACTORY-v2",
+        "C:\\Users\\isena\\Documents\\GitHub\\ingesite.github.io"
+      ],
+      "matched_file_count": 33,
+      "categories": {
+        "customers": 1,
+        "offers": 1,
+        "other": 23,
+        "projects_funding": 3,
+        "reports": 5
+      },
+      "extensions": {
+        ".xlsx": 16,
+        ".txt": 5,
+        ".docx": 5,
+        ".pdf": 4,
+        ".zip": 1,
+        ".pptx": 1,
+        ".jpeg": 1
+      },
+      "example_files": [
+        "C:\\Users\\isena\\Documents\\GitHub\\AI-FACTORY-v2\\PLAN_ACCION_INGECART_4_PROYECTOS_AYUDAS_CTA_2026-08-17.txt",
+        "C:\\Users\\isena\\Documents\\GitHub\\AI-FACTORY-v2\\PLAN_EJECUCION_INGECART_PROYECTOS_Y_CTA_2026-08-17.txt",
+        "C:\\Users\\isena\\Documents\\GitHub\\ingesite.github.io\\CTA content.txt",
+        "C:\\Users\\isena\\Documents\\GitHub\\ingesite.github.io\\Navigation CTA application.txt",
+        "C:\\Users\\isena\\Documents\\GitHub\\IS-BACKOFFICE\\CTA_INDUSTRIAL_RND_FUNDING_ENGINE_GAPS.txt",
+        "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\competitors\\1776254699629_Posibles_competidores_INGECART.docx",
+        "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\customers\\1777958036456_INITIAL_INGECART_CUSTOMERS.xlsx",
+        "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\hierarchy\\1776180467140_Jerarquia Ingecart.pdf",
+        "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\hierarchy\\1776254790793_Jerarquia_Ingecart.docx",
+        "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\hierarchy\\1777218695351_Ingecart_Commercial_Structure.xlsx",
+        "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\leads\\1776180480395_Super Corr Expo Orlando 2024_ List.xlsx",
+        "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254860994_Company_Plastic_Reduction_2024_12.xlsx",
+        "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254876367_Countries_vs_GDP_2024_2025_vs_CBoard_2024.xlsx",
+        "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254885246_Desempeno_bolsa_grandes_Papel_2024_2_.xlsx",
+        "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254914367_GDP_Global_2018_2023.xlsx",
+        "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254919217_gdp_forecast.xlsx",
+        "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254925563_informe_folding_carton.pdf",
+        "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254928868_Informe_Mercado_Carton_Papel_2024.pptx",
+        "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254943481_Inversiones_en_Equipamiento_Industrial_2003-2023.xlsx",
+        "C:\\Users\\isena\\Documents\\INGECART\\CTA ENGINE INITIAL DATA\\3afed18c-b9e4-4d71-9d98-0e4bbce0686a\\market\\1776254945712_major_threats_or_opportunities_facing_FC_2024_survey.xlsx"
+      ]
+    },
+    "knowledgeScopes": [
+      "company",
+      "market"
+    ]
+  },
+  "workspace": {
+    "business_intelligence_reports": [
+      {
+        "title": "CTA launch board",
+        "summary": "Mission control for projects, opportunities, evidence gaps and go/no-go funding decisions.",
+        "scope": "market"
+      }
+    ]
+  }
+}

@@ -72,7 +72,7 @@ STREAMLIT_APP_URL: str = _get_secret("STREAMLIT_APP_URL")
 # Feature flags
 # ──────────────────────────────────────────────────────────────
 
-QUICK_ACCESS_ENABLED: bool = get_bool_secret("QUICK_ACCESS_ENABLED", default=True)
+QUICK_ACCESS_ENABLED: bool = get_bool_secret("QUICK_ACCESS_ENABLED", default=False)
 FULL_ACCESS_ALL_USERS: bool = get_bool_secret("FULL_ACCESS_ALL_USERS")
 
 # ──────────────────────────────────────────────────────────────

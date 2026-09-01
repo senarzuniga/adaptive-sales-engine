@@ -259,6 +259,9 @@ class BusinessContext(BaseModel):
     saved_companies: List[Dict[str, Any]] = Field(default_factory=list)
     company_notes: str = ""
     portfolio_risk: Optional[Dict[str, Any]] = None
+    action_queue: List[Dict[str, Any]] = Field(default_factory=list)
+    source_registry: Dict[str, Any] = Field(default_factory=dict)
+    data_inventory: Dict[str, Any] = Field(default_factory=dict)
 
     # Derived signals
     accounts: List[Account] = Field(default_factory=list)

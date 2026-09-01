@@ -1,0 +1,2413 @@
+PLAN MAESTRO DE COHESIÓN, CONOCIMIENTO E IMPLEMENTACIÓN
+ADAPTIVE SALES ENGINE - APLICACIÓN ÚNICA EN STREAMLIT
+
+Fecha: 27 de agosto de 2026
+Repositorio: senarzuniga/adaptive-sales-engine
+Documento de referencia: INFORME_ADAPTIVE_SALES_ENGINE.txt
+
+======================================================================
+1. PROPÓSITO DEL PLAN
+======================================================================
+
+Este plan define cómo transformar el repositorio actual en una única
+plataforma Streamlit completa, coherente, segura y mantenible.
+
+Los objetivos finales son:
+
+1. Convertir datos, documentos y conocimiento comercial disperso en una
+   visión consolidada y fiable.
+	1.1- La aplicacion es una aplicacion que permite cargar para su uso la empresa pertinente.
+	1.2- Genera 2 empresas de Prueba CTA e Ingecart, llama a las dos "demo version".
+	1.3- LAs empresas generadas como demo version deben de poder ser validadas como "Empresa" final. Para ello se podra eliminar y actualizar informacion .
+	1.4- Genera las empresas con toda la informacion disponible en :
+
+	C:\Users\isena\Documents\GitHub\IS-BACKOFFICE: puede haber info de las dos empresas
+	C:\Users\isena\Documents\GitHub\adaptive-sales-engine: puede haber info delas dos empresas
+	C:\Users\isena\Documents\INGECART: toda la informacion de gestion de Ingecart, ofertas, costes, informes, proyectos, Artwork, contenido
+	C:\Users\isena\Documents\GitHub\AI-FACTORY-v2: puede haber info de las dos
+	C:\Users\isena\Documents\GitHub\ingesite.github.io: contenidos de Ingecart
+
+	1.5- Generar un perfecto contexto de cada empresa para que los agentes trabajen de manera precisa.
+	1.6- Cargar ofertas, listados de clientes proyectos..etc, validar
+	1.7- Garantizar que hay herramientas para la gestion de todo el flujo de una empresa
+		1.-Desde gestion y generacion de leads
+		2. Gestion de clientes, ofertas , ventas, proyectos, gestion de proyectos, postventa, fidelizacion, comunicacion, market intelliigence, etc...combina las funcionalidades de un CRM y añade lo necesario para cubrir mi vision de Adaptative Sales Engine.
+
+
+2. Identificar riesgos y oportunidades con evidencia.Genera acciones con contenido y secuencia de acciones
+3. Generar recomendaciones explicables y con explicacion y contenidos para hacer la accion sin tener que generar documetos o trabajo adicional.
+	3.1- Genera pull de acciones con scoring para garantizar que se trabaja en direccion a los objetivos marcados en la definicion de la empresa, y que siempre exista actividad en cola, efecto scrolling.
+4. Convertir recomendaciones en acciones, tareas, ofertas y contenido. Con contenido y secuencia de accion para cada tarea.
+5. Desarrollar todos los módulos funcionales de Adaptive Sales Engine.
+	Mejorar hasta la perfeccion lo disponible. SI algo no tiene sentido es redundante o genera comflicto, eliminalo.
+6. Coordinar agentes especializados mediante un supervisor.
+	Garnatizar el uso correcto de todas las capacidades de la aplicacion y el uso de GITHUB copilot
+7. Utilizar Supabase como única fuente de verdad.
+8. Retirar React, Edge Functions de negocio, launchers y estructuras
+   redundantes sólo después de demostrar paridad funcional.
+9. Los datos deben de ser tratados de dos maneras posibles:
+	A.Datos e inofrmacion exclusiva a una empresa determinada
+	B. datos y analisis de mercados, economia, informacion de caracter general
+
+El orden del trabajo es obligatorio:
+
+INVENTARIAR
+  -> VALIDAR CONCEPTOS
+  -> DEFINIR MODELO CANÓNICO
+  -> ASEGURAR SUPABASE
+  -> CONSTRUIR INGESTIÓN Y CONOCIMIENTO
+  -> VALIDAR LA BASE
+  -> DESARROLLAR STREAMLIT
+  -> INDUSTRIALIZAR AGENTES
+  -> DEMOSTRAR PARIDAD
+  -> RETIRAR ESTRUCTURAS ANTIGUAS
+
+No se debe comenzar la construcción masiva de módulos antes de completar
+los gates de conocimiento, datos y seguridad.
+
+======================================================================
+2. ESTADO DE COHESIÓN ACTUAL
+======================================================================
+
+Índice global estimado de cohesión: 24/100.
+
+Dimensión                              Estado aproximado
+----------------------------------------------------------------------
+Producto e interfaz única              20/100
+Límites y dependencias                 25/100
+Modelo y contratos de datos            20/100
+Flujos de extremo a extremo            35/100
+Seguridad y autorización               10/100
+Observabilidad                         25/100
+Pruebas y CI                           20/100
+Despliegue y dependencias              20/100
+Documentación operativa                25/100
+
+2.1. Sistemas coexistentes
+
+A. React/Vite
+
+- Dispone de aproximadamente 25 rutas.
+- Contiene UI, reglas comerciales, mapeadores, normalizadores y fallbacks.
+- Usa Supabase y localStorage.
+- Implementa el flujo documental más conectado.
+
+B. Streamlit/Python
+
+- Contiene autenticación, navegación, páginas y agentes.
+- Usa session_state y acceso opcional a Supabase.
+- Mezcla páginas reales, páginas duplicadas y contenido demo.
+- Debe convertirse en la única aplicación.
+
+C. Supabase Edge Functions
+
+- Contienen análisis, prompts, validación e ingestión valiosos.
+- Parte de la lógica de negocio reside aquí, separada de Python.
+- Varias funciones usan service role sin autorización suficiente.
+
+D. Agentes Python
+
+- Algunos realizan análisis reales.
+- Otros son heurísticos, incompatibles o stubs.
+- El orquestador ejecuta agentes por descubrimiento dinámico, sin contrato
+  uniforme ni selección basada en capacidades.
+
+E. ai-factory-v2
+
+- Contiene scraping, extracción, normalización e inteligencia.
+- Funciona como librería/prototipo.
+- No está conectado al ciclo principal ni dispone de persistencia real por
+  defecto.
+
+F. Launchers, scripts y aplicaciones auxiliares
+
+- Existen varias entradas Streamlit, monitores y launchers.
+- Hay rutas obsoletas y nombres incorrectos.
+- El worker de ofertas no se ejecuta de forma permanente.
+
+2.2. Duplicaciones principales
+
+- Dos aplicaciones de usuario completas.
+- Tres mecanismos de ingestión.
+- Dos o más modelos de Action y Offer.
+- Varias formas de representar customer/contact/company.
+- Estado repartido entre Supabase, localStorage y session_state.
+- Páginas Streamlit importadas y posteriormente redefinidas.
+- Múltiples manifiestos de dependencias.
+- Varios launchers para procesos que no forman un ecosistema coherente.
+
+2.3. Contratos incompatibles
+
+Ejemplo Action:
+
+- Python: name, goal, department, status="open".
+- Supabase: title, company_id, priority, status="todo".
+- React: estructura y estados propios.
+
+Ejemplo Offer:
+
+- Python: serial_number, total_amount, status.
+- Supabase/React: offer_number, total_value, company_id.
+- Existe además compatibilidad especulativa con status_v2.
+
+Estas incompatibilidades obligan a usar fallbacks que ocultan errores de
+esquema.
+
+2.4. Flujos parcialmente conectados
+
+- Documentos React -> Edge Function -> Supabase: conectado, con
+  inconsistencias de mapeo.
+- Oferta -> pipeline_jobs: crea trabajo, pero el worker es manual.
+- ai-factory-v2: pipeline útil, no llamado desde la aplicación principal.
+- trigger-ingestion: invocado desde React, pero la función no existe.
+
+2.5. Conclusión de cohesión
+
+El repositorio tiene muchas capacidades, pero no forma todavía un sistema.
+La prioridad debe ser reducir ambigüedad antes de aumentar funcionalidad.
+
+======================================================================
+3. PRINCIPIOS NO NEGOCIABLES
+======================================================================
+
+1. Streamlit será la única aplicación de usuario.
+2. Supabase/Postgres será la única fuente de verdad.
+3. session_state será sólo estado de interfaz.
+4. localStorage dejará de ser persistencia comercial.
+5. Toda entidad pertenecerá a una organización.
+6. Toda recomendación deberá indicar evidencia, confianza y versión.
+7. Ninguna inferencia de IA sobrescribirá hechos sin revisión o regla
+   explícita.
+8. Los documentos y datos originales serán inmutables.
+9. No se realizarán fusiones destructivas.
+10. Todos los agentes usarán contratos tipados.
+11. Los agentes no escribirán directamente en la UI.
+12. Las acciones externas requerirán autorización humana.
+13. Cada trabajo será idempotente, observable y reintentable.
+14. No se eliminará código antiguo hasta demostrar paridad.
+15. La madurez se medirá con evidencia de CI y uso, no con declaraciones.
+
+======================================================================
+4. ARQUITECTURA OBJETIVO
+======================================================================
+
+                          USUARIO
+                             |
+                             v
+                  APLICACIÓN STREAMLIT ÚNICA
+                             |
+                Commands / Queries tipados
+                             |
+                             v
+                    CAPA DE APLICACIÓN
+        Casos de uso | Workflows | RBAC | Aprobaciones
+                             |
+             +---------------+---------------+
+             |                               |
+             v                               v
+       DOMINIO PURO                   SUPERVISOR DE AGENTES
+ Entidades | Reglas | Eventos       Planes | DAG | Resultados
+             |                               |
+             +---------------+---------------+
+                             |
+                             v
+                    PUERTOS/REPOSITORIOS
+                             |
+                             v
+                 INFRAESTRUCTURA PYTHON
+ Supabase | Storage | LLM | Email | Scraping | Parsers | Queue
+                             |
+                             v
+                      SUPABASE SEGURO
+ Auth | Postgres | RLS | Storage | Realtime | Jobs | Auditoría
+
+Procesos desplegados:
+
+1. streamlit-web:
+   UI, autenticación, consultas, comandos y aprobaciones.
+
+2. worker:
+   ingestión, agentes, generación de conocimiento, ofertas y tareas.
+
+3. scheduler:
+   trabajos periódicos, caducidad, alertas y reanálisis.
+
+4. Supabase:
+   persistencia, autenticación, storage y cola.
+
+Las Edge Functions quedarán temporalmente como puentes durante la
+migración. Al final sólo se conservarán si existe una necesidad específica
+de webhook o integración en el borde.
+
+======================================================================
+5. ESTRUCTURA PYTHON OBJETIVO
+======================================================================
+
+adaptive_sales_engine/
+  app/
+    bootstrap.py
+    navigation.py
+    auth.py
+    session.py
+  ui/
+    pages/
+    components/
+    forms/
+    view_models/
+  domain/
+    identity/
+    companies/
+    crm/
+    products/
+    sales/
+    offers/
+    actions/
+    finance/
+    projects/
+    service/
+    intelligence/
+    knowledge/
+    ingestion/
+    agents/
+    common/
+  application/
+    commands/
+    queries/
+    services/
+    workflows/
+    policies/
+    approvals/
+  infrastructure/
+    supabase/
+    repositories/
+    storage/
+    ingestion/
+    llm/
+    email/
+    scraping/
+    queue/
+    observability/
+  agents/
+    registry.py
+    supervisor.py
+    runtime.py
+    capabilities/
+  workers/
+    worker.py
+    scheduler.py
+  tests/
+    unit/
+    integration/
+    contract/
+    e2e/
+    security/
+
+streamlit_app.py deberá contener únicamente:
+
+- bootstrap;
+- autenticación;
+- composición de dependencias;
+- navegación;
+- renderizado de la página seleccionada.
+
+No contendrá páginas, reglas de negocio, SQL ni llamadas directas a LLM.
+
+======================================================================
+6. PROGRAMA DE IMPLEMENTACIÓN
+======================================================================
+
+El programa se divide en once fases. Cada fase dispone de un gate. Si el
+gate no se cumple, no se avanza.
+
+----------------------------------------------------------------------
+FASE 0. CONTENCIÓN, SEGURIDAD Y LÍNEA BASE
+----------------------------------------------------------------------
+
+Objetivo:
+
+Detener riesgos inmediatos y congelar una referencia medible del sistema.
+
+Trabajo:
+
+1. Revocar las credenciales expuestas en el TXT.
+2. Eliminar secretos del árbol y del historial Git.
+3. Desactivar Quick Access por defecto.
+4. Impedir cambios automáticos directos del workflow professional_loop.
+5. Inventariar entornos, proyectos Supabase, buckets y secretos.
+6. Generar un backup lógico y físico antes de migrar.
+7. Capturar datasets de referencia anonimizados.
+8. Registrar las rutas, funciones, tablas, agentes y scripts actuales.
+9. Identificar propietarios funcionales por dominio.
+10. Congelar nuevas funcionalidades hasta aprobar el modelo canónico.
+
+Entregables:
+
+- registro de activos;
+- registro de secretos;
+- baseline de esquema;
+- catálogo de datasets;
+- mapa de dependencias;
+- suite inicial de fixtures;
+- registro de riesgos;
+- copia restaurable.
+
+Gate 0:
+
+- cero secretos versionados;
+- Quick Access desactivado en producción;
+- backup restaurado con éxito en un entorno aislado;
+- inventario firmado por responsables;
+- datasets de referencia disponibles.
+
+----------------------------------------------------------------------
+FASE 1. RECOGIDA Y VALIDACIÓN DEL CONOCIMIENTO EXISTENTE
+----------------------------------------------------------------------
+
+Objetivo:
+
+Recoger todos los conceptos y reglas válidos antes de borrar o reescribir.
+
+Fuentes:
+
+- TXT y documentación;
+- migraciones Supabase;
+- tablas y datos reales;
+- reglas de src/lib;
+- Edge Functions;
+- modelos Python;
+- acciones_repository.json;
+- páginas React y Streamlit;
+- agentes;
+- fixtures;
+- conocimiento de usuarios de negocio;
+- documentos de Ingecart y otras compañías;
+- buenas prácticas incluidas en el repositorio.
+
+Proceso por elemento:
+
+1. Identificar el concepto.
+2. Registrar fuente y fecha.
+3. Identificar propietario de negocio.
+4. Detectar duplicados y sinónimos.
+5. Comparar implementación y documentación.
+6. Clasificar como válido, dudoso, obsoleto o contradictorio.
+7. Validar con experto.
+8. Crear definición canónica.
+9. Registrar regla, ejemplos y excepciones.
+10. Aprobar versión.
+
+Artefactos:
+
+A. Glosario de negocio
+
+- Organización.
+- Compañía analizada.
+- Cliente.
+- Cuenta.
+- Contacto.
+- Lead.
+- Oportunidad.
+- Oferta.
+- Pedido.
+- Proyecto.
+- Producto.
+- Servicio.
+- Contrato.
+- Activo instalado.
+- Acción.
+- Tarea.
+- Insight.
+- Recomendación.
+- Evidencia.
+- Documento.
+- Riesgo.
+- KPI.
+
+B. Catálogo de reglas
+
+Para cada regla:
+
+- identificador;
+- versión;
+- descripción;
+- dominio;
+- entradas;
+- salida;
+- precedencia;
+- excepciones;
+- propietario;
+- fecha efectiva;
+- implementación actual;
+- pruebas.
+
+C. Matriz de paridad
+
+Concepto/flujo
+  -> React
+  -> Streamlit
+  -> Edge Function
+  -> Python
+  -> Supabase
+  -> modelo canónico
+  -> decisión de migración.
+
+D. Registro de decisiones
+
+Ejemplos:
+
+- offer no es opportunity;
+- company tenant no es customer;
+- customer puede ser party + customer_account;
+- insight es derivado, no hecho;
+- recommendation necesita evidence;
+- action es ejecución aprobada de una recomendación.
+
+Gate 1:
+
+- 100 % de conceptos críticos definidos;
+- 100 % de reglas críticas con propietario;
+- contradicciones resueltas o registradas;
+- modelo de estados aprobado;
+- matriz de paridad completa;
+- ninguna estructura se elimina todavía.
+
+----------------------------------------------------------------------
+FASE 2. ONTOLOGÍA, MODELO CANÓNICO Y CONTRATOS
+----------------------------------------------------------------------
+
+Objetivo:
+
+Definir una única semántica para base de datos, dominio, agentes y UI.
+
+2.1. Contratos base
+
+Todos los modelos usarán Pydantic v2 e incluirán:
+
+- id UUID;
+- org_id;
+- workspace_id o company_id cuando proceda;
+- schema_version;
+- created_at y updated_at UTC;
+- created_by y updated_by;
+- source;
+- correlation_id;
+- idempotency_key en comandos;
+- estado tipado.
+
+2.2. Contratos operativos
+
+- Command.
+- Query.
+- DomainEvent.
+- Job.
+- AgentCapability.
+- AgentPlan.
+- AgentResult[T].
+- Evidence.
+- Recommendation.
+- ApprovalRequest.
+- AuditEvent.
+- PageViewModel.
+
+2.3. Reglas de modelado
+
+- No Dict[str, Any] en contratos críticos.
+- No DataFrame entre procesos.
+- DataFrame sólo dentro de parsers o análisis.
+- No nombres como claves naturales.
+- Identificadores externos se guardan por sistema fuente.
+- Estados son enums versionados.
+- Moneda y unidad son explícitas.
+- Fechas diferencian evento, validez y registro.
+
+2.4. Estados obligatorios
+
+Documento:
+
+received
+  -> quarantined
+  -> deduplicated
+  -> parsing
+  -> extracted
+  -> validated
+  -> review_required / rejected
+  -> published
+  -> superseded
+
+Trabajo:
+
+queued
+  -> leased
+  -> running
+  -> succeeded
+  -> retryable_failed
+  -> terminal_failed
+  -> cancelled
+  -> dead_letter
+
+Conocimiento:
+
+raw
+  -> validated
+  -> proposed
+  -> approved
+  -> rejected
+  -> superseded
+  -> retracted
+
+Oferta:
+
+draft
+  -> under_review
+  -> approved
+  -> sent
+  -> accepted / rejected / expired
+  -> converted
+
+2.5. Contratos de compatibilidad
+
+Crear adaptadores temporales:
+
+- ReactAction -> CanonicalAction.
+- PythonAction -> CanonicalAction.
+- LegacyOffer -> CanonicalOffer.
+- OpportunityOfferMapping.
+- CustomerCompanyContactMapping.
+
+Gate 2:
+
+- esquemas Pydantic aprobados;
+- DDL canónico aprobado;
+- contratos publicados y versionados;
+- pruebas de serialización;
+- reglas de transición probadas;
+- cero ambigüedades críticas sin decisión.
+
+----------------------------------------------------------------------
+FASE 3. FUNDACIÓN SUPABASE SEGURA Y FIABLE
+----------------------------------------------------------------------
+
+Objetivo:
+
+Construir la base fiable antes de desarrollar módulos.
+
+3.1. Identidad y tenancy
+
+Tablas:
+
+- organizations;
+- organization_members;
+- workspaces;
+- business_units;
+- profiles;
+- roles;
+- permissions;
+- role_permissions.
+
+Toda tabla llevará org_id NOT NULL. RLS comprobará membership y rol.
+
+Roles:
+
+- admin;
+- steward;
+- director;
+- commercial;
+- kam;
+- engineering;
+- service;
+- marketing;
+- reviewer;
+- viewer;
+- worker.
+
+3.2. Procedencia inmutable
+
+Tablas:
+
+- source_system;
+- source_connection;
+- source_object;
+- ingestion_batch;
+- ingestion_job;
+- ingestion_step_attempt;
+- ingestion_event;
+- document;
+- document_revision;
+- document_section;
+- document_chunk;
+- extraction_run;
+- extracted_candidate.
+
+Cada revisión documental tendrá:
+
+- SHA-256;
+- MIME real;
+- tamaño;
+- URI privada;
+- autor;
+- fecha efectiva;
+- sistema origen;
+- licencia/condiciones;
+- parser y versión;
+- estado;
+- clasificación de sensibilidad.
+
+3.3. Master Data Management
+
+Tablas:
+
+- party;
+- party_identifier;
+- party_alias;
+- party_merge;
+- customer_account;
+- contact;
+- product;
+- product_identifier;
+- competitor;
+- opportunity;
+- offer;
+- offer_line;
+- sales_order;
+- sales_order_line;
+- project;
+- action;
+- task;
+- contract;
+- installed_asset.
+
+3.4. Historial
+
+- Tablas *_version con SCD2.
+- valid_from y valid_to.
+- is_current.
+- row_hash.
+- changed_by.
+- change_reason.
+- source_priority.
+
+No se borrarán hechos por reprocesar un documento.
+
+3.5. Auditoría
+
+audit_event append-only:
+
+- actor;
+- organización;
+- operación;
+- entidad;
+- hashes antes/después;
+- request_id;
+- correlation_id;
+- IP/cliente;
+- fecha;
+- motivo;
+- aprobación.
+
+3.6. Seguridad
+
+- Policies RLS sin USING(true).
+- Bucket privado por org/workspace.
+- Signed URLs temporales.
+- JWT validado.
+- Service role sólo en workers.
+- Vistas security_invoker.
+- Tests con dos tenants.
+- Límites de tamaño y tipo.
+- Escaneo/quarantine.
+
+3.7. Fiabilidad
+
+- migraciones sólo hacia delante;
+- índices y constraints;
+- foreign keys;
+- checks de importes, monedas y fechas;
+- transacciones;
+- idempotencia;
+- outbox;
+- locks con lease;
+- dead-letter queue;
+- backups;
+- PITR;
+- restore drills;
+- métricas de crecimiento;
+- política de retención.
+
+Gate 3:
+
+- cero políticas abiertas;
+- cero acceso cruzado entre dos tenants de prueba;
+- backup y restore medidos;
+- migración reproducible desde cero;
+- constraints y FKs válidas;
+- RPO y RTO acordados;
+- datos originales inmutables.
+
+----------------------------------------------------------------------
+FASE 4. INGESTIÓN, CALIDAD Y ESTRUCTURACIÓN DE CONOCIMIENTO
+----------------------------------------------------------------------
+
+Objetivo:
+
+Crear un pipeline único para datos estructurados, documentos y fuentes
+externas.
+
+4.1. Pipeline único
+
+Fuente
+  -> registro
+  -> cuarentena
+  -> hash/dedupe
+  -> parseo
+  -> normalización
+  -> extracción
+  -> validación
+  -> reconciliación
+  -> revisión humana
+  -> publicación
+  -> generación de conocimiento
+  -> reanálisis comercial.
+
+4.2. Formatos
+
+- CSV;
+- XLSX;
+- JSON;
+- PDF;
+- DOCX;
+- imágenes/OCR;
+- email;
+- URL;
+- datos CRM/ERP futuros;
+- fuentes de mercado.
+
+4.3. Calidad
+
+Dimensiones:
+
+- completitud;
+- validez;
+- consistencia;
+- unicidad;
+- actualidad;
+- trazabilidad;
+- exactitud;
+- coherencia referencial.
+
+Cada lote tendrá:
+
+- filas recibidas;
+- aceptadas;
+- rechazadas;
+- duplicadas;
+- pendientes;
+- score de calidad;
+- errores por campo;
+- responsable de revisión.
+
+4.4. Deduplicación
+
+Nivel 1, determinista:
+
+- ID externo;
+- NIF/VAT;
+- dominio;
+- email;
+- hash;
+- clave compuesta normalizada.
+
+Nivel 2, probabilístico:
+
+- similitud de nombre;
+- dirección;
+- teléfono;
+- relaciones;
+- contexto.
+
+Una coincidencia probabilística crea un match_candidate. No elimina filas.
+
+Tablas:
+
+- entity_resolution_case;
+- match_candidate;
+- merge_decision;
+- conflict_case;
+- resolution_decision.
+
+4.5. Precedencia
+
+Regla inicial:
+
+ERP/venta confirmada
+  > documento firmado
+  > CRM validado
+  > entrada manual aprobada
+  > fuente externa
+  > inferencia de IA.
+
+La precedencia será configurable y versionada por dominio.
+
+4.6. Human-in-the-loop
+
+Revisión obligatoria para:
+
+- fusiones no deterministas;
+- importes conflictivos;
+- identidad de cliente;
+- estado de oferta;
+- cambio de precio;
+- documento sin evidencia;
+- recomendación de alto impacto;
+- acción externa.
+
+4.7. Migración de activos existentes
+
+Conservar/adaptar:
+
+- parsers Python;
+- validationEngine;
+- process-document;
+- estructura raw/extracted/canonical;
+- hashes de ai-factory-v2;
+- normalizadores;
+- registro de fuentes;
+- ingestion runs;
+- document-status;
+- data-pipeline-report.
+
+Retirar progresivamente:
+
+- merge destructivo de enrich-data;
+- reset que borra historial;
+- embeddings hash de 16 dimensiones;
+- VectorStore placeholder;
+- ingestiones paralelas no registradas.
+
+Gate 4:
+
+- reintentar un job no duplica datos;
+- 100 % de candidatos publicados tienen procedencia;
+- 0 rechazados llegan a tablas canónicas;
+- una fusión puede revertirse;
+- los errores por fila son visibles;
+- precisión y recall se miden con muestra revisada.
+
+----------------------------------------------------------------------
+FASE 5. GRAFO DE CONOCIMIENTO Y GENERACIÓN DE INSIGHTS
+----------------------------------------------------------------------
+
+Objetivo:
+
+Convertir datos validados en conocimiento explicable.
+
+5.1. Vocabulario y ontología
+
+Tablas:
+
+- concept;
+- taxonomy_term;
+- predicate;
+- unit;
+- entity_type;
+- entity_mapping;
+- ontology_version.
+
+5.2. Entidades y aserciones
+
+knowledge_entity:
+
+- entidad canónica;
+- tipo;
+- etiqueta;
+- ciclo de vida;
+- organización.
+
+knowledge_assertion:
+
+- sujeto;
+- predicado;
+- objeto o valor tipado;
+- unidad;
+- validez temporal;
+- estado;
+- confianza;
+- método de derivación.
+
+knowledge_evidence:
+
+- assertion_id;
+- document_revision_id;
+- chunk_id;
+- offsets;
+- quote_hash;
+- tabla/campo origen.
+
+5.3. Grafo
+
+Ejemplos:
+
+- customer BUYS product;
+- competitor OFFERS product;
+- offer CONTAINS product;
+- contact INFLUENCES account;
+- project USES installed_asset;
+- contract COVERS installed_asset;
+- opportunity DERIVED_FROM insight.
+
+5.4. Vector
+
+- pgvector;
+- modelo real de embeddings;
+- model_id;
+- dimensión;
+- versión;
+- content_hash;
+- fecha;
+- índices por tenant;
+- evaluación de relevancia;
+- filtros RLS.
+
+5.5. Generación de insights
+
+Un insight incluirá:
+
+- tipo;
+- hipótesis;
+- cálculo;
+- entidades afectadas;
+- evidencia;
+- confianza;
+- fecha de caducidad;
+- impacto estimado;
+- recomendación;
+- estado de revisión.
+
+Tipos:
+
+- riesgo de churn;
+- concentración de cartera;
+- caída de margen;
+- pérdida de producto;
+- cross-sell;
+- upsell;
+- renovación;
+- oportunidad postventa;
+- desviación de forecast;
+- riesgo de oferta;
+- señal competitiva;
+- incoherencia estrategia/branding;
+- cuenta sin stakeholder;
+- inactividad comercial.
+
+5.6. Regla de explicabilidad
+
+Toda respuesta debe permitir navegar:
+
+Insight
+  -> aserción
+  -> entidad
+  -> documento/dato
+  -> sección/chunk/campo
+  -> versión y fecha.
+
+Gate 5:
+
+- toda respuesta incluye citas;
+- no hay fuga vectorial intertenant;
+- insights reproducibles;
+- modelo y prompt versionados;
+- confianza calibrada;
+- revisión humana disponible;
+- conocimiento caducado no se presenta como actual.
+
+----------------------------------------------------------------------
+FASE 6. PLATAFORMA STREAMLIT Y SERVICIOS COMPARTIDOS
+----------------------------------------------------------------------
+
+Objetivo:
+
+Construir la base de la aplicación sólo después de validar datos y
+conocimiento.
+
+6.1. Shell
+
+- login;
+- selector de organización y compañía;
+- navegación;
+- breadcrumbs;
+- buscador global;
+- centro de trabajos;
+- notificaciones;
+- idioma ES/EN;
+- estado de fuentes;
+- ayuda y evidencia;
+- perfil;
+- filtros persistentes.
+
+6.2. UX estándar
+
+Cada página deberá disponer de:
+
+- cabecera;
+- compañía y periodo;
+- KPIs reales;
+- filtros;
+- tabla o visualización;
+- drill-down;
+- panel de evidencia;
+- confianza;
+- loading;
+- empty state;
+- error explícito;
+- exportación;
+- permisos;
+- auditoría;
+- ayuda contextual.
+
+6.3. Servicios
+
+- AuthService.
+- CompanyService.
+- DataQualityService.
+- KnowledgeService.
+- SearchService.
+- JobService.
+- NotificationService.
+- ApprovalService.
+- AuditService.
+- ExportService.
+- FeatureFlagService.
+
+6.4. Estado
+
+Persistente:
+
+- Supabase.
+
+session_state:
+
+- navegación;
+- filtros;
+- borradores temporales;
+- selección actual.
+
+Caché:
+
+- st.cache_resource para clientes;
+- st.cache_data con TTL;
+- clave org/company/version;
+- invalidación por evento.
+
+6.5. Accesibilidad
+
+- teclado;
+- contraste;
+- labels;
+- mensajes no dependientes sólo del color;
+- tamaños legibles;
+- tablas exportables;
+- soporte responsive razonable.
+
+Gate 6:
+
+- login y roles;
+- navegación sin páginas demo;
+- consultas sólo mediante application services;
+- ninguna página usa SQL directo;
+- auditoría de mutaciones;
+- pruebas E2E del shell;
+- aislamiento por tenant.
+
+----------------------------------------------------------------------
+FASE 7. SUPERVISOR Y ECOSISTEMA DE AGENTES
+----------------------------------------------------------------------
+
+Objetivo:
+
+Coordinar agentes especializados sin ejecución indiscriminada.
+
+7.1. Contrato AgentCapability
+
+- agent_id;
+- versión;
+- capacidades;
+- dominios;
+- datos requeridos;
+- permisos;
+- coste estimado;
+- timeout;
+- política de reintento;
+- tipo de salida;
+- nivel de impacto;
+- requiere aprobación.
+
+7.2. Contrato AgentResult
+
+- status;
+- output tipado;
+- evidence;
+- confidence;
+- warnings;
+- model_version;
+- prompt_version;
+- tokens;
+- coste;
+- duración;
+- correlation_id;
+- recomendaciones;
+- errores.
+
+7.3. Flujo
+
+DomainEvent
+  -> Supervisor.plan
+  -> selección por capacidad
+  -> DAG de jobs
+  -> worker
+  -> validación de salida
+  -> consolidación
+  -> conflicto
+  -> aprobación
+  -> publicación
+  -> acción.
+
+7.4. Agentes objetivo
+
+Agentes de datos:
+
+- Source Discovery Agent.
+- File Classification Agent.
+- Parser Agent.
+- Data Quality Agent.
+- Normalization Agent.
+- Entity Resolution Agent.
+- Evidence Validation Agent.
+
+Agentes comerciales:
+
+- 360 Analysis Agent.
+- Portfolio Risk Agent.
+- Pattern Recognition Agent.
+- Forecast Agent.
+- KAM Mapping Agent.
+- Opportunity Agent.
+- Cross-Selling Agent.
+- After-Sales Agent.
+- Product Lifecycle Agent.
+- Strategy Comparison Agent.
+- Sales Architecture Agent.
+
+Agentes de mercado:
+
+- Market Intelligence Agent.
+- Competitive Intelligence Agent.
+- Pricing Intelligence Agent.
+- Source Monitoring Agent.
+
+Agentes de ejecución:
+
+- Action Planning Agent.
+- Weekly Planner Agent.
+- Offer Agent.
+- Dynamic Pricing Agent.
+- Content Agent.
+- Email Cobot Agent.
+- Project Intelligence Agent.
+- Contract/Renewal Agent.
+
+Agentes de control:
+
+- Supervisor.
+- Policy Agent.
+- Conflict Resolution Agent.
+- Quality Evaluation Agent.
+- Cost and Budget Guard.
+- Observability Agent.
+
+7.5. Aprobación obligatoria
+
+- enviar email;
+- modificar precio;
+- publicar oferta;
+- fusionar entidades;
+- crear campaña;
+- cambiar forecast aprobado;
+- ejecutar scraping sensible;
+- actualizar conocimiento de alta criticidad.
+
+7.6. Cola
+
+Ampliar pipeline_jobs:
+
+- org_id;
+- company_id;
+- user_id;
+- job_type;
+- idempotency_key;
+- lock_owner;
+- lock_expires_at;
+- max_attempts;
+- trace_id;
+- parent_job_id;
+- DAG dependencies;
+- cost_budget;
+- dead_letter_reason.
+
+Gate 7:
+
+- registro explícito, sin descubrimiento libre;
+- ningún stub visible como agente productivo;
+- selección de agentes justificada;
+- jobs atómicos;
+- DLQ y replay;
+- timeouts;
+- costes medidos;
+- resultados con evidencia;
+- aprobaciones funcionales.
+
+----------------------------------------------------------------------
+FASE 8. IMPLEMENTACIÓN COMPLETA DE MÓDULOS
+----------------------------------------------------------------------
+
+Los módulos se desarrollarán por oleadas. Cada módulo debe cumplir una
+Definition of Done común antes de comenzar el siguiente bloque.
+
+DEFINITION OF DONE COMÚN
+
+- requisitos validados;
+- modelo canónico;
+- servicio de aplicación;
+- repositorio;
+- RLS;
+- UI Streamlit completa;
+- auditoría;
+- evidencias;
+- permisos;
+- estados vacíos/error/loading;
+- importación/exportación;
+- pruebas unitarias;
+- pruebas de integración;
+- pruebas E2E;
+- métricas;
+- documentación;
+- datos demo separados de producción;
+- cero hardcodes comerciales.
+
+OLEADA A. FUNDACIÓN Y DATOS
+
+8.1. Company Information
+
+- ficha corporativa;
+- estrategia;
+- mercados;
+- estructura;
+- fuentes;
+- historial;
+- enriquecimiento;
+- aprobación.
+
+8.2. Data Upload and Pipeline
+
+- cargas;
+- mapeo;
+- calidad;
+- revisión;
+- estado;
+- errores;
+- lineage;
+- reingestión.
+
+8.3. Product Catalog
+
+- catálogo;
+- variantes;
+- familias;
+- atributos;
+- precios;
+- costes;
+- ciclo de vida;
+- equivalencias;
+- competidores.
+
+8.4. Contacts and Saved Companies
+
+- cuentas;
+- contactos;
+- stakeholders;
+- relaciones;
+- consentimiento;
+- actividad;
+- segmentación.
+
+OLEADA B. VISIÓN Y ANÁLISIS
+
+8.5. Dashboard
+
+- ventas;
+- margen;
+- pipeline;
+- forecast;
+- actividad;
+- alertas;
+- objetivos;
+- drill-down.
+
+8.6. Analysis 360
+
+- compañía;
+- clientes;
+- productos;
+- mercado;
+- operaciones;
+- finanzas;
+- estrategia;
+- riesgos.
+
+8.7. Business Intelligence
+
+- periodos;
+- cohortes;
+- segmentos;
+- variaciones;
+- contribución;
+- anomalías;
+- informes.
+
+8.8. Portfolio Analysis
+
+- concentración;
+- ABC;
+- BCG;
+- rentabilidad;
+- riesgo;
+- lifecycle;
+- dependencia.
+
+8.9. Five-Year Results and Monitoring
+
+- histórico;
+- tendencias;
+- forecast;
+- objetivos;
+- desviaciones;
+- alertas.
+
+OLEADA C. ESTRATEGIA COMERCIAL
+
+8.10. Sales Architecture
+
+- segmentos;
+- territorios;
+- canales;
+- roles;
+- cadencias;
+- cobertura;
+- modelo operativo.
+
+8.11. Product Strategy
+
+- posicionamiento;
+- propuesta de valor;
+- roadmap;
+- rentabilidad;
+- gaps;
+- lifecycle.
+
+8.12. Branding versus Strategy
+
+- consistencia;
+- claims;
+- mensajes;
+- evidencia;
+- gaps.
+
+8.13. Behavioral Transformation
+
+- adopción;
+- hábitos;
+- coaching;
+- competencias;
+- indicadores.
+
+OLEADA D. CRM, KAM Y PIPELINE
+
+8.14. CRM
+
+- leads;
+- cuentas;
+- contactos;
+- actividades;
+- timeline;
+- notas;
+- oportunidades.
+
+8.15. Key Account Management
+
+- health score;
+- stakeholders;
+- account plan;
+- whitespace;
+- riesgos;
+- JBP;
+- NPS;
+- alertas.
+
+8.16. Pipeline Manager
+
+- etapas;
+- probabilidad;
+- aging;
+- forecast;
+- cadencia;
+- alertas;
+- conversión.
+
+8.17. Territory Management
+
+- territorios;
+- asignaciones;
+- potencial;
+- cobertura;
+- balance de carga.
+
+OLEADA E. ACCIONES Y PRODUCTIVIDAD
+
+8.18. AI-Augmented Sales
+
+- next best action;
+- oportunidad;
+- evidencia;
+- impacto;
+- confianza;
+- aprobación.
+
+8.19. Commercial Actions Repository
+
+- catálogo;
+- triggers;
+- KPI;
+- contenido;
+- owner;
+- estado;
+- resultados.
+
+8.20. Weekly Planner
+
+- prioridades;
+- calendario;
+- capacidad;
+- dependencias;
+- seguimiento;
+- revisión semanal.
+
+8.21. Request Pool
+
+- solicitudes;
+- SLA;
+- clasificación;
+- asignación;
+- conversión a oferta/proyecto.
+
+8.22. Email Cobot
+
+- borradores;
+- contexto;
+- plantillas;
+- aprobación;
+- envío;
+- tracking;
+- auditoría.
+
+OLEADA F. OFERTAS, COSTES Y FINANZAS
+
+8.23. Offers and Pricing
+
+- versiones;
+- líneas;
+- moneda;
+- descuentos;
+- margen;
+- riesgo;
+- aprobaciones;
+- PDF;
+- envío;
+- aceptación.
+
+8.24. Cost and Rates
+
+- coste directo/indirecto;
+- tarifas;
+- escenarios;
+- historial;
+- sensibilidad;
+- aprobación.
+
+8.25. Budget Command Center
+
+- supuestos;
+- base;
+- consolidación;
+- escenarios;
+- forecast;
+- desviaciones;
+- alertas.
+
+8.26. Revenue Forecasting
+
+- forecast estadístico;
+- forecast comercial;
+- escenarios;
+- intervalos;
+- precisión;
+- backtesting.
+
+OLEADA G. PROYECTOS, SERVICIO Y POSTVENTA
+
+8.27. Project Management
+
+- hitos;
+- tareas;
+- recursos;
+- riesgos;
+- costes;
+- entregables;
+- avance.
+
+8.28. Service Contract Builder
+
+- plantillas;
+- activos;
+- cobertura;
+- SLA;
+- precio;
+- renovación;
+- firma/estado.
+
+8.29. After-Sales Engine
+
+- base instalada;
+- repuestos;
+- mantenimiento;
+- renovación;
+- cross-sell;
+- alertas;
+- oportunidades.
+
+8.30. Customer Success
+
+- onboarding;
+- health;
+- adopción;
+- NPS;
+- riesgo;
+- playbooks;
+- renovación.
+
+OLEADA H. MERCADO Y MARKETING
+
+8.31. Market Intelligence
+
+- fuentes;
+- señales;
+- tendencias;
+- evidencia;
+- alertas;
+- escenarios.
+
+8.32. Competitive Analysis
+
+- competidores;
+- productos;
+- precios;
+- battlecards;
+- cambios;
+- posicionamiento.
+
+8.33. Marketing Content
+
+- briefs;
+- contenido;
+- claims validados;
+- campañas;
+- aprobación;
+- rendimiento.
+
+8.34. Social Media Settings and Campaign Manager
+
+- canales;
+- configuración;
+- calendario;
+- campañas;
+- assets;
+- aprobación;
+- métricas.
+
+OLEADA I. ADMINISTRACIÓN Y OPERACIÓN
+
+8.35. Team Management
+
+- usuarios;
+- roles;
+- departamentos;
+- capacidad;
+- territorios;
+- objetivos.
+
+8.36. Agent Hub
+
+- catálogo;
+- versión;
+- capacidades;
+- estado;
+- jobs;
+- coste;
+- trazas;
+- evaluación;
+- replay.
+
+8.37. Administration
+
+- organizaciones;
+- permisos;
+- fuentes;
+- secretos;
+- políticas;
+- retención;
+- auditoría.
+
+Gate 8 por oleada:
+
+- todos los módulos de la oleada cumplen DoD;
+- datos reales y demo separados;
+- KPIs reconciliados;
+- aceptación por usuarios;
+- errores y rendimiento dentro del SLO;
+- no existen pantallas placeholder.
+
+----------------------------------------------------------------------
+FASE 9. MIGRACIÓN DE LÓGICA Y PARIDAD
+----------------------------------------------------------------------
+
+Objetivo:
+
+Extraer todo el valor de React y Edge Functions antes de retirarlos.
+
+9.1. Migrar desde React
+
+- salesData.ts;
+- commercialIntelligence.ts;
+- productCatalog.ts;
+- documentProcessing.ts;
+- edgeStability.ts;
+- fallbacks;
+- normalización;
+- mapeadores;
+- parser Excel;
+- reglas de DataStore;
+- flujos de las 25 rutas.
+
+No migrar componentes visuales literalmente. Migrar:
+
+- reglas;
+- fórmulas;
+- contratos;
+- validaciones;
+- casos de uso;
+- fixtures;
+- expectativas UX.
+
+9.2. Migrar Edge Functions
+
+- process-document;
+- analyze-360;
+- analyze-offer;
+- analyze-portfolio;
+- business-intelligence;
+- after-sales-intelligence;
+- email-cobot;
+- enrich-company;
+- enrich-data;
+- generate-action-pool;
+- generate-action-content;
+- generate-content;
+- generate-weekly-plan;
+- project-intelligence;
+- summarize-notes;
+- reportes de pipeline.
+
+9.3. Shadow mode
+
+Para cada flujo:
+
+1. Misma entrada.
+2. Ejecutar implementación antigua.
+3. Ejecutar implementación Python.
+4. Normalizar salida.
+5. Comparar.
+6. Revisar divergencias.
+7. Medir latencia, coste y calidad.
+8. Aprobar paridad.
+
+9.4. Criterio de paridad
+
+- 100 % de contratos críticos;
+- 100 % de reglas financieras;
+- >=95 % de equivalencia en outputs no deterministas según rúbrica;
+- 0 regresiones críticas;
+- dos ciclos operativos estables;
+- rollback probado;
+- usuarios aceptan el flujo Streamlit.
+
+Gate 9:
+
+- matriz de paridad cerrada;
+- React sin tráfico;
+- Edge Functions migradas sin tráfico o justificadas;
+- backups;
+- ventana de reversión concluida.
+
+----------------------------------------------------------------------
+FASE 10. ELIMINACIÓN Y CONSOLIDACIÓN
+----------------------------------------------------------------------
+
+Objetivo:
+
+Eliminar sólo estructuras sin valor o ya sustituidas.
+
+KEEP
+
+- domain/ como base, reestructurado;
+- application/;
+- infrastructure/;
+- ui/;
+- agents/ adaptados;
+- Supabase Auth/Postgres/Storage/RLS;
+- migraciones históricas;
+- pipeline_jobs ampliado;
+- parsers y validadores útiles;
+- tests convertidos en contratos/golden tests.
+
+MIGRATE
+
+- src/lib;
+- reglas de DataStore;
+- Edge Functions de negocio;
+- ai-factory-v2;
+- actions_repository;
+- worker de ofertas;
+- páginas React como especificación.
+
+REWRITE
+
+- domain/models.py;
+- action_service.py;
+- offer_service.py;
+- streamlit_app.py;
+- orquestador;
+- autenticación;
+- RLS;
+- cliente Supabase;
+- CI/CD;
+- observabilidad;
+- dependencias.
+
+DELETE DESPUÉS DE PARIDAD
+
+- src/;
+- package.json;
+- package-lock.json;
+- Vite;
+- Tailwind;
+- Dockerfile nginx React;
+- configuración frontend;
+- Edge Functions migradas;
+- segunda UI ing_support_agent;
+- dashboard HTML;
+- launchers redundantes;
+- autostart redundante;
+- scripts obsoletos;
+- outputs de prueba;
+- duplicados bajo Architecture/outputs.
+
+ARCHIVE
+
+- informes históricos;
+- decisiones de arquitectura;
+- golden fixtures;
+- contratos antiguos necesarios para auditoría.
+
+Proceso de eliminación:
+
+1. Confirmar cero imports.
+2. Confirmar cero tráfico.
+3. Confirmar paridad.
+4. Exportar historial.
+5. Crear tag de archivo.
+6. Eliminar en PR separada.
+7. Ejecutar suite completa.
+8. Mantener rollback durante ventana acordada.
+
+Gate 10:
+
+- una sola entrada de aplicación;
+- un solo manifiesto Python;
+- una sola arquitectura de despliegue;
+- cero código muerto detectado;
+- documentación actualizada;
+- repositorio sin credenciales, builds ni duplicados.
+
+----------------------------------------------------------------------
+FASE 11. OPERACIÓN, MEJORA Y GOBERNANZA
+----------------------------------------------------------------------
+
+Objetivo:
+
+Mantener la plataforma fiable una vez implantada.
+
+11.1. SLO inicial
+
+- disponibilidad web >=99,5 %;
+- consultas principales p95 <2 s;
+- trabajos cortos p95 <60 s;
+- error de jobs <2 %;
+- cero fuga intertenant;
+- RPO <=15 minutos;
+- RTO <=2 horas;
+- 100 % de mutaciones auditadas;
+- 100 % de insights con evidencia.
+
+11.2. Observabilidad
+
+- logs JSON;
+- OpenTelemetry;
+- trace_id;
+- métricas de jobs;
+- latencia por agente;
+- tokens;
+- coste;
+- precisión;
+- aceptación/rechazo de recomendaciones;
+- calidad de datos;
+- cola;
+- errores RLS;
+- alertas.
+
+11.3. Evaluación de IA
+
+- datasets dorados;
+- rúbricas por agente;
+- groundedness;
+- precisión;
+- relevancia;
+- completitud;
+- seguridad;
+- coste;
+- regresión de prompts;
+- aprobación humana.
+
+11.4. Gobernanza
+
+Comités:
+
+- Data Governance.
+- Product Council.
+- AI Review.
+- Security Review.
+- Architecture Review.
+
+Cadencias:
+
+- calidad de datos semanal;
+- producto quincenal;
+- seguridad mensual;
+- restore trimestral;
+- ontología mensual;
+- evaluación de agentes por release.
+
+Gate 11:
+
+- dashboards SLO;
+- alertas probadas;
+- restore periódico;
+- ownership asignado;
+- roadmap gobernado por métricas.
+
+======================================================================
+7. ESTRATEGIA DE BASES DE DATOS FIABLES
+======================================================================
+
+7.1. Supabase como system of record
+
+Prohibido:
+
+- escribir hechos sólo en session_state;
+- escribir hechos sólo en localStorage;
+- borrar y reinsertar tablas completas;
+- ocultar incompatibilidades mediante excepciones;
+- usar service role en el navegador;
+- fusionar por fuzzy match sin revisión.
+
+7.2. Integridad
+
+- claves primarias UUID;
+- FKs obligatorias;
+- uniques por tenant y sistema origen;
+- checks;
+- enums controlados;
+- transacciones;
+- optimistic locking;
+- idempotency keys;
+- soft deletion;
+- SCD2;
+- auditoría.
+
+7.3. Disponibilidad
+
+- backups automáticos;
+- PITR;
+- réplicas si el volumen lo requiere;
+- restore drills;
+- migrations dry-run;
+- monitoreo de locks;
+- límites de conexión;
+- pool;
+- índices revisados.
+
+7.4. Calidad
+
+Cada entidad tendrá:
+
+- quality_score;
+- source_priority;
+- verification_status;
+- last_verified_at;
+- verified_by;
+- lineage;
+- conflict_count.
+
+7.5. Fiabilidad semántica
+
+La base distinguirá:
+
+- hecho observado;
+- dato importado;
+- dato validado;
+- afirmación;
+- inferencia;
+- insight;
+- recomendación;
+- decisión;
+- acción;
+- resultado.
+
+No se almacenarán todos como si fueran hechos equivalentes.
+
+======================================================================
+8. PLAN DE PRUEBAS
+======================================================================
+
+8.1. Unitarias
+
+- reglas;
+- estados;
+- cálculos;
+- validadores;
+- normalizadores;
+- agentes deterministas.
+
+8.2. Integración
+
+- repositorios;
+- Supabase;
+- Storage;
+- RLS;
+- jobs;
+- parsers;
+- correo mock;
+- LLM mock.
+
+8.3. Contrato
+
+- Pydantic/SQL;
+- Streamlit/application;
+- worker/jobs;
+- Python/implementación antigua;
+- respuestas LLM.
+
+8.4. Golden tests
+
+- reglas migradas desde TypeScript;
+- prompts;
+- análisis;
+- documentos;
+- ofertas;
+- forecast;
+- acciones.
+
+8.5. E2E
+
+- login;
+- cambio de compañía;
+- carga;
+- revisión;
+- publicación;
+- análisis;
+- recomendación;
+- aprobación;
+- acción;
+- oferta;
+- postventa.
+
+8.6. Seguridad
+
+- dos tenants;
+- roles;
+- service role;
+- SSRF;
+- ZIP bombs;
+- MIME spoofing;
+- inyección;
+- prompt injection;
+- secretos;
+- signed URLs.
+
+8.7. Rendimiento
+
+- volumen de datos;
+- documentos grandes;
+- jobs concurrentes;
+- búsqueda vectorial;
+- dashboards;
+- caché;
+- conexiones.
+
+8.8. Recuperación
+
+- job interrumpido;
+- worker caído;
+- LLM no disponible;
+- restore;
+- rollback;
+- reintento idempotente.
+
+======================================================================
+9. CI/CD Y DESPLIEGUE
+======================================================================
+
+Pipeline:
+
+1. formato y lint;
+2. type checking;
+3. unit tests;
+4. integration tests;
+5. security tests;
+6. migraciones en base temporal;
+7. Streamlit E2E;
+8. build de imágenes;
+9. escaneo;
+10. despliegue staging;
+11. smoke tests;
+12. aprobación;
+13. canary producción;
+14. verificación;
+15. rollback automático si incumple SLO.
+
+Procesos:
+
+- web image;
+- worker image;
+- scheduler image.
+
+Entornos:
+
+- local;
+- test;
+- staging;
+- production.
+
+No compartir secretos ni proyectos Supabase entre entornos.
+
+======================================================================
+10. EQUIPO RECOMENDADO
+======================================================================
+
+Equipo mínimo para ejecución seria:
+
+- 1 Product Owner con conocimiento comercial.
+- 1 Arquitecto/Tech Lead.
+- 2-3 Backend/Data Python.
+- 1-2 Streamlit/UX.
+- 1 Data Engineer.
+- 1 AI/ML Engineer.
+- 1 QA Automation.
+- 0,5 DevOps/SRE.
+- 0,5 Security.
+- Data Stewards por dominio.
+
+Con menos personas el alcance debe secuenciarse, no ejecutarse todo en
+paralelo.
+
+======================================================================
+11. ESTIMACIÓN Y ORDEN TEMPORAL
+======================================================================
+
+Estimación orientativa para el equipo recomendado:
+
+Fase 0                           2-3 semanas
+Fase 1                           4-6 semanas
+Fase 2                           4-6 semanas
+Fase 3                           6-8 semanas
+Fase 4                           8-10 semanas
+Fase 5                           6-8 semanas
+Fase 6                           6-8 semanas
+Fase 7                           8-10 semanas
+Fase 8                           24-40 semanas por oleadas
+Fase 9                           paralela, 12-20 semanas
+Fase 10                          3-5 semanas
+Fase 11                          continua
+
+Horizonte realista:
+
+- núcleo fiable: 5-7 meses;
+- módulos prioritarios: 8-10 meses;
+- cobertura funcional completa y consolidación: 12-18 meses.
+
+Estas fechas no son compromisos. Deben recalcularse después de las fases
+1 y 2, cuando el alcance esté validado.
+
+======================================================================
+12. HITOS DE PRODUCTO
+======================================================================
+
+HITO 1. BASE SEGURA
+
+- tenancy;
+- RLS;
+- Auth;
+- auditoría;
+- backups.
+
+HITO 2. CONOCIMIENTO FIABLE
+
+- ingestión;
+- lineage;
+- calidad;
+- revisión;
+- ontología;
+- búsqueda.
+
+HITO 3. STREAMLIT OPERATIVO
+
+- shell;
+- company;
+- datos;
+- dashboard;
+- BI.
+
+HITO 4. CICLO COMERCIAL
+
+- CRM;
+- KAM;
+- pipeline;
+- acciones;
+- planner.
+
+HITO 5. MONETIZACIÓN
+
+- ofertas;
+- pricing;
+- costes;
+- presupuesto;
+- forecast.
+
+HITO 6. CICLO DE VIDA
+
+- proyectos;
+- contratos;
+- activos;
+- postventa;
+- customer success.
+
+HITO 7. INTELIGENCIA AMPLIADA
+
+- mercado;
+- competencia;
+- marketing;
+- supervisor completo.
+
+HITO 8. CONSOLIDACIÓN
+
+- React retirado;
+- Edge lógica retirada;
+- launchers eliminados;
+- despliegue único.
+
+======================================================================
+13. RIESGOS Y MITIGACIONES
+======================================================================
+
+Riesgo: borrar React antes de migrar reglas.
+Mitigación: matriz, golden tests, shadow mode.
+
+Riesgo: migrar datos inconsistentes.
+Mitigación: staging, candidatos, reconciliación, revisión.
+
+Riesgo: intentar construir todos los módulos a la vez.
+Mitigación: oleadas y gates.
+
+Riesgo: IA sin evidencia.
+Mitigación: assertion/evidence obligatoria.
+
+Riesgo: fuga entre tenants.
+Mitigación: RLS, tests, storage privado.
+
+Riesgo: costes LLM.
+Mitigación: presupuesto, caché, reglas deterministas y supervisor.
+
+Riesgo: Streamlit lento.
+Mitigación: queries paginadas, caché, jobs asíncronos, materialized views.
+
+Riesgo: modelos y estados vuelven a divergir.
+Mitigación: contratos versionados generados desde una fuente canónica.
+
+Riesgo: documentación no refleja realidad.
+Mitigación: documentación generada desde esquema, contratos y CI.
+
+Riesgo: módulo "completo" sin adopción.
+Mitigación: acceptance tests y piloto por rol.
+
+======================================================================
+14. INDICADORES DE ÉXITO
+======================================================================
+
+Datos:
+
+- >=98 % de registros críticos válidos;
+- >=95 % de entidades sin duplicado no resuelto;
+- 100 % de datos publicados con lineage;
+- tiempo de resolución de conflicto medido.
+
+Conocimiento:
+
+- 100 % de insights con evidencia;
+- tasa de aceptación de recomendaciones;
+- precisión por agente;
+- caducidad controlada.
+
+Producto:
+
+- uso activo por rol;
+- tareas completadas;
+- tiempo desde señal a acción;
+- conversión de oportunidad;
+- reducción de trabajo manual.
+
+Tecnología:
+
+- cohesión objetivo >=85/100;
+- una aplicación;
+- una fuente de verdad;
+- cero políticas abiertas;
+- cero secretos versionados;
+- cobertura de flujos críticos;
+- cumplimiento SLO.
+
+Operación:
+
+- RPO/RTO;
+- tasa de jobs;
+- DLQ;
+- coste por insight;
+- latencia;
+- incidentes.
+
+======================================================================
+15. PRÓXIMOS PASOS CONCRETOS
+======================================================================
+
+Semana 1:
+
+1. Revocar secretos.
+2. Desactivar accesos demo.
+3. Congelar funcionalidades.
+4. Exportar esquema y datos.
+5. Crear registro de activos.
+
+Semana 2:
+
+1. Ejecutar restore.
+2. Crear fixtures anonimizados.
+3. Completar inventario de tablas, rutas, funciones y agentes.
+4. Crear matriz de paridad.
+
+Semanas 3-6:
+
+1. Talleres de conceptos.
+2. Glosario.
+3. reglas.
+4. estados.
+5. propietarios.
+6. decisiones.
+
+Semanas 7-12:
+
+1. Pydantic canónico.
+2. DDL objetivo.
+3. tenancy.
+4. RLS.
+5. auditoría.
+6. contratos.
+
+Sólo después:
+
+1. pipeline único;
+2. conocimiento;
+3. plataforma Streamlit;
+4. módulos;
+5. agentes;
+6. paridad;
+7. eliminación.
+
+======================================================================
+16. CONCLUSIÓN
+======================================================================
+
+La visión descrita en el informe original es alcanzable, pero no mediante
+la acumulación de más pantallas, agentes o tablas sobre el repositorio
+actual.
+
+Primero debe construirse una semántica única y una base verificable. La
+calidad del futuro motor comercial dependerá más de:
+
+- procedencia;
+- validación;
+- consistencia;
+- seguridad;
+- contratos;
+- trazabilidad;
+- operación;
+
+que del número de agentes o módulos.
+
+Una vez fijada esa base, Streamlit puede convertirse en la aplicación
+completa y única. React y las Edge Functions actuales deben tratarse como
+fuentes de reglas, contratos y comportamiento a migrar, no como residuos
+que puedan borrarse inmediatamente.
+
+El resultado final deberá cerrar este circuito:
+
+FUENTE
+  -> DATO INMUTABLE
+  -> VALIDACIÓN
+  -> HECHO CANÓNICO
+  -> CONOCIMIENTO CON EVIDENCIA
+  -> INSIGHT
+  -> RECOMENDACIÓN
+  -> APROBACIÓN
+  -> ACCIÓN
+  -> RESULTADO
+  -> APRENDIZAJE MEDIDO
+
+Cuando este circuito sea seguro, observable y reproducible, Adaptive Sales
+Engine será realmente un motor comercial adaptativo y no una colección de
+aplicaciones y prototipos independientes.

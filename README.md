@@ -2,8 +2,30 @@
 
 [![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://adaptive-sales-engine-nirorezuxa2w4fz5nkvkbt.streamlit.app/)
 
-A Vite + React + TypeScript application connected to Supabase, compatible with **local development**, **VS Code Dev Containers**, **Docker**, and the **Lovable** platform.
-Also deployed as a **Streamlit** multi-user CRM at https://adaptive-sales-engine-nirorezuxa2w4fz5nkvkbt.streamlit.app/
+Adaptive Sales Engine is being consolidated into a **single Streamlit application** backed by Supabase, while legacy React assets remain only as migration reference during parity work.
+
+## Streamlit-first local entry point
+
+- Main entry: [streamlit_app.py](C:/Users/isena/Documents/GitHub/adaptive-sales-engine/streamlit_app.py)
+- Demo packs auto-generated under [public/company-packs/](C:/Users/isena/Documents/GitHub/adaptive-sales-engine/public/company-packs)
+- Local pack builder: [scripts/build_demo_company_packs.py](C:/Users/isena/Documents/GitHub/adaptive-sales-engine/scripts/build_demo_company_packs.py)
+
+The application now bootstraps two editable demo companies:
+
+- **Ingecart** - `demo version`
+- **CTA** - `demo version`
+
+Both can be activated, edited, refreshed from local source folders, and validated as a final company from the Streamlit UI.
+
+## Demo knowledge packs
+
+The saved-company flow loads structured context for:
+
+- company profile
+- products and opportunities
+- action queue with scoring
+- local evidence inventory from the configured source folders
+- workspace data ready for downstream modules and agents
 
 > ✅ App completamente funcional desde 2026-05-06. Side bar reorganizado. Gestión de datos operativa.
 

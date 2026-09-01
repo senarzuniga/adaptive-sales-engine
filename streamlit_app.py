@@ -105,6 +105,10 @@ def init_session_state() -> None:
         "active_company":       None,   # dict with company profile
         "company_notes":        "",
         "saved_companies":      [],     # list of company dicts (local fallback)
+        "company_workspace_loaded": False,
+        "company_action_queue":  [],
+        "company_source_registry": {},
+        "company_data_inventory": {},
         "portfolio_risk":       None,
         # ── Dataset slots ────────────────────────────────────────
         "productos_data":       None,
@@ -960,6 +964,10 @@ def main() -> None:
         if st.session_state.user is None or st.session_state.profile is None:
             login_form()
             return
+
+    from application.services.company_service import ensure_company_workspace_loaded
+
+    ensure_company_workspace_loaded()
 
     show_sidebar()
 

@@ -27,6 +27,22 @@ def page_dashboard() -> None:
 
     if not SUPABASE_CONFIGURED or supabase is None:
         st.info("ℹ️ Supabase no configurado. Mostrando datos de demostración.")
+        active_company = st.session_state.get("active_company") or {}
+        data_inventory = st.session_state.get("company_data_inventory", {}) or active_company.get("data_inventory", {})
+        source_registry = st.session_state.get("company_source_registry", {}) or active_company.get("source_registry", {})
+        action_queue = st.session_state.get("company_action_queue", []) or active_company.get("recommended_action_queue", [])
+        if active_company:
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Empresa activa", active_company.get("company_name", active_company.get("name", "—")))
+            c2.metric("Estado", active_company.get("record_stage", "empresa"))
+            c3.metric("Fuentes detectadas", source_registry.get("matched_file_count", 0))
+            c4.metric("Acciones en cola", len(action_queue))
+        if data_inventory:
+            st.subheader("Inventario del contexto cargado")
+            st.json(data_inventory)
+        if action_queue:
+            st.subheader("Siguiente mejor cola de accion")
+            st.dataframe(pd.DataFrame(action_queue), width='stretch')
         actions = []
         df_loaded = st.session_state.get("uploaded_data_universal")
         if df_loaded is not None:

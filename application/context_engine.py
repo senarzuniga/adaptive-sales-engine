@@ -54,6 +54,9 @@ def build_context(action: str, extra: Optional[Dict[str, Any]] = None) -> Dict[s
             "portfolio_risk":     st.session_state.get("portfolio_risk"),
             "active_company":     st.session_state.get("active_company"),
             "company_notes":      st.session_state.get("company_notes", ""),
+            "company_action_queue": st.session_state.get("company_action_queue", []),
+            "company_source_registry": st.session_state.get("company_source_registry", {}),
+            "company_data_inventory": st.session_state.get("company_data_inventory", {}),
         }
     except Exception:
         ctx = {"action": action}
@@ -86,6 +89,9 @@ def build_business_context(action: str, extra: Optional[Dict[str, Any]] = None):
         saved_companies=raw.get("saved_companies", []),
         company_notes=raw.get("company_notes", ""),
         portfolio_risk=raw.get("portfolio_risk"),
+        action_queue=raw.get("company_action_queue", []),
+        source_registry=raw.get("company_source_registry", {}),
+        data_inventory=raw.get("company_data_inventory", {}),
         user_id=profile.get("id", ""),
         user_role=profile.get("role", "user"),
         extra=extra or {},

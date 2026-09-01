@@ -8,236 +8,73 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from application.services.company_service import (
+    activate_company,
+    delete_company,
+    ensure_company_workspace_loaded,
+    list_companies,
+    list_pack_manifests,
+    load_company_pack_into_session,
+    regenerate_demo_company_packs,
+    save_company,
+    validate_company,
+)
+from application.services.company_packs import pack_display_label
 from config import SUPABASE_CONFIGURED, FULL_ACCESS_ALL_USERS
 from ui.components import _field, safe_execute, _render_orchestrator_panel, get_deadline_priority
 
 
 def _load_companies() -> List[Dict[str, Any]]:
-    """Load companies from Supabase (if configured) or local session state."""
-    from config import SUPABASE_CONFIGURED
-    if SUPABASE_CONFIGURED:
-        from infrastructure.supabase_client import get_supabase
-        sb = get_supabase()
-        if sb is not None:
-            try:
-                rows = sb.table("companies").select("*").order("company_name").execute().data or []
-                return rows
-            except Exception:
-                pass
-    return st.session_state.get("saved_companies", [])
+    """Load companies from the unified company service."""
+    ensure_company_workspace_loaded()
+    return list_companies()
 
 
 def _upsert_company(company: Dict[str, Any]) -> None:
-    """Persist a company to Supabase or to local session state."""
-    from config import SUPABASE_CONFIGURED
-    if SUPABASE_CONFIGURED:
-        from infrastructure.supabase_client import get_supabase
-        sb = get_supabase()
-        if sb is not None:
-            try:
-                payload = {k: v for k, v in company.items() if k != "id"}
-                cid = company.get("id")
-                if cid:
-                    sb.table("companies").update(payload).eq("id", cid).execute()
-                else:
-                    res = sb.table("companies").insert(payload).execute()
-                    if res.data:
-                        company["id"] = res.data[0]["id"]
-                return
-            except Exception:
-                pass
-    # Local fallback
-    saved = st.session_state.get("saved_companies", [])
-    cid = company.get("id")
-    if cid:
-        updated = [c if c.get("id") != cid else company for c in saved]
-    else:
-        import uuid
-        company["id"] = str(uuid.uuid4())
-        updated = saved + [company]
-    st.session_state["saved_companies"] = updated
+    """Persist a company via the company service."""
+    save_company(company)
 
 
 def _delete_company(company_id: str) -> None:
-    """Delete a company from Supabase or local session state."""
-    from config import SUPABASE_CONFIGURED
-    if SUPABASE_CONFIGURED:
-        from infrastructure.supabase_client import get_supabase
-        sb = get_supabase()
-        if sb is not None:
-            try:
-                sb.table("companies").delete().eq("id", company_id).execute()
-                return
-            except Exception:
-                pass
-    saved = st.session_state.get("saved_companies", [])
-    st.session_state["saved_companies"] = [c for c in saved if c.get("id") != company_id]
-
-
-_WORKSPACE_TABLE_KEYS = [
-    "company_contacts",
-    "social_media_accounts",
-    "marketing_content",
-    "business_intelligence_reports",
-    "cost_rates",
-    "offers",
-    "offer_items",
-    "cost_breakdowns",
-    "offer_scenarios",
-    "offer_scores",
-    "installed_base_assets",
-    "service_contracts",
-    "after_sales_opportunities",
-    "spare_parts",
-]
-
-_SUPABASE_COMPANY_SCOPED_TABLES = [
-    "company_contacts",
-    "social_media_accounts",
-    "marketing_content",
-    "business_intelligence_reports",
-    "cost_rates",
-    "offers",
-    "installed_base_assets",
-    "service_contracts",
-    "after_sales_opportunities",
-    "spare_parts",
-]
-
-_WORKSPACE_ROW_EXCLUDE_FIELDS = ("id", "company_id", "created_at", "updated_at")
-
-
-def _workspace_session_key(table_name: str) -> str:
-    return f"workspace_{table_name}"
-
-
-def _persist_workspace_session(workspace: Dict[str, Any]) -> None:
-    """Store workspace tables into session_state for local/demo mode pages."""
-    for table in _WORKSPACE_TABLE_KEYS:
-        st.session_state[_workspace_session_key(table)] = workspace.get(table, []) or []
-
-
-def _hydrate_workspace_supabase(company_id: str, workspace: Dict[str, Any]) -> None:
-    """Persist workspace rows into Supabase for the imported company."""
-    from infrastructure.supabase_client import get_supabase
-
-    if not SUPABASE_CONFIGURED:
-        return
-    sb = get_supabase()
-    if sb is None:
-        return
-
-    for table in _SUPABASE_COMPANY_SCOPED_TABLES:
-        rows = workspace.get(table) or []
-        if not isinstance(rows, list) or not rows:
-            continue
-
-        normalized_rows: List[Dict[str, Any]] = []
-        for row in rows:
-            if not isinstance(row, dict):
-                continue
-            payload = {k: v for k, v in row.items() if k not in _WORKSPACE_ROW_EXCLUDE_FIELDS}
-            payload["company_id"] = company_id
-            normalized_rows.append(payload)
-        if not normalized_rows:
-            continue
-        try:
-            sb.table(table).insert(normalized_rows).execute()
-        except Exception:
-            # Keep pack loading resilient even if one workspace table fails.
-            continue
+    """Delete a company via the company service."""
+    delete_company(company_id)
 
 
 def _load_company_pack_ui() -> None:
     """Render company pack loading buttons for available packs."""
-    import json
-    from pathlib import Path
-
-    from config import APP_ROOT
-
-    packs_dir = APP_ROOT / "public" / "company-packs"
-    if not packs_dir.exists():
+    manifests = list_pack_manifests()
+    if not manifests:
         st.caption("No hay packs disponibles.")
         return
 
-    pack_dirs = [p for p in packs_dir.iterdir() if p.is_dir()]
-    if not pack_dirs:
-        st.caption("No hay packs disponibles.")
-        return
+    refresh_col, info_col = st.columns([1, 3])
+    if refresh_col.button("♻️ Regenerar packs demo desde fuentes locales", key="refresh_demo_packs"):
+        written = regenerate_demo_company_packs()
+        st.success(f"Packs regenerados: {len(written)}")
+        st.rerun()
+    info_col.caption("Los packs se reconstruyen a partir de las carpetas indicadas en el plan maestro.")
 
-    for pack_dir in pack_dirs:
-        pack_file = pack_dir / "ingecart_pack.json"
-        if not pack_file.exists():
-            # try any .json file
-            json_files = list(pack_dir.glob("*_pack.json"))
-            if not json_files:
-                continue
-            pack_file = json_files[0]
-
-        pack_name = pack_dir.name
+    for manifest in manifests:
+        pack_name = manifest.get("company_name") or manifest.get("company_key", "Pack demo")
+        inventory = manifest.get("data_inventory", {}) or {}
+        source_registry = manifest.get("source_registry", {}) or {}
         with st.container(border=True):
             col1, col2 = st.columns([3, 1])
-            col1.markdown(f"**{pack_name}** — Pack de empresa con datos históricos, oportunidades, productos y estrategia")
-            if col2.button(f"⬇️ Cargar {pack_name}", key=f"load_pack_{pack_name}", width='stretch'):
-                try:
-                    with pack_file.open("r", encoding="utf-8") as f:
-                        pack = json.load(f)
-
-                    profile = pack.get("companyProfile", {})
-                    if profile:
-                        profile = dict(profile)  # mutable copy so _upsert_company can write back the id
-                        _upsert_company(profile)
-                        st.session_state["active_company"] = profile
-                        st.session_state["company_notes"] = profile.get("additional_notes", "")
-
-                    if pack.get("orders"):
-                        st.session_state["uploaded_data_universal"] = pd.DataFrame(pack["orders"])
-
-                    if pack.get("opportunities"):
-                        st.session_state["oportunidades_data"] = pd.DataFrame(pack["opportunities"])
-
-                    if pack.get("products"):
-                        st.session_state["productos_data"] = pd.DataFrame(pack["products"])
-
-                    if pack.get("strategy"):
-                        st.session_state["estrategia_data"] = pd.DataFrame(pack["strategy"])
-
-                    if pack.get("leads"):
-                        st.session_state["leads_data"] = pd.DataFrame(pack["leads"])
-
-                    if pack.get("contacts"):
-                        st.session_state["contacts_data"] = pd.DataFrame(pack["contacts"])
-
-                    if pack.get("tasks"):
-                        st.session_state["tasks_data"] = pd.DataFrame(pack["tasks"])
-
-                    if pack.get("entityRegistries"):
-                        st.session_state["entity_registries"] = pack["entityRegistries"]
-
-                    workspace = pack.get("workspace", {}) or {}
-                    _persist_workspace_session(workspace)
-                    company_id = (profile or {}).get("id")
-                    if company_id:
-                        _hydrate_workspace_supabase(company_id, workspace)
-                    elif SUPABASE_CONFIGURED and workspace:
-                        st.warning(
-                            "Workspace cargado solo en sesión local. Guarda/activa primero la empresa con id en **Company Info** "
-                            "para habilitar sincronización completa en Supabase."
-                        )
-
-                    st.success(
-                        f"✅ Pack **{pack_name}** cargado: empresa activa, "
-                        f"{len(pack.get('orders', []))} pedidos, "
-                        f"{len(pack.get('opportunities', []))} oportunidades, "
-                        f"{len(pack.get('products', []))} productos, "
-                        f"{sum(len(v) for v in workspace.values() if isinstance(v, list))} registros workspace."
-                    )
-                    st.rerun()
-                except Exception as exc:
-                    st.error(f"Error cargando pack: {exc}")
+            col1.markdown(f"**{pack_name}** - {manifest.get('record_stage', 'demo version')}")
+            col1.caption(
+                f"{inventory.get('orders', 0)} pedidos · "
+                f"{inventory.get('opportunities', 0)} oportunidades · "
+                f"{inventory.get('products', 0)} productos · "
+                f"{source_registry.get('matched_file_count', 0)} fuentes detectadas"
+            )
+            if col2.button(f"⬇️ Cargar {pack_name}", key=f"load_pack_{manifest.get('company_key', pack_name)}", width='stretch'):
+                load_company_pack_into_session(manifest.get("company_key", pack_name))
+                st.success(f"Contexto cargado para {pack_name}")
+                st.rerun()
 
 
 def page_saved_companies() -> None:
+    ensure_company_workspace_loaded()
     # Onboarding y ayuda contextual
     if st.session_state.get('onboard_commercial', True):
         with st.expander('👋 Bienvenido a Commercial', expanded=True):
@@ -267,7 +104,7 @@ def page_saved_companies() -> None:
         st.subheader(f"📋 {len(companies)} empresa(s) guardada(s)")
 
         # ── Active company selector ──────────────────────────────
-        company_names = [c.get("company_name", c.get("name", "(sin nombre)")) for c in companies]
+        company_names = [pack_display_label(c) for c in companies]
         selected_idx = 0
         if active_id:
             for i, c in enumerate(companies):
@@ -284,8 +121,7 @@ def page_saved_companies() -> None:
         )
         if st.button("✅ Establecer como empresa activa", type="primary", key="set_active_company_btn"):
             sel = companies[company_names.index(selected_name)]
-            st.session_state["active_company"] = sel
-            st.session_state["company_notes"] = sel.get("additional_notes", sel.get("notes", ""))
+            activate_company(sel)
             st.success(f"✅ Empresa activa: **{selected_name}**")
             st.rerun()
 
@@ -304,21 +140,59 @@ def page_saved_companies() -> None:
             is_active = cid == (st.session_state.get("active_company") or {}).get("id")
 
             with st.container(border=True):
-                c1, c2, c3 = st.columns([4, 2, 1])
-                label = f"**{cname}**" + (" ⭐ *Activa*" if is_active else "")
+                data_inventory = company.get("data_inventory", {}) or {}
+                source_registry = company.get("source_registry", {}) or {}
+                action_queue = company.get("recommended_action_queue", []) or []
+                record_stage = company.get("record_stage", "empresa")
+                c1, c2, c3, c4, c5 = st.columns([4, 1, 1, 1, 1])
+                label = f"**{cname}**" + (f" · `{record_stage}`" if record_stage else "") + (" ⭐ *Activa*" if is_active else "")
                 c1.markdown(label)
-                c1.caption(f"{industry} · {hq}" if industry or hq else "")
-                if c2.button("🎯 Activar", key=f"activate_{cid}", width='stretch'):
-                    st.session_state["active_company"] = company
-                    st.session_state["company_notes"] = company.get("additional_notes", company.get("notes", ""))
+                c1.caption(
+                    f"{industry} · {hq} · "
+                    f"{data_inventory.get('orders', 0)} pedidos · "
+                    f"{data_inventory.get('opportunities', 0)} oportunidades · "
+                    f"{source_registry.get('matched_file_count', 0)} evidencias"
+                    if industry or hq or data_inventory or source_registry
+                    else ""
+                )
+                if c2.button("🎯 Activar", key=f"activate_{cid or cname}", width='stretch'):
+                    activate_company(company)
                     st.success(f"Empresa activa: **{cname}**")
                     st.rerun()
-                if c3.button("🗑", key=f"del_company_{cid}", width='stretch'):
-                    _delete_company(cid)
+                if c3.button("📦 Contexto", key=f"load_context_{cid or cname}", width='stretch'):
+                    load_company_pack_into_session(str(company.get("company_key") or cid or cname))
+                    st.success(f"Contexto cargado para **{cname}**")
+                    st.rerun()
+                if c4.button("✅ Validar", key=f"validate_{cid or cname}", width='stretch'):
+                    validate_company(str(company.get("company_key") or cid or cname))
+                    st.success(f"Empresa validada: **{cname}**")
+                    st.rerun()
+                if c5.button("🗑", key=f"del_company_{cid or cname}", width='stretch'):
+                    _delete_company(str(company.get("company_key") or cid or cname))
                     if is_active:
                         st.session_state["active_company"] = None
                         st.session_state["company_notes"] = ""
                     st.rerun()
+                with st.expander("Ver contexto operativo", expanded=False):
+                    col_a, col_b, col_c = st.columns(3)
+                    col_a.metric("Productos", data_inventory.get("products", 0))
+                    col_b.metric("Contactos", data_inventory.get("contacts", 0))
+                    col_c.metric("Acciones cola", len(action_queue))
+                    if company.get("current_challenges"):
+                        st.markdown(f"**Retos actuales:** {company.get('current_challenges')}")
+                    if company.get("strategic_goals"):
+                        st.markdown(f"**Objetivos:** {company.get('strategic_goals')}")
+                    if action_queue:
+                        st.markdown("**Action queue priorizada**")
+                        st.dataframe(pd.DataFrame(action_queue), width='stretch')
+                    if source_registry:
+                        st.markdown("**Fuentes detectadas**")
+                        st.json(source_registry)
+                    evidence_highlights = company.get("evidence_highlights", []) or []
+                    if evidence_highlights:
+                        st.markdown("**Highlights de evidencia**")
+                        for item in evidence_highlights[:5]:
+                            st.write(f"- **{item.get('title', 'Evidencia')}**: {item.get('summary', '')}")
 
     st.divider()
 
@@ -351,6 +225,7 @@ def page_company_info() -> None:
         mode = "Crear nueva empresa"
 
     prefill = active_company if mode == "Editar empresa activa" else {}
+    default_stage = prefill.get("record_stage", "demo version")
 
     with st.form("company_form_full"):
         st.subheader("📌 Identificación")
@@ -359,6 +234,7 @@ def page_company_info() -> None:
         industry       = c2.text_input("Sector / Industria", value=prefill.get("industry", prefill.get("sector", "")), placeholder="Automatización Industrial")
         sub_sector     = c1.text_input("Sub-sector", value=prefill.get("sub_sector", ""), placeholder="Robótica")
         headquarters   = c2.text_input("Sede central", value=prefill.get("headquarters", prefill.get("country", "")), placeholder="Madrid, España")
+        record_stage   = c1.selectbox("Estado del registro", ["demo version", "empresa validada"], index=0 if default_stage != "empresa validada" else 1)
 
         st.subheader("📊 Tamaño y alcance")
         c3, c4 = st.columns(2)
@@ -404,9 +280,20 @@ def page_company_info() -> None:
             "additional_notes": additional_notes,
             "website_url": website_url,
             "linkedin_url": linkedin_url,
+            "record_stage": record_stage,
+            "validation_status": "validated" if record_stage == "empresa validada" else "ready_for_review",
         }
         if mode == "Editar empresa activa" and active_company.get("id"):
             company_data["id"] = active_company["id"]
+        if mode == "Editar empresa activa" and active_company.get("company_key"):
+            company_data["company_key"] = active_company["company_key"]
+        if mode == "Editar empresa activa" and active_company.get("pack_file"):
+            company_data["pack_file"] = active_company["pack_file"]
+        if mode == "Editar empresa activa":
+            company_data["source_registry"] = active_company.get("source_registry", {})
+            company_data["recommended_action_queue"] = active_company.get("recommended_action_queue", [])
+            company_data["data_inventory"] = active_company.get("data_inventory", {})
+            company_data["evidence_highlights"] = active_company.get("evidence_highlights", [])
 
         _upsert_company(company_data)
 
@@ -423,11 +310,14 @@ def page_company_info() -> None:
         col1, col2, col3 = st.columns(3)
         col1.metric("Empresa", active_company.get("company_name", active_company.get("name", "—")))
         col2.metric("Sector", active_company.get("industry", active_company.get("sector", "—")))
-        col3.metric("Sede", active_company.get("headquarters", active_company.get("country", "—")))
+        col3.metric("Estado", active_company.get("record_stage", "empresa"))
         if active_company.get("annual_revenue"):
             st.caption(f"💶 Facturación: {active_company['annual_revenue']}")
         if active_company.get("strategic_goals"):
             st.caption(f"🎯 Objetivos: {active_company['strategic_goals'][:200]}")
+        source_registry = active_company.get("source_registry", {}) or st.session_state.get("company_source_registry", {})
+        if source_registry:
+            st.caption(f"🧭 Evidencias locales detectadas: {source_registry.get('matched_file_count', 0)}")
 
     st.divider()
     _render_orchestrator_panel(action="company_info")
@@ -540,6 +430,19 @@ def page_actions() -> None:
     if not SUPABASE_CONFIGURED or supabase is None:
         st.info("ℹ️ Supabase no configurado — repositorio de acciones en modo local. "
                 "Ejecuta el análisis con todos los agentes para generar acciones automáticas.")
+        queued_actions = st.session_state.get("company_action_queue", []) or []
+        if queued_actions:
+            st.subheader("📌 Cola de acciones priorizadas")
+            df_queue = pd.DataFrame(queued_actions)
+            if "score" in df_queue.columns:
+                df_queue = df_queue.sort_values("score", ascending=False)
+            st.dataframe(df_queue, width='stretch')
+            st.download_button(
+                "📥 Exportar cola priorizada (CSV)",
+                df_queue.to_csv(index=False).encode("utf-8"),
+                "ase_action_queue.csv",
+                "text/csv",
+            )
         return
 
     with st.expander("➕ Crear acción", expanded=False):
