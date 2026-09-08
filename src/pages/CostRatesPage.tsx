@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { DEFAULT_INGECART_POLICY } from '@/lib/utils';
 import {
   Settings2, Plus, Trash2, Save, Loader2, History, Filter,
   DollarSign, Percent, Clock, Shield, TrendingUp, AlertTriangle
@@ -73,6 +74,61 @@ export default function CostRatesPage() {
   const [filterType, setFilterType] = useState('all');
   const [filterDept, setFilterDept] = useState('');
   const [activeTab, setActiveTab] = useState('rates');
+  const [policy, setPolicy] = useState(DEFAULT_INGECART_POLICY);
+
+  const applyIngecartDefaults = () => {
+    setPolicy(DEFAULT_INGECART_POLICY);
+    toast({
+      title: isEs ? 'Configuración Ingecart aplicada' : 'Ingecart defaults applied',
+      description: isEs ? 'Se han cargado los valores base de costes, viajes y instalación.' : 'The default cost, travel and installation values have been loaded.',
+    });
+  };
+
+  const savePolicyToRates = async () => {
+    if (!activeCompanyId) return;
+    const rows = [
+      { rate_type: 'financial', rate_name: 'Financial cost', rate_value: policy.financialPct, rate_unit: 'percentage', department: 'Finance', project_type: 'All', geography: 'Global' },
+      { rate_type: 'contingency', rate_name: 'Warranty & guarantee', rate_value: policy.warrantyPct, rate_unit: 'percentage', department: 'Commercial', project_type: 'All', geography: 'Global' },
+      { rate_type: 'overhead', rate_name: 'Commercial management', rate_value: policy.commercialMgmtPct, rate_unit: 'percentage', department: 'Sales', project_type: 'All', geography: 'Global' },
+      { rate_type: 'material', rate_name: 'Material structure overhead', rate_value: policy.materialStructurePct, rate_unit: 'percentage', department: 'Procurement', project_type: 'All', geography: 'Global' },
+      { rate_type: 'labour', rate_name: 'Installation labor rate', rate_value: policy.installationLaborRate, rate_unit: 'eur_per_hour', department: 'Installation', project_type: 'Field', geography: 'Spain' },
+      { rate_type: 'transport', rate_name: 'Hotel Europe', rate_value: policy.hotelEurope, rate_unit: 'flat', department: 'Travel', project_type: 'Field', geography: 'Europe' },
+      { rate_type: 'transport', rate_name: 'Hotel USA', rate_value: policy.hotelUsa, rate_unit: 'flat', department: 'Travel', project_type: 'Field', geography: 'USA' },
+      { rate_type: 'transport', rate_name: 'Flight Europe', rate_value: policy.flightEurope, rate_unit: 'flat', department: 'Travel', project_type: 'Field', geography: 'Europe' },
+      { rate_type: 'transport', rate_name: 'Flight USA', rate_value: policy.flightUsa, rate_unit: 'flat', department: 'Travel', project_type: 'Field', geography: 'USA' },
+      { rate_type: 'transport', rate_name: 'Rental car', rate_value: policy.rentalCarPerDay, rate_unit: 'eur_per_day', department: 'Travel', project_type: 'Field', geography: 'Global' },
+      { rate_type: 'freight', rate_name: 'Mileage', rate_value: policy.kmRate, rate_unit: 'eur_per_km', department: 'Travel', project_type: 'Field', geography: 'Global' },
+    ];
+
+    setSaving(true);
+    try {
+      const { error } = await supabase.from('cost_rates').upsert(
+        rows.map((row, index) => ({
+          id: `${activeCompanyId}-${row.rate_type}-${index}-${row.rate_name}`.replace(/\s+/g, '-').toLowerCase(),
+          company_id: activeCompanyId,
+          rate_type: row.rate_type,
+          rate_name: row.rate_name,
+          rate_value: row.rate_value,
+          rate_unit: row.rate_unit,
+          department: row.department,
+          project_type: row.project_type,
+          geography: row.geography,
+          version: 1,
+          is_active: true,
+          valid_from: new Date().toISOString().split('T')[0],
+          valid_until: null,
+          notes: 'Applied from Ingecart commercial policy',
+        }))
+      );
+      if (error) throw error;
+      toast({ title: isEs ? 'Política guardada' : 'Policy saved', description: isEs ? 'Los valores base han quedado disponibles para ofertas y costes.' : 'The base values are now available in offers and cost controls.' });
+      loadRates();
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   useEffect(() => { if (activeCompanyId) loadRates(); }, [activeCompanyId]);
 
@@ -228,11 +284,104 @@ export default function CostRatesPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="rates">{isEs ? 'Tasas Activas' : 'Active Rates'} ({activeRates.length})</TabsTrigger>
+          <TabsTrigger value="policy">{isEs ? 'Política' : 'Policy'}</TabsTrigger>
           <TabsTrigger value="overview">{isEs ? 'Vista General' : 'Overview'}</TabsTrigger>
           <TabsTrigger value="history"><History className="h-4 w-4 mr-1" />{isEs ? 'Historial' : 'History'} ({inactiveRates.length})</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="policy" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>{isEs ? 'Configuración de costes comerciales' : 'Commercial cost configuration'}</CardTitle>
+              <CardDescription>
+                {isEs ? 'Valores base para garantías, financiación, gestión comercial, estructura de materiales y viajes de instalación.' : 'Base values for warranty, financing, commercial management, material structure and installation travel.'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex flex-wrap gap-3">
+                <Button variant="outline" onClick={applyIngecartDefaults}>{isEs ? 'Cargar plantilla Ingecart' : 'Load Ingecart template'}</Button>
+                <Button onClick={savePolicyToRates} disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}{isEs ? 'Guardar política' : 'Save policy'}</Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs font-medium">{isEs ? 'Garantía (%)' : 'Warranty (%)'}</label>
+                  <Input type="number" value={policy.warrantyPct} onChange={(e) => setPolicy({ ...policy, warrantyPct: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium">{isEs ? 'Gastos financieros (%)' : 'Financial cost (%)'}</label>
+                  <Input type="number" value={policy.financialPct} onChange={(e) => setPolicy({ ...policy, financialPct: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium">{isEs ? 'Gestión comercial (%)' : 'Commercial management (%)'}</label>
+                  <Input type="number" value={policy.commercialMgmtPct} onChange={(e) => setPolicy({ ...policy, commercialMgmtPct: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium">{isEs ? 'Estructura empresa (%)' : 'Company structure (%)'}</label>
+                  <Input type="number" value={policy.materialStructurePct} onChange={(e) => setPolicy({ ...policy, materialStructurePct: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium">{isEs ? 'Coste hora montaje' : 'Assembly hourly rate'}</label>
+                  <Input type="number" value={policy.installationLaborRate} onChange={(e) => setPolicy({ ...policy, installationLaborRate: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium">{isEs ? 'Hora extra labor' : 'Labor supplement'}</label>
+                  <Input type="number" value={policy.laborSupplement} onChange={(e) => setPolicy({ ...policy, laborSupplement: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium">{isEs ? 'Complemento festivo' : 'Festive supplement'}</label>
+                  <Input type="number" value={policy.festiveSupplement} onChange={(e) => setPolicy({ ...policy, festiveSupplement: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium">{isEs ? 'Dieta España (€)' : 'Diet Spain (€)'}</label>
+                  <Input type="number" value={policy.dietSpain} onChange={(e) => setPolicy({ ...policy, dietSpain: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium">{isEs ? 'Dieta internacional (€)' : 'Overseas diet (€)'}</label>
+                  <Input type="number" value={policy.dietInternational} onChange={(e) => setPolicy({ ...policy, dietInternational: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium">{isEs ? 'Hotel Europa (€)' : 'Hotel Europe (€)'}</label>
+                  <Input type="number" value={policy.hotelEurope} onChange={(e) => setPolicy({ ...policy, hotelEurope: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium">{isEs ? 'Hotel USA (€)' : 'Hotel USA (€)'}</label>
+                  <Input type="number" value={policy.hotelUsa} onChange={(e) => setPolicy({ ...policy, hotelUsa: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium">{isEs ? 'Avión Europa (€)' : 'Flight Europe (€)'}</label>
+                  <Input type="number" value={policy.flightEurope} onChange={(e) => setPolicy({ ...policy, flightEurope: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium">{isEs ? 'Avión USA (€)' : 'Flight USA (€)'}</label>
+                  <Input type="number" value={policy.flightUsa} onChange={(e) => setPolicy({ ...policy, flightUsa: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium">{isEs ? 'Coche alquiler (€ / día)' : 'Rental car (€ / day)'}</label>
+                  <Input type="number" value={policy.rentalCarPerDay} onChange={(e) => setPolicy({ ...policy, rentalCarPerDay: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium">{isEs ? 'Km (€ / km)' : 'Mileage (€ / km)'}</label>
+                  <Input type="number" value={policy.kmRate} onChange={(e) => setPolicy({ ...policy, kmRate: Number(e.target.value) })} />
+                </div>
+              </div>
+
+              <div className="rounded-lg border bg-muted/20 p-4">
+                <p className="font-medium mb-2">{isEs ? 'Bloques de instalación recomendados' : 'Recommended installation blocks'}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+                  {policy.serviceBlocks.map((block) => (
+                    <div key={block.name} className="rounded-md border bg-background p-2 text-sm">
+                      <div className="font-medium">{block.name}</div>
+                      <div>{block.days} {isEs ? 'días' : 'days'} · {block.technicians} {isEs ? 'técnicos' : 'techs'}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* ACTIVE RATES TAB */}
         <TabsContent value="rates" className="space-y-4">

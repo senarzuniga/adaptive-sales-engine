@@ -1,33 +1,55 @@
 # Adaptive Sales Engine
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://adaptive-sales-engine-nirorezuxa2w4fz5nkvkbt.streamlit.app/)
+Adaptive Sales Engine is the primary application repository for the commercial management platform. The active operational product is the Vite/React app in [src/](C:/Users/isena/Documents/GitHub/adaptive-sales-engine/src), while legacy, demo, research and reference folders remain as supporting knowledge assets and non-primary repositories.
 
-Adaptive Sales Engine is being consolidated into a **single Streamlit application** backed by Supabase, while legacy React assets remain only as migration reference during parity work.
+## Principal app and access
 
-## Streamlit-first local entry point
+- Main operational app: [src/](C:/Users/isena/Documents/GitHub/adaptive-sales-engine/src)
+- Local browser entry: http://localhost:8080
+- Direct launcher: [start_ase_app.bat](C:/Users/isena/Documents/GitHub/adaptive-sales-engine/start_ase_app.bat)
 
-- Main entry: [streamlit_app.py](C:/Users/isena/Documents/GitHub/adaptive-sales-engine/streamlit_app.py)
-- Demo packs auto-generated under [public/company-packs/](C:/Users/isena/Documents/GitHub/adaptive-sales-engine/public/company-packs)
-- Local pack builder: [scripts/build_demo_company_packs.py](C:/Users/isena/Documents/GitHub/adaptive-sales-engine/scripts/build_demo_company_packs.py)
+This repository is treated as one application repository, not as a multi-app monorepo. Everything under [src/](C:/Users/isena/Documents/GitHub/adaptive-sales-engine/src) is the active product. Supporting folders such as [application/](C:/Users/isena/Documents/GitHub/adaptive-sales-engine/application), [contexto de aplicacion/](C:/Users/isena/Documents/GitHub/adaptive-sales-engine/contexto%20de%20aplicacion), [tests/](C:/Users/isena/Documents/GitHub/adaptive-sales-engine/tests), [docs/](C:/Users/isena/Documents/GitHub/adaptive-sales-engine/docs), [ai/](C:/Users/isena/Documents/GitHub/adaptive-sales-engine/ai), [data/](C:/Users/isena/Documents/GitHub/adaptive-sales-engine/data), and [docs/](C:/Users/isena/Documents/GitHub/adaptive-sales-engine/docs) are treated as reference, validation, testing, or knowledge data, not as separate user-facing applications.
 
-The application now bootstraps two editable demo companies:
+## Single orchestrator model
 
-- **Ingecart** - `demo version`
-- **CTA** - `demo version`
+The platform uses one orchestrator pattern with a scored and validated decision loop:
 
-Both can be activated, edited, refreshed from local source folders, and validated as a final company from the Streamlit UI.
+- orchestrator: [agents/orchestrator.py](C:/Users/isena/Documents/GitHub/adaptive-sales-engine/agents/orchestrator.py)
+- compatibility wrapper: [agents/self_improving_orchestrator.py](C:/Users/isena/Documents/GitHub/adaptive-sales-engine/agents/self_improving_orchestrator.py)
 
-## Demo knowledge packs
+No isolated panel agents are considered the source of truth. All tasks are coordinated by a single orchestrator that:
 
-The saved-company flow loads structured context for:
+- scores hypotheses,
+- selects the highest-value candidate,
+- validates business impact,
+- executes the chosen plan,
+- measures results,
+- learns from evidence.
 
-- company profile
-- products and opportunities
-- action queue with scoring
-- local evidence inventory from the configured source folders
-- workspace data ready for downstream modules and agents
+## Demo companies and operational readiness
 
-> ✅ App completamente funcional desde 2026-05-06. Side bar reorganizado. Gestión de datos operativa.
+The operational app includes the demo-company flow with:
+
+- Ingecart (demo version)
+- CTA (demo version)
+
+These can be activated and validated as company records while remaining in a controlled demo state for testing and sales operations.
+
+## Local development
+
+```bash
+npm ci
+npm run dev -- --host 0.0.0.0 --port 8080
+```
+
+The app is served at http://localhost:8080.
+
+## Relevance and repository policy
+
+- Root app: Vite/React customer-management platform.
+- Supporting folders: reference, docs, tests, demo data, research, legacy migration assets.
+- Application loading and business logic remain centralized in the Vite app and its shared store/services.
+- No second user-facing app is the canonical product.
 
 ---
 

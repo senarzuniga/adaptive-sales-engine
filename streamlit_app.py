@@ -38,8 +38,8 @@ load_dotenv(".env.local", override=True)
 
 # ── Page config (must be the first Streamlit call) ────────────
 st.set_page_config(
-    page_title="Adaptive Sales Engine - INGECART",
-    page_icon="⚙️",
+    page_title="Adaptive Sales Engine CRM",
+    page_icon="🧑‍💼",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -97,7 +97,7 @@ def init_session_state() -> None:
         "offer_mode":           None,
         "show_offer_builder":   False,
         "is_quick_access":      False,
-        "active_page":          "Dashboard",
+        "active_page":          "CRM",
         "uploaded_data_universal": None,
         "agent_output":         None,
         "manual_offer_draft":   None,
@@ -280,8 +280,8 @@ def logout() -> None:
 
 
 def login_form() -> None:
-    st.title("⚙️ Adaptive Sales Engine")
-    st.caption("Sistema de gestión comercial multi-usuario — INGECART")
+    st.title("🧑‍💼 Gestión de clientes — Adaptive Sales Engine")
+    st.caption("Sistema de gestión comercial multi-usuario — CRM / clientes / oportunidades")
 
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
@@ -499,8 +499,8 @@ def show_sidebar() -> None:
     effective_role = "admin" if FULL_ACCESS_ALL_USERS else role
 
     with st.sidebar:
-        st.title("⚙️ Sales Engine")
-        st.caption("INGECART CRM")
+        st.title("🧑‍💼 Gestión de clientes")
+        st.caption("Adaptive Sales Engine CRM")
         st.divider()
         st.write(f"**👤 {name}**")
         st.write(f"🏢 {department}")
@@ -971,7 +971,7 @@ def main() -> None:
 
     show_sidebar()
 
-    active = st.session_state.get("active_page", "Dashboard")
+    active = st.session_state.get("active_page", "CRM")
     page_fn = _PAGE_MAP.get(active)
     if page_fn:
         page_fn()

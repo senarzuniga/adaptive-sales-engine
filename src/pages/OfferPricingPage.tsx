@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { buildFallbackOfferAnalysis, classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
 import { inferProductCategory } from '@/lib/productCatalog';
+import { DEFAULT_INGECART_POLICY, buildIngecartOfferTemplate } from '@/lib/utils';
 
 type CostLine = {
   id: string;
@@ -119,6 +120,7 @@ export default function OfferPricingPage() {
   const [projectDesc, setProjectDesc] = useState('');
   const [currency, setCurrency] = useState('EUR');
   const [targetMargin, setTargetMargin] = useState(20);
+  const [pricingPolicy, setPricingPolicy] = useState(DEFAULT_INGECART_POLICY);
 
   const [items, setItems] = useState<OfferItem[]>([{
     id: crypto.randomUUID(), name: '', type: 'product', quantity: 1, description: '',
@@ -168,6 +170,17 @@ export default function OfferPricingPage() {
     };
     setItems(prev => [...prev, item]);
     setExpandedItems(prev => new Set(prev).add(item.id));
+  };
+
+  const applyIngecartOfferTemplate = () => {
+    const template = buildIngecartOfferTemplate(customerName || 'Ingecart 2018 SL', projectDesc || 'Industrial automation and installation project');
+    setOfferTitle(template.projectName);
+    setProjectDesc(template.summary);
+    setPricingPolicy(DEFAULT_INGECART_POLICY);
+    toast({
+      title: isEs ? 'Plantilla Ingecart cargada' : 'Ingecart template loaded',
+      description: isEs ? 'Se aplican los valores de garantía, viajes, instalación y estructura comercial recomendados.' : 'The recommended cost, travel and installation commercial policy values have been applied.',
+    });
   };
 
   const addCatalogItem = () => {
@@ -273,6 +286,7 @@ export default function OfferPricingPage() {
       totalCost: totals.total,
       targetMargin,
       currency,
+      costPolicy: pricingPolicy,
     };
 
     const ratesContext = companyRates.length > 0 ? companyRates.map(r => ({
@@ -620,6 +634,37 @@ export default function OfferPricingPage() {
                   <label className="text-sm font-medium text-foreground">{isEs ? 'Margen objetivo (%)' : 'Target Margin (%)'}</label>
                   <Input type="number" value={targetMargin} onChange={e => setTargetMargin(Number(e.target.value))} />
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">{isEs ? 'Política de costes y plantilla' : 'Cost policy & template'}</CardTitle>
+              <CardDescription>{isEs ? 'Aplica la configuración base Ingecart para garantías, financiación, gestión comercial, materiales e instalación.' : 'Apply the Ingecart default commercial cost policy for warranty, financing, sales management, materials and installation.'}</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="rounded-md border bg-muted/20 p-3">
+                <div className="text-xs text-muted-foreground">{isEs ? 'Garantía' : 'Warranty'}</div>
+                <div className="font-semibold">{pricingPolicy.warrantyPct}%</div>
+              </div>
+              <div className="rounded-md border bg-muted/20 p-3">
+                <div className="text-xs text-muted-foreground">{isEs ? 'Financiación' : 'Finance'}</div>
+                <div className="font-semibold">{pricingPolicy.financialPct}%</div>
+              </div>
+              <div className="rounded-md border bg-muted/20 p-3">
+                <div className="text-xs text-muted-foreground">{isEs ? 'Gestión comercial' : 'Commercial mgmt.'}</div>
+                <div className="font-semibold">{pricingPolicy.commercialMgmtPct}%</div>
+              </div>
+              <div className="rounded-md border bg-muted/20 p-3">
+                <div className="text-xs text-muted-foreground">{isEs ? 'Materiales' : 'Materials'}</div>
+                <div className="font-semibold">{pricingPolicy.materialStructurePct}%</div>
+              </div>
+              <div className="md:col-span-4 flex justify-end">
+                <Button variant="outline" onClick={applyIngecartOfferTemplate}>
+                  <Settings2 className="h-4 w-4 mr-2" />
+                  {isEs ? 'Usar plantilla Ingecart' : 'Use Ingecart template'}
+                </Button>
               </div>
             </CardContent>
           </Card>

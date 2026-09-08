@@ -1,0 +1,1138 @@
+INFORME DE COMPRENSIÓN PROFUNDA
+ADAPTIVE SALES ENGINE
+
+Fecha del análisis: 27 de agosto de 2026
+Repositorio analizado: senarzuniga/adaptive-sales-engine
+
+======================================================================
+1. OBJETIVO Y ALCANCE DEL ANÁLISIS
+======================================================================
+
+Este informe explica qué es Adaptive Sales Engine, qué problema intenta
+resolver, cómo está diseñado, qué partes están realmente implementadas y
+qué riesgos existen antes de considerarlo una plataforma productiva.
+
+Se revisaron:
+
+- Los 30 archivos TXT encontrados en el repositorio.
+- La documentación principal, técnica, funcional y operativa.
+- Los documentos de arquitectura, madurez, auditoría y buenas prácticas.
+- La aplicación React/Vite.
+- La aplicación Python/Streamlit.
+- Las funciones y migraciones de Supabase.
+- Los agentes Python y TypeScript.
+- El subsistema ai-factory-v2.
+- Los scripts, launchers, tests y manifiestos de dependencias.
+
+Los materiales históricos y duplicados se tuvieron en cuenta, pero se
+ponderaron con menor fiabilidad que el código actual. Las conclusiones
+distinguen entre:
+
+- IMPLEMENTADO: existe un flujo de código identificable y conectado.
+- PARCIAL: existe, pero depende de configuración, ejecución manual o
+  integración incompleta.
+- DEMO/FALLBACK: entrega una experiencia útil sin ser inteligencia o
+  persistencia productiva completa.
+- ASPIRACIONAL: aparece en documentos o buenas prácticas, pero no está
+  implementado de extremo a extremo.
+
+======================================================================
+2. CONCLUSIÓN EJECUTIVA
+======================================================================
+
+Adaptive Sales Engine es una plataforma modular de inteligencia comercial
+que aspira a unir CRM, análisis de ventas, planificación, generación de
+acciones, gestión de ofertas, conocimiento documental y agentes de IA.
+
+Su objetivo principal no es limitarse a registrar clientes y oportunidades.
+La propuesta diferencial es convertir datos empresariales dispersos
+--pedidos, ofertas, productos, contactos, documentos y estrategia-- en:
+
+- una visión comercial consolidada;
+- riesgos y oportunidades priorizados;
+- recomendaciones explicables;
+- tareas y acciones comerciales;
+- contenido para ejecutar esas acciones;
+- previsiones, análisis de cartera y soporte a cuentas clave;
+- conocimiento reutilizable extraído de documentos.
+
+La aplicación contiene valor real, especialmente en la implementación
+React/Supabase:
+
+- carga y normalización de datos;
+- almacenamiento por compañía;
+- análisis comercial determinista;
+- generación de acciones con IA y fallback local;
+- ingestión documental multicapa;
+- funciones de análisis 360, portfolio, ofertas, contenido, email,
+  business intelligence, planes semanales y postventa;
+- trazabilidad parcial mediante tablas de ejecución y logs.
+
+Sin embargo, el repositorio no representa todavía un único producto
+cohesionado. En realidad coexisten tres sistemas:
+
+1. Una SPA React/Vite conectada a Supabase.
+2. Una aplicación Python/Streamlit con autenticación y agentes propios.
+3. Un pipeline ai-factory-v2 orientado a scraping, normalización e
+   inteligencia de mercado.
+
+Estos sistemas comparten conceptos y algunos recursos, pero no una
+arquitectura operativa única. Hay diferencias de datos, permisos, estados,
+contratos, dependencias y mecanismos de ejecución. Parte de la
+documentación describe una plataforma más madura que la que demuestra el
+código.
+
+La mejor interpretación del estado actual es:
+
+- React/Supabase constituye el núcleo de producto más avanzado.
+- Streamlit es una segunda aplicación útil para demos, administración,
+  analítica local y experimentación con agentes.
+- ai-factory-v2 es una librería/pipeline prometedor, pero no un servicio
+  plenamente conectado y activo por defecto.
+- Muchas recomendaciones se producen mediante reglas y heurísticas; la IA
+  generativa complementa estos cálculos, pero no es el único motor.
+- La seguridad multiempresa, la convergencia arquitectónica y la
+  consistencia del modelo de datos son los principales bloqueos para un
+  uso productivo serio.
+
+======================================================================
+3. PROBLEMA DE NEGOCIO QUE RESUELVE
+======================================================================
+
+La plataforma parte de un problema típico de ventas B2B complejas:
+
+- información comercial repartida entre Excel, documentos, email y
+  conocimiento tácito;
+- pipeline poco estructurado;
+- ofertas y proyectos sin trazabilidad uniforme;
+- dificultad para saber qué clientes, productos y oportunidades merecen
+  atención;
+- dependencia de procesos reactivos;
+- escasa conexión entre estrategia, actividad comercial y resultados;
+- pérdida de conocimiento cuando cambia el equipo;
+- poca capacidad de anticipar riesgo, churn, margen o venta cruzada.
+
+El caso Ingecart documentado ejemplifica este contexto: empresa de
+automatización industrial, ventas por proyectos, equipo comercial pequeño
+y necesidad de convertir un proceso reactivo en uno sistemático y
+predecible.
+
+Adaptive Sales Engine intenta cerrar ese ciclo:
+
+DATOS Y DOCUMENTOS
+        ->
+CONTEXTO COMERCIAL ESTRUCTURADO
+        ->
+ANÁLISIS Y AGENTES
+        ->
+INSIGHTS Y PRIORIDADES
+        ->
+ACCIONES, OFERTAS Y CONTENIDO
+        ->
+SEGUIMIENTO Y APRENDIZAJE
+
+Por tanto, la aplicación debe entenderse como un "sistema operativo
+comercial" asistido por IA, no sólo como un CRM convencional.
+
+======================================================================
+4. PROPUESTA DE VALOR
+======================================================================
+
+La propuesta combina seis capacidades:
+
+4.1. Unificación de datos
+
+Importa datos estructurados y documentos, los asocia a una compañía y
+construye una base común para analizar pedidos, oportunidades, productos,
+contactos, estrategia y actividad.
+
+4.2. Inteligencia comercial
+
+Calcula métricas de pipeline, forecast, cartera, riesgo, concentración,
+margen, evolución de productos, salud de cuentas y oportunidades de
+crecimiento.
+
+4.3. Recomendación de acciones
+
+Transforma señales y análisis en acciones comerciales con responsable,
+prioridad, KPI, trigger y contenido de apoyo.
+
+4.4. Inteligencia documental
+
+Extrae entidades, relaciones, secciones, chunks y datos normalizados desde
+documentos comerciales. La arquitectura deseada considera el documento
+como una fuente de verdad capaz de corregir inferencias o datos antiguos.
+
+4.5. Agentes especializados
+
+Distribuye funciones entre agentes de forecast, portfolio, KAM, mercado,
+postventa, limpieza, estrategia, planificación semanal y otras áreas.
+
+4.6. Soporte operativo
+
+Incluye o proyecta workflows de ofertas, solicitudes, acciones, email,
+presupuesto, costes, proyectos, contenido de marketing y seguimiento.
+
+======================================================================
+5. USUARIOS Y EXPERIENCIA PREVISTA
+======================================================================
+
+5.1. Comercial y KAM
+
+- consulta clientes y oportunidades;
+- revisa recomendaciones;
+- gestiona cuentas estratégicas;
+- mapea stakeholders;
+- prepara ofertas;
+- planifica seguimientos;
+- identifica upsell, cross-sell y riesgo.
+
+5.2. Manager o dirección comercial
+
+- revisa dashboard, BI, forecast y cartera;
+- prioriza recursos;
+- compara resultados y estrategia;
+- controla presupuesto, margen y desviaciones;
+- recibe alertas e insights ejecutivos.
+
+5.3. Operaciones y backoffice
+
+- mantiene datos, costes y catálogos;
+- procesa solicitudes;
+- supervisa proyectos y contratos;
+- controla calidad y estado de ingestiones.
+
+5.4. Administrador
+
+- gestiona usuarios, roles y departamentos;
+- configura Supabase, email e integraciones;
+- supervisa agentes, errores y disponibilidad.
+
+5.5. Analista u operador de datos
+
+- carga Excel, CSV y documentos;
+- revisa previsualizaciones;
+- valida normalización y deduplicación;
+- lanza análisis y consulta logs.
+
+La guía Streamlit define roles de usuario, comercial y administrador. No
+obstante, la SPA React no implementa actualmente un control equivalente de
+acceso en sus rutas.
+
+======================================================================
+6. MAPA FUNCIONAL DE LA APLICACIÓN
+======================================================================
+
+6.1. Núcleo analítico
+
+- Dashboard.
+- Business Intelligence.
+- Analysis 360.
+- Portfolio Analysis.
+- Monitoring.
+- Forecast y escenarios.
+- Commercial Intelligence.
+
+6.2. Diseño y estrategia comercial
+
+- Sales Architecture.
+- Product Strategy.
+- Branding versus Strategy.
+- Behavioral Transformation.
+- Key Account Management.
+- AI-Augmented Sales.
+- Five-Year Results.
+
+6.3. Ejecución comercial
+
+- Actions / Commercial Actions Repository.
+- Weekly Planner.
+- Request Pool.
+- Offers and Pricing.
+- Email Cobot.
+- Marketing Content.
+- Saved Companies.
+- Company Contacts.
+
+6.4. Finanzas y operación
+
+- Budget Command Center.
+- Cost and Rates.
+- Project Management.
+- Service Contract Builder.
+- After-Sales Engine.
+
+6.5. Datos y conocimiento
+
+- Data Upload.
+- Company Information.
+- Product Catalog.
+- Enriquecimiento de compañía.
+- Procesamiento documental.
+- Pipeline de ingestión y estado.
+
+No todos estos módulos tienen la misma madurez. Algunas pantallas son
+completas, otras dependen de funciones remotas y varias contienen datos
+demostrativos o lógica local limitada.
+
+======================================================================
+7. ARQUITECTURA REAL
+======================================================================
+
+7.1. Aplicación React/Vite
+
+Tecnologías principales:
+
+- React 18 y TypeScript.
+- Vite.
+- React Query.
+- Tailwind y componentes UI.
+- Supabase como backend opcional/principal.
+- localStorage como persistencia degradada.
+
+La SPA contiene aproximadamente 24 rutas, un layout global y un selector
+de compañía. El estado comercial se centraliza en DataStore y se organiza
+por company_id.
+
+Datos gestionados:
+
+- orders;
+- opportunities;
+- products;
+- strategy;
+- tasks;
+- upload logs;
+- workspaces;
+- leads y contacts, aunque estos últimos no están plenamente conectados a
+  la persistencia live.
+
+La SPA ofrece una estrategia "offline/degradada": si Supabase o una función
+de IA falla, puede conservar datos en localStorage o producir análisis
+deterministas. Esto mejora la experiencia de demo, pero puede ocultar
+diferencias importantes respecto al modo productivo.
+
+7.2. Supabase
+
+Supabase actúa como:
+
+- base de datos PostgreSQL;
+- autenticación potencial;
+- almacenamiento de documentos;
+- plataforma de Edge Functions;
+- registro de ingestiones y procesos.
+
+El esquema incluye compañías, pedidos, oportunidades, productos,
+estrategia, tareas, documentos y varias tablas de inteligencia comercial.
+
+Las Edge Functions cubren:
+
+- process-document;
+- document-status;
+- data-pipeline-report;
+- enrich-company;
+- enrich-data;
+- analyze-360;
+- analyze-offer;
+- analyze-portfolio;
+- business-intelligence;
+- generate-action-pool;
+- generate-action-content;
+- generate-content;
+- generate-weekly-plan;
+- after-sales-intelligence;
+- email-cobot;
+- project-intelligence;
+- summarize-notes.
+
+La IA generativa de esta capa se consume principalmente a través del
+gateway de Lovable usando modelos Gemini y una clave LOVABLE_API_KEY.
+
+7.3. Aplicación Streamlit/Python
+
+La aplicación Streamlit dispone de:
+
+- login con Supabase o almacenamiento local;
+- navegación basada en rol;
+- páginas para áreas comerciales, financieras y administrativas;
+- subida de archivos;
+- ejecución de agentes;
+- estado mediante session_state;
+- integración opcional con Gmail SMTP;
+- acceso rápido de demostración.
+
+El almacenamiento local de usuarios utiliza scrypt, lo que es mejor que
+guardar contraseñas en claro. Aun así, su persistencia en disco local no es
+adecuada para despliegues efímeros o distribuidos.
+
+Parte de las páginas ofrece analítica real; otra parte redefine métricas o
+contenido de ejemplo. Por ello, Streamlit debe clasificarse como producto
+híbrido entre herramienta funcional, consola de operaciones y demo.
+
+7.4. Orquestador Python
+
+El orquestador descubre dinámicamente archivos de agentes, adapta sus
+firmas y los ejecuta en paralelo. Puede cargar agentes desde:
+
+- agents/;
+- ai-factory-v2;
+- otros módulos registrados.
+
+Limitaciones:
+
+- varios agentes no exponen un método run compatible;
+- algunos se contabilizan como disponibles aunque sean stubs;
+- el wrapper avanzado de timeout y observabilidad no está integrado en el
+  camino principal;
+- no existe un arbitraje suficientemente claro cuando agentes distintos
+  producen recomendaciones solapadas o contradictorias.
+
+La recomendación arquitectónica de los propios documentos es evolucionar
+a un patrón supervisor + workers, con responsabilidades y contratos
+explícitos.
+
+7.5. ai-factory-v2
+
+Este subsistema incluye:
+
+- registro y planificación de fuentes;
+- scraping estático, dinámico y anti-bot;
+- extractores de productos, precios, especificaciones y noticias;
+- normalizadores de moneda, unidades y productos;
+- inteligencia competitiva, de mercado y pricing;
+- almacenamiento raw, estructurado y vectorial;
+- agentes de extracción, normalización, inteligencia y ventas.
+
+Su diseño es modular, pero la ejecución por defecto inyecta clientes nulos.
+En ese estado:
+
+- la extracción cae a mecanismos simples;
+- la persistencia no se conecta;
+- la inteligencia es principalmente heurística;
+- el ciclo de análisis continuo no está implementado.
+
+Es un buen prototipo de plataforma de ingestión, no un servicio autónomo
+operativo de extremo a extremo.
+
+======================================================================
+8. FLUJOS DE EXTREMO A EXTREMO
+======================================================================
+
+8.1. Carga de datos estructurados
+
+Usuario
+  -> carga CSV/Excel
+  -> detección de tipo
+  -> parseo y normalización
+  -> deduplicación
+  -> previsualización
+  -> persistencia por compañía
+  -> actualización de análisis y dashboard
+
+Este flujo está implementado en React. En modo Supabase, determinadas
+cargas reemplazan la tabla completa de la compañía mediante delete +
+insert. No es un upsert transaccional y existe riesgo de pérdida o estado
+intermedio si falla la segunda operación.
+
+8.2. Generación de acciones comerciales
+
+Datos de la compañía
+  -> análisis local
+  -> llamada a generate-action-pool
+  -> respuesta de IA estructurada
+  -> combinación con reglas locales
+  -> acciones priorizadas
+  -> generación de contenido
+
+Si la Edge Function falla, el sistema mantiene una recomendación
+determinista. Es una decisión de resiliencia acertada, siempre que la UI
+diferencie claramente una recomendación de IA de un fallback.
+
+8.3. Procesamiento documental
+
+Documento
+  -> bucket company-documents
+  -> registro company_documents
+  -> Edge Function process-document
+  -> extracción con Gemini
+  -> validación
+  -> entidades y relaciones
+  -> secciones y chunks
+  -> datos canónicos
+  -> acciones o insights derivados
+  -> estado consultado por polling
+
+Este es uno de los flujos más valiosos y avanzados del producto.
+
+La base soporta:
+
+- ingestion runs;
+- document sections;
+- chunks;
+- entities;
+- relationships;
+- insights;
+- data points;
+- vista de monitorización.
+
+Existe, sin embargo, una inconsistencia de mapeo:
+
+- la UI relaciona offers con opportunities y customers con
+  company_contacts;
+- la Edge Function relaciona offers con offers y customers con customers.
+
+Esta discrepancia amenaza la integridad del flujo y debe resolverse con un
+contrato canónico.
+
+8.4. Ofertas desde pipeline
+
+Un worker Python puede leer pipeline_jobs y convertirlos en:
+
+- customer_requests;
+- acciones asociadas;
+- elementos de oferta.
+
+El worker existe, pero requiere ejecución manual o scheduler externo. No
+forma parte del arranque normal del ecosistema.
+
+8.5. Enriquecimiento de compañía
+
+La SPA o una función invoca el gateway de IA, obtiene datos empresariales
+y actualiza campos vacíos. Es funcional cuando existen credenciales y
+conectividad, pero necesita controles de autorización por compañía.
+
+======================================================================
+9. MODELO DE DATOS Y FUENTE DE VERDAD
+======================================================================
+
+El modelo conceptual cubre:
+
+- companies;
+- customers y contacts;
+- products;
+- orders;
+- offers y offer products;
+- opportunities;
+- competitors;
+- actions y tasks;
+- insights;
+- documents;
+- ingestion runs;
+- sections, chunks, entities y relationships;
+- projects, service contracts y after-sales;
+- profiles.
+
+Principio conceptual importante:
+
+- un documento comercial debe prevalecer sobre una inferencia;
+- una oferta con probabilidad del 100 % debe convertirse en venta;
+- el pipeline abierto no debe incluir ventas confirmadas.
+
+El problema actual no es la ausencia de modelos, sino la existencia de
+varias representaciones del mismo concepto:
+
+- offer frente a opportunity;
+- customer frente a company_contact;
+- estado React frente a session_state;
+- tablas Supabase frente a archivos/localStorage;
+- resultado IA frente a fallback local.
+
+El sistema necesita un glosario y contrato canónico de entidades, estados,
+identificadores y reglas de transición.
+
+======================================================================
+10. INTELIGENCIA ARTIFICIAL Y AGENTES
+======================================================================
+
+10.1. Enfoque híbrido
+
+La plataforma combina:
+
+- reglas deterministas;
+- analítica estadística;
+- heurísticas;
+- modelos generativos;
+- agentes especializados.
+
+Esto es positivo: evita que toda la aplicación dependa de un LLM y permite
+explicar parte de las recomendaciones.
+
+10.2. Agentes identificados
+
+- data cleaner;
+- portfolio risk analyzer;
+- pattern recognizer;
+- forecaster;
+- strategy comparator;
+- market intelligence;
+- product lifecycle;
+- weekly task planner;
+- KAM mapper;
+- after-sales opportunity;
+- cross-selling;
+- dynamic pricing;
+- request management;
+- action engine;
+- self-improving orchestrator.
+
+10.3. Nivel real de inteligencia
+
+- El forecaster Python contiene regresión lineal y cálculo de R².
+- El análisis de datos y acciones React dispone de reglas reales.
+- Las Edge Functions generan análisis estructurado con Gemini.
+- El agente de mercado Python usa parte de información estática/demo.
+- ai-factory-v2 cae a regex, HTML simple y heurísticas sin clientes
+  inyectados.
+- Algunos agentes son stubs o no cumplen el contrato esperado.
+
+Por ello, "multiagente" describe correctamente la intención y parte del
+código, pero no todavía una red autónoma y coordinada de agentes.
+
+10.4. Riesgo de coordinación
+
+La ejecución paralela permite velocidad, pero no garantiza:
+
+- prioridad compartida;
+- resolución de contradicciones;
+- control de duplicados;
+- memoria común;
+- trazabilidad de por qué ganó una recomendación;
+- límites de coste;
+- evaluación de calidad.
+
+La evolución adecuada es un supervisor que:
+
+1. construya un contexto canónico;
+2. seleccione los workers necesarios;
+3. valide entradas y salidas tipadas;
+4. resuelva conflictos;
+5. calcule confianza;
+6. registre evidencias y decisiones;
+7. genere una respuesta consolidada.
+
+======================================================================
+11. INTEGRACIONES
+======================================================================
+
+Implementadas o parciales:
+
+- Supabase Database, Auth, Storage y Edge Functions.
+- Lovable AI Gateway / Gemini.
+- Gmail SMTP.
+- importación Excel/CSV.
+- documentos PDF/DOCX/imágenes y OCR declarado.
+- scraping web en ai-factory-v2.
+
+No se encontraron conectores productivos completos para:
+
+- CRM externos;
+- ERP externos;
+- calendarios;
+- plataformas de marketing;
+- proveedores de firma o contratos;
+- data warehouses empresariales.
+
+Aunque CRM y ERP aparecen como dominios o pantallas, son conceptos internos
+de la aplicación, no integraciones consolidadas con sistemas de terceros.
+
+Además, React invoca una función trigger-ingestion que no existe en el
+repositorio. Ese contrato está incompleto.
+
+======================================================================
+12. PERSISTENCIA, AUTENTICACIÓN Y MULTITENANCY
+======================================================================
+
+12.1. Persistencia
+
+Coexisten:
+
+- Supabase como persistencia principal deseada;
+- localStorage en React;
+- session_state en Streamlit;
+- archivos locales para usuarios;
+- almacenamiento raw/estructurado/vectorial abstracto en ai-factory-v2.
+
+La coexistencia es útil para demos, pero perjudica la consistencia. Un
+usuario puede observar estados distintos según la interfaz utilizada.
+
+12.2. Autenticación
+
+Streamlit implementa login Supabase o local. React inicializa el cliente
+Supabase, pero no protege sus rutas ni exige una sesión autenticada.
+
+12.3. Aislamiento entre compañías
+
+El uso de company_id organiza los datos, pero no equivale a aislamiento de
+seguridad. Varias políticas RLS permiten acceso con USING (true) y
+WITH CHECK (true). Además, funciones con service role no verifican de forma
+consistente que quien invoca sea propietario o miembro autorizado de la
+compañía.
+
+Conclusión: la aplicación segmenta datos por compañía a nivel funcional,
+pero no implementa todavía un modelo multi-tenant seguro.
+
+12.4. Acceso rápido
+
+Streamlit habilita por defecto un Quick Access de demostración con perfil
+administrador ficticio. Debe desactivarse fuera de entornos explícitamente
+demo.
+
+======================================================================
+13. SEGURIDAD
+======================================================================
+
+Riesgos de prioridad crítica:
+
+1. Existe un TXT de acceso a Lovable que contiene credenciales en texto
+   plano. No se reproducen en este informe. Deben revocarse, eliminarse del
+   árbol e historial Git y sustituirse por secretos gestionados.
+
+2. Las políticas RLS no proporcionan aislamiento real por organización o
+   compañía.
+
+3. Algunas Edge Functions utilizan SUPABASE_SERVICE_ROLE_KEY sin comprobar
+   autorización del recurso solicitado.
+
+4. React carece de protección de rutas.
+
+5. Quick Access está habilitado por defecto en Streamlit.
+
+6. localStorage puede conservar información comercial en el navegador sin
+   controles equivalentes a la base de datos.
+
+Aspectos positivos:
+
+- secretos previstos mediante variables de entorno;
+- contraseñas locales con scrypt;
+- manejo explícito de errores en varias funciones;
+- defensas documentadas para URL/SSRF;
+- cabeceras básicas de seguridad en nginx.
+
+La documentación dice correctamente que los secretos no deben
+commitearse, pero la presencia real del archivo de acceso contradice esa
+política.
+
+======================================================================
+14. OBSERVABILIDAD Y OPERACIÓN
+======================================================================
+
+Capacidades presentes:
+
+- logs Python estructurados;
+- registros de ejecución de agentes;
+- ingestion runs;
+- logs de planificación;
+- tablas de errores y datos raw;
+- monitor Streamlit de ingestión;
+- polling de estado documental;
+- workflows de CI y despliegue.
+
+Carencias:
+
+- trazas distribuidas entre React, Edge Functions, Python y agentes;
+- correlación única por operación;
+- métricas de coste y latencia de IA;
+- evaluación automática de calidad de respuestas;
+- alertas operativas;
+- scheduler consolidado;
+- health checks de todos los componentes;
+- topología productiva documentada y reproducible.
+
+El Dockerfile construye y sirve la SPA React, pero no empaqueta Streamlit,
+FastAPI, agentes, worker de ofertas ni ai-factory-v2. Por ello no existe un
+artefacto único que despliegue la plataforma completa.
+
+======================================================================
+15. PRUEBAS Y CALIDAD
+======================================================================
+
+Existen pruebas Vitest para:
+
+- fallbacks;
+- procesamiento documental;
+- inteligencia comercial;
+- agentes;
+- smoke tests de UI;
+- estrategia, escenarios y datos.
+
+Existe además un pequeño grupo de pruebas Python para ai-factory-v2.
+
+Problema importante:
+
+- package.json ejecuta Jest;
+- Jest busca una estructura de tests distinta;
+- las pruebas principales están escritas para Vitest;
+- la configuración conocida ha producido ejecuciones rotas o tests no
+  descubiertos.
+
+Consecuencia: la cantidad de archivos de prueba no garantiza que el
+pipeline estándar los ejecute.
+
+La documentación también es contradictoria: algunos informes afirman 100 %
+de tests críticos, mientras otros registran módulos sin cobertura y
+agentes fallidos.
+
+======================================================================
+16. MADUREZ POR ÁREA
+======================================================================
+
+ALTA RELATIVA
+
+- SPA React y navegación.
+- DataStore por compañía.
+- carga estructurada de datos;
+- cálculos comerciales locales;
+- ingestión documental Supabase;
+- generación de acciones con fallback;
+- conjunto amplio de Edge Functions;
+- análisis 360, portfolio y BI como capacidades conectadas.
+
+MEDIA
+
+- gestión de ofertas y pricing;
+- planificación semanal;
+- postventa;
+- proyecto y contratos;
+- enriquecimiento de empresa;
+- observabilidad de ingestión;
+- login Streamlit;
+- agentes analíticos concretos.
+
+BAJA O PARCIAL
+
+- convergencia React/Streamlit;
+- ejecución automática del worker;
+- ai-factory-v2 como servicio;
+- autenticación React;
+- aislamiento multi-tenant;
+- conectores CRM/ERP;
+- coordinación multiagente;
+- pruebas integrales;
+- despliegue unificado;
+- gobernanza de datos;
+- consistencia offer/opportunity/customer/contact.
+
+ASPIRACIONAL
+
+- motor comercial completamente autónomo;
+- aprendizaje continuo real;
+- agentes auto-mejorables;
+- cobertura completa de los 22 módulos;
+- automatización integral de campañas, territorios, contratos y customer
+  success;
+- integraciones empresariales profundas.
+
+======================================================================
+17. CONTRADICCIONES ENCONTRADAS
+======================================================================
+
+17.1. "Aplicación completamente funcional" frente a informes de madurez
+que sitúan 18 de 22 módulos en 0 %.
+
+17.2. Informes que declaran 100 % de pruebas críticas frente a registros de
+npm test fallido, agentes fallidos y módulos sin cobertura.
+
+17.3. Un registro declara eliminados outputs residuales, pero esos archivos
+siguen presentes.
+
+17.4. La recomendación propone supervisor + workers, mientras la
+implementación ejecuta agentes en paralelo sin ese supervisor consolidado.
+
+17.5. La documentación presenta service-role como requerida en un lugar y
+opcional en otro.
+
+17.6. Quick Access aparece documentado como desactivado, pero el código lo
+activa por defecto.
+
+17.7. El launcher llama "Next.js" a un frontend que realmente es Vite.
+
+17.8. Las dependencias de Streamlit tienen versiones o manifiestos
+alternativos sin una fuente canónica clara.
+
+17.9. El catálogo de acciones declara ausencia de duplicados, mientras la
+auditoría identifica solapamientos entre agentes. Probablemente se habla
+de ámbitos distintos, pero no está explicado.
+
+Estas contradicciones indican que los documentos de estado se han
+generado en momentos y contextos distintos. El código y las pruebas
+ejecutables deben ser la fuente principal para determinar madurez.
+
+======================================================================
+18. DEUDA TÉCNICA Y DE PRODUCTO
+======================================================================
+
+18.1. Dos productos que compiten por ser la interfaz principal.
+
+React y Streamlit duplican navegación, estado y lógica. Mantener ambos como
+productos equivalentes multiplica el coste de cada mejora.
+
+18.2. Modelo de datos no canónico.
+
+Conceptos comerciales centrales tienen nombres, tablas y transiciones
+distintas según el flujo.
+
+18.3. Fallbacks que pueden ocultar degradación.
+
+El sistema puede mostrar un resultado aparentemente satisfactorio aunque
+la IA, Supabase o el procesamiento completo hayan fallado.
+
+18.4. Agentes sin contrato uniforme.
+
+El descubrimiento dinámico es flexible, pero admite stubs y firmas
+incompatibles.
+
+18.5. Seguridad posterior al diseño funcional.
+
+company_id se usa para filtrar, pero la autorización robusta no está
+integrada en todos los niveles.
+
+18.6. Componentes implementados pero no operados.
+
+Worker de ofertas, ai-factory-v2 y algunos monitores no se inician como
+parte del producto normal.
+
+18.7. Documentación automática sin verificación.
+
+Los reportes de madurez, cierre y auditoría se contradicen y no siempre
+reflejan el repositorio actual.
+
+18.8. Residuos y duplicados.
+
+Architecture/outputs contiene archivos duplicados y archivados que
+dificultan búsquedas y auditorías.
+
+======================================================================
+19. RECOMENDACIONES PRIORIZADAS
+======================================================================
+
+PRIORIDAD 0 - SEGURIDAD INMEDIATA
+
+1. Revocar las credenciales expuestas en el TXT.
+2. Eliminar el secreto del repositorio y de su historial.
+3. Desactivar Quick Access salvo en modo demo explícito.
+4. Proteger todas las rutas React.
+5. Diseñar RLS por tenant, organización y membresía.
+6. Validar autorización dentro de cada Edge Function con service role.
+
+PRIORIDAD 1 - DEFINIR EL PRODUCTO CANÓNICO
+
+1. Elegir React/Supabase como interfaz y backend principales, por ser el
+   flujo más completo.
+2. Reposicionar Streamlit como consola interna, laboratorio o herramienta
+   de administración, no como segunda aplicación equivalente.
+3. Definir qué componentes Python serán servicios, workers o librerías.
+4. Publicar una topología de despliegue oficial.
+
+PRIORIDAD 2 - UNIFICAR DATOS Y CONTRATOS
+
+1. Crear un glosario canónico.
+2. Resolver offer versus opportunity.
+3. Resolver customer versus company_contact.
+4. Tipar estados y transiciones.
+5. Definir contratos versionados para Edge Functions y agentes.
+6. Sustituir delete + insert por operaciones transaccionales o upsert.
+7. Establecer Supabase como fuente de verdad; limitar localStorage a caché
+   identificada.
+
+PRIORIDAD 3 - ENDURECER LA INGESTIÓN DOCUMENTAL
+
+1. Unificar el mapeo UI/backend.
+2. Distinguir visualmente procesamiento completo y fallback.
+3. Introducir idempotencia.
+4. Añadir reconciliación de entidades.
+5. Mantener procedencia de cada dato hasta documento, sección y chunk.
+6. Añadir revisión humana para conflictos de alta importancia.
+
+PRIORIDAD 4 - INDUSTRIALIZAR AGENTES
+
+1. Contrato uniforme run(input) -> typed output.
+2. Registro que excluya stubs en producción.
+3. Supervisor + workers.
+4. Timeouts, reintentos limitados y circuit breakers.
+5. Presupuesto de tokens/coste.
+6. Confidence score y evidencia.
+7. Evaluaciones reproducibles con datasets comerciales.
+8. Observabilidad integrada en el camino real de ejecución.
+
+PRIORIDAD 5 - HACER OPERABLE EL ECOSISTEMA
+
+1. Ejecutar worker y pipelines mediante scheduler o cola gestionada.
+2. Añadir health checks.
+3. Correlacionar logs con operation_id.
+4. Medir latencia, errores y coste por función/agente.
+5. Empaquetar o desplegar cada componente explícitamente.
+6. Eliminar la llamada a trigger-ingestion o implementar su función.
+
+PRIORIDAD 6 - RECUPERAR CONFIANZA EN CALIDAD
+
+1. Elegir Vitest como runner frontend y alinear package.json/CI.
+2. Añadir tests de RLS y autorización.
+3. Añadir tests contractuales UI/Edge Functions.
+4. Probar fallos entre delete e insert.
+5. Añadir E2E de carga -> análisis -> acción.
+6. Probar documento -> entidades -> datos canónicos -> insight.
+7. Convertir el informe de madurez en métricas derivadas de CI, no en
+   afirmaciones manuales.
+
+======================================================================
+20. ARQUITECTURA OBJETIVO RECOMENDADA
+======================================================================
+
+FRONTEND REACT
+    |
+    | sesión autenticada + tenant
+    v
+API / EDGE FUNCTIONS AUTORIZADAS
+    |
+    +---- POSTGRESQL / SUPABASE (fuente canónica)
+    |
+    +---- STORAGE DE DOCUMENTOS
+    |
+    +---- COLA DE TRABAJOS
+              |
+              +---- WORKER DE INGESTIÓN
+              +---- SUPERVISOR DE AGENTES
+              +---- WORKER DE OFERTAS
+              +---- REANÁLISIS COMERCIAL
+
+STREAMLIT
+    |
+    +---- consola interna sobre las mismas APIs y contratos
+
+OBSERVABILIDAD
+    |
+    +---- logs, métricas, trazas, coste y evaluaciones comunes
+
+Principios:
+
+- una sola fuente de verdad;
+- autorización antes de ejecutar;
+- contratos tipados;
+- trabajos pesados asíncronos;
+- procedencia de datos;
+- fallbacks explícitos;
+- IA supervisada por reglas de negocio;
+- módulos activados sólo cuando cumplen criterios de madurez.
+
+======================================================================
+21. VALOR DIFERENCIAL QUE CONVIENE PRESERVAR
+======================================================================
+
+Durante la consolidación no debería perderse:
+
+- el enfoque por compañía;
+- la combinación de reglas e IA;
+- los fallbacks deterministas;
+- el pipeline documental multicapa;
+- la conversión de insights en acciones;
+- la conexión entre estrategia, cartera, cuentas y ejecución;
+- la especialización por agentes;
+- la capacidad de operar con datos incompletos;
+- el caso de uso B2B industrial y por proyectos.
+
+El mayor potencial del producto está en cerrar un circuito verificable:
+
+DOCUMENTO O DATO
+  -> HECHO COMERCIAL CON PROCEDENCIA
+  -> SEÑAL O RIESGO
+  -> RECOMENDACIÓN EXPLICADA
+  -> ACCIÓN ASIGNADA
+  -> RESULTADO MEDIDO
+  -> APRENDIZAJE
+
+Actualmente existen piezas de casi todas estas etapas, pero todavía no un
+circuito homogéneo, seguro y medible.
+
+======================================================================
+22. CONCLUSIÓN FINAL
+======================================================================
+
+Adaptive Sales Engine no es sólo una idea ni una maqueta: contiene un
+número significativo de flujos, modelos, cálculos y funciones reales.
+Particularmente, React/Supabase y la ingestión documental constituyen una
+base técnica valiosa.
+
+Tampoco es todavía la plataforma integrada y madura que describen algunos
+documentos. Su principal problema no es la falta de funcionalidades, sino
+la dispersión:
+
+- demasiadas superficies;
+- varias fuentes de verdad;
+- permisos insuficientes;
+- componentes no operados;
+- contratos inconsistentes;
+- madurez documental exagerada o contradictoria.
+
+La estrategia correcta no es añadir más módulos inmediatamente. Debe
+consolidarse primero el núcleo:
+
+1. seguridad;
+2. producto canónico;
+3. modelo de datos;
+4. ingestión;
+5. contratos de agentes;
+6. operación y pruebas.
+
+Una vez estabilizado ese núcleo, la plataforma tiene una dirección clara:
+convertirse en un motor comercial adaptativo capaz de comprender el
+contexto de una empresa, detectar oportunidades y coordinar la ejecución
+con evidencia, trazabilidad y control humano.
+
+======================================================================
+23. FUENTES PRINCIPALES CONSULTADAS
+======================================================================
+
+TXT de mayor valor:
+
+- DESCRIPCION_TECNICA_APLICACION.txt
+- README_ADAPTIVE_SALES_ENGINE.txt
+- CONCLUSIONES_Y_RECOMENDACIONES_APPS.txt
+- AUDIT_REPORT.txt
+- RESUMEN_FINAL_AUDITORIA.txt
+- ARCHITECTURE_RECOMMENDATION.txt
+- STREAMLIT_COMPLETE_USER_GUIDE.txt
+- ACTIONS_INDEX.txt
+- INGECART_COMPANY_INFO_BACKUP.txt
+- outputs/README_INGECART_INTEGRACION.txt
+- outputs/README_INGECART_VALIDACION.txt
+- outputs/RECOMENDACIONES_INGECART.txt
+
+Documentación:
+
+- README.md
+- docs/commercial-intelligence-system.md
+- docs/ingestion-architecture.md
+- DEPLOYMENT_VERIFICATION.md
+- MATURITY_REPORT.md
+- IMPROVEMENT_PLAN.md
+- CHANGELOG_PROFESSIONAL.md
+- STATUS_BACKUP_2026-05-13.md
+- best_practices/*.md
+- ing_support_agent/README.md
+- launcher/README.md
+- .forge/*
+
+Código:
+
+- src/App.tsx
+- src/store/DataStore.tsx
+- src/pages/*
+- src/lib/*
+- src/agents/*
+- src/components/ConceptDocumentUpload.tsx
+- supabase/functions/*
+- supabase/migrations/*
+- streamlit_app.py
+- orchestrator.py
+- agents/*
+- application/*
+- domain/*
+- infrastructure/*
+- ai/*
+- ai-factory-v2/*
+- scripts/process_pipeline_jobs.py
+- launcher/*
+- src/test/*
+
+También se revisaron los TXT de requirements, outputs de prueba, robots
+archivados y duplicados. Se clasificaron como manifiestos, residuos o
+artefactos históricos y no como fuentes principales de verdad funcional.

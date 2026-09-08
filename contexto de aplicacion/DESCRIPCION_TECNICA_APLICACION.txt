@@ -1,0 +1,216 @@
+ADAPTIVE SALES ENGINE — DESCRIPCIÓN TÉCNICA INTEGRAL
+
+1) PROPÓSITO GENERAL
+Adaptive Sales Engine es una aplicación de gestión comercial e inteligencia de ventas con interfaz principal en Streamlit (archivo central: streamlit_app.py), integrada con Supabase para persistencia multiusuario y complementada por una capa de agentes de análisis en Python.
+
+Su objetivo es transformar datos comerciales (histórico, estrategia, catálogo de productos, oportunidades) en:
+- análisis accionables,
+- recomendaciones priorizadas,
+- tareas semanales,
+- mapeos de cuentas clave,
+- propuestas de oportunidades postventa,
+- y soporte operativo de ejecución comercial (acciones, requests, ofertas, costes, usuarios).
+
+
+2) ARQUITECTURA FUNCIONAL
+2.1 Núcleo de aplicación
+- Frontend principal (Streamlit): /home/runner/work/adaptive-sales-engine/adaptive-sales-engine/streamlit_app.py
+- Orquestación de agentes: /home/runner/work/adaptive-sales-engine/adaptive-sales-engine/orchestrator.py
+- Agentes base: /home/runner/work/adaptive-sales-engine/adaptive-sales-engine/agents/*.py
+- Integración de persistencia: Supabase (tablas de acciones, ofertas, perfiles, solicitudes, etc.)
+
+2.2 Modos de operación
+- Modo completo: con SUPABASE_URL + SUPABASE_KEY configurados.
+- Modo demo: sin Supabase, la aplicación sigue operativa para carga de datos, análisis y ejecución de agentes; módulos dependientes de backend muestran advertencias.
+- Quick Access: puede habilitar acceso rápido de invitado (feature flag QUICK_ACCESS_ENABLED).
+
+2.3 Patrón de ejecución de inteligencia
+- Existe un orquestador máximo (MaximumOrchestrator) que descubre dinámicamente agentes en:
+  - /agents
+  - /ai-factory-v2
+  - /ai-factory-v2/ingestion/agents
+- Todos los agentes se ejecutan en paralelo por acción de usuario.
+- Cada página puede disparar análisis común mediante _render_orchestrator_panel(action=...).
+
+
+3) INTERFAZ HUMANA (HUMAN INTERFACE) Y DISPOSICIÓN
+3.1 Navegación
+La UI se organiza en sidebar por secciones:
+- Intelligence & Planning
+- Core Sales Execution
+- Sales Support & Enablement
+- After Sales
+- Backoffice & Operations
+- Autonomous Agents
+
+El estado de navegación se controla con st.session_state.active_page y un mapa de enrutamiento (_PAGE_MAP) que conecta cada pantalla con su función page_* correspondiente.
+
+3.2 Comportamiento de interfaz
+- Botones de navegación con estado activo.
+- Restricción de páginas según rol/departamento (ej. Team Directory y Email Cobot para admin).
+- Indicadores de sesión (usuario, departamento, invitado, modo demo).
+- Panel de análisis transversal disponible en la mayoría de módulos.
+
+
+4) CAPACIDADES PRINCIPALES
+4.1 Inteligencia y analítica
+- Dashboard con métricas operativas y resumen de acciones.
+- Business Intelligence con exploración visual (barras, matrices de correlación).
+- Portfolio Analysis con gráficos de dispersión y barras por variables.
+- Monitoring Dashboard con estado de agentes, datasets cargados y resultados de última ejecución.
+
+4.2 Framework comercial por pilares
+Módulos orientados al modelo comercial:
+- 360º Analysis
+- Sales Architecture
+- Key Account Management
+- After-Sales Engine
+- AI-Augmented Sales
+- Behavioral Transform
+- Product Strategy
+
+Estos módulos muestran KPIs, visualizaciones y consumen resultados de orquestación para recomendaciones.
+
+4.3 Ingesta universal de datos
+Data Upload soporta múltiples formatos:
+CSV, Excel, TSV, Parquet, Feather, JSON/JSONL, TXT/MD, HTML/XML, PDF, DOCX, ZIP, imágenes (OCR), SQLite.
+
+Adicionalmente:
+- Carga desde URL con validación de seguridad (solo hosts públicos, bloqueo de localhost/red privada).
+- Vista previa de datos, tipos de columna y exportación a CSV.
+- Auto-disparo de análisis al terminar la carga.
+
+4.4 Configuración empresarial guiada
+Company Setup permite:
+- descargar plantillas,
+- subir histórico, catálogo, oportunidades y estrategia,
+- ejecutar análisis automático integral tras la carga.
+
+4.5 Ejecución comercial y operación
+- Commercial Actions Repository: CRUD de acciones + sincronización bidireccional con Excel.
+- Request Pool (Commercial): gestión de solicitudes y priorización por deadline.
+- Offer & Pricing: creación de ofertas (manual, desde request, desde upload) con motor de costes.
+- Cost & Rates: simulación y referencia de módulos de coste.
+- Team Directory: gestión de perfiles, roles y departamentos.
+- Email Cobot: provisión de acceso y envío de invitaciones por Gmail.
+
+
+5) LÓGICA DE DATOS Y CONTEXTO
+5.1 Estado compartido
+La app usa session_state para mantener:
+- uploaded_data_universal
+- estrategia_data
+- productos_data
+- oportunidades_data
+- saved_companies
+- resultados del último análisis (last_analysis_results)
+- usuario, perfil, página activa y banderas de flujo
+
+5.2 Construcción de contexto analítico
+El método _build_context(action, extra) compone el contexto estándar para agentes:
+- action
+- uploaded_data
+- saved_companies
+- estrategia_data
+- portfolio_risk
+(+ datos extra por pantalla)
+
+5.3 Persistencia
+Cuando Supabase está disponible:
+- se leen/escriben acciones, ofertas, perfiles y solicitudes,
+- se soporta operación multiusuario,
+- se conserva trazabilidad de cambios por timestamps y usuario.
+
+
+6) SISTEMA DE AGENTES Y CAPACIDADES IA
+6.1 Agentes de negocio principales
+En /agents destacan:
+- data_cleaner_agent
+- portfolio_risk_analyzer
+- pattern_recognizer
+- forecaster_agent
+- strategy_comparator
+- market_intelligence_agent
+- product_lifecycle_analyzer
+- weekly_task_planner
+- kam_mapper_agent
+- after_sales_opportunity_agent
+
+6.2 Patrón de salida de agentes
+Los agentes devuelven típicamente un dict con:
+- status
+- output (resumen textual)
+- insights (lista)
+- y, según agente, estructuras especiales:
+  - tasks
+  - opportunities
+  - matrix
+  - account_maps
+  - gaps
+  - critical_clients
+
+6.3 Orquestación de resultados
+Tras ejecutar todos los agentes:
+- se calcula resumen consolidado (_summary),
+- se reporta cantidad total, exitosos y fallidos,
+- se muestran resultados por pestañas en UI,
+- se almacenan en session_state para reutilización en pantallas como Weekly Planner o Monitoring.
+
+
+7) OUTPUTS POSIBLES Y CÓMO SE LLEVAN A TÉRMINO
+7.1 Outputs analíticos en interfaz
+- KPIs y métricas numéricas (st.metric)
+- gráficos interactivos (Plotly)
+- tablas de datos (st.dataframe)
+- reportes textuales consolidados (_summary)
+- resultados por agente en tabs con vista JSON expandible
+
+Flujo:
+1) Usuario carga datos o ejecuta acción.
+2) Se genera contexto de análisis.
+3) Orquestador ejecuta todos los agentes en paralelo.
+4) Se consolidan resultados.
+5) UI renderiza resumen + detalle por agente.
+
+7.2 Outputs operativos de negocio
+- Acciones creadas/actualizadas/eliminadas (tabla actions)
+- Solicitudes comerciales gestionadas (customer_requests)
+- Ofertas versionadas y archivables (offers)
+- Perfiles actualizados (profiles)
+- Invitaciones enviadas por correo
+
+Flujo:
+1) Usuario completa formulario/acción en módulo.
+2) Validación de campos.
+3) Escritura en Supabase (si aplica).
+4) Confirmación visual y refresco de estado.
+
+7.3 Outputs descargables
+- Excel de acciones exportado.
+- CSV de datos procesados.
+- TXT de resultados individuales de agente (Agent Hub).
+- Plantillas de datos descargables en Company Setup.
+
+
+8) SEGURIDAD Y CONTROLES DE EJECUCIÓN
+- Validación de URL para evitar SSRF (protocolo y host público).
+- Restricción de rutas para ejecución de scripts de agentes (prevención path traversal).
+- Control de acceso por rol/departamento en módulos sensibles.
+- Manejo de errores por agente (error/timeout/load_error) sin detener la ejecución global.
+
+
+9) ESTRUCTURA LÓGICA DE ALTO NIVEL
+Capa 1 — Interfaz (Streamlit): navegación, formularios, visualización.
+Capa 2 — Lógica de aplicación: parseo universal, reglas de negocio, armado de contexto.
+Capa 3 — Inteligencia: orquestador + agentes especializados en paralelo.
+Capa 4 — Persistencia/servicios: Supabase, Gmail, archivos, templates.
+
+
+10) CONCLUSIÓN TÉCNICA
+La aplicación combina un CRM operacional con un motor de inteligencia comercial basado en agentes concurrentes. Su diseño prioriza:
+- modularidad funcional por dominio comercial,
+- escalabilidad analítica mediante descubrimiento dinámico de agentes,
+- resiliencia (modo demo sin bloqueo por infraestructura externa),
+- y trazabilidad de outputs tanto en interfaz como en persistencia.
+
+En términos de ingeniería, es una plataforma híbrida de ejecución comercial + analítica automatizada, donde cada interacción relevante puede desencadenar un pipeline paralelo de agentes para convertir datos empresariales en decisiones accionables.
