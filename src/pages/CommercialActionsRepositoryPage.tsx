@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
-import { useData } from '@/store/DataStore';
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { type MonitoringTask, useData } from '@/store/DataStore';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -66,8 +67,181 @@ const emptyAction: CommercialAction = {
   },
 };
 
+type OfferPipelineBucket = 'live' | 'cancelled' | 'sold';
+
+interface OfferPipelineEntry {
+  id: string;
+  offer_number: string;
+  title: string;
+  customer_name: string;
+  company_name: string;
+  status: string;
+  bucket: OfferPipelineBucket;
+  score: number;
+  last_update: string;
+  context: string;
+  next_action: string;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  source: string;
+}
+
+const pipelineDemoOffers: OfferPipelineEntry[] = [
+  {
+    id: 'demo-ingecart-1',
+    offer_number: 'ING-2026-042',
+    title: 'Cartonajes Font / packaging line follow-up',
+    customer_name: 'Cartonajes Font',
+    company_name: 'Ingecart 2018 SL',
+    status: 'follow_up',
+    bucket: 'live',
+    score: 96,
+    last_update: 'Today',
+    context: 'Commercial follow-up required on technical validation and cost alignment for the active opportunity.',
+    next_action: 'Send final technical review and confirm the commercial decision date with the customer.',
+    priority: 'critical',
+    source: 'Ingecart / cgo@ingecart.es',
+  },
+  {
+    id: 'demo-ingecart-2',
+    offer_number: 'ING-2026-055',
+    title: 'Cascades Waterloo - technical package and approvals',
+    customer_name: 'Cascades Waterloo',
+    company_name: 'Ingecart 2018 SL',
+    status: 'pending',
+    bucket: 'live',
+    score: 91,
+    last_update: '2 days ago',
+    context: 'Pipeline remains active after alignment on plant requirements and engineering documentation.',
+    next_action: 'Validate the project gate and prepare the next customer meeting with the engineering team.',
+    priority: 'high',
+    source: 'Ingecart / isenar.cta@gmail.com',
+  },
+  {
+    id: 'demo-agilpack-1',
+    offer_number: 'AGI-2026-018',
+    title: 'Agilpack / packaging equipment revision',
+    customer_name: 'Agilpack',
+    company_name: 'Agilpack',
+    status: 'postponed',
+    bucket: 'cancelled',
+    score: 58,
+    last_update: 'Last week',
+    context: 'Decision postponed while internal budget is reviewed; commercial action remains active with a recovery path.',
+    next_action: 'Re-activate the opportunity with a short budget review and restart the next-step proposal.',
+    priority: 'medium',
+    source: 'Agilpack / shared mailbox',
+  },
+  {
+    id: 'demo-tween-1',
+    offer_number: 'TWN-2026-010',
+    title: 'Tween / automation package signed',
+    customer_name: 'Tween',
+    company_name: 'Tween',
+    status: 'won',
+    bucket: 'sold',
+    score: 88,
+    last_update: 'This week',
+    context: 'The offer moved to execution; handoff to project management and commercial delivery is required.',
+    next_action: 'Activate the project management workflow, confirm milestones, and set the delivery plan.',
+    priority: 'high',
+    source: 'Tween / commercial follow-up',
+  },
+  {
+    id: 'demo-iar-1',
+    offer_number: 'IAR-2026-007',
+    title: 'IAR / downstream line quotation',
+    customer_name: 'IAR',
+    company_name: 'IAR',
+    status: 'declined',
+    bucket: 'cancelled',
+    score: 42,
+    last_update: '1 month ago',
+    context: 'The customer withdrew the request after a revision of internal priorities; keep as a learning account.',
+    next_action: 'Document the lost decision and convert any retained technical information into a reusable proposal template.',
+    priority: 'low',
+    source: 'IAR / archive',
+  },
+  {
+    id: 'demo-ingecart-3',
+    offer_number: 'ING-2026-071',
+    title: 'Sterner Global / mastercorr project follow-up',
+    customer_name: 'Sterner Global',
+    company_name: 'Ingecart 2018 SL',
+    status: 'closed',
+    bucket: 'sold',
+    score: 84,
+    last_update: 'Today',
+    context: 'Program is moving into execution and requires project owner coordination from the commercial stage.',
+    next_action: 'Finalize handoff to project management and confirm the delivery calendar and engineering plan.',
+    priority: 'high',
+    source: 'Ingecart / portfolio tracking',
+  },
+];
+
+const normalizeOfferBucket = (status: string): OfferPipelineBucket => {
+  const normalized = status.toLowerCase();
+  if (['won', 'sold', 'accepted', 'approved', 'closed', 'converted', 'signed'].includes(normalized)) return 'sold';
+  if (['cancelled', 'canceled', 'postponed', 'declined', 'lost', 'dead', 'stalled', 'on_hold', 'paused'].includes(normalized)) return 'cancelled';
+  return 'live';
+};
+
+const normalizeOfferPipelineEntry = (offer: Record<string, any>): OfferPipelineEntry => {
+  const status = String(offer.status || 'draft');
+  const bucket = normalizeOfferBucket(status);
+  const score = Number(offer.global_score ?? offer.score ?? (bucket === 'live' ? 90 : bucket === 'sold' ? 82 : 55));
+  const title = String(offer.title || offer.offer_number || 'Unnamed offer');
+  const customerName = String(offer.customer_name || offer.customerName || 'Customer pending');
+  const companyName = String(offer.company_name || offer.companyName || 'Portfolio');
+
+  return {
+    id: String(offer.id || `${offer.offer_number || customerName}-${Math.random().toString(16).slice(2)}`),
+    offer_number: String(offer.offer_number || offer.offerNumber || 'N/A'),
+    title,
+    customer_name: customerName,
+    company_name: companyName,
+    status,
+    bucket,
+    score: Number.isFinite(score) ? score : 0,
+    last_update: offer.updated_at ? new Date(offer.updated_at).toLocaleDateString() : 'recently',
+    context:
+      bucket === 'live'
+        ? 'Open commercial opportunity requiring active follow-up and decision support.'
+        : bucket === 'sold'
+          ? 'Offer has been won and requires execution handoff to project management.'
+          : 'Decision paused or missed; recovery and learning actions should be documented.',
+    next_action:
+      bucket === 'live'
+        ? 'Confirm next meeting, review technical constraints, and push the offer to a decision milestone.'
+        : bucket === 'sold'
+          ? 'Start the project activation checklist and confirm full delivery ownership.'
+          : 'Reassess commercial conditions and decide whether to recover, archive, or convert the opportunity.',
+    priority: score >= 90 ? 'critical' : score >= 75 ? 'high' : score >= 60 ? 'medium' : 'low',
+    source: offer.source || 'Commercial pipeline',
+  };
+};
+
+const buildPipelineTask = (offer: OfferPipelineEntry): MonitoringTask => ({
+  id: `pipeline_${offer.id}`,
+  title: `${offer.customer_name} — ${offer.title}`,
+  description: `${offer.next_action} Context: ${offer.context}`,
+  pillar: offer.bucket === 'sold' ? 'p2' : offer.bucket === 'cancelled' ? 'p1' : 'p0',
+  status: 'todo',
+  priority: offer.priority === 'critical' ? 'critical' : offer.priority === 'high' ? 'high' : offer.priority === 'medium' ? 'medium' : 'low',
+  category: offer.bucket === 'sold' ? 'strategy' : offer.bucket === 'cancelled' ? 'analysis' : 'follow_up',
+  assignee: 'sales',
+  dueDate: new Date(Date.now() + (offer.priority === 'critical' ? 2 : 4) * 24 * 60 * 60 * 1000).toISOString(),
+  createdAt: new Date().toISOString(),
+  notes: [offer.context, offer.next_action, `Source: ${offer.source}`],
+  actionContent: {
+    goal: offer.next_action,
+    callScript: `Review the current status of ${offer.customer_name} and focus on the next commercial decision or execution milestone.`,
+    emailTemplate: `Subject: Follow-up on ${offer.offer_number}\n\nHi team,\n\nWe are prioritizing the next step for ${offer.customer_name}. The current status is ${offer.status}. Please confirm the decision path, technical points, and required next milestone.`,
+    presentationNotes: `${offer.context} ${offer.next_action}`,
+  },
+});
+
 const CommercialActionsRepositoryPage = () => {
-  const { addTask } = useData();
+  const { addTask, activeCompanyId } = useData();
   const [repository, setRepository] = useState<ActionsRepository>(() => loadRepositoryFromStorage());
   const [selectedStage, setSelectedStage] = useState(repository.lifecycle_stages[0]?.stage || 'PIPELINE_EXECUTION');
   const [workingHours, setWorkingHours] = useState(40);
@@ -80,6 +254,45 @@ const CommercialActionsRepositoryPage = () => {
   const [editingActionId, setEditingActionId] = useState<string | null>(null);
   const [formStage, setFormStage] = useState(selectedStage);
   const [formAction, setFormAction] = useState<CommercialAction>(emptyAction);
+  const [offerPipeline, setOfferPipeline] = useState<OfferPipelineEntry[]>([]);
+  const [offerPipelineLoading, setOfferPipelineLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadOfferPipeline = async () => {
+      setOfferPipelineLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('offers')
+          .select('*')
+          .order('updated_at', { ascending: false })
+          .limit(100);
+
+        if (error) {
+          throw error;
+        }
+
+        const normalized = (data && data.length > 0 ? data : pipelineDemoOffers).map(normalizeOfferPipelineEntry);
+        if (isMounted) {
+          setOfferPipeline(normalized);
+        }
+      } catch {
+        if (isMounted) {
+          setOfferPipeline(pipelineDemoOffers);
+        }
+      } finally {
+        if (isMounted) {
+          setOfferPipelineLoading(false);
+        }
+      }
+    };
+
+    loadOfferPipeline();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const allActions = useMemo(
     () =>
@@ -353,47 +566,108 @@ const CommercialActionsRepositoryPage = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="pipeline">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
-            {repository.lifecycle_stages.map((stageNode) => {
-              const total = stageNode.actions.length;
-              const avgScore = total > 0 ? stageNode.actions.reduce((acc, action) => acc + scoreAction(action), 0) / total : 0;
-              return (
-                <Card key={stageNode.stage}>
-                  <CardHeader className="pb-2"><CardTitle className="text-sm">{stageNode.stage}</CardTitle></CardHeader>
-                  <CardContent className="space-y-2">
-                    <p className="text-xs text-muted-foreground">Processes: {stageNode.processes.join(', ')}</p>
-                    <p className="text-sm font-medium">Actions: {total}</p>
-                    <Progress value={Math.min(100, avgScore)} className="h-2" />
-                    <p className="text-xs text-muted-foreground">Avg score: {Math.round(avgScore)}</p>
-                  </CardContent>
-                </Card>
-              );
-            })}
+        <TabsContent value="pipeline" className="space-y-4">
+          <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Live offers</CardTitle></CardHeader>
+              <CardContent>
+                <p className="text-2xl font-semibold">{offerPipeline.filter((offer) => offer.bucket === 'live').length}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Cancelled / postponed</CardTitle></CardHeader>
+              <CardContent>
+                <p className="text-2xl font-semibold">{offerPipeline.filter((offer) => offer.bucket === 'cancelled').length}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Sold</CardTitle></CardHeader>
+              <CardContent>
+                <p className="text-2xl font-semibold">{offerPipeline.filter((offer) => offer.bucket === 'sold').length}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Priority score</CardTitle></CardHeader>
+              <CardContent>
+                <p className="text-2xl font-semibold">{offerPipeline.length > 0 ? Math.round(offerPipeline.reduce((sum, offer) => sum + offer.score, 0) / offerPipeline.length) : 0}</p>
+              </CardContent>
+            </Card>
           </div>
 
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">KPI dashboard per action</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              {allActions.slice(0, 12).map((action) => (
-                <div key={action.id} className="border rounded-md p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium">{action.name}</p>
-                    <Badge variant="outline">{action.stage}</Badge>
-                  </div>
-                  {evaluateKpis(action).map((kpi) => (
-                    <div key={kpi.name} className="mb-2">
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span>{kpi.name}</span>
-                        <span>{kpi.current} / {kpi.target} {kpi.unit || ''}</span>
-                      </div>
-                      <Progress value={Math.min(100, kpi.achievement)} className="h-1.5" />
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+          {offerPipelineLoading ? (
+            <Card>
+              <CardContent className="py-8 text-sm text-muted-foreground">Loading offer pipeline and commercial context…</CardContent>
+            </Card>
+          ) : (
+            <div className="grid xl:grid-cols-3 gap-4">
+              {(['live', 'cancelled', 'sold'] as OfferPipelineBucket[]).map((bucket) => {
+                const items = offerPipeline.filter((offer) => offer.bucket === bucket);
+                const label = bucket === 'live' ? 'In follow-up' : bucket === 'cancelled' ? 'Cancelled / postponed' : 'Sold / won';
+
+                return (
+                  <Card key={bucket} className="h-full">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center justify-between gap-2">
+                        <span>{label}</span>
+                        <Badge variant={bucket === 'live' ? 'default' : bucket === 'cancelled' ? 'secondary' : 'outline'}>{items.length}</Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {items.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No offers in this stage.</p>
+                      ) : items.map((offer) => (
+                        <div key={offer.id} className="border rounded-md p-3 space-y-2 bg-background/70">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-medium line-clamp-2">{offer.title}</p>
+                              <p className="text-xs text-muted-foreground">{offer.customer_name} · {offer.offer_number}</p>
+                            </div>
+                            <Badge variant={offer.score >= 90 ? 'destructive' : offer.score >= 75 ? 'default' : 'secondary'}>
+                              {offer.score}
+                            </Badge>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+                            <span className="border rounded-full px-2 py-0.5">{offer.company_name}</span>
+                            <span className="border rounded-full px-2 py-0.5">{offer.last_update}</span>
+                            <span className="border rounded-full px-2 py-0.5">{offer.source}</span>
+                          </div>
+
+                          <div>
+                            <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+                              <span>Priority</span>
+                              <span>{offer.priority.toUpperCase()}</span>
+                            </div>
+                            <Progress value={offer.score} className="h-2" />
+                          </div>
+
+                          <p className="text-xs text-muted-foreground">{offer.context}</p>
+                          <p className="text-xs font-medium">Action: {offer.next_action}</p>
+
+                          <div className="flex gap-2 pt-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                if (!activeCompanyId) {
+                                  toast({ title: 'No company selected', description: 'Select a company to create the pipeline task.' });
+                                  return;
+                                }
+                                addTask(buildPipelineTask(offer));
+                                toast({ title: 'Offer task created', description: `${offer.customer_name} moved into the action queue.` });
+                              }}
+                            >
+                              Create task
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="simulate" className="space-y-4">
