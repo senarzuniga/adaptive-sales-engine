@@ -33,6 +33,7 @@ import {
   validateRepository,
 } from '@/lib/commercialActionsRepository';
 import { Layers, Play, Plus, Rocket, Save, Target, Timer, Wand2 } from 'lucide-react';
+import { isWorkspaceSupabaseConfigured, readWorkspaceRows } from '@/lib/workspaceStorage';
 
 const EVENT_OPTIONS = [
   'new_signal',
@@ -263,9 +264,22 @@ const CommercialActionsRepositoryPage = () => {
     const loadOfferPipeline = async () => {
       setOfferPipelineLoading(true);
       try {
+        if (!activeCompanyId) {
+          if (isMounted) setOfferPipeline(pipelineDemoOffers);
+          return;
+        }
+
+        if (!isWorkspaceSupabaseConfigured) {
+          const localOffers = readWorkspaceRows<Record<string, any>>('offers', activeCompanyId);
+          const normalized = (localOffers.length > 0 ? localOffers : pipelineDemoOffers).map(normalizeOfferPipelineEntry);
+          if (isMounted) setOfferPipeline(normalized);
+          return;
+        }
+
         const { data, error } = await supabase
           .from('offers')
           .select('*')
+          .eq('company_id', activeCompanyId)
           .order('updated_at', { ascending: false })
           .limit(100);
 
@@ -278,8 +292,9 @@ const CommercialActionsRepositoryPage = () => {
           setOfferPipeline(normalized);
         }
       } catch {
+        const localOffers = readWorkspaceRows<Record<string, any>>('offers', activeCompanyId);
         if (isMounted) {
-          setOfferPipeline(pipelineDemoOffers);
+          setOfferPipeline((localOffers.length > 0 ? localOffers : pipelineDemoOffers).map(normalizeOfferPipelineEntry));
         }
       } finally {
         if (isMounted) {
@@ -292,7 +307,7 @@ const CommercialActionsRepositoryPage = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [activeCompanyId]);
 
   const allActions = useMemo(
     () =>

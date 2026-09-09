@@ -14,6 +14,7 @@ import {
   CheckCircle2, XCircle, Clock, Zap, RefreshCw
 } from 'lucide-react';
 import { getProbabilityGuidance, isOpenOpportunityStatus } from '@/lib/salesData';
+import { isWorkspaceSupabaseConfigured, readWorkspaceRows } from '@/lib/workspaceStorage';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 interface GapItem {
@@ -32,7 +33,7 @@ const COLORS = ['hsl(var(--primary))', 'hsl(var(--destructive))', 'hsl(220, 70%,
 
 export default function BudgetCommandCenterPage() {
   const { t } = useLanguage();
-  const { activeCompanyId } = useData();
+  const { activeCompanyId, data } = useData();
   const selectedCompanyId = activeCompanyId;
   const [loading, setLoading] = useState(true);
   const [salesData, setSalesData] = useState<{ orders: any[]; opportunities: any[] }>({ orders: [], opportunities: [] });
@@ -42,12 +43,30 @@ export default function BudgetCommandCenterPage() {
   useEffect(() => {
     if (!selectedCompanyId) return;
     loadAllData();
-  }, [selectedCompanyId]);
+  }, [selectedCompanyId, data.orders, data.opportunities]);
 
   const loadAllData = async () => {
     if (!selectedCompanyId) return;
     setLoading(true);
     try {
+      if (!isWorkspaceSupabaseConfigured) {
+        setSalesData({
+          orders: data.orders.map((order) => ({ ...order, selling_price: order.sellingPrice })),
+          opportunities: data.opportunities.map((opportunity) => ({ ...opportunity, est_revenue: opportunity.estRevenue, contract_prob: opportunity.contractProb })),
+        });
+        setProjectsData({
+          projects: readWorkspaceRows('projects', selectedCompanyId),
+          costs: readWorkspaceRows('project_costs', selectedCompanyId),
+          changeOrders: readWorkspaceRows('change_orders', selectedCompanyId),
+        });
+        setAfterSalesData({
+          contracts: readWorkspaceRows('service_contracts', selectedCompanyId),
+          opportunities: readWorkspaceRows('after_sales_opportunities', selectedCompanyId),
+          parts: readWorkspaceRows('spare_parts', selectedCompanyId),
+        });
+        return;
+      }
+
       const [ordersRes, oppsRes, projectsRes, costsRes, changeOrdersRes, contractsRes, asOppsRes, partsRes] = await Promise.all([
         supabase.from('orders').select('*').eq('company_id', selectedCompanyId),
         supabase.from('opportunities').select('*').eq('company_id', selectedCompanyId),
@@ -66,6 +85,21 @@ export default function BudgetCommandCenterPage() {
       setSalesData({ orders: ordersRes.data || [], opportunities: oppsRes.data || [] });
       setProjectsData({ projects: projectsRes.data || [], costs: filteredCosts, changeOrders: filteredCOs });
       setAfterSalesData({ contracts: contractsRes.data || [], opportunities: asOppsRes.data || [], parts: partsRes.data || [] });
+    } catch {
+      setSalesData({
+        orders: data.orders.map((order) => ({ ...order, selling_price: order.sellingPrice })),
+        opportunities: data.opportunities.map((opportunity) => ({ ...opportunity, est_revenue: opportunity.estRevenue, contract_prob: opportunity.contractProb })),
+      });
+      setProjectsData({
+        projects: readWorkspaceRows('projects', selectedCompanyId),
+        costs: readWorkspaceRows('project_costs', selectedCompanyId),
+        changeOrders: readWorkspaceRows('change_orders', selectedCompanyId),
+      });
+      setAfterSalesData({
+        contracts: readWorkspaceRows('service_contracts', selectedCompanyId),
+        opportunities: readWorkspaceRows('after_sales_opportunities', selectedCompanyId),
+        parts: readWorkspaceRows('spare_parts', selectedCompanyId),
+      });
     } finally {
       setLoading(false);
     }

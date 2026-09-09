@@ -4,6 +4,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { useData } from '@/store/DataStore';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { isWorkspaceSupabaseConfigured, readWorkspaceRows, writeWorkspaceRows } from '@/lib/workspaceStorage';
 import { buildFallbackServiceContractAnalysis, classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -109,6 +110,15 @@ export default function AfterSalesEnginePage() {
     if (!activeCompanyId) return;
     setLoading(true);
     try {
+      if (!isWorkspaceSupabaseConfigured) {
+        setAssets(readWorkspaceRows('installed_base_assets', activeCompanyId));
+        setContracts(readWorkspaceRows('service_contracts', activeCompanyId));
+        setInterventions(readWorkspaceRows('service_interventions', activeCompanyId));
+        setOpportunities(readWorkspaceRows('after_sales_opportunities', activeCompanyId));
+        setSpareParts(readWorkspaceRows('spare_parts', activeCompanyId));
+        return;
+      }
+
       const [a, c, i, o, sp] = await Promise.all([
         supabase.from('installed_base_assets').select('*').eq('company_id', activeCompanyId).order('created_at', { ascending: false }),
         supabase.from('service_contracts').select('*').eq('company_id', activeCompanyId).order('created_at', { ascending: false }),
@@ -121,6 +131,12 @@ export default function AfterSalesEnginePage() {
       if (i.data) setInterventions(i.data);
       if (o.data) setOpportunities(o.data);
       if (sp.data) setSpareParts(sp.data);
+    } catch {
+      setAssets(readWorkspaceRows('installed_base_assets', activeCompanyId));
+      setContracts(readWorkspaceRows('service_contracts', activeCompanyId));
+      setInterventions(readWorkspaceRows('service_interventions', activeCompanyId));
+      setOpportunities(readWorkspaceRows('after_sales_opportunities', activeCompanyId));
+      setSpareParts(readWorkspaceRows('spare_parts', activeCompanyId));
     } finally {
       setLoading(false);
     }
@@ -131,6 +147,15 @@ export default function AfterSalesEnginePage() {
   // --- Existing save functions ---
   const saveAsset = async () => {
     if (!activeCompanyId) return;
+    if (!isWorkspaceSupabaseConfigured) {
+      const next = [{ ...assetForm, id: crypto.randomUUID(), company_id: activeCompanyId, created_at: new Date().toISOString() }, ...assets];
+      writeWorkspaceRows('installed_base_assets', activeCompanyId, next);
+      setAssets(next);
+      toast({ title: isEs ? 'Activo registrado' : 'Asset registered' });
+      setShowAssetForm(false);
+      setAssetForm({ serial_number: '', asset_name: '', asset_type: 'machine', customer_name: '', location: '', country: '', region: '', lifecycle_stage: 'active', connection_status: 'registered', usage_intensity: 'normal', customer_value_segment: 'standard', risk_level: 'medium', notes: '' });
+      return;
+    }
     const { error } = await supabase.from('installed_base_assets').insert({ ...assetForm, company_id: activeCompanyId });
     if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); return; }
     toast({ title: isEs ? 'Activo registrado' : 'Asset registered' });
@@ -143,6 +168,14 @@ export default function AfterSalesEnginePage() {
     if (!activeCompanyId) return;
     const payload: any = { ...contractForm, company_id: activeCompanyId };
     if (!payload.asset_id) delete payload.asset_id;
+    if (!isWorkspaceSupabaseConfigured) {
+      const next = [{ ...payload, id: crypto.randomUUID(), created_at: new Date().toISOString() }, ...contracts];
+      writeWorkspaceRows('service_contracts', activeCompanyId, next);
+      setContracts(next);
+      toast({ title: isEs ? 'Contrato guardado' : 'Contract saved' });
+      setShowContractForm(false);
+      return;
+    }
     const { error } = await supabase.from('service_contracts').insert(payload);
     if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); return; }
     toast({ title: isEs ? 'Contrato guardado' : 'Contract saved' });
@@ -162,6 +195,13 @@ export default function AfterSalesEnginePage() {
   };
 
   const deleteAsset = async (id: string) => {
+    if (!activeCompanyId) return;
+    if (!isWorkspaceSupabaseConfigured) {
+      const next = assets.filter((asset) => asset.id !== id);
+      writeWorkspaceRows('installed_base_assets', activeCompanyId, next);
+      setAssets(next);
+      return;
+    }
     await supabase.from('installed_base_assets').delete().eq('id', id);
     loadData();
   };
@@ -170,6 +210,15 @@ export default function AfterSalesEnginePage() {
   const savePart = async () => {
     if (!activeCompanyId) return;
     const margin = partForm.selling_price > 0 ? ((partForm.selling_price - partForm.unit_cost) / partForm.selling_price) * 100 : 0;
+    if (!isWorkspaceSupabaseConfigured) {
+      const next = [{ ...partForm, margin_pct: margin, dynamic_price: partForm.selling_price, company_id: activeCompanyId, id: crypto.randomUUID(), created_at: new Date().toISOString() }, ...spareParts];
+      writeWorkspaceRows('spare_parts', activeCompanyId, next);
+      setSpareParts(next);
+      toast({ title: isEs ? 'Repuesto guardado' : 'Spare part saved' });
+      setShowPartForm(false);
+      setPartForm({ part_number: '', part_name: '', description: '', category: 'component', asset_type: '', unit_cost: 0, selling_price: 0, margin_pct: 0, stock_quantity: 0, min_stock_level: 5, reorder_point: 10, reorder_quantity: 25, lead_time_days: 14, supplier: '', predicted_demand_monthly: 0, demand_trend: 'stable', criticality: 'normal' });
+      return;
+    }
     const { error } = await supabase.from('spare_parts').insert({
       ...partForm,
       margin_pct: margin,
@@ -184,6 +233,13 @@ export default function AfterSalesEnginePage() {
   };
 
   const deletePart = async (id: string) => {
+    if (!activeCompanyId) return;
+    if (!isWorkspaceSupabaseConfigured) {
+      const next = spareParts.filter((part) => part.id !== id);
+      writeWorkspaceRows('spare_parts', activeCompanyId, next);
+      setSpareParts(next);
+      return;
+    }
     await supabase.from('spare_parts').delete().eq('id', id);
     loadData();
   };
@@ -205,6 +261,14 @@ export default function AfterSalesEnginePage() {
   };
 
   const triggerReorder = async (part: any) => {
+    if (!activeCompanyId) return;
+    if (!isWorkspaceSupabaseConfigured) {
+      const next = spareParts.map((candidate) => candidate.id === part.id ? { ...candidate, stock_quantity: part.stock_quantity + part.reorder_quantity, last_ordered_at: new Date().toISOString() } : candidate);
+      writeWorkspaceRows('spare_parts', activeCompanyId, next);
+      setSpareParts(next);
+      toast({ title: isEs ? 'Pedido lanzado' : 'Reorder triggered', description: `+${part.reorder_quantity} ${part.part_name}` });
+      return;
+    }
     await supabase.from('spare_parts').update({
       stock_quantity: part.stock_quantity + part.reorder_quantity,
       last_ordered_at: new Date().toISOString(),
@@ -235,8 +299,14 @@ export default function AfterSalesEnginePage() {
             status: 'identified',
             ai_generated: true,
           }));
-          await supabase.from('after_sales_opportunities').insert(opps);
-          loadData();
+          if (!isWorkspaceSupabaseConfigured && activeCompanyId) {
+            const next = [...opps, ...readWorkspaceRows('after_sales_opportunities', activeCompanyId)];
+            writeWorkspaceRows('after_sales_opportunities', activeCompanyId, next);
+            setOpportunities(next);
+          } else {
+            await supabase.from('after_sales_opportunities').insert(opps);
+            loadData();
+          }
         }
         setActiveTab('intelligence');
         toast({ title: isEs ? 'Diagnóstico completado' : 'Diagnostic complete' });

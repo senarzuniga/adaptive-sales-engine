@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useData } from '@/store/DataStore';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { isWorkspaceSupabaseConfigured, readWorkspaceRows, writeWorkspaceRows } from '@/lib/workspaceStorage';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -163,6 +164,20 @@ export default function ProjectManagementPage() {
     if (!activeCompanyId) return;
     setLoading(true);
     try {
+      if (!isWorkspaceSupabaseConfigured) {
+        const localProjects = readWorkspaceRows('projects', activeCompanyId);
+        setProjects(localProjects);
+        if (!selectedProjectId && localProjects[0]) {
+          setSelectedProjectId(localProjects[0].id);
+        }
+        setPhases(readWorkspaceRows('project_phases', activeCompanyId));
+        setMilestones(readWorkspaceRows('project_milestones', activeCompanyId));
+        setRisks(readWorkspaceRows('project_risks', activeCompanyId));
+        setGates(readWorkspaceRows('project_gates', activeCompanyId));
+        setCosts(readWorkspaceRows('project_costs', activeCompanyId));
+        return;
+      }
+
       const { data: projectsData } = await supabase.from('projects').select('*').eq('company_id', activeCompanyId).order('created_at', { ascending: false });
       const normalizedProjects = projectsData || [];
       setProjects(normalizedProjects);
@@ -189,7 +204,16 @@ export default function ProjectManagementPage() {
       setGates(gatesRes.data || []);
       setCosts(costsRes.data || []);
     } catch (error: any) {
-      toast({ title: 'Error', description: error.message || 'Unable to load project data', variant: 'destructive' });
+      if (activeCompanyId) {
+        setProjects(readWorkspaceRows('projects', activeCompanyId));
+        setPhases(readWorkspaceRows('project_phases', activeCompanyId));
+        setMilestones(readWorkspaceRows('project_milestones', activeCompanyId));
+        setRisks(readWorkspaceRows('project_risks', activeCompanyId));
+        setGates(readWorkspaceRows('project_gates', activeCompanyId));
+        setCosts(readWorkspaceRows('project_costs', activeCompanyId));
+      } else {
+        toast({ title: 'Error', description: error.message || 'Unable to load project data', variant: 'destructive' });
+      }
     } finally {
       setLoading(false);
     }
@@ -229,6 +253,76 @@ export default function ProjectManagementPage() {
     if (!activeCompanyId) return;
     setCreating(true);
     try {
+      if (!isWorkspaceSupabaseConfigured) {
+        const offers = readWorkspaceRows<any>('offers', activeCompanyId)
+          .filter((offer) => ['won', 'sold', 'accepted', 'approved', 'closed', 'converted', 'signed'].includes(String(offer.status || '').toLowerCase()));
+        const existingProjects = readWorkspaceRows<any>('projects', activeCompanyId);
+        const sourceOffer = offers.find((offer) => !existingProjects.some((project) => project.offer_id === offer.id)) || offers[0];
+        if (!sourceOffer) throw new Error('No sold offer is available to activate a project.');
+
+        const projectId = crypto.randomUUID();
+        const projectNumber = `PRJ-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 900) + 100)}`;
+        const contractValue = Number(sourceOffer.contract_value || sourceOffer.total_amount || 0);
+        const project = {
+          id: projectId,
+          company_id: activeCompanyId,
+          offer_id: sourceOffer.id || null,
+          project_number: projectNumber,
+          title: sourceOffer.title || 'New commercial project',
+          customer_name: sourceOffer.customer_name || 'Customer',
+          project_type: 'machine',
+          complexity: 'medium',
+          risk_level: 'medium',
+          status: 'planning',
+          contract_value: contractValue,
+          currency: sourceOffer.currency || 'EUR',
+          total_budget: contractValue || 120000,
+          margin_target: 20,
+          scope_of_supply: sourceOffer.project_description || 'Project created from commercial offer',
+          notes: 'Project created from offer and initialized with end-to-end execution plan.',
+          delivery_deadline: new Date(Date.now() + 1000 * 60 * 60 * 24 * 60).toISOString().slice(0, 10),
+          created_at: new Date().toISOString(),
+        };
+        const phaseRows = buildPhaseTemplate(project.title).map((phase) => ({
+          id: crypto.randomUUID(),
+          project_id: projectId,
+          phase_number: phase.phase_number,
+          phase_name: phase.phase_name,
+          description: phase.description,
+          status: phase.status,
+          responsible: phase.responsible,
+          planned_start: phase.planned_start,
+          planned_end: phase.planned_end,
+          budget: phase.budget,
+          completion_pct: phase.completion_pct,
+          key_tasks: phase.key_tasks,
+          control_points: phase.control_points,
+          risks: phase.risks,
+        }));
+        const milestoneRows = buildMilestones(projectId).map((milestone) => ({ ...milestone, id: crypto.randomUUID() }));
+        const gateRows = buildGates(projectId).map((gate) => ({ ...gate, id: crypto.randomUUID() }));
+        const riskRows = buildRisks(projectId).map((risk) => ({ ...risk, id: crypto.randomUUID() }));
+        const costRows = [
+          { id: crypto.randomUUID(), project_id: projectId, category: 'engineering', line_item: 'Engineering', budget_amount: 25000, actual_amount: 0 },
+          { id: crypto.randomUUID(), project_id: projectId, category: 'procurement', line_item: 'Materials and equipment', budget_amount: 32000, actual_amount: 0 },
+          { id: crypto.randomUUID(), project_id: projectId, category: 'manufacturing', line_item: 'Manufacturing', budget_amount: 65000, actual_amount: 0 },
+          { id: crypto.randomUUID(), project_id: projectId, category: 'shipping', line_item: 'Shipping and installation', budget_amount: 43000, actual_amount: 0 },
+          { id: crypto.randomUUID(), project_id: projectId, category: 'commissioning', line_item: 'FAT & commissioning', budget_amount: 24000, actual_amount: 0 },
+        ];
+
+        writeWorkspaceRows('projects', activeCompanyId, [project, ...existingProjects]);
+        writeWorkspaceRows('project_phases', activeCompanyId, [...phaseRows, ...readWorkspaceRows('project_phases', activeCompanyId)]);
+        writeWorkspaceRows('project_milestones', activeCompanyId, [...milestoneRows, ...readWorkspaceRows('project_milestones', activeCompanyId)]);
+        writeWorkspaceRows('project_gates', activeCompanyId, [...gateRows, ...readWorkspaceRows('project_gates', activeCompanyId)]);
+        writeWorkspaceRows('project_risks', activeCompanyId, [...riskRows, ...readWorkspaceRows('project_risks', activeCompanyId)]);
+        writeWorkspaceRows('project_costs', activeCompanyId, [...costRows, ...readWorkspaceRows('project_costs', activeCompanyId)]);
+
+        setSelectedProjectId(projectId);
+        await loadProjectData();
+        toast({ title: 'Project created', description: `${project.title} ready for project management.`, variant: 'default' });
+        return;
+      }
+
       const { data: offers } = await supabase.from('offers').select('*').eq('company_id', activeCompanyId).eq('status', 'won').order('created_at', { ascending: false }).limit(1);
       const sourceOffer = offers?.[0];
       const projectNumber = `PRJ-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 900) + 100)}`;

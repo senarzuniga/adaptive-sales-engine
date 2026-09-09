@@ -33,8 +33,16 @@ type WorkspaceTableName =
   | 'offer_scores'
   | 'installed_base_assets'
   | 'service_contracts'
+  | 'service_interventions'
   | 'after_sales_opportunities'
-  | 'spare_parts';
+  | 'spare_parts'
+  | 'projects'
+  | 'project_phases'
+  | 'project_milestones'
+  | 'project_risks'
+  | 'project_gates'
+  | 'project_costs'
+  | 'change_orders';
 
 type WorkspacePack = Partial<Record<WorkspaceTableName, any[]>>;
 
@@ -51,8 +59,16 @@ const WORKSPACE_TABLES: WorkspaceTableName[] = [
   'offer_scores',
   'installed_base_assets',
   'service_contracts',
+  'service_interventions',
   'after_sales_opportunities',
   'spare_parts',
+  'projects',
+  'project_phases',
+  'project_milestones',
+  'project_risks',
+  'project_gates',
+  'project_costs',
+  'change_orders',
 ];
 
 const lsWorkspaceKey = (table: WorkspaceTableName, companyId: string) => `acs_workspace_${table}_${companyId}`;
@@ -319,8 +335,10 @@ async function fetchWorkspacePack(companyId: string): Promise<WorkspacePack> {
     offersRes,
     installedAssetsRes,
     serviceContractsRes,
+    serviceInterventionsRes,
     afterSalesOppsRes,
     sparePartsRes,
+    projectsRes,
   ] = await Promise.all([
     supabase.from('company_contacts').select('*').eq('company_id', companyId).order('department', { ascending: true }),
     supabase.from('social_media_accounts').select('*').eq('company_id', companyId).order('platform', { ascending: true }),
@@ -330,8 +348,10 @@ async function fetchWorkspacePack(companyId: string): Promise<WorkspacePack> {
     supabase.from('offers').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
     supabase.from('installed_base_assets').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
     supabase.from('service_contracts').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
+    supabase.from('service_interventions').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
     supabase.from('after_sales_opportunities').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
     supabase.from('spare_parts').select('*').eq('company_id', companyId).order('part_name', { ascending: true }),
+    supabase.from('projects').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
   ]);
 
   const offers = (offersRes.data || []) as any[];
@@ -340,7 +360,9 @@ async function fetchWorkspacePack(companyId: string): Promise<WorkspacePack> {
     ? await supabase.from('offer_items').select('*').in('offer_id', offerIds)
     : { data: [] };
   const offerItemIds = ((offerItemsRes.data || []) as any[]).map((item) => item.id).filter(Boolean);
-  const [costBreakdownsRes, offerScenariosRes, offerScoresRes] = await Promise.all([
+  const projects = (projectsRes.data || []) as any[];
+  const projectIds = projects.map((project) => project.id).filter(Boolean);
+  const [costBreakdownsRes, offerScenariosRes, offerScoresRes, projectPhasesRes, projectMilestonesRes, projectRisksRes, projectGatesRes, projectCostsRes, changeOrdersRes] = await Promise.all([
     offerItemIds.length > 0
       ? supabase.from('cost_breakdowns').select('*').in('offer_item_id', offerItemIds)
       : Promise.resolve({ data: [] }),
@@ -349,6 +371,24 @@ async function fetchWorkspacePack(companyId: string): Promise<WorkspacePack> {
       : Promise.resolve({ data: [] }),
     offerIds.length > 0
       ? supabase.from('offer_scores').select('*').in('offer_id', offerIds)
+      : Promise.resolve({ data: [] }),
+    projectIds.length > 0
+      ? supabase.from('project_phases').select('*').in('project_id', projectIds)
+      : Promise.resolve({ data: [] }),
+    projectIds.length > 0
+      ? supabase.from('project_milestones').select('*').in('project_id', projectIds)
+      : Promise.resolve({ data: [] }),
+    projectIds.length > 0
+      ? supabase.from('project_risks').select('*').in('project_id', projectIds)
+      : Promise.resolve({ data: [] }),
+    projectIds.length > 0
+      ? supabase.from('project_gates').select('*').in('project_id', projectIds)
+      : Promise.resolve({ data: [] }),
+    projectIds.length > 0
+      ? supabase.from('project_costs').select('*').in('project_id', projectIds)
+      : Promise.resolve({ data: [] }),
+    projectIds.length > 0
+      ? supabase.from('change_orders').select('*').in('project_id', projectIds)
       : Promise.resolve({ data: [] }),
   ]);
 
@@ -365,8 +405,16 @@ async function fetchWorkspacePack(companyId: string): Promise<WorkspacePack> {
     offer_scores: (offerScoresRes.data || []) as any[],
     installed_base_assets: (installedAssetsRes.data || []) as any[],
     service_contracts: (serviceContractsRes.data || []) as any[],
+    service_interventions: (serviceInterventionsRes.data || []) as any[],
     after_sales_opportunities: (afterSalesOppsRes.data || []) as any[],
     spare_parts: (sparePartsRes.data || []) as any[],
+    projects,
+    project_phases: (projectPhasesRes.data || []) as any[],
+    project_milestones: (projectMilestonesRes.data || []) as any[],
+    project_risks: (projectRisksRes.data || []) as any[],
+    project_gates: (projectGatesRes.data || []) as any[],
+    project_costs: (projectCostsRes.data || []) as any[],
+    change_orders: (changeOrdersRes.data || []) as any[],
   };
 }
 
@@ -823,6 +871,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
         company_id: id,
       })));
     }
+    if (workspace.service_interventions?.length) {
+      await supabase.from('service_interventions').insert(workspace.service_interventions.map((intervention: any) => ({
+        ...intervention,
+        company_id: id,
+      })));
+    }
     if (workspace.after_sales_opportunities?.length) {
       await supabase.from('after_sales_opportunities').insert(workspace.after_sales_opportunities.map((opportunity: any) => ({
         ...opportunity,
@@ -834,6 +888,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
         ...part,
         company_id: id,
       })));
+    }
+    if (workspace.projects?.length) {
+      await supabase.from('projects').insert(workspace.projects.map((project: any) => ({
+        ...project,
+        company_id: id,
+      })));
+    }
+    if (workspace.project_phases?.length) {
+      await supabase.from('project_phases').insert(workspace.project_phases);
+    }
+    if (workspace.project_milestones?.length) {
+      await supabase.from('project_milestones').insert(workspace.project_milestones);
+    }
+    if (workspace.project_risks?.length) {
+      await supabase.from('project_risks').insert(workspace.project_risks);
+    }
+    if (workspace.project_gates?.length) {
+      await supabase.from('project_gates').insert(workspace.project_gates);
+    }
+    if (workspace.project_costs?.length) {
+      await supabase.from('project_costs').insert(workspace.project_costs);
+    }
+    if (workspace.change_orders?.length) {
+      await supabase.from('change_orders').insert(workspace.change_orders);
     }
     // Also update extended profile fields not handled in createCompany
     await supabase.from('companies').update({
@@ -1143,8 +1221,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       supabase.from('offers').delete().eq('company_id', activeCompanyId),
       supabase.from('installed_base_assets').delete().eq('company_id', activeCompanyId),
       supabase.from('service_contracts').delete().eq('company_id', activeCompanyId),
+      supabase.from('service_interventions').delete().eq('company_id', activeCompanyId),
       supabase.from('after_sales_opportunities').delete().eq('company_id', activeCompanyId),
       supabase.from('spare_parts').delete().eq('company_id', activeCompanyId),
+      supabase.from('projects').delete().eq('company_id', activeCompanyId),
     ]);
     setData(prev => ({
       orders: [],

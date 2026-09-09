@@ -22,6 +22,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { isOpenOpportunityStatus } from '@/lib/salesData';
 import { buildFallbackMarketingContent } from '@/lib/marketingContentFallback';
+import { isWorkspaceSupabaseConfigured, readWorkspaceRows, writeWorkspaceRows } from '@/lib/workspaceStorage';
 
 interface ContentResponse {
   title: string;
@@ -106,6 +107,10 @@ const MarketingContentPage = () => {
 
   const loadSocialAccounts = useCallback(async () => {
     if (!activeCompanyId) return;
+    if (!isWorkspaceSupabaseConfigured) {
+      setSocialAccounts(readWorkspaceRows('social_media_accounts', activeCompanyId));
+      return;
+    }
     const { data: rows } = await supabase.from('social_media_accounts').select('*').eq('company_id', activeCompanyId);
     setSocialAccounts((rows as any[]) || []);
   }, [activeCompanyId]);
@@ -113,6 +118,11 @@ const MarketingContentPage = () => {
   const loadSavedContent = useCallback(async () => {
     if (!activeCompanyId) return;
     setIsLoadingSaved(true);
+    if (!isWorkspaceSupabaseConfigured) {
+      setSavedContents(readWorkspaceRows('marketing_content', activeCompanyId));
+      setIsLoadingSaved(false);
+      return;
+    }
     const { data: rows, error } = await supabase
       .from('marketing_content')
       .select('*')
@@ -337,6 +347,19 @@ const MarketingContentPage = () => {
   };
 
   const handleUpdateStatus = async (id: string, status: string) => {
+    if (!activeCompanyId) return;
+    if (!isWorkspaceSupabaseConfigured) {
+      const updated = readWorkspaceRows<SavedContent>('marketing_content', activeCompanyId).map((content) =>
+        content.id === id
+          ? { ...content, status, published_at: status === 'published' ? new Date().toISOString() : content.published_at, updated_at: new Date().toISOString() }
+          : content
+      );
+      writeWorkspaceRows('marketing_content', activeCompanyId, updated);
+      setSavedContents(updated);
+      if (viewingContent?.id === id) setViewingContent(prev => prev ? { ...prev, status } : null);
+      toast({ title: `Status updated to ${status}` });
+      return;
+    }
     const { error } = await supabase.from('marketing_content').update({
       status, ...(status === 'published' ? { published_at: new Date().toISOString() } : {}),
     } as any).eq('id', id);
@@ -347,6 +370,15 @@ const MarketingContentPage = () => {
   };
 
   const handleDelete = async (id: string) => {
+    if (!activeCompanyId) return;
+    if (!isWorkspaceSupabaseConfigured) {
+      const updated = readWorkspaceRows<SavedContent>('marketing_content', activeCompanyId).filter((content) => content.id !== id);
+      writeWorkspaceRows('marketing_content', activeCompanyId, updated);
+      setSavedContents(updated);
+      if (viewingContent?.id === id) setViewingContent(null);
+      toast({ title: 'Content deleted' });
+      return;
+    }
     const { error } = await supabase.from('marketing_content').delete().eq('id', id);
     if (error) { toast({ title: 'Delete failed', variant: 'destructive' }); return; }
     toast({ title: 'Content deleted' });
