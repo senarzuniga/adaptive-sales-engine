@@ -20,6 +20,7 @@ import {
   Clock, CheckCircle2, XCircle, Lightbulb, Eye
 } from 'lucide-react';
 import { buildFallbackIntelligenceReport } from '@/lib/businessIntelligenceFallback';
+import { isWorkspaceSupabaseConfigured, readWorkspaceRows, writeWorkspaceRows } from '@/lib/workspaceStorage';
 
 type Report = {
   id: string;
@@ -87,13 +88,25 @@ export default function BusinessIntelligencePage() {
     queryKey: ['bi-reports', selectedCompanyId],
     queryFn: async () => {
       if (!selectedCompanyId) return [];
+
+      const localReports = readWorkspaceRows<Report>('business_intelligence_reports', selectedCompanyId)
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      if (!isWorkspaceSupabaseConfigured) {
+        return localReports;
+      }
+
       const { data, error } = await supabase
         .from('business_intelligence_reports')
         .select('*')
         .eq('company_id', selectedCompanyId)
         .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data as Report[];
+
+      if (error) {
+        return localReports;
+      }
+
+      return (data as Report[]).length > 0 ? (data as Report[]) : localReports;
     },
     enabled: !!selectedCompanyId,
   });
@@ -102,7 +115,46 @@ export default function BusinessIntelligencePage() {
     mutationFn: async () => {
       if (!selectedCompanyId || !newCompanyName.trim()) throw new Error('Missing data');
 
+      const fallbackReport = buildFallbackIntelligenceReport({
+        targetName: newCompanyName.trim(),
+        targetWebsite: newCompanyWebsite.trim(),
+        analysisType,
+        subjectType: subjectType as any,
+        analysisBrief,
+        companyContext: workspaceData.companyProfile,
+      });
       const reportType = `${subjectType}:${analysisType}`;
+
+      if (!isWorkspaceSupabaseConfigured) {
+        const now = new Date().toISOString();
+        const localReport: Report = {
+          id: `local-bi-${Date.now()}`,
+          target_company_name: newCompanyName.trim(),
+          target_company_website: newCompanyWebsite.trim(),
+          report_type: reportType,
+          status: 'completed',
+          executive_summary: fallbackReport.executive_summary,
+          company_profile: fallbackReport.company_profile,
+          financial_analysis: fallbackReport.financial_analysis,
+          product_analysis: fallbackReport.product_analysis,
+          market_analysis: fallbackReport.market_analysis,
+          competitive_analysis: fallbackReport.competitive_analysis,
+          strategic_analysis: fallbackReport.strategic_analysis,
+          valuation: fallbackReport.valuation,
+          sale_propensity: fallbackReport.sale_propensity,
+          future_scenarios: fallbackReport.future_scenarios,
+          recommendations: fallbackReport.recommendations,
+          data_sources: fallbackReport.data_sources,
+          hypothesis_log: fallbackReport.hypothesis_log,
+          created_at: now,
+          updated_at: now,
+          company_id: selectedCompanyId,
+        };
+        const nextReports = [localReport, ...readWorkspaceRows<Report>('business_intelligence_reports', selectedCompanyId)];
+        writeWorkspaceRows('business_intelligence_reports', selectedCompanyId, nextReports);
+        return { fallback: true, data: { report: localReport, error: 'Workspace storage used' } };
+      }
+
       const { data: report, error: insertErr } = await supabase
         .from('business_intelligence_reports')
         .insert({
@@ -132,15 +184,6 @@ export default function BusinessIntelligencePage() {
         if (error) throw error;
         return { fallback: false, data };
       } catch (edgeError: any) {
-        const fallbackReport = buildFallbackIntelligenceReport({
-          targetName: newCompanyName.trim(),
-          targetWebsite: newCompanyWebsite.trim(),
-          analysisType,
-          subjectType: subjectType as any,
-          analysisBrief,
-          companyContext: workspaceData.companyProfile,
-        });
-
         const { error: updateErr } = await supabase
           .from('business_intelligence_reports')
           .update({

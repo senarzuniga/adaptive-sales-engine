@@ -1,11 +1,11 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, ReactNode } from 'react';
+﻿import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { buildCommercialIntelligence, harmonizeCommercialRecords } from '@/lib/commercialIntelligence';
 import { dedupeOpportunities, dedupeOrders, normalizeOpportunityStatus, parseFlexibleNumber } from '@/lib/salesData';
 import { inferProductCategory, parseProductComments, serializeProductComments, type ProductCategory } from '@/lib/productCatalog';
 
-// ─── Offline / localStorage mode when Supabase is not configured ───
+// â”€â”€â”€ Offline / localStorage mode when Supabase is not configured â”€â”€â”€
 const isSupabaseConfigured =
   !!import.meta.env.VITE_SUPABASE_URL &&
   import.meta.env.VITE_SUPABASE_URL !== 'https://placeholder.supabase.co';
@@ -93,7 +93,7 @@ const writeLocalWorkspacePack = (companyId: string, workspace: WorkspacePack = {
   });
 };
 
-// ─── Types ───
+// â”€â”€â”€ Types â”€â”€â”€
 export interface CompanyProfile {
   id?: string;
   company_name: string;
@@ -258,7 +258,7 @@ export interface UploadLogEntry {
   timestamp: string;
 }
 
-// ─── DB ↔ App mappers ───
+// â”€â”€â”€ DB â†” App mappers â”€â”€â”€
 function dbToOrder(r: any): OrderRecord {
   return {
     id: r.id, truthSource: r.truth_source || 'sales_document', poDate: r.po_date || '', firstOfferDate: r.first_offer_date || '',
@@ -418,7 +418,7 @@ async function fetchWorkspacePack(companyId: string): Promise<WorkspacePack> {
   };
 }
 
-// ─── State ───
+// â”€â”€â”€ State â”€â”€â”€
 interface DataState {
   orders: OrderRecord[];
   opportunities: OpportunityRecord[];
@@ -512,7 +512,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     strategy: data.strategy,
   }), [data.companyProfile, data.orders, data.opportunities, data.products, data.strategy]);
 
-  // ─── Load companies list ───
+  // â”€â”€â”€ Load companies list â”€â”€â”€
   const loadCompanies = useCallback(async () => {
     if (!isSupabaseConfigured) {
       setCompanies(LS.get<CompanyProfile[]>('acs_companies', []));
@@ -537,7 +537,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // ─── Load company data ───
+  // â”€â”€â”€ Load company data â”€â”€â”€
   const loadCompanyData = useCallback(async (companyId: string) => {
     setLoading(true);
     try {
@@ -575,17 +575,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
         opportunities: dedupeOpportunities((oppsRes.data || []).map(dbToOpportunity)),
         products: (prodsRes.data || []).map(dbToProduct),
         strategy: (stratRes.data || []).map(dbToStrategy),
-        leads: [],
-        contacts: [],
+        leads: LS.get(`acs_leads_${companyId}`, []),
+        contacts: LS.get(`acs_contacts_${companyId}`, []),
         tasks: (tasksRes.data || []).map(dbToTask),
         uploadLog: (logRes.data || []).map(r => ({
           id: r.id, fileName: r.file_name, detectedType: r.detected_type,
           rowCount: r.row_count || 0, status: r.status as 'validated' | 'error',
           errors: (r.errors as string[]) || [], timestamp: r.created_at,
         })),
-        entityRegistries: emptyRegistries,
-        qualityReports: [],
-        enrichedProfiles: [],
+        entityRegistries: LS.get(`acs_registries_${companyId}`, emptyRegistries),
+        qualityReports: LS.get(`acs_quality_${companyId}`, []),
+        enrichedProfiles: LS.get(`acs_enriched_${companyId}`, []),
         companyProfile: compRes.data ? {
           id: compRes.data.id, company_name: compRes.data.company_name,
           industry: compRes.data.industry || '', sub_sector: compRes.data.sub_sector || '',
@@ -607,7 +607,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // ─── Set active company ───
+  // â”€â”€â”€ Set active company â”€â”€â”€
   const setActiveCompany = useCallback((id: string | null) => {
     setActiveCompanyIdState(id);
     if (id) {
@@ -625,14 +625,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
         companyProfile: emptyProfile,
         uploadLog: [],
         tasks: [],
-        entityRegistries: emptyRegistries,
-        qualityReports: [],
-        enrichedProfiles: [],
+        entityRegistries: LS.get(`acs_registries_${companyId}`, emptyRegistries),
+        qualityReports: LS.get(`acs_quality_${companyId}`, []),
+        enrichedProfiles: LS.get(`acs_enriched_${companyId}`, []),
       });
     }
   }, [loadCompanyData]);
 
-  // ─── Create company ───
+  // â”€â”€â”€ Create company â”€â”€â”€
   const createCompany = useCallback(async (name: string, websiteUrl?: string, linkedinUrl?: string, businessDescription?: string): Promise<string | null> => {
     if (!isSupabaseConfigured) {
       const newId = `local_${Date.now()}`;
@@ -656,7 +656,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return row.id;
   }, [loadCompanies]);
 
-  // ─── Trigger AI enrichment ───
+  // â”€â”€â”€ Trigger AI enrichment â”€â”€â”€
   const triggerEnrichment = useCallback(async (companyId: string) => {
     try {
       await supabase.from('companies').update({ enrichment_status: 'enriching' }).eq('id', companyId);
@@ -672,13 +672,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, [loadCompanyData, loadCompanies]);
 
-  // ─── Delete company ───
+  // â”€â”€â”€ Delete company â”€â”€â”€
   const deleteCompany = useCallback(async (id: string) => {
+    getLocalCompanyDataKeys(id).forEach((storageKey) => LS.del(storageKey));
+    writeLocalWorkspacePack(id, {});
     if (!isSupabaseConfigured) {
       const existing = LS.get<CompanyProfile[]>('acs_companies', []);
       LS.set('acs_companies', existing.filter(c => c.id !== id));
-      getLocalCompanyDataKeys(id).forEach((storageKey) => LS.del(storageKey));
-      writeLocalWorkspacePack(id, {});
       if (activeCompanyId === id) setActiveCompany(null);
       await loadCompanies();
       return;
@@ -688,7 +688,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await loadCompanies();
   }, [activeCompanyId, setActiveCompany, loadCompanies]);
 
-  // ─── Export / Import ───
+  // â”€â”€â”€ Export / Import â”€â”€â”€
   const exportCompanyPack = useCallback(async (): Promise<string> => {
     const workspace = activeCompanyId ? await fetchWorkspacePack(activeCompanyId) : {};
     return JSON.stringify({
@@ -715,6 +715,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       pack.companyProfile?.website_url, pack.companyProfile?.linkedin_url,
       pack.companyProfile?.business_description);
     if (!id) return;
+
+    if (pack.leads?.length) LS.set(`acs_leads_${id}`, pack.leads);
+    if (pack.contacts?.length) LS.set(`acs_contacts_${id}`, pack.contacts);
+    if (pack.entityRegistries) LS.set(`acs_registries_${id}`, pack.entityRegistries);
+    if (pack.qualityReports?.length) LS.set(`acs_quality_${id}`, pack.qualityReports);
+    if (pack.enrichedProfiles?.length) LS.set(`acs_enriched_${id}`, pack.enrichedProfiles);
 
     if (!isSupabaseConfigured) {
       // Merge all profile fields into the newly created local company
@@ -929,7 +935,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     toast({ title: 'Company pack imported successfully' });
   }, [createCompany, loadCompanies, setActiveCompany]);
 
-  // ─── CRUD operations (persist to Supabase) ───
+  // â”€â”€â”€ CRUD operations (persist to Supabase) â”€â”€â”€
   const setOrders = useCallback(async (records: OrderRecord[]) => {
     if (!activeCompanyId) return;
     const harmonized = harmonizeCommercialRecords({ orders: records, opportunities: data.opportunities });
@@ -1041,22 +1047,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const setLeads = useCallback(async (records: LeadRecord[]) => {
     if (!activeCompanyId) return;
-    if (!isSupabaseConfigured) {
-      LS.set(`acs_leads_${activeCompanyId}`, records);
-    }
+    LS.set(`acs_leads_${activeCompanyId}`, records);
     setData(prev => ({ ...prev, leads: records }));
   }, [activeCompanyId]);
 
   const setContacts = useCallback(async (records: ContactRecord[]) => {
     if (!activeCompanyId) return;
-    if (!isSupabaseConfigured) {
-      LS.set(`acs_contacts_${activeCompanyId}`, records);
-    }
+    LS.set(`acs_contacts_${activeCompanyId}`, records);
     setData(prev => ({ ...prev, contacts: records }));
   }, [activeCompanyId]);
 
   const setDataManagementResults = useCallback((registries: NormalizedEntityRegistries, qualityReports: DatasetQualityReport[]) => {
-    if (activeCompanyId && !isSupabaseConfigured) {
+    if (activeCompanyId) {
       LS.set(`acs_registries_${activeCompanyId}`, registries);
       LS.set(`acs_quality_${activeCompanyId}`, qualityReports);
     }
@@ -1064,7 +1066,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [activeCompanyId]);
 
   const setEnrichedProfiles = useCallback((profiles: EnrichedCompanyProfile[]) => {
-    if (activeCompanyId && !isSupabaseConfigured) {
+    if (activeCompanyId) {
       LS.set(`acs_enriched_${activeCompanyId}`, profiles);
     }
     setData(prev => ({ ...prev, enrichedProfiles: profiles }));
@@ -1166,16 +1168,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const clearDataset = useCallback(async (key: 'orders' | 'opportunities' | 'products' | 'strategy' | 'leads' | 'contacts') => {
     if (!activeCompanyId) return;
+    const localKeys: Record<typeof key, string> = {
+      orders: `acs_orders_${activeCompanyId}`,
+      opportunities: `acs_opps_${activeCompanyId}`,
+      products: `acs_products_${activeCompanyId}`,
+      strategy: `acs_strategy_${activeCompanyId}`,
+      leads: `acs_leads_${activeCompanyId}`,
+      contacts: `acs_contacts_${activeCompanyId}`,
+    };
+    LS.del(localKeys[key]);
     if (!isSupabaseConfigured) {
-      const localKeys: Record<typeof key, string> = {
-        orders: `acs_orders_${activeCompanyId}`,
-        opportunities: `acs_opps_${activeCompanyId}`,
-        products: `acs_products_${activeCompanyId}`,
-        strategy: `acs_strategy_${activeCompanyId}`,
-        leads: `acs_leads_${activeCompanyId}`,
-        contacts: `acs_contacts_${activeCompanyId}`,
-      };
-      LS.del(localKeys[key]);
       setData(prev => ({ ...prev, [key]: [] }));
       return;
     }
@@ -1187,9 +1189,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const clearAll = useCallback(async () => {
     if (!activeCompanyId) return;
+    getLocalCompanyDataKeys(activeCompanyId).forEach((storageKey) => LS.del(storageKey));
+    writeLocalWorkspacePack(activeCompanyId, {});
     if (!isSupabaseConfigured) {
-      getLocalCompanyDataKeys(activeCompanyId).forEach((storageKey) => LS.del(storageKey));
-      writeLocalWorkspacePack(activeCompanyId, {});
       setData(prev => ({
         orders: [],
         opportunities: [],
@@ -1242,7 +1244,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }));
   }, [activeCompanyId]);
 
-  // ─── Initial load ───
+  // â”€â”€â”€ Initial load â”€â”€â”€
   useEffect(() => {
     loadCompanies().then(() => {
       const saved = localStorage.getItem('acs_active_company');
@@ -1277,3 +1279,5 @@ export function useData() {
   if (!ctx) throw new Error('useData must be used within DataProvider');
   return ctx;
 }
+
+

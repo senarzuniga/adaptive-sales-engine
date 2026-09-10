@@ -35,6 +35,8 @@ import {
 import { Layers, Play, Plus, Rocket, Save, Target, Timer, Wand2 } from 'lucide-react';
 import { isWorkspaceSupabaseConfigured, readWorkspaceRows } from '@/lib/workspaceStorage';
 
+const getPathLabel = (value: string) => value.split(/[\\/]/).pop() || value;
+
 const EVENT_OPTIONS = [
   'new_signal',
   'lead_created',
@@ -84,9 +86,15 @@ interface OfferPipelineEntry {
   next_action: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
   source: string;
+  documents: string[];
+  site: string;
+  country: string;
+  kam: string;
+  project_folder: string;
+  contract_value: number;
 }
 
-const pipelineDemoOffers: OfferPipelineEntry[] = [
+const pipelineDemoOffers: Array<Record<string, any>> = [
   {
     id: 'demo-ingecart-1',
     offer_number: 'ING-2026-042',
@@ -193,6 +201,7 @@ const normalizeOfferPipelineEntry = (offer: Record<string, any>): OfferPipelineE
   const title = String(offer.title || offer.offer_number || 'Unnamed offer');
   const customerName = String(offer.customer_name || offer.customerName || 'Customer pending');
   const companyName = String(offer.company_name || offer.companyName || 'Portfolio');
+  const documents = Array.isArray(offer.document_paths) ? offer.document_paths.map(String).filter(Boolean) : [];
 
   return {
     id: String(offer.id || `${offer.offer_number || customerName}-${Math.random().toString(16).slice(2)}`),
@@ -204,20 +213,28 @@ const normalizeOfferPipelineEntry = (offer: Record<string, any>): OfferPipelineE
     bucket,
     score: Number.isFinite(score) ? score : 0,
     last_update: offer.updated_at ? new Date(offer.updated_at).toLocaleDateString() : 'recently',
-    context:
+    context: String(offer.context || (
       bucket === 'live'
         ? 'Open commercial opportunity requiring active follow-up and decision support.'
         : bucket === 'sold'
           ? 'Offer has been won and requires execution handoff to project management.'
-          : 'Decision paused or missed; recovery and learning actions should be documented.',
-    next_action:
+          : 'Decision paused or missed; recovery and learning actions should be documented.'
+    )),
+    next_action: String(offer.next_action || (
       bucket === 'live'
         ? 'Confirm next meeting, review technical constraints, and push the offer to a decision milestone.'
         : bucket === 'sold'
           ? 'Start the project activation checklist and confirm full delivery ownership.'
-          : 'Reassess commercial conditions and decide whether to recover, archive, or convert the opportunity.',
+          : 'Reassess commercial conditions and decide whether to recover, archive, or convert the opportunity.'
+    )),
     priority: score >= 90 ? 'critical' : score >= 75 ? 'high' : score >= 60 ? 'medium' : 'low',
-    source: offer.source || 'Commercial pipeline',
+    source: String(offer.source || 'Commercial pipeline'),
+    documents,
+    site: String(offer.site || ''),
+    country: String(offer.country || ''),
+    kam: String(offer.kam || ''),
+    project_folder: String(offer.project_folder || ''),
+    contract_value: Number(offer.contract_value || 0),
   };
 };
 
@@ -265,13 +282,13 @@ const CommercialActionsRepositoryPage = () => {
       setOfferPipelineLoading(true);
       try {
         if (!activeCompanyId) {
-          if (isMounted) setOfferPipeline(pipelineDemoOffers);
+          if (isMounted) setOfferPipeline(pipelineDemoOffers.map(normalizeOfferPipelineEntry).sort((a, b) => b.score - a.score));
           return;
         }
 
         if (!isWorkspaceSupabaseConfigured) {
           const localOffers = readWorkspaceRows<Record<string, any>>('offers', activeCompanyId);
-          const normalized = (localOffers.length > 0 ? localOffers : pipelineDemoOffers).map(normalizeOfferPipelineEntry);
+          const normalized = (localOffers.length > 0 ? localOffers : pipelineDemoOffers).map(normalizeOfferPipelineEntry).sort((a, b) => b.score - a.score);
           if (isMounted) setOfferPipeline(normalized);
           return;
         }
@@ -287,14 +304,14 @@ const CommercialActionsRepositoryPage = () => {
           throw error;
         }
 
-        const normalized = (data && data.length > 0 ? data : pipelineDemoOffers).map(normalizeOfferPipelineEntry);
+        const normalized = (data && data.length > 0 ? data : pipelineDemoOffers).map(normalizeOfferPipelineEntry).sort((a, b) => b.score - a.score);
         if (isMounted) {
           setOfferPipeline(normalized);
         }
       } catch {
         const localOffers = readWorkspaceRows<Record<string, any>>('offers', activeCompanyId);
         if (isMounted) {
-          setOfferPipeline((localOffers.length > 0 ? localOffers : pipelineDemoOffers).map(normalizeOfferPipelineEntry));
+          setOfferPipeline((localOffers.length > 0 ? localOffers : pipelineDemoOffers).map(normalizeOfferPipelineEntry).sort((a, b) => b.score - a.score));
         }
       } finally {
         if (isMounted) {
@@ -454,6 +471,7 @@ const CommercialActionsRepositoryPage = () => {
         <TabsList>
           <TabsTrigger value="repository">Repository</TabsTrigger>
           <TabsTrigger value="pipeline">Pipeline View</TabsTrigger>
+          <TabsTrigger value="offers">Offers</TabsTrigger>
           <TabsTrigger value="simulate">Trigger Simulation</TabsTrigger>
           <TabsTrigger value="capacity">Capacity Panel</TabsTrigger>
         </TabsList>
@@ -683,6 +701,77 @@ const CommercialActionsRepositoryPage = () => {
               })}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="offers" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Offer register and source documents</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {offerPipeline.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No offers loaded yet.</p>
+              ) : offerPipeline.map((offer) => (
+                <div key={offer.id} className="border rounded-lg p-3 space-y-2">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{offer.title}</p>
+                      <p className="text-xs text-muted-foreground">{offer.customer_name} - {offer.offer_number} - {offer.status}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant={offer.bucket === 'sold' ? 'outline' : offer.bucket === 'live' ? 'default' : 'secondary'}>{offer.bucket}</Badge>
+                      <Badge variant={offer.score >= 90 ? 'destructive' : offer.score >= 75 ? 'default' : 'secondary'}>{offer.score}</Badge>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+                    {offer.kam ? <span className="border rounded-full px-2 py-0.5">KAM: {offer.kam}</span> : null}
+                    {offer.site ? <span className="border rounded-full px-2 py-0.5">Site: {offer.site}</span> : null}
+                    {offer.country ? <span className="border rounded-full px-2 py-0.5">{offer.country}</span> : null}
+                    {offer.contract_value > 0 ? <span className="border rounded-full px-2 py-0.5">EUR {offer.contract_value.toLocaleString()}</span> : null}
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">{offer.context}</p>
+                  <p className="text-xs font-medium">Next action: {offer.next_action}</p>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium">Linked documents</p>
+                    {offer.documents.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">No linked offer files found in the local evidence folders.</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {offer.documents.map((documentPath) => (
+                          <span key={documentPath} className="rounded-full border px-2 py-1 text-[10px] text-muted-foreground" title={documentPath}>
+                            {getPathLabel(documentPath)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {offer.project_folder ? (
+                      <p className="text-[10px] text-muted-foreground">Project folder: {offer.project_folder}</p>
+                    ) : null}
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        if (!activeCompanyId) {
+                          toast({ title: 'No company selected', description: 'Select a company to create the offer task.' });
+                          return;
+                        }
+                        addTask(buildPipelineTask(offer));
+                        toast({ title: 'Offer task created', description: `${offer.customer_name} moved into the action queue.` });
+                      }}
+                    >
+                      Create task
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="simulate" className="space-y-4">
