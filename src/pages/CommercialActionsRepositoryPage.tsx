@@ -258,8 +258,34 @@ const buildPipelineTask = (offer: OfferPipelineEntry): MonitoringTask => ({
   },
 });
 
+const sortOfferPipelineEntries = (offers: Array<Record<string, any>>) => offers.map(normalizeOfferPipelineEntry).sort((a, b) => b.score - a.score);
+
+const mergeOfferSources = (...sources: Array<Array<Record<string, any>> | undefined>) => {
+  const seen = new Set<string>();
+  return sources
+    .flatMap((source) => source || [])
+    .filter((offer) => {
+      const identity = String(offer.id || `${offer.offer_number || offer.offerNumber || 'offer'}|${offer.customer_name || offer.customerName || ''}|${offer.title || ''}`);
+      if (seen.has(identity)) return false;
+      seen.add(identity);
+      return true;
+    });
+};
+
+const loadBundledCompanyOffers = async (companyName: string) => {
+  if (!companyName.toLowerCase().includes('ingecart')) return [];
+  try {
+    const response = await fetch('/company-packs/Ingecart/ingecart_pack.json');
+    if (!response.ok) return [];
+    const pack = await response.json();
+    return Array.isArray(pack?.workspace?.offers) ? pack.workspace.offers : [];
+  } catch {
+    return [];
+  }
+};
+
 const CommercialActionsRepositoryPage = () => {
-  const { addTask, activeCompanyId } = useData();
+  const { addTask, activeCompanyId, data } = useData();
   const [repository, setRepository] = useState<ActionsRepository>(() => loadRepositoryFromStorage());
   const [selectedStage, setSelectedStage] = useState(repository.lifecycle_stages[0]?.stage || 'PIPELINE_EXECUTION');
   const [workingHours, setWorkingHours] = useState(40);
@@ -282,36 +308,37 @@ const CommercialActionsRepositoryPage = () => {
       setOfferPipelineLoading(true);
       try {
         if (!activeCompanyId) {
-          if (isMounted) setOfferPipeline(pipelineDemoOffers.map(normalizeOfferPipelineEntry).sort((a, b) => b.score - a.score));
+          if (isMounted) setOfferPipeline(sortOfferPipelineEntries(pipelineDemoOffers));
           return;
         }
+
+        const localOffers = readWorkspaceRows<Record<string, any>>('offers', activeCompanyId);
+        const bundledOffers = await loadBundledCompanyOffers(String(data.companyProfile.company_name || ''));
 
         if (!isWorkspaceSupabaseConfigured) {
-          const localOffers = readWorkspaceRows<Record<string, any>>('offers', activeCompanyId);
-          const normalized = (localOffers.length > 0 ? localOffers : pipelineDemoOffers).map(normalizeOfferPipelineEntry).sort((a, b) => b.score - a.score);
-          if (isMounted) setOfferPipeline(normalized);
+          if (isMounted) setOfferPipeline(sortOfferPipelineEntries(mergeOfferSources(localOffers, bundledOffers)));
           return;
         }
 
-        const { data, error } = await supabase
+        const { data: remoteOffers, error } = await supabase
           .from('offers')
           .select('*')
           .eq('company_id', activeCompanyId)
           .order('updated_at', { ascending: false })
-          .limit(100);
+          .limit(200);
 
         if (error) {
           throw error;
         }
 
-        const normalized = (data && data.length > 0 ? data : pipelineDemoOffers).map(normalizeOfferPipelineEntry).sort((a, b) => b.score - a.score);
         if (isMounted) {
-          setOfferPipeline(normalized);
+          setOfferPipeline(sortOfferPipelineEntries(mergeOfferSources(remoteOffers || [], localOffers, bundledOffers)));
         }
       } catch {
         const localOffers = readWorkspaceRows<Record<string, any>>('offers', activeCompanyId);
+        const bundledOffers = await loadBundledCompanyOffers(String(data.companyProfile.company_name || ''));
         if (isMounted) {
-          setOfferPipeline((localOffers.length > 0 ? localOffers : pipelineDemoOffers).map(normalizeOfferPipelineEntry).sort((a, b) => b.score - a.score));
+          setOfferPipeline(sortOfferPipelineEntries(mergeOfferSources(localOffers, bundledOffers)));
         }
       } finally {
         if (isMounted) {
@@ -324,7 +351,7 @@ const CommercialActionsRepositoryPage = () => {
     return () => {
       isMounted = false;
     };
-  }, [activeCompanyId]);
+  }, [activeCompanyId, data.companyProfile.company_name]);
 
   const allActions = useMemo(
     () =>

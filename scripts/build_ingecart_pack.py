@@ -31,6 +31,31 @@ NS = uuid.uuid5(uuid.NAMESPACE_DNS, 'adaptive-sales-engine.ingecart')
 NOW = datetime.now()
 MAX_EXPO_COMPANIES = 220
 MAX_EXPO_CONTACTS_PER_COMPANY = 2
+OFFER_DOCUMENT_SUFFIXES = {'.pdf', '.doc', '.docx', '.dotm', '.xlsx', '.xlsm', '.xls'}
+OFFER_DOCUMENT_ROOTS = [OFFERS_SENT, OFFERS_BOOK.parent, POSTVENTA, PROJECTS_ROOT]
+GENERIC_PROJECT_FOLDER_NAMES = {'AMR', 'Bloques', 'Compilacion de Fotos y Catalogos Comerciales', 'Layout Crispo', 'LAYOUTS', 'Nueva carpeta'}
+ACCOUNT_FOLDER_ALIASES = {
+    'dssmith': 'DS SMITH',
+    'font': 'Font',
+    'ip': 'IP',
+    'pcm': 'PCM',
+    'pmp': 'PMP',
+    'mtorres': 'Mtorres',
+    'cascades': 'Cascades',
+    'presidentcontainer': 'President Container',
+    'sternerglobal': 'Sterner Global',
+    'paige': 'Paige',
+    'empacar': 'EMPACAR',
+    'saeco': 'Saeco',
+    'saica': 'SAICA',
+    'copack': 'COPACK',
+    'kellybox': 'KELLY BOX',
+    'pacificsouth': 'Pacific South West',
+    'weboffsetlinesmike': 'WEB OFFSET LINES MIKE',
+    'sigmag': 'Sigmaq Guatemala',
+    'sigmaq': 'Sigmaq Guatemala',
+    'linetex': 'Sigmaq Guatemala',
+}
 
 def uid(*parts: Any) -> str:
     return str(uuid.uuid5(NS, '::'.join(str(p) for p in parts)))
@@ -56,6 +81,18 @@ def tokenize(value: Any):
 
 def maybe_date(value: Any) -> str:
     return clean(value)
+
+def canonical_offer_number(value: Any) -> str:
+    text = clean(value)
+    if not text:
+        return ''
+    match = re.search(r'(?:#?OFF|OFF\s*#?)\s*[- ]?(\d{4})[- ]?([A-Z]?\d{2,4})', text, re.I)
+    if match:
+        return f"OFF-{match.group(1)}-{match.group(2).upper()}"
+    match = re.search(r'IC[-_ ]?[A-Z]{2,3}[-_ ]?\d{1,2}\.\d{2}', text, re.I)
+    if match:
+        return re.sub(r'\s+', '', match.group(0).upper()).replace('_', '-').replace(' ', '-')
+    return ''
 
 def to_number(value: Any) -> float:
     if value is None or value == '':
@@ -169,9 +206,134 @@ def build_customer_context_map():
     return context_map
 
 def build_offer_document_list():
-    if not OFFERS_SENT.exists():
-        return []
-    return sorted(path for path in OFFERS_SENT.rglob('*') if path.is_file() and not path.name.startswith('~$'))
+    files = {}
+    for root in OFFER_DOCUMENT_ROOTS:
+        if not root.exists():
+            continue
+        for path in root.rglob('*'):
+            if not path.is_file() or path.name.startswith('~$') or path.suffix.lower() not in OFFER_DOCUMENT_SUFFIXES:
+                continue
+            normalized_name = normalize_key(path.name)
+            if not canonical_offer_number(path.name) and not any(token in normalized_name for token in ('oferta', 'offer', 'proposal', 'quotation', 'cotizacion')):
+                continue
+            files[str(path)] = path
+    return sorted(files.values(), key=lambda path: str(path).lower())
+
+def build_offer_account_candidates(context_map):
+    candidates = {normalize_key(entry['name']): entry['name'] for entry in context_map.values() if entry.get('name')}
+    for alias, canonical in ACCOUNT_FOLDER_ALIASES.items():
+        candidates.setdefault(alias, canonical)
+    generic_project_folders = {normalize_key(name) for name in GENERIC_PROJECT_FOLDER_NAMES}
+    if PROJECTS_ROOT.exists():
+        for path in PROJECTS_ROOT.iterdir():
+            if not path.is_dir() or normalize_key(path.name) in generic_project_folders:
+                continue
+            candidates.setdefault(normalize_key(path.name), clean(path.name))
+    return {key: value for key, value in candidates.items() if key}
+
+def infer_customer_from_document(path: Path, account_candidates):
+    segments = [path.stem] + [ancestor.name for ancestor in list(path.parents)[:3]]
+    normalized_segments = [normalize_key(segment) for segment in segments if clean(segment)]
+    for segment in normalized_segments:
+        if segment in ACCOUNT_FOLDER_ALIASES:
+            return ACCOUNT_FOLDER_ALIASES[segment]
+    document_text = ' '.join(segments)
+    normalized_document = normalize_key(document_text)
+    document_tokens = tokenize(document_text)
+    best_score, best_name = 0, ''
+    for candidate_key, candidate_name in account_candidates.items():
+        score = 0
+        candidate_tokens = tokenize(candidate_name)
+        if candidate_key and len(candidate_key) > 2 and candidate_key in normalized_document:
+            score += 8
+        score += len(candidate_tokens & document_tokens) * 4
+        if score > best_score:
+            best_score, best_name = score, candidate_name
+    return best_name if best_score > 0 else ''
+
+def infer_country_from_offer_context(customer_name: str, concept: str, path: Path) -> str:
+    text = normalize_key(f'{customer_name} {concept} {path}')
+    if any(token in text for token in ('guatemala', 'sigmaq', 'sigmag', 'linetex')):
+        return 'GUATEMALA'
+    if 'mexico' in text:
+        return 'MEXICO'
+    if any(token in text for token in ('usa', 'waterloo', 'newjersey', 'presidentcontainer', 'pacificsouth', 'sterner', 'paige', 'mharris', 'smccorporation')):
+        return 'USA'
+    if any(token in text for token in ('spain', 'font', 'dssmith', 'mtorres', 'saeco', 'saica', 'copack', 'empacar', 'pcm', 'gopfert')):
+        return 'SPAIN'
+    return 'International'
+
+def clean_offer_title(raw_title: str, offer_number: str, customer_name: str) -> str:
+    title = re.sub(r'(?i)(?:#?OFF|OFF\s*#?)\s*[- ]?\d{4}[- ]?[A-Z]?\d{2,4}', ' ', raw_title)
+    title = re.sub(r'(?i)IC[-_ ]?[A-Z]{2,3}[-_ ]?\d{1,2}\.\d{2}', ' ', title)
+    title = re.sub(r'(?i)\b(?:proposal|commercial offer|offer|oferta|quotation|quote|offerta|executive summary|informe)\b', ' ', title)
+    title = re.sub(r'[_#]+', ' ', title)
+    title = re.sub(r'\s+', ' ', title).strip(' -')
+    if customer_name and normalize_key(customer_name) and normalize_key(customer_name) in normalize_key(title):
+        return title
+    return title or offer_number
+
+def build_inferred_offer_records(existing_offer_numbers, context_map, offer_documents):
+    account_candidates = build_offer_account_candidates(context_map)
+    grouped_documents = {}
+    for path in offer_documents:
+        offer_number = canonical_offer_number(path.name)
+        if not offer_number or offer_number in existing_offer_numbers:
+            continue
+        customer_name = infer_customer_from_document(path, account_candidates)
+        group_key = (offer_number, customer_name or 'Unknown customer')
+        grouped_documents.setdefault(group_key, []).append(path)
+
+    merged_groups = {}
+    for (offer_number, customer_name), paths in grouped_documents.items():
+        merged_groups.setdefault(offer_number, {}).setdefault(customer_name, []).extend(paths)
+
+    inferred = []
+    for offer_number, customer_groups in merged_groups.items():
+        known_customers = [name for name in customer_groups if name != 'Unknown customer']
+        if known_customers and 'Unknown customer' in customer_groups:
+            best_customer = max(known_customers, key=lambda name: len(customer_groups[name]))
+            customer_groups[best_customer].extend(customer_groups.pop('Unknown customer'))
+        for customer_name, paths in sorted(customer_groups.items(), key=lambda item: item[0]):
+            unique_paths = list({str(path): path for path in paths}.values())
+            primary_path = sorted(unique_paths, key=lambda item: (0 if item.suffix.lower() in {'.docx', '.pdf'} else 1, len(item.stem), str(item).lower()))[0]
+            concept = clean_offer_title(primary_path.stem, offer_number, customer_name)
+            if not concept:
+                concept = offer_number
+            meta = context_map.get(normalize_key(customer_name), account_metadata(customer_name or 'Unknown customer', concept))
+            country = infer_country_from_offer_context(customer_name, concept, primary_path)
+            region = region_from_country(country)
+            project_folder = find_project_folder(customer_name or concept)
+            created_at = datetime.fromtimestamp(primary_path.stat().st_mtime).strftime('%Y-%m-%d')
+            score = 92 if offer_number.startswith('OFF-2026-S') or offer_number.startswith('OFF-2026-R') else 88
+            context = f'Document-backed Ingecart offer recovered from local evidence files ({len(unique_paths)} matched documents). {meta["focus"]}'.strip()
+            inferred.append({
+                'id': uid('offer-document', offer_number, customer_name or concept),
+                'offer_number': offer_number,
+                'title': f"{customer_name or 'Unknown customer'} - {concept}",
+                'customer_name': customer_name or 'Unknown customer',
+                'company_name': 'Ingecart 2018 SL',
+                'project_description': concept,
+                'currency': 'EUR',
+                'status': 'follow_up',
+                'contract_value': 0,
+                'score': score,
+                'global_score': score,
+                'probability': 80,
+                'context': context,
+                'next_action': 'Validate the customer status, confirm the latest commercial interaction, and keep the offer under active follow-up until decision or conversion.',
+                'source': str(primary_path.parent),
+                'submitted_at': created_at,
+                'decision_date': None,
+                'updated_at': f'{created_at}T09:00:00',
+                'site': clean(primary_path.parent.name) if primary_path.parent not in OFFER_DOCUMENT_ROOTS else '',
+                'country': country,
+                'region': region,
+                'kam': 'Ingecart',
+                'document_paths': [str(path) for path in sorted(unique_paths, key=lambda item: str(item).lower())[:8]],
+                'project_folder': project_folder,
+            })
+    return inferred
 
 def find_project_folder(customer_name: str):
     if not PROJECTS_ROOT.exists():
@@ -189,13 +351,17 @@ def find_project_folder(customer_name: str):
 
 def find_offer_documents(offer_number: str, customer_name: str, concept: str, files):
     normalized_offer = normalize_key(offer_number)
+    canonical_offer = canonical_offer_number(offer_number)
     customer_tokens = tokenize(customer_name)
     concept_tokens = tokenize(concept)
     matches = []
     for path in files:
         score = 0
         file_key = normalize_key(path.name)
-        if normalized_offer and normalized_offer in file_key:
+        file_offer = canonical_offer_number(path.name)
+        if canonical_offer and file_offer == canonical_offer:
+            score += 14
+        elif normalized_offer and normalized_offer in file_key:
             score += 10
         file_tokens = tokenize(path.name)
         score += len(customer_tokens & file_tokens) * 3
@@ -203,7 +369,7 @@ def find_offer_documents(offer_number: str, customer_name: str, concept: str, fi
         if score > 0:
             matches.append((score, path))
     matches.sort(key=lambda item: (-item[0], item[1].name.lower()))
-    return [str(path) for _, path in matches[:6]]
+    return [str(path) for _, path in matches[:8]]
 
 def build_project_suite(offer, ordinal):
     project_id = uid('project', offer['id'])
@@ -255,11 +421,22 @@ def parse_offers(context_map, offer_documents):
     wb = load_workbook(OFFERS_BOOK, data_only=True); ws = wb[wb.sheetnames[0]]
     offers, orders, opportunities, tasks = [], [], [], []
     for row in ws.iter_rows(min_row=3, values_only=True):
-        offer_number, customer, site, concept = clean(row[1]), clean(row[2]), clean(row[3]), clean(row[7]); value = to_number(row[8]); probability = to_number(row[9]); probability = probability * 100 if 0 < probability <= 1 else probability
+        raw_offer_number = clean(row[1])
+        customer, site, concept = clean(row[2]), clean(row[3]), clean(row[7])
+        value = to_number(row[8])
+        probability = to_number(row[9])
+        probability = probability * 100 if 0 < probability <= 1 else probability
         raw_state, final_decision, motive = clean(row[10]) or clean(row[11]), maybe_date(row[11]), clean(row[12])
-        if not any([offer_number, customer, concept]) or value <= 0 or concept.lower().startswith('total ofertas'):
+        if not any([raw_offer_number, customer, concept]) or value <= 0 or concept.lower().startswith('total ofertas'):
             continue
-        status = status_from_cell(raw_state or final_decision or motive); submitted = maybe_date(row[6]) or NOW.strftime('%Y-%m-%d'); country = clean(row[4]) or 'International'; region = region_from_country(country); customer_name = customer or 'Unnamed customer'; title = f"{customer_name} - {concept}"; offer_id = uid('offer', offer_number or title)
+        offer_number = canonical_offer_number(raw_offer_number) or f"OFF-LOCAL-{len(offers) + 1:03d}"
+        status = status_from_cell(raw_state or final_decision or motive)
+        submitted = maybe_date(row[6]) or NOW.strftime('%Y-%m-%d')
+        country = clean(row[4]) or 'International'
+        region = region_from_country(country)
+        customer_name = customer or 'Unnamed customer'
+        title = f"{customer_name} - {concept}"
+        offer_id = uid('offer', offer_number or title)
         score = min(98, round((probability or 20) * 0.55 + min(value / 150000, 30) + (18 if status == 'follow_up' else 10 if status == 'won' else 4)))
         meta = context_map.get(normalize_key(customer_name), account_metadata(customer_name))
         context = motive or ('Offer sold and pending project execution handoff.' if status == 'won' else 'Open opportunity that requires commercial follow-up based on workbook evidence.' if status == 'follow_up' else 'Lost opportunity retained for learning and future recovery review.')
@@ -267,7 +444,7 @@ def parse_offers(context_map, offer_documents):
         next_action = 'Launch project activation, confirm milestones, and align engineering, procurement, FAT, shipping, and installation.' if status == 'won' else 'Confirm the next customer touchpoint, validate blockers, and keep the offer active until a decision is reached.' if status == 'follow_up' else 'Document the loss reason and decide whether to recover the account with a revised value proposition.'
         documents = find_offer_documents(offer_number, customer_name, concept, offer_documents)
         project_folder = find_project_folder(customer_name)
-        offer = {'id': offer_id, 'offer_number': offer_number or f'OFF-{len(offers)+1:03d}', 'title': title, 'customer_name': customer_name, 'company_name': 'Ingecart 2018 SL', 'project_description': concept, 'currency': 'EUR', 'status': status, 'contract_value': value, 'score': score, 'global_score': score, 'probability': probability or 15, 'context': context, 'next_action': next_action, 'source': str(OFFERS_BOOK), 'submitted_at': submitted, 'decision_date': final_decision or None, 'updated_at': submitted + 'T09:00:00', 'site': site, 'country': country, 'region': region, 'kam': clean(row[5]) or 'Ingecart', 'document_paths': documents, 'project_folder': project_folder}
+        offer = {'id': offer_id, 'offer_number': offer_number, 'title': title, 'customer_name': customer_name, 'company_name': 'Ingecart 2018 SL', 'project_description': concept, 'currency': 'EUR', 'status': status, 'contract_value': value, 'score': score, 'global_score': score, 'probability': probability or 15, 'context': context, 'next_action': next_action, 'source': str(OFFERS_BOOK), 'submitted_at': submitted, 'decision_date': final_decision or None, 'updated_at': submitted + 'T09:00:00', 'site': site, 'country': country, 'region': region, 'kam': clean(row[5]) or 'Ingecart', 'document_paths': documents, 'project_folder': project_folder}
         offers.append(offer)
         if status == 'won':
             orders.append({'poDate': final_decision or submitted, 'firstOfferDate': submitted, 'oppNumber': offer['offer_number'], 'region': region, 'country': country, 'customerName': customer_name, 'scope': concept, 'productFamily': concept, 'segment': 'Industrial automation', 'purchasingYear': (final_decision or submitted)[:4], 'purchasingQuarter': quarter_from_date(final_decision or submitted), 'purchasingMonth': datetime.fromisoformat(final_decision or submitted).strftime('%B') if re.match(r'\d{4}-\d{2}-\d{2}', final_decision or submitted) else '', 'sellingPrice': value, 'margin': 22 if value >= 100000 else 28, 'kam': clean(row[5]) or 'Ingecart'})
@@ -275,7 +452,13 @@ def parse_offers(context_map, offer_documents):
             opportunities.append({'truthSource': 'ingecart_offer_status_workbook', 'oppNumber': offer['offer_number'], 'status': status, 'region': region, 'country': country, 'customerName': customer_name, 'scope': concept, 'productFamily': concept, 'segment': 'Industrial automation', 'estPurchasingYear': (final_decision or submitted)[:4] if (final_decision or submitted) else '2026', 'estPurchasingQuarter': quarter_from_date(final_decision or submitted), 'estRevenue': value, 'contractProb': probability or 15, 'margin': 20 if probability < 30 else 24, 'contact': customer_name, 'kam': clean(row[5]) or 'Ingecart'})
             priority = 'critical' if status == 'follow_up' and probability >= 50 else 'high' if status == 'follow_up' else 'medium'
             tasks.append({'id': uid('task', offer_id), 'title': f'Offer follow-up: {customer_name} - {concept}', 'description': next_action, 'pillar': 'p0', 'status': 'todo', 'priority': priority, 'category': 'follow_up', 'assignee': 'sales', 'dueDate': (NOW + timedelta(days=3 if priority == 'critical' else 7)).isoformat(), 'createdAt': NOW.isoformat(), 'notes': [context, f'Offer file count: {len(documents)}', f"Project folder: {project_folder or 'n/a'}"]})
+    existing_offer_numbers = {offer['offer_number'] for offer in offers}
+    for offer in build_inferred_offer_records(existing_offer_numbers, context_map, offer_documents):
+        offers.append(offer)
+        opportunities.append({'truthSource': 'ingecart_offer_documents', 'oppNumber': offer['offer_number'], 'status': offer['status'], 'region': offer['region'], 'country': offer['country'], 'customerName': offer['customer_name'], 'scope': offer['project_description'], 'productFamily': offer['project_description'], 'segment': 'Industrial automation', 'estPurchasingYear': offer['submitted_at'][:4] if offer['submitted_at'] else '2026', 'estPurchasingQuarter': quarter_from_date(offer['submitted_at']), 'estRevenue': offer['contract_value'], 'contractProb': offer['probability'], 'margin': 22, 'contact': offer['customer_name'], 'kam': offer['kam']})
+        tasks.append({'id': uid('task', offer['id']), 'title': f"Offer follow-up: {offer['customer_name']} - {offer['project_description']}", 'description': offer['next_action'], 'pillar': 'p0', 'status': 'todo', 'priority': 'high', 'category': 'follow_up', 'assignee': 'sales', 'dueDate': (NOW + timedelta(days=5)).isoformat(), 'createdAt': NOW.isoformat(), 'notes': [offer['context'], f"Offer file count: {len(offer['document_paths'])}", f"Project folder: {offer['project_folder'] or 'n/a'}"]})
     return offers, orders, opportunities, tasks
+
 def parse_leads(context_map):
     request_leads, contacts = [], []
     wb = load_workbook(OPEN_REQUESTS_BOOK, data_only=True); ws = wb[wb.sheetnames[0]]
