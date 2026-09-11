@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { VoiceTextInput } from '@/components/VoiceTextInput';
 import { toast } from '@/hooks/use-toast';
-import { BarChart3, CheckCircle2, ExternalLink, FileText, Lightbulb, Package, Search, Sparkles, Target, TrendingUp } from 'lucide-react';
+import { BarChart3, CheckCircle2, ExternalLink, FileText, Lightbulb, Package, Pencil, Plus, Search, Sparkles, Target, Trash2, TrendingUp } from 'lucide-react';
 import { fmt } from '@/components/analysis360/AnalysisUtils';
 import {
   buildProductPositioningActions,
@@ -22,13 +22,36 @@ import {
   type ProductPositionAction,
 } from '@/lib/productStrategy';
 import { runProductAnalysisAgent, type ProductStrategicSignals, runProductSearchAgent } from '@/agents/productCatalogAgents';
-import { inferProductCategory } from '@/lib/productCatalog';
+import { inferProductCategory, type ProductCostPresetLine } from '@/lib/productCatalog';
 import { buildProductIntelligence, buildSeedProductCatalog, estimateProductPresetCost, mergeProductWithKnowledge } from '@/lib/productKnowledge';
 
 type CatalogDraft = ProductRecord & { draftId: string };
+type Dossier = NonNullable<ProductRecord['technicalDossier']>;
+
+type CategorySummary = {
+  label: string;
+  productCount: number;
+  revenue: number;
+  avgFit: number;
+};
+
 let fallbackDraftIdCounter = 0;
+const COST_CATEGORIES: ProductCostPresetLine['category'][] = ['materials', 'engineering', 'subcontracting', 'installation', 'transport', 'indirect'];
+const COST_MODES: NonNullable<ProductCostPresetLine['mode']>[] = ['unit', 'engineering', 'installation'];
+const DOSSIER_STATUSES = ['verified', 'commercial-claim', 'modelled', 'pre-engineering', 'pending'] as const;
 
 const getDraftId = () => globalThis.crypto?.randomUUID?.() || `draft-${Date.now()}-${Math.round(Math.random() * 1e6)}-${fallbackDraftIdCounter++}`;
+const dossierList = (value: string) => value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+const summarizeSignal = (signal: ProductStrategicSignals) => `${signal.lifecycleSignal} lifecycle, ${signal.offerModel}, competition led by ${signal.competitionFocus}.`;
+
+const dossierSpecifications = (value: string): Dossier['technicalSpecifications'] => value
+  .split(/\r?\n/)
+  .map((line) => {
+    const [parameter = '', specificationValue = '', rawStatus = 'pending'] = line.split('|').map((item) => item.trim());
+    const status = DOSSIER_STATUSES.find((item) => item === rawStatus) || 'pending';
+    return { parameter, value: specificationValue, status };
+  })
+  .filter((item) => item.parameter && item.value);
 
 const toDraft = (product: ProductRecord): CatalogDraft => {
   const normalized = mergeProductWithKnowledge(product);
@@ -73,17 +96,38 @@ const normalizeDraft = (draft: CatalogDraft): ProductRecord => ({
   technicalDossier: draft.technicalDossier,
 });
 
-const summarizeSignal = (signal: ProductStrategicSignals) => `${signal.lifecycleSignal} lifecycle, ${signal.offerModel}, competition led by ${signal.competitionFocus}.`;
-const dossierList = (value: string) => value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
-const dossierSpecifications = (value: string): NonNullable<ProductRecord['technicalDossier']>['technicalSpecifications'] => value
-  .split(/\r?\n/)
-  .map((line) => {
-    const [parameter = '', specificationValue = '', rawStatus = 'pending'] = line.split('|').map((item) => item.trim());
-    const allowedStatuses = ['verified', 'commercial-claim', 'modelled', 'pre-engineering', 'pending'] as const;
-    const status = allowedStatuses.find((item) => item === rawStatus) || 'pending';
-    return { parameter, value: specificationValue, status };
-  })
-  .filter((item) => item.parameter && item.value);
+const presetLineTotal = (line: ProductCostPresetLine) => {
+  if (line.mode === 'engineering') return (line.hours || 0) * (line.hourlyRate || 0);
+  if (line.mode === 'installation') return (line.days || 0) * (line.resources || 0) * (line.unitCost || 0);
+  return (line.quantity || 0) * (line.unitCost || 0);
+};
+
+const newCostPresetLine = (category: ProductCostPresetLine['category'] = 'materials'): ProductCostPresetLine => ({
+  category,
+  lineItem: '',
+  mode: category === 'engineering' ? 'engineering' : category === 'installation' ? 'installation' : 'unit',
+  quantity: 1,
+  unitCost: 0,
+  hours: 0,
+  hourlyRate: 0,
+  days: 0,
+  resources: 0,
+  notes: '',
+});
+
+const createEmptyDossier = (productName: string): Dossier => ({
+  dossierId: `${(productName || 'product').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'PRODUCT'}-DOSSIER`,
+  revision: '0',
+  updatedAt: new Date().toISOString().slice(0, 10),
+  valueProposition: '',
+  applications: [],
+  technicalSpecifications: [],
+  performanceKpis: [],
+  roiFramework: [],
+  risksAndLimits: [],
+  acceptanceCriteria: [],
+  sourceReferences: [],
+});
 
 const ProductStrategyPage = () => {
   const { data, addTask, updateTask, setProducts } = useData();
@@ -91,10 +135,25 @@ const ProductStrategyPage = () => {
   const [evaluations, setEvaluations] = useState<Record<string, ProductActionEvaluation>>({});
   const [taskIdsByAction, setTaskIdsByAction] = useState<Record<string, string>>({});
   const [catalogDrafts, setCatalogDrafts] = useState<CatalogDraft[]>([]);
+  const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
-    setCatalogDrafts(buildSeedProductCatalog(data.products).map(toDraft));
+    const nextDrafts = buildSeedProductCatalog(data.products).map(toDraft);
+    setCatalogDrafts(nextDrafts);
   }, [data.products]);
+
+  useEffect(() => {
+    if (catalogDrafts.length === 0) {
+      setSelectedDraftId(null);
+      setIsEditing(false);
+      return;
+    }
+    if (!selectedDraftId || !catalogDrafts.some((draft) => draft.draftId === selectedDraftId)) {
+      setSelectedDraftId(catalogDrafts[0].draftId);
+      setIsEditing(false);
+    }
+  }, [catalogDrafts, selectedDraftId]);
 
   const catalogProducts = useMemo(() => catalogDrafts.map(normalizeDraft).filter((product) => product.name), [catalogDrafts]);
   const snapshot = useMemo(() => buildProductStrategySnapshot({ products: catalogProducts, orders: data.orders, opportunities: data.opportunities }), [catalogProducts, data.orders, data.opportunities]);
@@ -102,7 +161,7 @@ const ProductStrategyPage = () => {
   const strategicSignals = useMemo(() => Object.fromEntries(catalogProducts.map((product) => [product.name, runProductAnalysisAgent(product)])), [catalogProducts]);
   const intelligenceCards = useMemo(() => snapshot.products.map((product) => buildProductIntelligence(catalogProducts.find((item) => item.name === product.name) || { name: product.name, averageValue: 0, type: '', comments: '' }, product.marketFitScore)), [catalogProducts, snapshot.products]);
   const categoriesSummary = useMemo(() => {
-    const byCategory = new Map<string, { label: string; productCount: number; revenue: number; avgFit: number }>();
+    const byCategory = new Map<string, CategorySummary>();
     snapshot.products.forEach((product) => {
       const catalogProduct = catalogProducts.find((item) => item.name === product.name);
       const label = catalogProduct?.category === 'service' ? 'Service' : 'Product';
@@ -115,22 +174,82 @@ const ProductStrategyPage = () => {
     return Array.from(byCategory.values()).map((item) => ({ ...item, avgFit: item.productCount > 0 ? item.avgFit / item.productCount : 0 }));
   }, [catalogProducts, snapshot.products]);
 
+  const selectedDraft = useMemo(() => catalogDrafts.find((draft) => draft.draftId === selectedDraftId) || null, [catalogDrafts, selectedDraftId]);
+  const selectedSnapshot = useMemo(() => {
+    if (!selectedDraft?.name) return null;
+    return snapshot.products.find((product) => product.name === selectedDraft.name) || null;
+  }, [selectedDraft, snapshot.products]);
+  const selectedIntelligence = useMemo(() => selectedDraft ? buildProductIntelligence(normalizeDraft(selectedDraft), selectedSnapshot?.marketFitScore || 0) : null, [selectedDraft, selectedSnapshot]);
+  const selectedSignal = useMemo(() => {
+    if (!selectedDraft?.name) return null;
+    return strategicSignals[selectedDraft.name] || runProductAnalysisAgent(selectedDraft);
+  }, [selectedDraft, strategicSignals]);
+
   const topInnovation = snapshot.products.filter((product) => product.lifecycleLabel === 'Innovation').length;
   const commodityCount = snapshot.products.filter((product) => product.lifecycleLabel === 'Commodity').length;
   const avgFit = snapshot.products.length > 0 ? snapshot.products.reduce((sum, product) => sum + product.marketFitScore, 0) / snapshot.products.length : 0;
 
-  const updateDraft = (draftId: string, field: keyof CatalogDraft, value: unknown) => setCatalogDrafts((prev) => prev.map((draft) => (draft.draftId === draftId ? { ...draft, [field]: value } : draft)));
-  const updateDossier = (draftId: string, field: keyof NonNullable<CatalogDraft['technicalDossier']>, value: unknown) => setCatalogDrafts((prev) => prev.map((draft) => (
-    draft.draftId === draftId && draft.technicalDossier
-      ? { ...draft, technicalDossier: { ...draft.technicalDossier, [field]: value } }
-      : draft
-  )));
-  const addCatalogItem = (category: 'product' | 'service') => setCatalogDrafts((prev) => [...prev, toDraft({ name: '', averageValue: 0, type: category === 'service' ? 'service model' : 'equipment', comments: '', category, characteristics: [], estimatedCost: 0, repositories: [], validated: false, source: 'manual', linkedReports: [], costPreset: [], competitors: [], marketFitNotes: [], fitImprovementActions: [] })]);
-  const removeCatalogItem = (draftId: string) => setCatalogDrafts((prev) => prev.filter((draft) => draft.draftId !== draftId));
+  const updateDraft = (draftId: string, field: keyof CatalogDraft, value: unknown) => {
+    setCatalogDrafts((prev) => prev.map((draft) => (draft.draftId === draftId ? { ...draft, [field]: value } : draft)));
+  };
+
+  const updateDossier = (draftId: string, field: keyof Dossier, value: unknown) => {
+    setCatalogDrafts((prev) => prev.map((draft) => (
+      draft.draftId === draftId && draft.technicalDossier
+        ? { ...draft, technicalDossier: { ...draft.technicalDossier, [field]: value } }
+        : draft
+    )));
+  };
+
+  const updateCostPresetLine = (draftId: string, index: number, patch: Partial<ProductCostPresetLine>) => {
+    setCatalogDrafts((prev) => prev.map((draft) => {
+      if (draft.draftId !== draftId) return draft;
+      const costPreset = [...(draft.costPreset || [])];
+      costPreset[index] = { ...costPreset[index], ...patch };
+      return { ...draft, costPreset };
+    }));
+  };
+
+  const addCostPresetLine = (draftId: string) => {
+    setCatalogDrafts((prev) => prev.map((draft) => draft.draftId === draftId ? { ...draft, costPreset: [...(draft.costPreset || []), newCostPresetLine()] } : draft));
+  };
+
+  const removeCostPresetLine = (draftId: string, index: number) => {
+    setCatalogDrafts((prev) => prev.map((draft) => draft.draftId === draftId ? { ...draft, costPreset: (draft.costPreset || []).filter((_, lineIndex) => lineIndex !== index) } : draft));
+  };
+
+  const selectDraft = (draftId: string) => {
+    setSelectedDraftId(draftId);
+    setIsEditing(false);
+  };
+
+  const addCatalogItem = (category: 'product' | 'service') => {
+    const draft = toDraft({ name: '', averageValue: 0, type: category === 'service' ? 'service model' : 'equipment', comments: '', category, characteristics: [], estimatedCost: 0, repositories: [], validated: false, source: 'manual', linkedReports: [], costPreset: [], competitors: [], marketFitNotes: [], fitImprovementActions: [] });
+    setCatalogDrafts((prev) => [...prev, draft]);
+    setSelectedDraftId(draft.draftId);
+    setIsEditing(true);
+  };
+  const removeCatalogItem = (draftId: string) => {
+    setCatalogDrafts((prev) => prev.filter((draft) => draft.draftId !== draftId));
+    if (selectedDraftId === draftId) {
+      setSelectedDraftId(null);
+      setIsEditing(false);
+    }
+  };
+
+  const ensureDossier = (draftId: string) => {
+    setCatalogDrafts((prev) => prev.map((draft) => {
+      if (draft.draftId !== draftId || draft.technicalDossier) return draft;
+      return { ...draft, technicalDossier: createEmptyDossier(draft.name) };
+    }));
+  };
+
   const loadCanonicalProfiles = () => {
-    setCatalogDrafts(buildSeedProductCatalog(catalogProducts).map(toDraft));
+    const nextDrafts = buildSeedProductCatalog(catalogProducts).map(toDraft);
+    setCatalogDrafts(nextDrafts);
     toast({ title: 'Canonical profiles loaded', description: 'My Products was synchronized with the product cost and intelligence playbook.' });
   };
+
   const generateCatalog = () => {
     const suggestions = runProductSearchAgent({ products: catalogProducts, orders: data.orders, opportunities: data.opportunities });
     if (suggestions.length === 0) {
@@ -140,9 +259,11 @@ const ProductStrategyPage = () => {
     setCatalogDrafts((prev) => buildSeedProductCatalog([...prev.map(normalizeDraft), ...suggestions]).map(toDraft));
     toast({ title: 'Catalog suggestions ready', description: `${suggestions.length} auto-generated items were added for validation.` });
   };
+
   const saveCatalog = async () => {
     const cleanRecords = buildSeedProductCatalog(catalogProducts.filter((product) => product.name.trim().length > 0));
     await setProducts(cleanRecords);
+    setIsEditing(false);
     toast({ title: 'Catalog saved', description: `${cleanRecords.length} products/services are now available for offer selection.` });
   };
 
@@ -158,6 +279,7 @@ const ProductStrategyPage = () => {
         toast({ title: 'Monitoring task updated', description: `${action.title} has been reprioritized.` });
         return;
       }
+
       const taskId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${action.id}`;
       await addTask({
         id: taskId,
@@ -199,7 +321,7 @@ const ProductStrategyPage = () => {
           <Badge variant="outline">Product, Cost and Market Fit Engine</Badge>
         </div>
         <h2 className="text-2xl font-semibold text-foreground">Product Management, Costing and Market Fit</h2>
-        <p className="text-muted-foreground text-sm mt-1 max-w-4xl">Manage My Products, keep canonical product costs available for pricing, and expose per-product competitor intelligence, performance benchmarks, and fit-improvement guidance.</p>
+        <p className="text-muted-foreground text-sm mt-1 max-w-4xl">Review the configured portfolio, open each product ficha, and only edit data, costs, dossiers, and references when you explicitly enable edit mode.</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -221,33 +343,91 @@ const ProductStrategyPage = () => {
         <TabsContent value="my-products" className="space-y-4">
           <Card>
             <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div><CardTitle>My Products</CardTitle><p className="text-sm text-muted-foreground mt-1">Canonical products, reusable offer costs, reference links, and evidence aligned with Ingecart lines.</p></div>
-              <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={loadCanonicalProfiles}>Load canonical profiles</Button><Button variant="outline" onClick={generateCatalog}><Search className="h-4 w-4 mr-2" /> Generate suggestions</Button><Button onClick={saveCatalog}>Save catalog</Button></div>
+              <div>
+                <CardTitle>Configured products</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">Select a product to open its ficha. Use Edit to unlock general information, reusable costs, dossier content, and file references.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" onClick={loadCanonicalProfiles}>Load canonical profiles</Button>
+                <Button variant="outline" onClick={generateCatalog}><Search className="h-4 w-4 mr-2" /> Generate suggestions</Button>
+                <Button variant="secondary" onClick={() => addCatalogItem('product')}><Plus className="h-4 w-4 mr-2" /> Add product</Button>
+                <Button variant="secondary" onClick={() => addCatalogItem('service')}><Plus className="h-4 w-4 mr-2" /> Add service</Button>
+                <Button onClick={saveCatalog}>Save catalog</Button>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-wrap gap-2"><Button variant="secondary" onClick={() => addCatalogItem('product')}>Add product</Button><Button variant="secondary" onClick={() => addCatalogItem('service')}>Add service</Button></div>
-              <div className="space-y-4">
-                {catalogDrafts.map((draft) => {
-                  const intelligence = buildProductIntelligence(normalizeDraft(draft), 0);
-                  return (
-                    <Card key={draft.draftId} className="border-dashed">
-                      <CardContent className="pt-5 space-y-4">
-                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 flex-1">
-                            <div><label className="text-xs text-muted-foreground">Name</label><Input value={draft.name} onChange={(e) => updateDraft(draft.draftId, 'name', e.target.value)} /></div>
-                            <div><label className="text-xs text-muted-foreground">Type</label><Input value={draft.type} onChange={(e) => updateDraft(draft.draftId, 'type', e.target.value)} /></div>
-                            <div><label className="text-xs text-muted-foreground">Category</label><Select value={draft.category || 'product'} onValueChange={(value) => updateDraft(draft.draftId, 'category', value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="product">Product</SelectItem><SelectItem value="service">Service</SelectItem></SelectContent></Select></div>
-                            <div><label className="text-xs text-muted-foreground">Average sale value</label><Input type="number" value={draft.averageValue || 0} onChange={(e) => updateDraft(draft.draftId, 'averageValue', Number(e.target.value || 0))} /></div>
-                          </div>
-                          <Button variant="ghost" size="sm" onClick={() => removeCatalogItem(draft.draftId)}>Remove</Button>
+            <CardContent>
+              <div className="grid gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
+                <div className="space-y-3">
+                  {catalogDrafts.map((draft) => (
+                    <button
+                      key={draft.draftId}
+                      type="button"
+                      onClick={() => selectDraft(draft.draftId)}
+                      className={`w-full rounded-lg border p-4 text-left transition-colors ${selectedDraftId === draft.draftId ? 'border-primary bg-primary/5' : 'hover:border-primary/40'}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold">{draft.name || 'Untitled product'}</p>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{draft.comments || 'No description yet.'}</p>
+                        </div>
+                        <Badge variant={draft.validated ? 'default' : 'outline'}>{draft.validated ? 'Validated' : 'Draft'}</Badge>
+                      </div>
+                      <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{draft.category || 'product'}</span>
+                        <span>|</span>
+                        <span>{fmt(draft.averageValue || 0)}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <div>
+                  {selectedDraft ? (
+                    <Card className="border-primary/20">
+                      <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            <Package className="h-5 w-5 text-primary" />
+                            {selectedDraft.name || 'Untitled product'}
+                          </CardTitle>
+                          <p className="text-sm text-muted-foreground mt-1">{selectedDraft.comments || 'Product ficha without summary yet.'}</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button variant={isEditing ? 'secondary' : 'outline'} onClick={() => setIsEditing((prev) => !prev)}><Pencil className="h-4 w-4 mr-2" />{isEditing ? 'Finish editing' : 'Edit'}</Button>
+                          {isEditing ? <Button variant="destructive" onClick={() => removeCatalogItem(selectedDraft.draftId)}><Trash2 className="h-4 w-4 mr-2" />Remove</Button> : null}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                          <div><label className="text-xs text-muted-foreground">Name</label><Input value={selectedDraft.name} onChange={(e) => updateDraft(selectedDraft.draftId, 'name', e.target.value)} disabled={!isEditing} /></div>
+                          <div><label className="text-xs text-muted-foreground">Type</label><Input value={selectedDraft.type} onChange={(e) => updateDraft(selectedDraft.draftId, 'type', e.target.value)} disabled={!isEditing} /></div>
+                          <div><label className="text-xs text-muted-foreground">Category</label><Select value={selectedDraft.category || 'product'} onValueChange={(value) => updateDraft(selectedDraft.draftId, 'category', value)} disabled={!isEditing}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="product">Product</SelectItem><SelectItem value="service">Service</SelectItem></SelectContent></Select></div>
+                          <div><label className="text-xs text-muted-foreground">Average sale value</label><Input type="number" value={selectedDraft.averageValue || 0} onChange={(e) => updateDraft(selectedDraft.draftId, 'averageValue', Number(e.target.value || 0))} disabled={!isEditing} /></div>
                         </div>
 
                         <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-                          <div className="space-y-3"><div><label className="text-xs text-muted-foreground">Commercial / technical summary</label><Textarea rows={4} value={draft.comments || ''} onChange={(e) => updateDraft(draft.draftId, 'comments', e.target.value)} /></div><div className="grid gap-3 md:grid-cols-2"><div><label className="text-xs text-muted-foreground">Characteristics (one per line)</label><Textarea rows={5} value={(draft.characteristics || []).join('\n')} onChange={(e) => updateDraft(draft.draftId, 'characteristics', e.target.value.split(/\r?\n/))} /></div><div><label className="text-xs text-muted-foreground">Repositories / evidence (one per line)</label><Textarea rows={5} value={(draft.repositories || []).join('\n')} onChange={(e) => updateDraft(draft.draftId, 'repositories', e.target.value.split(/\r?\n/))} /></div></div></div>
-                          <div className="space-y-3"><div><label className="text-xs text-muted-foreground">Product information URL</label><Input value={draft.productInfoUrl || ''} onChange={(e) => updateDraft(draft.draftId, 'productInfoUrl', e.target.value)} /></div><div><label className="text-xs text-muted-foreground">Product video URL</label><Input value={draft.productVideoUrl || ''} onChange={(e) => updateDraft(draft.draftId, 'productVideoUrl', e.target.value)} /></div><div><label className="text-xs text-muted-foreground">Linked reports (one per line)</label><Textarea rows={4} value={(draft.linkedReports || []).join('\n')} onChange={(e) => updateDraft(draft.draftId, 'linkedReports', e.target.value.split(/\r?\n/))} /></div><div className="grid gap-3 md:grid-cols-2"><div><label className="text-xs text-muted-foreground">Reference estimated cost</label><Input type="number" value={draft.estimatedCost || 0} onChange={(e) => updateDraft(draft.draftId, 'estimatedCost', Number(e.target.value || 0))} /></div><div className="flex items-center gap-3 pt-6"><Checkbox checked={Boolean(draft.validated)} onCheckedChange={(checked) => updateDraft(draft.draftId, 'validated', Boolean(checked))} /><span className="text-sm">Validated product</span></div></div></div>
+                          <div className="space-y-3">
+                            <div><label className="text-xs text-muted-foreground">General description</label><Textarea rows={4} value={selectedDraft.comments || ''} onChange={(e) => updateDraft(selectedDraft.draftId, 'comments', e.target.value)} disabled={!isEditing} /></div>
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div><label className="text-xs text-muted-foreground">Characteristics (one per line)</label><Textarea rows={5} value={(selectedDraft.characteristics || []).join('\n')} onChange={(e) => updateDraft(selectedDraft.draftId, 'characteristics', e.target.value.split(/\r?\n/))} disabled={!isEditing} /></div>
+                              <div><label className="text-xs text-muted-foreground">Repositories / evidence (one per line)</label><Textarea rows={5} value={(selectedDraft.repositories || []).join('\n')} onChange={(e) => updateDraft(selectedDraft.draftId, 'repositories', e.target.value.split(/\r?\n/))} disabled={!isEditing} /></div>
+                            </div>
+                          </div>
+                          <div className="space-y-3">
+                            <div><label className="text-xs text-muted-foreground">Product information URL</label><Input value={selectedDraft.productInfoUrl || ''} onChange={(e) => updateDraft(selectedDraft.draftId, 'productInfoUrl', e.target.value)} disabled={!isEditing} /></div>
+                            <div><label className="text-xs text-muted-foreground">Product video URL</label><Input value={selectedDraft.productVideoUrl || ''} onChange={(e) => updateDraft(selectedDraft.draftId, 'productVideoUrl', e.target.value)} disabled={!isEditing} /></div>
+                            <div><label className="text-xs text-muted-foreground">Linked reports / file references (one per line)</label><Textarea rows={5} value={(selectedDraft.linkedReports || []).join('\n')} onChange={(e) => updateDraft(selectedDraft.draftId, 'linkedReports', e.target.value.split(/\r?\n/))} disabled={!isEditing} /></div>
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div><label className="text-xs text-muted-foreground">Reference estimated cost</label><Input type="number" value={selectedDraft.estimatedCost || 0} onChange={(e) => updateDraft(selectedDraft.draftId, 'estimatedCost', Number(e.target.value || 0))} disabled={!isEditing} /></div>
+                              <div><label className="text-xs text-muted-foreground">Length basis (m)</label><Input type="number" value={selectedDraft.defaultLengthM || 0} onChange={(e) => updateDraft(selectedDraft.draftId, 'defaultLengthM', Number(e.target.value || 0))} disabled={!isEditing || !selectedDraft.configurableByLength} /></div>
+                            </div>
+                            <div className="flex items-center gap-6 pt-1">
+                              <label className="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(selectedDraft.validated)} onCheckedChange={(checked) => updateDraft(selectedDraft.draftId, 'validated', Boolean(checked))} disabled={!isEditing} /><span>Validated product</span></label>
+                              <label className="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(selectedDraft.configurableByLength)} onCheckedChange={(checked) => updateDraft(selectedDraft.draftId, 'configurableByLength', Boolean(checked))} disabled={!isEditing} /><span>Configurable by length</span></label>
+                            </div>
+                          </div>
                         </div>
 
-                        {draft.technicalDossier ? (
+                        {selectedDraft.technicalDossier ? (
                           <Card className="border-primary/30 bg-primary/[0.03]">
                             <CardHeader className="pb-3">
                               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -255,39 +435,90 @@ const ProductStrategyPage = () => {
                                   <CardTitle className="flex items-center gap-2 text-base"><FileText className="h-4 w-4" /> Technical dossier</CardTitle>
                                   <p className="text-xs text-muted-foreground mt-1">Evidence-controlled engineering basis for RFQ, ROI and FAT/SAT.</p>
                                 </div>
-                                <div className="flex gap-2"><Badge variant="outline">{draft.technicalDossier.dossierId}</Badge><Badge variant="secondary">Rev. {draft.technicalDossier.revision} | {draft.technicalDossier.updatedAt}</Badge></div>
+                                <div className="flex gap-2"><Badge variant="outline">{selectedDraft.technicalDossier.dossierId}</Badge><Badge variant="secondary">Rev. {selectedDraft.technicalDossier.revision} | {selectedDraft.technicalDossier.updatedAt}</Badge></div>
                               </div>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                              <div><label className="text-xs text-muted-foreground">Value proposition</label><Textarea rows={2} value={draft.technicalDossier.valueProposition} onChange={(event) => updateDossier(draft.draftId, 'valueProposition', event.target.value)} /></div>
+                              <div><label className="text-xs text-muted-foreground">Value proposition</label><Textarea rows={2} value={selectedDraft.technicalDossier.valueProposition} onChange={(event) => updateDossier(selectedDraft.draftId, 'valueProposition', event.target.value)} disabled={!isEditing} /></div>
                               <div className="grid gap-3 xl:grid-cols-3">
-                                <div><label className="text-xs text-muted-foreground">Applications (one per line)</label><Textarea rows={5} value={draft.technicalDossier.applications.join('\n')} onChange={(event) => updateDossier(draft.draftId, 'applications', dossierList(event.target.value))} /></div>
-                                <div><label className="text-xs text-muted-foreground">Performance KPIs (one per line)</label><Textarea rows={5} value={draft.technicalDossier.performanceKpis.join('\n')} onChange={(event) => updateDossier(draft.draftId, 'performanceKpis', dossierList(event.target.value))} /></div>
-                                <div><label className="text-xs text-muted-foreground">ROI framework (one per line)</label><Textarea rows={5} value={draft.technicalDossier.roiFramework.join('\n')} onChange={(event) => updateDossier(draft.draftId, 'roiFramework', dossierList(event.target.value))} /></div>
+                                <div><label className="text-xs text-muted-foreground">Applications (one per line)</label><Textarea rows={5} value={selectedDraft.technicalDossier.applications.join('\n')} onChange={(event) => updateDossier(selectedDraft.draftId, 'applications', dossierList(event.target.value))} disabled={!isEditing} /></div>
+                                <div><label className="text-xs text-muted-foreground">Performance KPIs (one per line)</label><Textarea rows={5} value={selectedDraft.technicalDossier.performanceKpis.join('\n')} onChange={(event) => updateDossier(selectedDraft.draftId, 'performanceKpis', dossierList(event.target.value))} disabled={!isEditing} /></div>
+                                <div><label className="text-xs text-muted-foreground">ROI framework (one per line)</label><Textarea rows={5} value={selectedDraft.technicalDossier.roiFramework.join('\n')} onChange={(event) => updateDossier(selectedDraft.draftId, 'roiFramework', dossierList(event.target.value))} disabled={!isEditing} /></div>
                               </div>
                               <div>
                                 <label className="text-xs text-muted-foreground">Technical specifications (parameter | value | evidence status)</label>
-                                <Textarea rows={Math.max(4, draft.technicalDossier.technicalSpecifications.length)} value={draft.technicalDossier.technicalSpecifications.map((item) => `${item.parameter} | ${item.value} | ${item.status}`).join('\n')} onChange={(event) => updateDossier(draft.draftId, 'technicalSpecifications', dossierSpecifications(event.target.value))} />
-                                <div className="flex flex-wrap gap-1.5 mt-2">{(['verified', 'commercial-claim', 'modelled', 'pre-engineering', 'pending'] as const).map((status) => <Badge key={status} variant="outline" className="text-[10px]">{status}</Badge>)}</div>
+                                <Textarea rows={Math.max(4, selectedDraft.technicalDossier.technicalSpecifications.length)} value={selectedDraft.technicalDossier.technicalSpecifications.map((item) => `${item.parameter} | ${item.value} | ${item.status}`).join('\n')} onChange={(event) => updateDossier(selectedDraft.draftId, 'technicalSpecifications', dossierSpecifications(event.target.value))} disabled={!isEditing} />
+                                <div className="flex flex-wrap gap-1.5 mt-2">{DOSSIER_STATUSES.map((status) => <Badge key={status} variant="outline" className="text-[10px]">{status}</Badge>)}</div>
                               </div>
                               <div className="grid gap-3 xl:grid-cols-3">
-                                <div><label className="text-xs text-muted-foreground">Risks and limits</label><Textarea rows={5} value={draft.technicalDossier.risksAndLimits.join('\n')} onChange={(event) => updateDossier(draft.draftId, 'risksAndLimits', dossierList(event.target.value))} /></div>
-                                <div><label className="text-xs text-muted-foreground">FAT/SAT acceptance criteria</label><Textarea rows={5} value={draft.technicalDossier.acceptanceCriteria.join('\n')} onChange={(event) => updateDossier(draft.draftId, 'acceptanceCriteria', dossierList(event.target.value))} /></div>
-                                <div><label className="text-xs text-muted-foreground">Sources and traceability</label><Textarea rows={5} value={draft.technicalDossier.sourceReferences.join('\n')} onChange={(event) => updateDossier(draft.draftId, 'sourceReferences', dossierList(event.target.value))} /></div>
+                                <div><label className="text-xs text-muted-foreground">Risks and limits</label><Textarea rows={5} value={selectedDraft.technicalDossier.risksAndLimits.join('\n')} onChange={(event) => updateDossier(selectedDraft.draftId, 'risksAndLimits', dossierList(event.target.value))} disabled={!isEditing} /></div>
+                                <div><label className="text-xs text-muted-foreground">FAT/SAT acceptance criteria</label><Textarea rows={5} value={selectedDraft.technicalDossier.acceptanceCriteria.join('\n')} onChange={(event) => updateDossier(selectedDraft.draftId, 'acceptanceCriteria', dossierList(event.target.value))} disabled={!isEditing} /></div>
+                                <div><label className="text-xs text-muted-foreground">Sources and traceability</label><Textarea rows={5} value={selectedDraft.technicalDossier.sourceReferences.join('\n')} onChange={(event) => updateDossier(selectedDraft.draftId, 'sourceReferences', dossierList(event.target.value))} disabled={!isEditing} /></div>
                               </div>
+                            </CardContent>
+                          </Card>
+                        ) : isEditing ? (
+                          <Card className="border-dashed bg-muted/30">
+                            <CardContent className="flex flex-col gap-3 py-6 sm:flex-row sm:items-center sm:justify-between">
+                              <div>
+                                <p className="font-medium">Technical dossier not created yet</p>
+                                <p className="text-sm text-muted-foreground">Create the engineering ficha to track specifications, KPIs, FAT/SAT criteria and validated references.</p>
+                              </div>
+                              <Button variant="outline" onClick={() => ensureDossier(selectedDraft.draftId)}><Plus className="h-4 w-4 mr-2" />Create dossier</Button>
                             </CardContent>
                           </Card>
                         ) : null}
 
-                        <div className="grid gap-4 xl:grid-cols-3">
-                          <Card className="bg-muted/30"><CardHeader className="pb-2"><CardTitle className="text-base">Reusable cost preset</CardTitle></CardHeader><CardContent className="space-y-2 text-sm">{(draft.costPreset || []).length === 0 ? <p className="text-muted-foreground">No structured preset yet.</p> : (draft.costPreset || []).map((line) => (<div key={`${draft.draftId}-${line.lineItem}`} className="flex items-center justify-between gap-3"><div><p className="font-medium">{line.lineItem}</p><p className="text-xs text-muted-foreground">{line.mode || 'unit'} � {line.category}</p></div><p className="font-semibold">{fmt((line.quantity || 0) * (line.unitCost || 0) + (line.hours || 0) * (line.hourlyRate || 0) + (line.days || 0) * (line.resources || 0) * (line.unitCost || 0))}</p></div>))}<div className="pt-2 border-t flex items-center justify-between"><span className="text-muted-foreground">Preset total</span><span className="font-semibold">{fmt(estimateProductPresetCost(normalizeDraft(draft), draft.defaultLengthM))}</span></div>{draft.configurableByLength ? <Badge variant="secondary">Length-configurable ({draft.defaultLengthM || 80}m default)</Badge> : null}</CardContent></Card>
-                          <Card className="bg-muted/30"><CardHeader className="pb-2"><CardTitle className="text-base">Competitive benchmark</CardTitle></CardHeader><CardContent className="space-y-2 text-sm">{intelligence.competitors.length === 0 ? <p className="text-muted-foreground">No competitor benchmark available.</p> : intelligence.competitors.map((competitor) => (<div key={`${draft.draftId}-${competitor.name}`} className="rounded-lg border p-3 bg-background"><div className="flex items-center justify-between gap-3"><p className="font-medium">{competitor.name}</p><Badge variant="outline">{competitor.marketFit}% fit</Badge></div><p className="text-xs text-muted-foreground mt-1">Offer: {competitor.offer}</p><p className="text-xs text-muted-foreground mt-1">Performance: {competitor.performance}</p><p className="text-xs text-muted-foreground mt-1">Gap: {competitor.fitGap}</p></div>))}</CardContent></Card>
-                          <Card className="bg-muted/30"><CardHeader className="pb-2"><CardTitle className="text-base">Market fit guidance</CardTitle></CardHeader><CardContent className="space-y-2 text-sm"><div className="space-y-1">{intelligence.marketFitNotes.map((note) => <p key={`${draft.draftId}-${note}`} className="text-muted-foreground">- {note}</p>)}</div><div className="pt-2 border-t space-y-1">{intelligence.fitImprovementActions.map((action) => <p key={`${draft.draftId}-${action}`} className="font-medium">- {action}</p>)}</div></CardContent></Card>
+                        <Card className="bg-muted/30">
+                          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                            <CardTitle className="text-base">Reusable cost preset</CardTitle>
+                            {isEditing ? <Button variant="outline" size="sm" onClick={() => addCostPresetLine(selectedDraft.draftId)}><Plus className="h-4 w-4 mr-1" />Add line</Button> : null}
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            {(selectedDraft.costPreset || []).length === 0 ? <p className="text-sm text-muted-foreground">No structured preset yet.</p> : null}
+                            {(selectedDraft.costPreset || []).map((line, index) => (
+                              <div key={`${selectedDraft.draftId}-${index}`} className="rounded-lg border bg-background p-3 space-y-3">
+                                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+                                  <div className="xl:col-span-2"><label className="text-xs text-muted-foreground">Line item</label><Input value={line.lineItem || ''} onChange={(e) => updateCostPresetLine(selectedDraft.draftId, index, { lineItem: e.target.value })} disabled={!isEditing} /></div>
+                                  <div><label className="text-xs text-muted-foreground">Category</label><Select value={line.category} onValueChange={(value) => updateCostPresetLine(selectedDraft.draftId, index, { category: value as ProductCostPresetLine['category'] })} disabled={!isEditing}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{COST_CATEGORIES.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}</SelectContent></Select></div>
+                                  <div><label className="text-xs text-muted-foreground">Mode</label><Select value={line.mode || 'unit'} onValueChange={(value) => updateCostPresetLine(selectedDraft.draftId, index, { mode: value as ProductCostPresetLine['mode'] })} disabled={!isEditing}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{COST_MODES.map((mode) => <SelectItem key={mode} value={mode}>{mode}</SelectItem>)}</SelectContent></Select></div>
+                                  <div><label className="text-xs text-muted-foreground">Unit cost</label><Input type="number" value={line.unitCost || 0} onChange={(e) => updateCostPresetLine(selectedDraft.draftId, index, { unitCost: Number(e.target.value || 0) })} disabled={!isEditing} /></div>
+                                  <div className="flex items-end justify-end">{isEditing ? <Button variant="ghost" size="sm" onClick={() => removeCostPresetLine(selectedDraft.draftId, index)}><Trash2 className="h-4 w-4" /></Button> : <Badge variant="outline">{fmt(presetLineTotal(line))}</Badge>}</div>
+                                </div>
+                                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                                  <div><label className="text-xs text-muted-foreground">Quantity</label><Input type="number" value={line.quantity || 0} onChange={(e) => updateCostPresetLine(selectedDraft.draftId, index, { quantity: Number(e.target.value || 0) })} disabled={!isEditing || line.mode === 'engineering' || line.mode === 'installation'} /></div>
+                                  <div><label className="text-xs text-muted-foreground">Hours</label><Input type="number" value={line.hours || 0} onChange={(e) => updateCostPresetLine(selectedDraft.draftId, index, { hours: Number(e.target.value || 0) })} disabled={!isEditing || line.mode !== 'engineering'} /></div>
+                                  <div><label className="text-xs text-muted-foreground">Hourly rate</label><Input type="number" value={line.hourlyRate || 0} onChange={(e) => updateCostPresetLine(selectedDraft.draftId, index, { hourlyRate: Number(e.target.value || 0) })} disabled={!isEditing || line.mode !== 'engineering'} /></div>
+                                  <div><label className="text-xs text-muted-foreground">Scale per meter</label><Input type="number" value={line.unitsPerLengthM || 0} onChange={(e) => updateCostPresetLine(selectedDraft.draftId, index, { unitsPerLengthM: Number(e.target.value || 0), scalesWithLength: Number(e.target.value || 0) > 0 })} disabled={!isEditing} /></div>
+                                  <div><label className="text-xs text-muted-foreground">Days</label><Input type="number" value={line.days || 0} onChange={(e) => updateCostPresetLine(selectedDraft.draftId, index, { days: Number(e.target.value || 0) })} disabled={!isEditing || line.mode !== 'installation'} /></div>
+                                  <div><label className="text-xs text-muted-foreground">Resources</label><Input type="number" value={line.resources || 0} onChange={(e) => updateCostPresetLine(selectedDraft.draftId, index, { resources: Number(e.target.value || 0) })} disabled={!isEditing || line.mode !== 'installation'} /></div>
+                                  <div><label className="text-xs text-muted-foreground">Optional</label><div className="pt-2"><Checkbox checked={Boolean(line.optional)} onCheckedChange={(checked) => updateCostPresetLine(selectedDraft.draftId, index, { optional: Boolean(checked) })} disabled={!isEditing} /></div></div>
+                                  <div><label className="text-xs text-muted-foreground">Notes</label><Input value={line.notes || ''} onChange={(e) => updateCostPresetLine(selectedDraft.draftId, index, { notes: e.target.value })} disabled={!isEditing} /></div>
+                                </div>
+                              </div>
+                            ))}
+                            <div className="flex items-center justify-between border-t pt-3 text-sm"><span className="text-muted-foreground">Preset total</span><span className="font-semibold">{fmt(estimateProductPresetCost(normalizeDraft(selectedDraft), selectedDraft.defaultLengthM))}</span></div>
+                          </CardContent>
+                        </Card>
+
+                        <div className="grid gap-4 xl:grid-cols-2">
+                          <Card className="bg-muted/30">
+                            <CardHeader className="pb-2"><CardTitle className="text-base">Competitive benchmark</CardTitle></CardHeader>
+                            <CardContent className="space-y-3 text-sm">{(selectedIntelligence?.competitors || []).length === 0 ? <p className="text-muted-foreground">No competitor benchmark available.</p> : selectedIntelligence?.competitors.map((competitor) => (<div key={`${selectedDraft.draftId}-${competitor.name}`} className="rounded-lg border p-3 bg-background"><div className="flex items-center justify-between gap-3"><p className="font-medium">{competitor.name}</p><Badge variant="outline">{competitor.marketFit}% fit</Badge></div><p className="text-xs text-muted-foreground mt-1">Offer: {competitor.offer}</p><p className="text-xs text-muted-foreground mt-1">Performance: {competitor.performance}</p><p className="text-xs text-muted-foreground mt-1">Gap: {competitor.fitGap}</p></div>))}</CardContent>
+                          </Card>
+                          <Card className="bg-muted/30">
+                            <CardHeader className="pb-2"><CardTitle className="text-base">Commercial guidance</CardTitle></CardHeader>
+                            <CardContent className="space-y-3 text-sm">
+                              {selectedSignal ? <div className="rounded-lg border bg-background p-3"><p className="font-medium flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Strategic signal</p><p className="text-muted-foreground mt-1">{summarizeSignal(selectedSignal)}</p><p className="text-xs text-muted-foreground mt-1">Scenario: {selectedSignal.scenario}</p></div> : null}
+                              <div className="space-y-1">{(selectedIntelligence?.marketFitNotes || []).map((note) => <p key={note} className="text-muted-foreground">- {note}</p>)}</div>
+                              <div className="pt-2 border-t space-y-1">{(selectedIntelligence?.fitImprovementActions || []).map((action) => <p key={action} className="font-medium">- {action}</p>)}</div>
+                            </CardContent>
+                          </Card>
                         </div>
                       </CardContent>
                     </Card>
-                  );
-                })}
+                  ) : <Card><CardContent className="py-12 text-center text-muted-foreground">No product selected.</CardContent></Card>}
+                </div>
               </div>
             </CardContent>
           </Card>

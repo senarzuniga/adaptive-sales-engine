@@ -3,6 +3,7 @@ import { useData } from '@/store/DataStore';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { isWorkspaceSupabaseConfigured, readWorkspaceRows, writeWorkspaceRows } from '@/lib/workspaceStorage';
+import { getIngecartBundledProjectWorkspace } from '@/lib/ingecartProjectSeed';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -149,7 +150,7 @@ const fmtCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: '
 const pct = (value: number) => `${Math.min(100, Math.max(0, value || 0)).toFixed(0)}%`;
 
 export default function ProjectManagementPage() {
-  const { activeCompanyId } = useData();
+  const { activeCompanyId, data } = useData();
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [projects, setProjects] = useState<ProjectRow[]>([]);
@@ -160,11 +161,36 @@ export default function ProjectManagementPage() {
   const [costs, setCosts] = useState<CostRow[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
 
+  const syncBundledProjectSeed = async (companyId: string) => {
+    if (!String(data.companyProfile.company_name || '').toLowerCase().includes('ingecart')) return;
+    const bundled = getIngecartBundledProjectWorkspace();
+    const incomingProjects = bundled.projects || [];
+    if (incomingProjects.length === 0) return;
+    const currentProjects = readWorkspaceRows<any>('projects', companyId);
+    const incomingIds = new Set(incomingProjects.map((project) => project.id));
+    const incomingNumbers = new Set(incomingProjects.map((project) => project.project_number));
+    const mergedProjects = [
+      ...currentProjects.filter((project) => !incomingIds.has(project.id) && !incomingNumbers.has(project.project_number)),
+      ...incomingProjects,
+    ].sort((left, right) => String(left.project_number || '').localeCompare(String(right.project_number || '')));
+    writeWorkspaceRows('projects', companyId, mergedProjects);
+    (['project_phases', 'project_milestones', 'project_risks', 'project_gates', 'project_costs', 'change_orders'] as const).forEach((table) => {
+      const currentRows = readWorkspaceRows<any>(table, companyId);
+      const incomingRows = bundled[table] || [];
+      writeWorkspaceRows(table, companyId, [
+        ...currentRows.filter((row) => !incomingIds.has(row.project_id)),
+        ...incomingRows,
+      ]);
+    });
+  };
+
   const loadProjectData = async () => {
+
     if (!activeCompanyId) return;
     setLoading(true);
     try {
       if (!isWorkspaceSupabaseConfigured) {
+        await syncBundledProjectSeed(activeCompanyId);
         const localProjects = readWorkspaceRows('projects', activeCompanyId);
         setProjects(localProjects);
         if (!selectedProjectId && localProjects[0]) {
@@ -515,6 +541,38 @@ export default function ProjectManagementPage() {
                     <div className="rounded-lg border p-3 bg-muted/20 text-sm">
                       <div className="font-medium mb-1">Scope</div>
                       <div className="text-muted-foreground">{activeProject.scope_of_supply || 'No scope defined yet.'}</div>
+                    </div>
+                    <div className="grid gap-4 xl:grid-cols-2">
+                      <div className="rounded-lg border p-3 bg-background text-sm space-y-3">
+                        <div className="font-medium">Commercial and execution context</div>
+                        <div><span className="text-muted-foreground">Payment terms:</span> <span>{activeProject.payment_terms || 'TBD'}</span></div>
+                        <div><span className="text-muted-foreground">Incoterms:</span> <span>{activeProject.incoterms || 'TBD'}</span></div>
+                        <div><span className="text-muted-foreground">Warranty:</span> <span>{activeProject.warranty_terms || 'TBD'}</span></div>
+                        <div><span className="text-muted-foreground">Dependencies:</span> <span>{activeProject.dependencies || 'TBD'}</span></div>
+                        <div>
+                          <div className="text-muted-foreground mb-1">Customer requirements</div>
+                          <div className="whitespace-pre-wrap">{activeProject.customer_requirements || 'No special requirements captured yet.'}</div>
+                        </div>
+                      </div>
+                      <div className="rounded-lg border p-3 bg-background text-sm space-y-3">
+                        <div className="font-medium">Evidence and cost control</div>
+                        <div>
+                          <div className="text-muted-foreground mb-1">Source references</div>
+                          <div className="whitespace-pre-wrap break-all text-xs">{activeProject.site_constraints || 'No source references linked yet.'}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground mb-1">Project notes</div>
+                          <div className="whitespace-pre-wrap">{activeProject.notes || 'No execution notes captured yet.'}</div>
+                        </div>
+                        <div className="space-y-2 border-t pt-3">
+                          {(activeCosts.length > 0 ? activeCosts : []).map((cost) => (
+                            <div key={cost.id} className="flex items-center justify-between gap-3">
+                              <span className="text-muted-foreground">{cost.line_item}</span>
+                              <span>{fmtCurrency(Number(cost.actual_amount || 0))} / {fmtCurrency(Number(cost.budget_amount || 0))}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
