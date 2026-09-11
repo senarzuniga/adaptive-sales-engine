@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { VoiceTextInput } from '@/components/VoiceTextInput';
 import { toast } from '@/hooks/use-toast';
-import { BarChart3, CheckCircle2, ExternalLink, Lightbulb, Package, Search, Sparkles, Target, TrendingUp } from 'lucide-react';
+import { BarChart3, CheckCircle2, ExternalLink, FileText, Lightbulb, Package, Search, Sparkles, Target, TrendingUp } from 'lucide-react';
 import { fmt } from '@/components/analysis360/AnalysisUtils';
 import {
   buildProductPositioningActions,
@@ -46,6 +46,7 @@ const toDraft = (product: ProductRecord): CatalogDraft => {
     competitors: normalized.competitors || [],
     marketFitNotes: normalized.marketFitNotes || [],
     fitImprovementActions: normalized.fitImprovementActions || [],
+    technicalDossier: normalized.technicalDossier,
   };
 };
 
@@ -69,9 +70,20 @@ const normalizeDraft = (draft: CatalogDraft): ProductRecord => ({
   competitors: draft.competitors || [],
   marketFitNotes: (draft.marketFitNotes || []).map((item) => item.trim()).filter(Boolean),
   fitImprovementActions: (draft.fitImprovementActions || []).map((item) => item.trim()).filter(Boolean),
+  technicalDossier: draft.technicalDossier,
 });
 
 const summarizeSignal = (signal: ProductStrategicSignals) => `${signal.lifecycleSignal} lifecycle, ${signal.offerModel}, competition led by ${signal.competitionFocus}.`;
+const dossierList = (value: string) => value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+const dossierSpecifications = (value: string): NonNullable<ProductRecord['technicalDossier']>['technicalSpecifications'] => value
+  .split(/\r?\n/)
+  .map((line) => {
+    const [parameter = '', specificationValue = '', rawStatus = 'pending'] = line.split('|').map((item) => item.trim());
+    const allowedStatuses = ['verified', 'commercial-claim', 'modelled', 'pre-engineering', 'pending'] as const;
+    const status = allowedStatuses.find((item) => item === rawStatus) || 'pending';
+    return { parameter, value: specificationValue, status };
+  })
+  .filter((item) => item.parameter && item.value);
 
 const ProductStrategyPage = () => {
   const { data, addTask, updateTask, setProducts } = useData();
@@ -108,6 +120,11 @@ const ProductStrategyPage = () => {
   const avgFit = snapshot.products.length > 0 ? snapshot.products.reduce((sum, product) => sum + product.marketFitScore, 0) / snapshot.products.length : 0;
 
   const updateDraft = (draftId: string, field: keyof CatalogDraft, value: unknown) => setCatalogDrafts((prev) => prev.map((draft) => (draft.draftId === draftId ? { ...draft, [field]: value } : draft)));
+  const updateDossier = (draftId: string, field: keyof NonNullable<CatalogDraft['technicalDossier']>, value: unknown) => setCatalogDrafts((prev) => prev.map((draft) => (
+    draft.draftId === draftId && draft.technicalDossier
+      ? { ...draft, technicalDossier: { ...draft.technicalDossier, [field]: value } }
+      : draft
+  )));
   const addCatalogItem = (category: 'product' | 'service') => setCatalogDrafts((prev) => [...prev, toDraft({ name: '', averageValue: 0, type: category === 'service' ? 'service model' : 'equipment', comments: '', category, characteristics: [], estimatedCost: 0, repositories: [], validated: false, source: 'manual', linkedReports: [], costPreset: [], competitors: [], marketFitNotes: [], fitImprovementActions: [] })]);
   const removeCatalogItem = (draftId: string) => setCatalogDrafts((prev) => prev.filter((draft) => draft.draftId !== draftId));
   const loadCanonicalProfiles = () => {
@@ -230,8 +247,40 @@ const ProductStrategyPage = () => {
                           <div className="space-y-3"><div><label className="text-xs text-muted-foreground">Product information URL</label><Input value={draft.productInfoUrl || ''} onChange={(e) => updateDraft(draft.draftId, 'productInfoUrl', e.target.value)} /></div><div><label className="text-xs text-muted-foreground">Product video URL</label><Input value={draft.productVideoUrl || ''} onChange={(e) => updateDraft(draft.draftId, 'productVideoUrl', e.target.value)} /></div><div><label className="text-xs text-muted-foreground">Linked reports (one per line)</label><Textarea rows={4} value={(draft.linkedReports || []).join('\n')} onChange={(e) => updateDraft(draft.draftId, 'linkedReports', e.target.value.split(/\r?\n/))} /></div><div className="grid gap-3 md:grid-cols-2"><div><label className="text-xs text-muted-foreground">Reference estimated cost</label><Input type="number" value={draft.estimatedCost || 0} onChange={(e) => updateDraft(draft.draftId, 'estimatedCost', Number(e.target.value || 0))} /></div><div className="flex items-center gap-3 pt-6"><Checkbox checked={Boolean(draft.validated)} onCheckedChange={(checked) => updateDraft(draft.draftId, 'validated', Boolean(checked))} /><span className="text-sm">Validated product</span></div></div></div>
                         </div>
 
+                        {draft.technicalDossier ? (
+                          <Card className="border-primary/30 bg-primary/[0.03]">
+                            <CardHeader className="pb-3">
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                  <CardTitle className="flex items-center gap-2 text-base"><FileText className="h-4 w-4" /> Technical dossier</CardTitle>
+                                  <p className="text-xs text-muted-foreground mt-1">Evidence-controlled engineering basis for RFQ, ROI and FAT/SAT.</p>
+                                </div>
+                                <div className="flex gap-2"><Badge variant="outline">{draft.technicalDossier.dossierId}</Badge><Badge variant="secondary">Rev. {draft.technicalDossier.revision} | {draft.technicalDossier.updatedAt}</Badge></div>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                              <div><label className="text-xs text-muted-foreground">Value proposition</label><Textarea rows={2} value={draft.technicalDossier.valueProposition} onChange={(event) => updateDossier(draft.draftId, 'valueProposition', event.target.value)} /></div>
+                              <div className="grid gap-3 xl:grid-cols-3">
+                                <div><label className="text-xs text-muted-foreground">Applications (one per line)</label><Textarea rows={5} value={draft.technicalDossier.applications.join('\n')} onChange={(event) => updateDossier(draft.draftId, 'applications', dossierList(event.target.value))} /></div>
+                                <div><label className="text-xs text-muted-foreground">Performance KPIs (one per line)</label><Textarea rows={5} value={draft.technicalDossier.performanceKpis.join('\n')} onChange={(event) => updateDossier(draft.draftId, 'performanceKpis', dossierList(event.target.value))} /></div>
+                                <div><label className="text-xs text-muted-foreground">ROI framework (one per line)</label><Textarea rows={5} value={draft.technicalDossier.roiFramework.join('\n')} onChange={(event) => updateDossier(draft.draftId, 'roiFramework', dossierList(event.target.value))} /></div>
+                              </div>
+                              <div>
+                                <label className="text-xs text-muted-foreground">Technical specifications (parameter | value | evidence status)</label>
+                                <Textarea rows={Math.max(4, draft.technicalDossier.technicalSpecifications.length)} value={draft.technicalDossier.technicalSpecifications.map((item) => `${item.parameter} | ${item.value} | ${item.status}`).join('\n')} onChange={(event) => updateDossier(draft.draftId, 'technicalSpecifications', dossierSpecifications(event.target.value))} />
+                                <div className="flex flex-wrap gap-1.5 mt-2">{(['verified', 'commercial-claim', 'modelled', 'pre-engineering', 'pending'] as const).map((status) => <Badge key={status} variant="outline" className="text-[10px]">{status}</Badge>)}</div>
+                              </div>
+                              <div className="grid gap-3 xl:grid-cols-3">
+                                <div><label className="text-xs text-muted-foreground">Risks and limits</label><Textarea rows={5} value={draft.technicalDossier.risksAndLimits.join('\n')} onChange={(event) => updateDossier(draft.draftId, 'risksAndLimits', dossierList(event.target.value))} /></div>
+                                <div><label className="text-xs text-muted-foreground">FAT/SAT acceptance criteria</label><Textarea rows={5} value={draft.technicalDossier.acceptanceCriteria.join('\n')} onChange={(event) => updateDossier(draft.draftId, 'acceptanceCriteria', dossierList(event.target.value))} /></div>
+                                <div><label className="text-xs text-muted-foreground">Sources and traceability</label><Textarea rows={5} value={draft.technicalDossier.sourceReferences.join('\n')} onChange={(event) => updateDossier(draft.draftId, 'sourceReferences', dossierList(event.target.value))} /></div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ) : null}
+
                         <div className="grid gap-4 xl:grid-cols-3">
-                          <Card className="bg-muted/30"><CardHeader className="pb-2"><CardTitle className="text-base">Reusable cost preset</CardTitle></CardHeader><CardContent className="space-y-2 text-sm">{(draft.costPreset || []).length === 0 ? <p className="text-muted-foreground">No structured preset yet.</p> : (draft.costPreset || []).map((line) => (<div key={`${draft.draftId}-${line.lineItem}`} className="flex items-center justify-between gap-3"><div><p className="font-medium">{line.lineItem}</p><p className="text-xs text-muted-foreground">{line.mode || 'unit'} · {line.category}</p></div><p className="font-semibold">{fmt((line.quantity || 0) * (line.unitCost || 0) + (line.hours || 0) * (line.hourlyRate || 0) + (line.days || 0) * (line.resources || 0) * (line.unitCost || 0))}</p></div>))}<div className="pt-2 border-t flex items-center justify-between"><span className="text-muted-foreground">Preset total</span><span className="font-semibold">{fmt(estimateProductPresetCost(normalizeDraft(draft), draft.defaultLengthM))}</span></div>{draft.configurableByLength ? <Badge variant="secondary">Length-configurable ({draft.defaultLengthM || 80}m default)</Badge> : null}</CardContent></Card>
+                          <Card className="bg-muted/30"><CardHeader className="pb-2"><CardTitle className="text-base">Reusable cost preset</CardTitle></CardHeader><CardContent className="space-y-2 text-sm">{(draft.costPreset || []).length === 0 ? <p className="text-muted-foreground">No structured preset yet.</p> : (draft.costPreset || []).map((line) => (<div key={`${draft.draftId}-${line.lineItem}`} className="flex items-center justify-between gap-3"><div><p className="font-medium">{line.lineItem}</p><p className="text-xs text-muted-foreground">{line.mode || 'unit'} ï¿½ {line.category}</p></div><p className="font-semibold">{fmt((line.quantity || 0) * (line.unitCost || 0) + (line.hours || 0) * (line.hourlyRate || 0) + (line.days || 0) * (line.resources || 0) * (line.unitCost || 0))}</p></div>))}<div className="pt-2 border-t flex items-center justify-between"><span className="text-muted-foreground">Preset total</span><span className="font-semibold">{fmt(estimateProductPresetCost(normalizeDraft(draft), draft.defaultLengthM))}</span></div>{draft.configurableByLength ? <Badge variant="secondary">Length-configurable ({draft.defaultLengthM || 80}m default)</Badge> : null}</CardContent></Card>
                           <Card className="bg-muted/30"><CardHeader className="pb-2"><CardTitle className="text-base">Competitive benchmark</CardTitle></CardHeader><CardContent className="space-y-2 text-sm">{intelligence.competitors.length === 0 ? <p className="text-muted-foreground">No competitor benchmark available.</p> : intelligence.competitors.map((competitor) => (<div key={`${draft.draftId}-${competitor.name}`} className="rounded-lg border p-3 bg-background"><div className="flex items-center justify-between gap-3"><p className="font-medium">{competitor.name}</p><Badge variant="outline">{competitor.marketFit}% fit</Badge></div><p className="text-xs text-muted-foreground mt-1">Offer: {competitor.offer}</p><p className="text-xs text-muted-foreground mt-1">Performance: {competitor.performance}</p><p className="text-xs text-muted-foreground mt-1">Gap: {competitor.fitGap}</p></div>))}</CardContent></Card>
                           <Card className="bg-muted/30"><CardHeader className="pb-2"><CardTitle className="text-base">Market fit guidance</CardTitle></CardHeader><CardContent className="space-y-2 text-sm"><div className="space-y-1">{intelligence.marketFitNotes.map((note) => <p key={`${draft.draftId}-${note}`} className="text-muted-foreground">- {note}</p>)}</div><div className="pt-2 border-t space-y-1">{intelligence.fitImprovementActions.map((action) => <p key={`${draft.draftId}-${action}`} className="font-medium">- {action}</p>)}</div></CardContent></Card>
                         </div>

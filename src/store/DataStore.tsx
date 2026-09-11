@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { buildCommercialIntelligence, harmonizeCommercialRecords } from '@/lib/commercialIntelligence';
 import { dedupeOpportunities, dedupeOrders, normalizeOpportunityStatus, parseFlexibleNumber } from '@/lib/salesData';
-import { inferProductCategory, parseProductComments, serializeProductComments, type ProductCategory, type ProductCompetitorBenchmark, type ProductCostPresetLine } from '@/lib/productCatalog';
+import { inferProductCategory, parseProductComments, serializeProductComments, type ProductCategory, type ProductCompetitorBenchmark, type ProductCostPresetLine, type ProductTechnicalDossier } from '@/lib/productCatalog';
 
 // â”€â”€â”€ Offline / localStorage mode when Supabase is not configured â”€â”€â”€
 const isSupabaseConfigured =
@@ -180,6 +180,7 @@ export interface ProductRecord {
   competitors?: ProductCompetitorBenchmark[];
   marketFitNotes?: string[];
   fitImprovementActions?: string[];
+  technicalDossier?: ProductTechnicalDossier;
 }
 
 export interface StrategyRecord {
@@ -314,6 +315,7 @@ function dbToProduct(r: any): ProductRecord {
     competitors: parsed.meta.competitors || [],
     marketFitNotes: parsed.meta.marketFitNotes || [],
     fitImprovementActions: parsed.meta.fitImprovementActions || [],
+    technicalDossier: parsed.meta.technicalDossier,
   };
 }
 
@@ -815,6 +817,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           competitors: p.competitors,
           marketFitNotes: p.marketFitNotes,
           fitImprovementActions: p.fitImprovementActions,
+          technicalDossier: p.technicalDossier,
         }),
       })));
     }
@@ -1057,6 +1060,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           competitors: p.competitors,
           marketFitNotes: p.marketFitNotes,
           fitImprovementActions: p.fitImprovementActions,
+          technicalDossier: p.technicalDossier,
         }),
       })));
     }
@@ -1315,5 +1319,3 @@ export function useData() {
   if (!ctx) throw new Error('useData must be used within DataProvider');
   return ctx;
 }
-
-

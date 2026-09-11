@@ -29,6 +29,28 @@ export interface ProductCompetitorBenchmark {
   gainFitActions: string[];
 }
 
+export type ProductEvidenceStatus = 'verified' | 'commercial-claim' | 'modelled' | 'pre-engineering' | 'pending';
+
+export interface ProductTechnicalSpecification {
+  parameter: string;
+  value: string;
+  status: ProductEvidenceStatus;
+}
+
+export interface ProductTechnicalDossier {
+  dossierId: string;
+  revision: string;
+  updatedAt: string;
+  valueProposition: string;
+  applications: string[];
+  technicalSpecifications: ProductTechnicalSpecification[];
+  performanceKpis: string[];
+  roiFramework: string[];
+  risksAndLimits: string[];
+  acceptanceCriteria: string[];
+  sourceReferences: string[];
+}
+
 export interface ProductCatalogMeta {
   category?: ProductCategory;
   characteristics?: string[];
@@ -45,6 +67,7 @@ export interface ProductCatalogMeta {
   competitors?: ProductCompetitorBenchmark[];
   marketFitNotes?: string[];
   fitImprovementActions?: string[];
+  technicalDossier?: ProductTechnicalDossier;
 }
 
 const META_TOKEN = '[ASE_CATALOG_META]';
@@ -99,6 +122,30 @@ function cleanCompetitors(competitors?: ProductCompetitorBenchmark[]) {
   })).filter((item) => item.name);
 }
 
+function cleanTechnicalDossier(dossier?: ProductTechnicalDossier): ProductTechnicalDossier | undefined {
+  if (!dossier || typeof dossier !== 'object') return undefined;
+  const dossierId = String(dossier.dossierId || '').trim();
+  if (!dossierId) return undefined;
+  const validStatuses: ProductEvidenceStatus[] = ['verified', 'commercial-claim', 'modelled', 'pre-engineering', 'pending'];
+  return {
+    dossierId,
+    revision: String(dossier.revision || '').trim(),
+    updatedAt: String(dossier.updatedAt || '').trim(),
+    valueProposition: String(dossier.valueProposition || '').trim(),
+    applications: cleanList(dossier.applications),
+    technicalSpecifications: (dossier.technicalSpecifications || []).map((item) => ({
+      parameter: String(item?.parameter || '').trim(),
+      value: String(item?.value || '').trim(),
+      status: validStatuses.includes(item?.status) ? item.status : 'pending',
+    })).filter((item) => item.parameter && item.value),
+    performanceKpis: cleanList(dossier.performanceKpis),
+    roiFramework: cleanList(dossier.roiFramework),
+    risksAndLimits: cleanList(dossier.risksAndLimits),
+    acceptanceCriteria: cleanList(dossier.acceptanceCriteria),
+    sourceReferences: cleanList(dossier.sourceReferences),
+  };
+}
+
 export function parseProductComments(comments?: string | null): { notes: string; meta: ProductCatalogMeta } {
   const raw = (comments || '').trim();
   if (!raw.includes(META_TOKEN)) return { notes: raw, meta: {} };
@@ -123,6 +170,7 @@ export function parseProductComments(comments?: string | null): { notes: string;
       competitors: cleanCompetitors(meta.competitors),
       marketFitNotes: cleanList(meta.marketFitNotes),
       fitImprovementActions: cleanList(meta.fitImprovementActions),
+      technicalDossier: cleanTechnicalDossier(meta.technicalDossier),
     },
   };
 }
@@ -144,6 +192,7 @@ export function serializeProductComments(notes: string, meta: ProductCatalogMeta
     competitors: cleanCompetitors(meta.competitors),
     marketFitNotes: cleanList(meta.marketFitNotes),
     fitImprovementActions: cleanList(meta.fitImprovementActions),
+    technicalDossier: cleanTechnicalDossier(meta.technicalDossier),
   };
 
   const hasMeta = Boolean(
@@ -161,7 +210,8 @@ export function serializeProductComments(notes: string, meta: ProductCatalogMeta
     (normalizedMeta.costPreset && normalizedMeta.costPreset.length > 0) ||
     (normalizedMeta.competitors && normalizedMeta.competitors.length > 0) ||
     (normalizedMeta.marketFitNotes && normalizedMeta.marketFitNotes.length > 0) ||
-    (normalizedMeta.fitImprovementActions && normalizedMeta.fitImprovementActions.length > 0)
+    (normalizedMeta.fitImprovementActions && normalizedMeta.fitImprovementActions.length > 0) ||
+    normalizedMeta.technicalDossier
   );
 
   if (!hasMeta) return notes.trim();

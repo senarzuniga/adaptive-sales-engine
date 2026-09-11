@@ -1,0 +1,592 @@
+El panel del dashboard debe contener un panel de gestion de la empresa seleccionada, en este caso Ingecart:
+
+En el punto principal del panel "Dashboard Overview",
+
+quiero ver un cuadro de mando como este:
+┌────────────────────────────────────────────────────────────────────────────┐
+│ INGECART                         🔔 7     AI Assistant     👤 User    │
+├──────────────┬─────────────────────────────────────────────────────────────┤
+│              │                                                             │
+│ DAILY        │                 COMMERCIAL & PROJECT CONTROL                │
+│ EXECUTION    │                                                             │
+│              │                                                             │
+│ CRM          │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐       │
+│              │  │ PIPELINE │ │ FORECAST │ │ PROJECTS │ │  RISKS   │       │
+│ SALES        │  │ €18.4 M  │ │ €7.2 M   │ │ 12       │ │ 3 🔴     │       │
+│              │  └──────────┘ └──────────┘ └──────────┘ └──────────┘       │
+│ OFFERS       │                                                             │
+│              │  ┌─────────────────────────────────────────────────────┐   │
+│ PROJECTS     │  │                  NEXT BEST ACTIONS                   │   │
+│              │  │ 🔴 Pacific — review offer                           │   │
+│ FINANCE      │  │ 🟠 Sterner — customer follow-up                     │   │
+│              │  │ 🔴 Project X — engineering decision                  │   │
+│ CUSTOMERS    │  │ 🟠 FAT preparation                                  │   │
+│              │  └─────────────────────────────────────────────────────┘   │
+│ PRODUCTS     │                                                             │
+│              │  ┌──────────────────────┐ ┌─────────────────────────────┐ │
+│ MARKETING    │  │ SALES FUNNEL         │ │ PROJECT PORTFOLIO           │ │
+│              │  │ Leads                 │ │ On track     7 🟢           │ │
+│ KNOWLEDGE    │  │ Opportunities         │ │ Attention    3 🟠           │ │
+│              │  │ Offers                │ │ Critical     2 🔴           │ │
+│ REPORTS      │  │ Negotiation           │ │                             │ │
+│              │  │ Won                   │ │ Cash / Schedule / Risk      │ │
+│ CGO          │  └──────────────────────┘ └─────────────────────────────┘ │
+│              │                                                             │
+└──────────────┴─────────────────────────────────────────────────────────────┘
+
+Los datos y nombres son solo ejemplos.
+
+el panel lateral:
+
+CRM: Acceso a gestion de acciones
+Sales: Analisis de ventas, precios productos margenes, previsiones...etc
+Offers: Offer Pipeline
+Projects: Proyectos en curso
+Finance: analisis financiero en base a los datos que se tienen
+
+
+
+```
+
+---
+
+# 2. Primera capa: Executive Dashboard
+
+
+
+Pondría **8–12 indicadores que realmente permitan dirigir la empresa**.
+
+### Comercial
+
+* Pipeline
+* Weighted pipeline
+* Forecast trimestre
+* Forecast año
+* Win rate
+* Offers at risk
+* Offers expiring
+
+### Proyectos
+
+* Proyectos activos
+* Proyectos críticos
+* Margen previsto
+* Desviación de plazo
+* Riesgo acumulado
+
+### Financiero
+
+* Facturación pendiente
+* Cobros pendientes
+* Cash exposure
+* Necesidad máxima de financiación
+
+Y una métrica especialmente importante:
+
+### **Revenue at Risk**
+
+Cuánto negocio está actualmente en riesgo por:
+
+* cliente;
+* oferta;
+* proyecto;
+* retraso;
+* contrato;
+* capacidad;
+* financiación.
+
+---
+
+# 3. El centro debería ser "Next Best Actions"
+
+Esto es lo que diferenciaría tu CRM.
+
+El dashboard no debería terminar en:
+
+> Pipeline €15M.
+
+Debe continuar:
+
+> **¿Qué debemos hacer ahora?**
+
+Por ejemplo:
+
+```text
+NEXT BEST ACTIONS
+────────────────────────────────────────────
+
+🔴 1. Pacific Southwest
+   Offer €2.4M
+   Expires in 4 days
+
+   Recommended:
+   Call customer and confirm decision timeline.
+
+   [VIEW CONTEXT] [PREPARE CALL]
+
+────────────────────────────────────────────
+
+🔴 2. Project 2026-014
+   Engineering decision overdue 3 days.
+
+   Recommended:
+   Escalate to Engineering Director.
+
+   [OPEN PROJECT] [PREPARE MESSAGE]
+
+────────────────────────────────────────────
+
+🟠 3. Sterner
+   No customer interaction for 12 days.
+
+   Recommended:
+   Follow up with commercial update.
+
+   [PREPARE EMAIL]
+```
+
+Esto conecta directamente con el **Daily Execution Console**.
+
+---
+
+# 4. CRM Funnel
+
+El funnel debería ser muy visual:
+
+```text
+LEADS
+  ↓
+QUALIFIED
+  ↓
+OPPORTUNITIES
+  ↓
+OFFERS
+  ↓
+NEGOTIATION
+  ↓
+WON
+  ↓
+PROJECT
+  ↓
+AFTER SALES
+  ↓
+LOYALTY
+  ↓
+NEW OPPORTUNITY
+```
+
+Pero cada etapa debería tener:
+
+**volumen + valor + probabilidad + riesgo + próxima acción.**
+
+No solamente número de oportunidades.
+
+---
+
+# 5. Offer Control Tower
+
+Para una empresa como Ingecart, esta pantalla sería fundamental.
+
+```text
+OFFER CONTROL
+
+                    VALUE       PROB.     STATUS
+────────────────────────────────────────────────────
+Pacific Southwest   €2.4M       70%       🔴
+Sterner             €1.6M       60%       🟠
+International Paper €850K       80%       🟢
+Cascades            €520K       50%       🟠
+```
+
+Y filtros:
+
+* cliente;
+* línea de negocio;
+* vendedor;
+* fecha;
+* importe;
+* probabilidad;
+* vencimiento;
+* estratégico;
+* riesgo;
+* margen;
+* financiación.
+
+---
+
+# 6. Project Control Tower
+
+Aquí CRM se convierte realmente en **CRM + Project Management**.
+
+```text
+PROJECT PORTFOLIO
+
+                 Schedule   Cost    Risk    Cash
+──────────────────────────────────────────────────
+Project A          🟢       🟢      🟢      🟢
+Project B          🟠       🟢      🔴      🟠
+Project C          🔴       🟠      🔴      🔴
+Project D          🟢       🟢      🟢      🟢
+```
+
+No necesitas entrar en cada proyecto para saber dónde está el problema.
+
+---
+
+# 7. La ficha del cliente debe conectar todo
+
+Por ejemplo:
+
+```text
+INTERNATIONAL PAPER
+
+ACCOUNT HEALTH
+──────────────────────
+Relationship       82
+Revenue            €X
+Pipeline           €X
+Projects           4
+Offers             3
+Risk               Medium
+Strategic Value    HIGH
+
+COMMERCIAL
+Offers
+Opportunities
+Contacts
+Activities
+
+PROJECTS
+Active
+Completed
+Problems
+
+FINANCE
+Revenue
+Outstanding
+Payment behaviour
+
+KNOWLEDGE
+Needs
+Technologies
+Decisions
+Preferences
+
+NEXT ACTIONS
+...
+```
+
+Así el cliente deja de ser un simple registro CRM.
+
+Se convierte en un **Customer Context**.
+
+---
+
+# 8. Y la ficha del proyecto
+
+Debe heredar automáticamente el contexto comercial:
+
+```text
+PROJECT
+│
+├── Customer
+├── Original Opportunity
+├── Original Offer
+├── Contract
+├── Scope
+├── Products
+├── Team
+├── Schedule
+├── Engineering
+├── Purchasing
+├── Workshop
+├── Installation
+├── FAT
+├── SAT
+├── Costs
+├── Revenue
+├── Cashflow
+├── Risks
+├── Changes
+├── Communications
+└── After Sales
+```
+
+Así no existe una ruptura artificial entre:
+
+**CRM → Oferta → Proyecto.**
+
+---
+
+# 9. El elemento que yo añadiría: Customer Journey
+
+Para cada cliente:
+
+```text
+LEAD
+ ↓
+FIRST CONTACT
+ ↓
+QUALIFICATION
+ ↓
+OPPORTUNITY
+ ↓
+OFFER
+ ↓
+NEGOTIATION
+ ↓
+ORDER
+ ↓
+PROJECT
+ ↓
+FAT
+ ↓
+SAT
+ ↓
+INVOICE
+ ↓
+PAYMENT
+ ↓
+AFTER SALES
+ ↓
+LOYALTY
+ ↓
+NEXT OPPORTUNITY
+```
+
+ASE debería saber **en qué punto está cada cliente**.
+
+Y detectar automáticamente dónde se está perdiendo valor.
+
+---
+
+# 10. AI Layer dentro del dashboard
+
+No pondría un chatbot enorme ocupando media pantalla.
+
+Pondría una pequeña zona:
+
+### AI Executive Brief
+
+```text
+TODAY'S INTELLIGENCE
+
+🔴 3 situations require attention
+
+1. Pacific Southwest offer expires in 4 days.
+
+2. Project 014 has engineering delay.
+
+3. Customer Cascades has reduced activity.
+
+💡 Recommended priority:
+Resolve Project 014 before commercial activities.
+```
+
+Y un botón:
+
+**"Explain"**
+
+que abre el contexto y evidencia.
+
+---
+
+# 11. El CRM debe tener un "Action Graph"
+
+Esto es más importante que un task list.
+
+Ejemplo:
+
+```text
+Customer
+   │
+   └── Opportunity
+          │
+          └── Offer
+                 │
+                 └── Negotiation
+                        │
+                        ├── Sales Action
+                        ├── Engineering Action
+                        ├── Finance Action
+                        └── Management Decision
+```
+
+Cuando una persona completa una acción, ASE actualiza automáticamente el contexto.
+
+Entonces:
+
+```text
+ACTION COMPLETED
+       ↓
+UPDATE ENTITY
+       ↓
+RECALCULATE RISK
+       ↓
+RECALCULATE FORECAST
+       ↓
+RECALCULATE GAP
+       ↓
+GENERATE NEXT ACTION
+```
+
+---
+
+# 12. El dashboard por defecto debería adaptarse al usuario
+
+El **mismo CRM** debe mostrar diferentes cosas según quién entra.
+
+### Diego
+
+```text
+Growth
+Cash
+Strategic Customers
+Major Offers
+Major Projects
+Risks
+Decisions
+```
+
+### María Jesús
+
+```text
+Cash
+Invoices
+Collections
+Payments
+Banks
+Project Finance
+Financing
+```
+
+### Project Manager
+
+```text
+Projects
+Schedule
+Actions
+Engineering
+Customer
+Risk
+Documents
+```
+
+### Ingeniero
+
+```text
+Engineering Tasks
+Documents
+RFIs
+Technical Decisions
+Projects
+Deadlines
+```
+
+### Taller
+
+```text
+Work Orders
+Production
+Materials
+Machines
+Urgent Tasks
+```
+
+### Mantenimiento
+
+```text
+Failures
+Preventive Maintenance
+Spare Parts
+Technicians
+Open Work Orders
+```
+
+Yo como administrador siempre a todo.
+
+**No son seis aplicaciones.**
+
+Es **una plataforma con seis Work Contexts**.
+
+---
+
+# 13. Mi estructura final del menú
+
+Yo dejaría algo así:
+
+```text
+🏠 DAILY EXECUTION
+   └── My Work
+
+🏢 COMPANY
+   ├── Company Overview
+   ├── People
+   └── Organization
+
+👥 CRM
+   ├── Customers
+   ├── Leads
+   ├── Opportunities
+   ├── Contacts
+   └── Activities
+
+💼 SALES
+   ├── Offers
+   ├── Negotiation
+   ├── Forecast
+   └── Sales Intelligence
+
+⚙️ PROJECTS
+   ├── Portfolio
+   ├── Projects
+   ├── Milestones
+   ├── Risks
+   └── Project Finance
+
+🏭 PRODUCTS
+   ├── Business Lines
+   ├── Products
+   ├── Configurations
+   └── Pricing Intelligence
+
+💰 FINANCE
+   ├── Invoicing
+   ├── Collections
+   ├── Suppliers
+   ├── Banks
+   └── Cashflow
+
+🧠 KNOWLEDGE
+   ├── Knowledge Graph
+   ├── Documents
+   ├── Customers
+   ├── Products
+   └── Market Intelligence
+
+📊 MANAGEMENT
+   ├── CGO
+   ├── CFO
+   ├── Forecast
+   └── Reports
+
+🤖 AI
+   ├── Assistant
+   ├── Missions
+   └── Agent Status
+
+ASE Aditional panels: El resto de paneles que no han quedado integrados en los bloques anteriores.
+
+```
+
+Y la **home no debería ser "CRM Dashboard"**.
+
+Debe ser:
+
+# **DAILY EXECUTION CONSOLE**
+
+Porque el objetivo último de ASE no es que el usuario consulte información.
+
+Es que **sepa exactamente qué debe hacer, por qué debe hacerlo, que tenga preparado cómo hacerlo y que el sistema compruebe después si se ha conseguido el resultado esperado**.
+
+Ahí es donde un CRM avanzado pasa de ser un sistema de registro (*system of record*) a convertirse en un **system of execution**.

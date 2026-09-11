@@ -1,5 +1,6 @@
 import type { ProductRecord } from '@/store/DataStore';
 import { inferProductCategory, type ProductCatalogMeta, type ProductCostPresetLine, type ProductCompetitorBenchmark } from '@/lib/productCatalog';
+import { getCanonicalProductDossier } from '@/lib/productTechnicalDossiers';
 
 const SOLUTIONS_URL = 'https://senarzuniga.github.io/ingesite.github.io/index.html#solutions';
 const VIDEO_URL = 'https://ingesitehub.netlify.app/#technology';
@@ -159,7 +160,7 @@ const PRODUCT_PROFILES: ProductProfile[] = [
     },
   },
   {
-    aliases: ['amr intralogistics', 'amr gestion desperdico area corrugado'],
+    aliases: ['amr gestion desperdicio area corrugado', 'amr gestion desperdico area corrugado', 'amr waste management'],
     base: {
       name: 'AMR GESTION DESPERDICIO AREA CORRUGADO', averageValue: 330000, estimatedCost: 231716, type: 'innovation solution', category: 'product',
       characteristics: ['AMR turnkey installation', 'Waste management in corrugated area', 'KUKA mobile robotics integration'], repositories: ['INGECART/PRODUCTO', 'ingesite solutions'], validated: true, source: 'manual', comments: 'AMR waste management baseline with turnkey installation and electrical integration.'
@@ -177,6 +178,20 @@ const PRODUCT_PROFILES: ProductProfile[] = [
     },
   },
   {
+    aliases: ['amr intralogistics'],
+    base: {
+      name: 'AMR INTRALOGISTICS', averageValue: 300000, estimatedCost: 216000, type: 'innovation solution', category: 'product',
+      characteristics: ['AMR fleet and WCS orchestration', 'Trident transfer stations', 'Dynamic routing and scalable capacity'], repositories: ['INGECART/PRODUCTO/AMR INTRALOGISTICS', 'ingesite solutions'], validated: true, source: 'manual', comments: 'Canonical flexible intralogistics platform; fleet size and performance require project simulation.'
+    },
+    meta: {
+      productInfoUrl: 'https://senarzuniga.github.io/ingesite.github.io/solutions/amr-intralogistics.html', productVideoUrl: VIDEO_URL,
+      linkedReports: ['TECHNICAL REPORT AMR INTR.txt', 'KUKA AMR WIP technical report'],
+      competitors: [competitor('Geek+', 'AMR fleet orchestration', 'Mature generic fleet software and scalable AMR portfolio.', 74, 'Stronger generic scale, less corrugated-specific integration.', ['Lead with trident interfaces and corrugated process engineering', 'Prove peak and N-1 throughput by simulation'])],
+      marketFitNotes: ['Best fit where routing flexibility and future layout changes have measurable value.'],
+      fitImprovementActions: ['Size the fleet from P95 demand and degraded-mode tests.', 'Separate space-saving claims from independently measured results.'],
+    },
+  },
+  {
     aliases: ['amr wip management'],
     base: { name: 'AMR WIP MANAGEMENT', averageValue: 430000, estimatedCost: 351716, type: 'innovation solution', category: 'product', characteristics: ['AMR WIP logistics orchestration', 'Configurable AMR fleet sizing', 'Turnkey intralogistics installation'], repositories: ['INGECART/PRODUCTO', 'ingesite solutions'], validated: true, source: 'manual', comments: 'Uses scalable AMR template with configurable unit quantities for WIP transport.' },
     meta: {
@@ -189,6 +204,34 @@ const PRODUCT_PROFILES: ProductProfile[] = [
       competitors: [competitor('Geek+', 'AMR WIP logistics', 'Mature fleet management and standard AMR orchestration.', 72, 'Stronger generic fleet scale, weaker corrugated-specific engineering.', ['Differentiate on turnkey plant adaptation', 'Present hybrid mechanical + AMR solution scope'])],
       marketFitNotes: ['Fit improves with larger WIP complexity and multi-zone movement.'],
       fitImprovementActions: ['Show throughput simulation and congestion reduction.', 'Use plant-specific ROI and safety KPIs.'],
+    },
+  },
+  {
+    aliases: ['heavy duty palletizer', 'hd palletizer'],
+      base: {
+        name: 'HEAVY DUTY PALLETIZER', averageValue: 450000, estimatedCost: 324000, type: 'core equipment', category: 'product',
+        characteristics: ['High-duty robotic palletizing', 'Four-side squaring', 'Mixed bundle and multi-output operation'], repositories: ['INGECART/PRODUCTO/PALETIZADOR', 'ingesite solutions'], validated: true, source: 'manual', comments: 'Heavy-duty end-of-line architecture; commercial cycle claims require SKU-specific FAT.'
+      },
+      meta: {
+        productInfoUrl: 'https://senarzuniga.github.io/ingesite.github.io/solutions/heavy-duty-palletizer.html', productVideoUrl: VIDEO_URL,
+        linkedReports: ['AUTOMATIC ROBOT PALLETIZER SYSTEM.docx', 'Heavy Duty Palletizer comparative report'],
+        competitors: [competitor('BW Integrated Systems', 'High-speed robotic palletizing', 'Broad high-speed end-of-line portfolio and global references.', 76, 'Strong installed base and standardization.', ['Demonstrate corrugated bundle handling quality', 'Contract on good bundles by SKU rather than headline cycles'])],
+        marketFitNotes: ['Strong fit when end-of-line blocking constrains sellable converting output.'],
+        fitImprovementActions: ['Build an approved SKU and pattern performance matrix.', 'Separate single-robot and dual-robot commercial variants.'],
+      },
+    },
+  {
+    aliases: ['automatic truck loading system', 'automatic truck loading', 'truck loading system'],
+    base: {
+      name: 'AUTOMATIC TRUCK LOADING SYSTEM', averageValue: 250000, estimatedCost: 180000, type: 'integrated logistics solution', category: 'product',
+      characteristics: ['Sequenced automatic truck loading', 'Reduced dock occupancy', 'Repeatable outbound logistics cycle'], repositories: ['INGECART/PRODUCTO/SISTEMA CARGA AUTO CAMIONES', 'ingesite solutions'], validated: true, source: 'manual', comments: 'Pre-engineering product profile; trailer compatibility and costed standard scope remain pending.'
+    },
+    meta: {
+      productInfoUrl: 'https://senarzuniga.github.io/ingesite.github.io/solutions/automatic-truck-loading.html', productVideoUrl: VIDEO_URL,
+      linkedReports: ['Automatic Truck Loading Systems.txt'],
+      competitors: [competitor('Ancra Systems', 'Automatic truck loading systems', 'Established dock and trailer loading architectures.', 77, 'Stronger standardized references and trailer-interface depth.', ['Define the compatible trailer matrix', 'Contract on complete dock-occupancy cycle P95'])],
+      marketFitNotes: ['Fit depends on standardized loads, compatible trailers and monetizable dock congestion.'],
+      fitImprovementActions: ['Create a costed standard configuration.', 'Validate the business case against complete dock occupancy, not peak transfer time.'],
     },
   },
   {
@@ -245,6 +288,7 @@ export function mergeProductWithKnowledge(product: ProductRecord): ProductRecord
   const profile = getProductProfile(product.name || '');
   if (!profile) return product;
   const meta = profile.meta;
+  const canonicalDossier = getCanonicalProductDossier(profile.base.name);
   return {
     ...profile.base,
     ...product,
@@ -264,6 +308,7 @@ export function mergeProductWithKnowledge(product: ProductRecord): ProductRecord
     competitors: product.competitors && product.competitors.length > 0 ? product.competitors : meta.competitors,
     marketFitNotes: product.marketFitNotes && product.marketFitNotes.length > 0 ? product.marketFitNotes : meta.marketFitNotes,
     fitImprovementActions: product.fitImprovementActions && product.fitImprovementActions.length > 0 ? product.fitImprovementActions : meta.fitImprovementActions,
+    technicalDossier: product.technicalDossier || meta.technicalDossier || canonicalDossier,
   };
 }
 
@@ -319,3 +364,4 @@ export function buildProductIntelligence(product: ProductRecord, marketFitScore 
     fitImprovementActions: normalized.fitImprovementActions || [],
   };
 }
+

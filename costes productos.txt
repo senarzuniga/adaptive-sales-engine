@@ -1,0 +1,528 @@
+
+Para la gestion de producto, necesito tener un espacio donde Ademas de tener sistados los productos como estan en:
+
+"Catalog Workspace-Portfolio-Lifecycle Positioning Matrix"
+
+un espacio para "My Products"
+
+INGETRANS
+CARRILES MOTORIZADOS
+AMR INTRALOGISTICS
+AMR GESTION DESPERDICO AREA CORRUGADO
+AMR WIP MANAGEMENT
+HD PALLETAZER
+PLUG AND PLAY PALLETIZER
+SR1400
+EASY PACK
+TRUCK LOADING SYSTEM
+TRANSFER CAR + CONVEYOR SYSTEM INtralogistics
+
+
+En la lista de "My Products", debo de poder entrar a ver contenidos y editarlos.
+
+Contenidos
+
+- Costes generales de producto
+	- Tabla de desglose de costes como el que exites para crear ofertas y pricing
+- Informacion de producto:
+	- Enlace a https://senarzuniga.github.io/ingesite.github.io/index.html#solutions
+- Videos:
+	- https://ingesitehub.netlify.app/#technology
+
+- Informes de market intelligence sobre posibles alternativas de mercado
+	- busca, analiza y carga tu estos doscumentos para cada producto
+- Otros archivos; 
+	- Informes relacionados y un espacio para cargar informes desde el pc
+	- busca, analiza y carga tu estos doscumentos para cada producto
+
+Para los costes generales de cada producto:
+
+INGETRANS:
+
+	-costes de instalacion
+
+							Mech Assembly				Commisioning				Start up  Trainning				Feeding Tracks (adicional)				CONVEYOR			
+Días necesarios						28,00				14				28,00				6				14			
+NUMERO DE TECNICOSTécnicos						4				1				2				2				2			
+
+	- Materiales y subcontratas
+
+		coste EUR/ Descripción
+		135000	mat electrico
+		96000	software
+		87000	fabricacion transfer (Carenado)
+		25000	comercio
+		50000	rampa y entrada
+		35000	seguridad
+		3000	Calderería
+		20000	Catenaria
+		20000	Rieles
+		3750	CE
+		3400	VALLADO PERIMETRAL
+
+	-Horas por concepto
+GESTION DE PROYECTO	120 h
+DIRECTOR ING. MECANICA	150 h
+DIRECTOR ING. ELECTRICA	150 h
+MONTAJE	 0h
+CONTROL PROYECTO	100 h
+DIRECTOR TALLER 	150 h
+OPERARIO TALLER 	550 h
+OPERARIO ELECTRICO 	 0h
+OPERARIO MECANICO .	 0h
+ING MECANICO 	300 h
+
+CARRILES MOTORIZADOS 
+Subtitulo de producto: -10 unidades 16 metros longitud-:
+
+		- cOSTES DE INSTALACION
+		Days	6
+		NUMBER OF Tech.	2
+
+	- Materiales y subcontratas, euros
+
+	-40000 Concepto 1
+	-11297 Concepto 2
+	-3000 Concepto 3
+	-8200 Concepto 4
+	-1516 Concepto 5
+	-13500 Concepto 6
+	- 10000 Concepto 6
+	- (-)17000 corrección horas de ingeniería (dato valor negativo)
+
+	-Horas por concepto
+
+GESTION DE PROYECTO	40
+DIRECTOR ING. MECANICA	40
+DIRECTOR ING. ELECTRICA	20
+MONTAJE	0
+CONTROL PROYECTO	30
+DIRECTOR TALLER 	0
+OPERARIO TALLER 	0
+OPERARIO ELECTRICO 	0
+OPERARIO MECANICO .	0
+ING MECANICO 	70 h
+
+CONVEYOR METALICOS 
+Subtitulo de producto: -10 unidades 16 metros longitud-:
+
+			- cOSTES DE INSTALACION
+		Days	6
+		NUMBER OF Tech.	2
+
+	- Materiales y subcontratas, euros
+
+	-228500 Presupuesto Newkuani incluido transporte y nacionalizacion y tasas
+	
+
+	-Horas por concepto
+
+GESTION DE PROYECTO	0
+DIRECTOR ING. MECANICA	0
+DIRECTOR ING. ELECTRICA	0
+MONTAJE	0
+CONTROL PROYECTO	30
+DIRECTOR TALLER 	0
+OPERARIO TALLER 	100
+OPERARIO ELECTRICO 	0
+OPERARIO MECANICO .	0
+ING MECANICO 	40 h
+
+CONVEYOR METALICOS 148 metros
+Subtitulo de producto: -148 metros 4 rampas de acceso-:
+
+	- cOSTES DE INSTALACION
+
+		
+		Days	25
+		NUMBER OF Tech.	3
+
+
+
+	- Materiales y subcontratas, euros
+
+	-280000 Presupuesto Newkuani incluido transporte y nacionalizacion y tasas
+	
+
+	-Horas por concepto
+GESTION DE PROYECTO	0
+DIRECTOR ING. MECANICA	40
+DIRECTOR ING. ELECTRICA	150
+MONTAJE	0
+CONTROL PROYECTO	0
+DIRECTOR TALLER 	0
+OPERARIO TALLER 	300
+OPERARIO ELECTRICO 	0
+OPERARIO MECANICO .	0
+ING MECANICO 	60
+
+
+ESTACION DE PESAJE:
+
+		- cOSTES DE INSTALACION
+
+		
+		Days	8
+		NUMBER OF Tech.	2
+
+	- Materiales y subcontratas, euros
+
+	-80000 Presupuesto Newkuani incluido transporte y nacionalizacion y tasas
+	
+
+	-Horas por concepto
+
+GESTION DE PROYECTO	0
+DIRECTOR ING. MECANICA	30
+DIRECTOR ING. ELECTRICA	0
+MONTAJE	0
+CONTROL PROYECTO	30
+DIRECTOR TALLER 	0
+OPERARIO TALLER 	100
+OPERARIO ELECTRICO 	0
+OPERARIO MECANICO .	0
+
+AMR GESTION DESPERDICO AREA CORRUGADO
+
+	- cOSTES DE INSTALACION
+
+		AMR intralogistics - turnkey installation
+		Days	25
+		NUMBER OF Tech.	3
+
+
+	- Materiales y subcontratas, euros
+
+	Concepto 			Cantidades	Precio 	Total parcial 
+Kuka Unidad AMR 			2		41607,75	83215,5
+Sifise Ingeniria electrica 		1		35000		35000
+Sifise Cuadros eléctricos 		1		0	
+Sifise Normativa 			1		0	
+Sifise Pruebas en taller 		100		0	
+Jaulas - IngecartLinea ondular hierro 	6		10200		10200
+Jaulas - IngecartMano de obra taller 	6		7800		7800
+Jaulas - IngecartPintura 		6		2400		2400
+Jaulas - IngecartConversion hierro 	2		3400		3400
+Jaulas - IngecartMano obra 		2		1600		1600
+Jaulas - IngecartPintura 		2		400		400
+Fabricación tridente Material Material 	2		22000		22000
+Fabricación tridenteutillaje AMR	1		8500		8500
+Estacion de Pesaje			1		8000		8000
+Certficaciones Seguridad otros		1		4000		4000
+Material WIFI				1		3500		3500
+
+	-Horas por concepto
+
+GESTION DE PROYECTO	0
+DIRECTOR ING. MECANICA	40
+DIRECTOR ING. ELECTRICA	60
+MONTAJE	0
+CONTROL PROYECTO	40
+DIRECTOR TALLER 	40
+OPERARIO TALLER 	0
+OPERARIO ELECTRICO 	0
+OPERARIO MECANICO .	0
+ING MECANICO 	100
+
+AMR WIP MANAGEMENT
+
+	- cOSTES DE INSTALACION
+
+		AMR intralogistics - turnkey installation
+		Days	30
+		NUMBER OF Tech.	3
+
+
+	- Materiales y subcontratas, euros
+
+	Concepto 			Cantidades	Precio 	Total parcial 
+Kuka Unidad AMR 			2		41607,75	83215,5
+Sifise Ingeniria electrica 		1		35000		35000
+Sifise Cuadros eléctricos 		1		0	
+Sifise Normativa 			1		0	
+Sifise Pruebas en taller 		100		0	
+Jaulas - IngecartLinea ondular hierro 	6		10200		10200
+Jaulas - IngecartMano de obra taller 	6		7800		7800
+Jaulas - IngecartPintura 		6		2400		2400
+Jaulas - IngecartConversion hierro 	2		3400		3400
+Jaulas - IngecartMano obra 		2		1600		1600
+Jaulas - IngecartPintura 		2		400		400
+Fabricación tridente Material Material 	2		22000		22000
+Fabricación tridenteutillaje AMR	1		8500		8500
+Estacion de Pesaje			1		8000		8000
+Certficaciones Seguridad otros		1		4000		4000
+Material WIFI				1		3500		3500
+
+Haz las formulas para multiplicar preco por unidad, la configuracion de costes para AMR WIP MANAGEMENT finalmente quedara asi:
+
+Concepto 			Cantidades	 
+Kuka Unidad AMR 			4		
+Sifise Ingeniria electrica 		1			50000		
+Sifise Cuadros eléctricos 		1		0	
+Sifise Normativa 			1		0	
+Sifise Pruebas en taller 		200		0	
+Jaulas - IngecartLinea ondular hierro 	20		
+Jaulas - IngecartMano de obra taller 	20		
+Jaulas - IngecartPintura 		20		
+Jaulas - IngecartConversion hierro 	10		
+Jaulas - IngecartMano obra 		10		
+Jaulas - IngecartPintura 		10		
+Fabricación tridente Material Material 	10		
+Fabricación tridenteutillaje AMR	6		
+Estacion de Pesaje			6		
+Certficaciones Seguridad otros		2		
+Material WIFI				6		
+
+
+	-Horas por concepto
+
+GESTION DE PROYECTO	0
+DIRECTOR ING. MECANICA	40
+DIRECTOR ING. ELECTRICA	60
+MONTAJE	0
+CONTROL PROYECTO	40
+DIRECTOR TALLER 	40
+OPERARIO TALLER 	0
+OPERARIO ELECTRICO 	0
+OPERARIO MECANICO .	0
+ING MECANICO 	100
+
+SR1400:
+
+	Tienes que introducir una logica en base a metros de longitud de producto
+
+	Aqui tres escenarios para que hagas la estructura de costes pertinente, donde hagamos un standar de 80 metros.
+
+	Al seleccionar el producto en offers y pricing, lo primero ser aintroducir la longitud del sistema, y las tablas de costes se ajustaran al nuevo valor.
+
+	En el espacio de gestion de producto, configuramos estandar de 80 metros.
+
+- Materiales y subcontratas, euros
+
+	coste para 30 metros:
+
+
+producción	metros	30	
+			
+MATERIALES			
+Elementos variables 			
+			
+material	unidades	precio ud.	total
+CADENA	60	163,45 €	9.807,00 €
+UNION CADENA	5	44,95 €	224,75 €
+PIÑON	1	595,25 €	595,25 €
+BOMBA DE ENGRASE	1	800,00 €	800,00 €
+CHAPAS	24	75,00 €	1.800,00 €
+BRAZOS LARGO	30	5,35 €	160,50 €
+BRAZOS CORTOS	30	2,12 €	63,60 €
+			0,00 €
+SOMBRERO	12	12,00 €	144,00 €
+DESLIDUR LARGO	60	9,00 €	540,00 €
+DESLIDUR CORTO	180	6,50 €	1.170,00 €
+CILINDRO	1	300,00 €	300,00 €
+CEPILLO	1	200,00 €	200,00 €
+CHARNELA HEMBRA	1	35,00 €	35,00 €
+CHARNELA MACHO	1	46,00 €	46,00 €
+CONTRACHARNELA	1	40,00 €	40,00 €
+PERNO CHARNELA			0,00 €
+CODO	1	7,00 €	7,00 €
+MANOMETRO			0,00 €
+VALVULA	1	51,00 €	51,00 €
+SILNCIADOR	1	3,00 €	3,00 €
+MATERIAL FERRETERIA1 KW	1	500,00 €	500,00 €
+TACOS	10	1,00 €	10,00 €
+motor 5 kw	1	363,60 €	363,60 €
+REDUCTOR PG503PC SIST RETAL SALIDA 65MM	1	1.677,90 €	1.677,90 €
+MOTOR REDUCTOR DEL CEPILLO	1	255,00 €	255,00 €
+Electroválvula	1	50,00 €	50,00 €
+rodamiento 6308 2rs	2	8,50 €	17,00 €
+GRUPILLAS	2	0,40 €	0,80 €
+SELFOIL	2	1,50 €	3,00 €
+MATERIAL ELECTRICO	1	2.500,00 €	2.500,00 €
+			0,00 €
+GRUPO MANTENIMIENTO NEUMÁTICO	1	150,00 €	150,00 €
+			0,00 €
+			
+INSTALCION ELECTRICA	1	2.000,00 €	2.000,00 €
+MECANIZACION TALLER PUNTAS	1	3.500,00 €	3.500,00 €
+INGENIERIA	1	2.500,00 €	2.500,00 €
+MONTAJE EN TALLER - hores	65	50,00 €	3.250,00 €
+
+Costes para 50 metros
+
+producción	metros	50	
+			
+MATERIALES			
+Elementos variables 			
+			
+material	unidades	precio ud.	total
+CADENA	100	163,45 €	16.345,00 €
+UNION CADENA	5	44,95 €	224,75 €
+PIÑON	1	595,25 €	595,25 €
+BOMBA DE ENGRASE	1	800,00 €	800,00 €
+CHAPAS	40	75,00 €	3.000,00 €
+BRAZOS LARGO	50	5,35 €	267,50 €
+BRAZOS CORTOS	50	2,12 €	106,00 €
+			0,00 €
+SOMBRERO	20	12,00 €	240,00 €
+DESLIDUR LARGO	100	9,00 €	900,00 €
+DESLIDUR CORTO	300	6,50 €	1.950,00 €
+CILINDRO	1	300,00 €	300,00 €
+CEPILLO	1	200,00 €	200,00 €
+CHARNELA HEMBRA	1	35,00 €	35,00 €
+CHARNELA MACHO	1	46,00 €	46,00 €
+CONTRACHARNELA	1	40,00 €	40,00 €
+PERNO CHARNELA			0,00 €
+CODO	1	7,00 €	7,00 €
+MANOMETRO			0,00 €
+VALVULA	1	51,00 €	51,00 €
+SILNCIADOR	1	3,00 €	3,00 €
+MATERIAL FERRETERIA1 KW	1	500,00 €	500,00 €
+TACOS	10	1,00 €	10,00 €
+motor 5 kw	1	363,60 €	363,60 €
+REDUCTOR PG503PC SIST RETAL SALIDA 65MM	1	1.677,90 €	1.677,90 €
+MOTOR REDUCTOR DEL CEPILLO	1	255,00 €	255,00 €
+Electroválvula	1	50,00 €	50,00 €
+rodamiento 6308 2rs	2	8,50 €	17,00 €
+GRUPILLAS	2	0,40 €	0,80 €
+SELFOIL	2	1,50 €	3,00 €
+MATERIAL ELECTRICO	1	2.500,00 €	2.500,00 €
+			0,00 €
+GRUPO MANTENIMIENTO NEUMÁTICO	1	150,00 €	150,00 €
+			0,00 €
+			
+INSTALCION ELECTRICA	1	2.000,00 €	2.000,00 €
+MECANIZACION TALLER PUNTAS	1	3.500,00 €	3.500,00 €
+INGENIERIA	1	2.500,00 €	2.500,00 €
+MONTAJE EN TALLER - hores	65	50,00 €	3.250,00 €
+
+costes para 80 metros
+
+producción	metros	80	
+			
+MATERIALES			
+Elementos variables 			
+			
+material	unidades	precio ud.	total
+CADENA	160	163,45 €	26.152,00 €
+UNION CADENA	5	44,95 €	224,75 €
+PIÑON	1	595,25 €	595,25 €
+BOMBA DE ENGRASE	1	800,00 €	800,00 €
+CHAPAS	64	75,00 €	4.800,00 €
+BRAZOS LARGO	80	5,35 €	428,00 €
+BRAZOS CORTOS	80	2,12 €	169,60 €
+			0,00 €
+SOMBRERO	32	12,00 €	384,00 €
+DESLIDUR LARGO	160	9,00 €	1.440,00 €
+DESLIDUR CORTO	480	6,50 €	3.120,00 €
+CILINDRO	1	300,00 €	300,00 €
+CEPILLO	1	200,00 €	200,00 €
+CHARNELA HEMBRA	1	35,00 €	35,00 €
+CHARNELA MACHO	1	46,00 €	46,00 €
+CONTRACHARNELA	1	40,00 €	40,00 €
+PERNO CHARNELA			0,00 €
+CODO	1	7,00 €	7,00 €
+MANOMETRO			0,00 €
+VALVULA	1	51,00 €	51,00 €
+SILNCIADOR	1	3,00 €	3,00 €
+MATERIAL FERRETERIA1 KW	1	500,00 €	500,00 €
+TACOS	10	1,00 €	10,00 €
+motor 5 kw	1	363,60 €	363,60 €
+REDUCTOR PG503PC SIST RETAL SALIDA 65MM	1	1.677,90 €	1.677,90 €
+MOTOR REDUCTOR DEL CEPILLO	1	255,00 €	255,00 €
+Electroválvula	1	50,00 €	50,00 €
+rodamiento 6308 2rs	2	8,50 €	17,00 €
+GRUPILLAS	2	0,40 €	0,80 €
+SELFOIL	2	1,50 €	3,00 €
+MATERIAL ELECTRICO	1	2.500,00 €	2.500,00 €
+			0,00 €
+GRUPO MANTENIMIENTO NEUMÁTICO	1	150,00 €	150,00 €
+			0,00 €
+			
+INSTALCION ELECTRICA	1	2.000,00 €	2.000,00 €
+MECANIZACION TALLER PUNTAS	1	3.500,00 €	3.500,00 €
+INGENIERIA	1	2.500,00 €	2.500,00 €
+MONTAJE EN TALLER - hores	65	50,00 €	3.250,00 €
+
+
+-  costes de isntalacion 80 metros:
+
+	8 dias 2 tecnicos
+
+
+TRANSFER CAR + CONVEYOR SYSTEM INtralogistics
+
+-  costes de isntalacion 80 metros:
+
+	8 dias  2tecnicos
+
+	- Materiales y subcontratas, euros
+
+Transfer 	22000
+7 conveyor 	6000
+Vahley		4000
+Railes 		57000
+
+	-Horas por concepto
+
+
+GESTION DE PROYECTO	80
+DIRECTOR ING. MECANICA	350
+DIRECTOR ING. ELECTRICA	270
+MONTAJE	0
+CONTROL PROYECTO	0
+DIRECTOR TALLER 	0
+OPERARIO TALLER 	800
+OPERARIO ELECTRICO 	0
+OPERARIO MECANICO .	0
+ING MECANICO 	0
+
+PLUG AND PLAY PALLETIZER
+
+	-  costes de isntalacion 80 metros:
+
+	7 dias  1tecnicos
+
+	- Materiales y subcontratas, euros
+
+	Sifise plug & Play 	137000
+
+	-Horas por concepto
+
+GESTION DE PROYECTO	80
+DIRECTOR ING. MECANICA	50
+DIRECTOR ING. ELECTRICA	100
+MONTAJE	0
+CONTROL PROYECTO	0
+DIRECTOR TALLER 	0
+OPERARIO TALLER 	0
+OPERARIO ELECTRICO 	0
+OPERARIO MECANICO .	0
+ING MECANICO 	0
+
+EASY PACK
+
+-  costes de isntalacion 80 metros:
+
+	7 dias  1tecnicos
+
+	- Materiales y subcontratas, euros
+
+	DGM Ingepack 	195000
+
+
+	-Horas por concepto
+
+GESTION DE PROYECTO	80
+DIRECTOR ING. MECANICA	100
+DIRECTOR ING. ELECTRICA	100
+MONTAJE	0
+CONTROL PROYECTO	0
+DIRECTOR TALLER 	0
+OPERARIO TALLER 	0
+OPERARIO ELECTRICO 	0
+OPERARIO MECANICO .	0
+ING MECANICO 	100
+
+ 
+Al hacer ofertas nuevas, se podran seleccionar productos con sus costes generales, con la posibilidad de editar en la panytalla de Offers y Pricing para ajsutar la oferta. Se podra tambien incluir o no en la oferta los costes de instalación, asi como editarlos	
