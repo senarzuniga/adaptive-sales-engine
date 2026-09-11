@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { buildCommercialIntelligence, harmonizeCommercialRecords } from '@/lib/commercialIntelligence';
 import { dedupeOpportunities, dedupeOrders, normalizeOpportunityStatus, parseFlexibleNumber } from '@/lib/salesData';
-import { inferProductCategory, parseProductComments, serializeProductComments, type ProductCategory } from '@/lib/productCatalog';
+import { inferProductCategory, parseProductComments, serializeProductComments, type ProductCategory, type ProductCompetitorBenchmark, type ProductCostPresetLine } from '@/lib/productCatalog';
 
 // â”€â”€â”€ Offline / localStorage mode when Supabase is not configured â”€â”€â”€
 const isSupabaseConfigured =
@@ -171,6 +171,15 @@ export interface ProductRecord {
   repositories?: string[];
   validated?: boolean;
   source?: 'manual' | 'generated';
+  productInfoUrl?: string;
+  productVideoUrl?: string;
+  linkedReports?: string[];
+  defaultLengthM?: number;
+  configurableByLength?: boolean;
+  costPreset?: ProductCostPresetLine[];
+  competitors?: ProductCompetitorBenchmark[];
+  marketFitNotes?: string[];
+  fitImprovementActions?: string[];
 }
 
 export interface StrategyRecord {
@@ -296,6 +305,15 @@ function dbToProduct(r: any): ProductRecord {
     repositories: parsed.meta.repositories || [],
     validated: Boolean(parsed.meta.validated),
     source: parsed.meta.source || 'manual',
+    productInfoUrl: parsed.meta.productInfoUrl || '',
+    productVideoUrl: parsed.meta.productVideoUrl || '',
+    linkedReports: parsed.meta.linkedReports || [],
+    defaultLengthM: parsed.meta.defaultLengthM,
+    configurableByLength: Boolean(parsed.meta.configurableByLength),
+    costPreset: parsed.meta.costPreset || [],
+    competitors: parsed.meta.competitors || [],
+    marketFitNotes: parsed.meta.marketFitNotes || [],
+    fitImprovementActions: parsed.meta.fitImprovementActions || [],
   };
 }
 
@@ -788,6 +806,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
           repositories: p.repositories,
           validated: p.validated,
           source: p.source,
+          productInfoUrl: p.productInfoUrl,
+          productVideoUrl: p.productVideoUrl,
+          linkedReports: p.linkedReports,
+          defaultLengthM: p.defaultLengthM,
+          configurableByLength: p.configurableByLength,
+          costPreset: p.costPreset,
+          competitors: p.competitors,
+          marketFitNotes: p.marketFitNotes,
+          fitImprovementActions: p.fitImprovementActions,
         }),
       })));
     }
@@ -1021,6 +1048,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
           repositories: p.repositories,
           validated: p.validated,
           source: p.source,
+          productInfoUrl: p.productInfoUrl,
+          productVideoUrl: p.productVideoUrl,
+          linkedReports: p.linkedReports,
+          defaultLengthM: p.defaultLengthM,
+          configurableByLength: p.configurableByLength,
+          costPreset: p.costPreset,
+          competitors: p.competitors,
+          marketFitNotes: p.marketFitNotes,
+          fitImprovementActions: p.fitImprovementActions,
         }),
       })));
     }

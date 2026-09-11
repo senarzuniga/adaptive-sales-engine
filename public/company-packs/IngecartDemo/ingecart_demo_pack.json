@@ -30,7 +30,7 @@
   },
   "orders": [
     {
-      "poDate": "Vendido",
+      "poDate": "2026-05-22",
       "firstOfferDate": "2026-05-22",
       "oppNumber": "OFF-2026-100",
       "region": "Spain",
@@ -39,15 +39,15 @@
       "scope": "IIM Rollstand",
       "productFamily": "IIM Rollstand",
       "segment": "Industrial automation",
-      "purchasingYear": "Vend",
-      "purchasingQuarter": "TBD",
-      "purchasingMonth": "",
+      "purchasingYear": "2026",
+      "purchasingQuarter": "Q2",
+      "purchasingMonth": "May",
       "sellingPrice": 85000.0,
       "margin": 28,
       "kam": "Ingecart"
     },
     {
-      "poDate": "Vendido",
+      "poDate": "2026-02-01",
       "firstOfferDate": "2026-02-01",
       "oppNumber": "OFF-2026-88",
       "region": "USA",
@@ -56,15 +56,15 @@
       "scope": "Sr-1400",
       "productFamily": "Sr-1400",
       "segment": "Industrial automation",
-      "purchasingYear": "Vend",
-      "purchasingQuarter": "TBD",
-      "purchasingMonth": "",
+      "purchasingYear": "2026",
+      "purchasingQuarter": "Q1",
+      "purchasingMonth": "February",
       "sellingPrice": 197400.0,
       "margin": 22,
       "kam": "Line Text"
     },
     {
-      "poDate": "Vendido",
+      "poDate": "2026-02-01",
       "firstOfferDate": "2026-02-01",
       "oppNumber": "OFF-2026-89",
       "region": "USA",
@@ -73,15 +73,15 @@
       "scope": "AMR",
       "productFamily": "AMR",
       "segment": "Industrial automation",
-      "purchasingYear": "Vend",
-      "purchasingQuarter": "TBD",
-      "purchasingMonth": "",
+      "purchasingYear": "2026",
+      "purchasingQuarter": "Q1",
+      "purchasingMonth": "February",
       "sellingPrice": 502700.0,
       "margin": 22,
       "kam": "Line Text"
     },
     {
-      "poDate": "Vendido",
+      "poDate": "2026-03-22",
       "firstOfferDate": "2026-03-22",
       "oppNumber": "OFF-2026-92",
       "region": "Spain",
@@ -90,15 +90,15 @@
       "scope": "Reparacion desperdicio",
       "productFamily": "Reparacion desperdicio",
       "segment": "Industrial automation",
-      "purchasingYear": "Vend",
-      "purchasingQuarter": "TBD",
-      "purchasingMonth": "",
+      "purchasingYear": "2026",
+      "purchasingQuarter": "Q1",
+      "purchasingMonth": "March",
       "sellingPrice": 25250.0,
       "margin": 28,
       "kam": "Ingecart"
     },
     {
-      "poDate": "Vendido",
+      "poDate": "2026-01-01",
       "firstOfferDate": "2026-01-01",
       "oppNumber": "OFF-2026-80",
       "region": "USA",
@@ -107,15 +107,15 @@
       "scope": "Robot FFG doble",
       "productFamily": "Robot FFG doble",
       "segment": "Industrial automation",
-      "purchasingYear": "Vend",
-      "purchasingQuarter": "TBD",
-      "purchasingMonth": "",
+      "purchasingYear": "2026",
+      "purchasingQuarter": "Q1",
+      "purchasingMonth": "January",
       "sellingPrice": 1052000.0,
       "margin": 22,
       "kam": "Line Text"
     },
     {
-      "poDate": "Vendido",
+      "poDate": "2026-03-22",
       "firstOfferDate": "2026-03-22",
       "oppNumber": "OFF-2026-81",
       "region": "USA",
@@ -124,9 +124,9 @@
       "scope": "Salida conveyor 90º Evol .",
       "productFamily": "Salida conveyor 90º Evol .",
       "segment": "Industrial automation",
-      "purchasingYear": "Vend",
-      "purchasingQuarter": "TBD",
-      "purchasingMonth": "",
+      "purchasingYear": "2026",
+      "purchasingQuarter": "Q1",
+      "purchasingMonth": "March",
       "sellingPrice": 101482.0,
       "margin": 22,
       "kam": "Line Text"
@@ -11089,8 +11089,8 @@
       "priority": "critical",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-13T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-13T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "RETRASOS EN PO High-value North American opportunity set combining Mastercorr execution and new conversion offers.",
         "Offer file count: 0",
@@ -11106,8 +11106,8 @@
       "priority": "critical",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-13T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-13T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "RETRASOS EN PO High-value North American opportunity set combining Mastercorr execution and new conversion offers.",
         "Offer file count: 3",
@@ -11123,8 +11123,8 @@
       "priority": "critical",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-13T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-13T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Terminar Layout y ofertas PARA ENVIAR OFERTA FINAL High-value North American opportunity set combining Mastercorr execution and new conversion offers.",
         "Offer file count: 3",
@@ -11140,8 +11140,8 @@
       "priority": "critical",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-13T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-13T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "REUNION CON CLIENTE EN AGOSTO PARA VER OPCIONES Y SCOPE High-value North American opportunity set combining Mastercorr execution and new conversion offers.",
         "Offer file count: 8",
@@ -11157,8 +11157,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-17T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-17T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "REUNION CON CLIENTE EN AGOSTO PARA VER OPCIONES Y SCOPE Corrugated packaging account aligned with Ingecart automation, retrofit, and lifecycle service plays.",
         "Offer file count: 0",
@@ -11174,8 +11174,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-17T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-17T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "REUNION CON CLIENTE EN AGOSTO PARA VER OPCIONES Y SCOPE Corrugated packaging account aligned with Ingecart automation, retrofit, and lifecycle service plays.",
         "Offer file count: 0",
@@ -11191,8 +11191,8 @@
       "priority": "critical",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-13T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-13T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "REUNION CON CLIENTE EN AGOSTO PARA VER OPCIONES Y SCOPE Corrugated packaging account aligned with Ingecart automation, retrofit, and lifecycle service plays.",
         "Offer file count: 7",
@@ -11208,8 +11208,8 @@
       "priority": "critical",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-13T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-13T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "REUNION CON CLIENTE EN AGOSTO PARA VER OPCIONES Y SCOPE Corrugated packaging account aligned with Ingecart automation, retrofit, and lifecycle service plays.",
         "Offer file count: 0",
@@ -11225,8 +11225,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-17T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-17T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "EL CLIENTE NO TIENE CLARO EL PROYECTO QUE QUIERE LLEVAR A TERMINO. REQUIERE SEGUIMIENTO INTENSO. Corrugated packaging account aligned with Ingecart automation, retrofit, and lifecycle service plays.",
         "Offer file count: 8",
@@ -11242,8 +11242,8 @@
       "priority": "critical",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-13T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-13T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "DIEGO NEGOCIANDO VARIOS PAQUETES Validated customer with a combined base of projects, offers, and active commercial continuity. AVANCE CARTÓN ONDULADO SL\nBAGUIBO SL\nBERVIBOX SL\nCAJA Y DISEÑO SL\nCARTEDYAM SL\nCARTODELTA SL\nCARTOLOT SA\nCARTONAJES ARREGUI SA\nCARTONAJES BARCO SA\nCARTONAJES EL PILAR SA\nCARTONAJES ERABIL SA\nCARTONAJES EUROPA SA\nCARTONAJ",
         "Offer file count: 4",
@@ -11259,8 +11259,8 @@
       "priority": "critical",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-13T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-13T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "DIEGO NEGOCIANDO VARIOS PAQUETES Validated customer with a combined base of projects, offers, and active commercial continuity. AVANCE CARTÓN ONDULADO SL\nBAGUIBO SL\nBERVIBOX SL\nCAJA Y DISEÑO SL\nCARTEDYAM SL\nCARTODELTA SL\nCARTOLOT SA\nCARTONAJES ARREGUI SA\nCARTONAJES BARCO SA\nCARTONAJES EL PILAR SA\nCARTONAJES ERABIL SA\nCARTONAJES EUROPA SA\nCARTONAJ",
         "Offer file count: 8",
@@ -11276,8 +11276,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-17T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-17T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "RETOMAR Corrugated packaging account aligned with Ingecart automation, retrofit, and lifecycle service plays. AVANCE CARTÓN ONDULADO SL\nBAGUIBO SL\nBERVIBOX SL\nCAJA Y DISEÑO SL\nCARTEDYAM SL\nCARTODELTA SL\nCARTOLOT SA\nCARTONAJES ARREGUI SA\nCARTONAJES BARCO SA\nCARTONAJES EL PILAR SA\nCARTONAJES ERABIL SA\nCARTONAJES EUROPA SA\nCARTONAJ",
         "Offer file count: 0",
@@ -11293,8 +11293,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-17T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-17T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "RETOMAR Corrugated packaging account aligned with Ingecart automation, retrofit, and lifecycle service plays. AVANCE CARTÓN ONDULADO SL\nBAGUIBO SL\nBERVIBOX SL\nCAJA Y DISEÑO SL\nCARTEDYAM SL\nCARTODELTA SL\nCARTOLOT SA\nCARTONAJES ARREGUI SA\nCARTONAJES BARCO SA\nCARTONAJES EL PILAR SA\nCARTONAJES ERABIL SA\nCARTONAJES EUROPA SA\nCARTONAJ",
         "Offer file count: 0",
@@ -11310,8 +11310,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-17T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-17T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "RETOMAR Corrugated packaging account aligned with Ingecart automation, retrofit, and lifecycle service plays. AVANCE CARTÓN ONDULADO SL\nBAGUIBO SL\nBERVIBOX SL\nCAJA Y DISEÑO SL\nCARTEDYAM SL\nCARTODELTA SL\nCARTOLOT SA\nCARTONAJES ARREGUI SA\nCARTONAJES BARCO SA\nCARTONAJES EL PILAR SA\nCARTONAJES ERABIL SA\nCARTONAJES EUROPA SA\nCARTONAJ",
         "Offer file count: 0",
@@ -11327,8 +11327,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-17T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-17T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "RETOMAR Corrugated packaging account aligned with Ingecart automation, retrofit, and lifecycle service plays. AVANCE CARTÓN ONDULADO SL\nBAGUIBO SL\nBERVIBOX SL\nCAJA Y DISEÑO SL\nCARTEDYAM SL\nCARTODELTA SL\nCARTOLOT SA\nCARTONAJES ARREGUI SA\nCARTONAJES BARCO SA\nCARTONAJES EL PILAR SA\nCARTONAJES ERABIL SA\nCARTONAJES EUROPA SA\nCARTONAJ",
         "Offer file count: 1",
@@ -11344,8 +11344,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-17T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-17T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Iñaki contactarlo y darle seguimiento . Corrugated packaging account aligned with Ingecart automation, retrofit, and lifecycle service plays.",
         "Offer file count: 0",
@@ -11361,8 +11361,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-17T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-17T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "enviado a Antonio Amaro Corrugated packaging account aligned with Ingecart automation, retrofit, and lifecycle service plays.",
         "Offer file count: 4",
@@ -11378,8 +11378,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-17T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-17T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Diego presentar a Iñaki y Carlos para darle seguimiento . Corrugated packaging account aligned with Ingecart automation, retrofit, and lifecycle service plays.",
         "Offer file count: 8",
@@ -11395,8 +11395,8 @@
       "priority": "medium",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-17T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-17T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Compra a Taiwan . Strategic North American account with active project execution and follow-up opportunities.",
         "Offer file count: 8",
@@ -11412,8 +11412,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-15T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-15T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Document-backed Ingecart offer recovered from local evidence files (4 matched documents). Validated customer with a combined base of projects, offers, and active commercial continuity.",
         "Offer file count: 4",
@@ -11429,8 +11429,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-15T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-15T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Document-backed Ingecart offer recovered from local evidence files (5 matched documents). Validated customer with a combined base of projects, offers, and active commercial continuity.",
         "Offer file count: 5",
@@ -11446,8 +11446,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-15T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-15T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Document-backed Ingecart offer recovered from local evidence files (5 matched documents). Strategic North American account with active project execution and follow-up opportunities.",
         "Offer file count: 5",
@@ -11463,8 +11463,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-15T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-15T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Document-backed Ingecart offer recovered from local evidence files (2 matched documents). Strategic North American account with active project execution and follow-up opportunities.",
         "Offer file count: 2",
@@ -11480,8 +11480,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-15T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-15T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Document-backed Ingecart offer recovered from local evidence files (2 matched documents). Strategic Tier 1 group. Best entry point is the plant with an urgent throughput or retrofit need.",
         "Offer file count: 2",
@@ -11497,8 +11497,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-15T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-15T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Document-backed Ingecart offer recovered from local evidence files (9 matched documents). Strategic North American account with active project execution and follow-up opportunities.",
         "Offer file count: 8",
@@ -11514,8 +11514,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-15T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-15T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Document-backed Ingecart offer recovered from local evidence files (5 matched documents). Corrugated packaging account aligned with Ingecart automation, retrofit, and lifecycle service plays.",
         "Offer file count: 5",
@@ -11531,8 +11531,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-15T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-15T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Document-backed Ingecart offer recovered from local evidence files (1 matched documents). Corrugated packaging account aligned with Ingecart automation, retrofit, and lifecycle service plays.",
         "Offer file count: 1",
@@ -11548,8 +11548,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-15T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-15T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Document-backed Ingecart offer recovered from local evidence files (6 matched documents). Corrugated packaging account aligned with Ingecart automation, retrofit, and lifecycle service plays.",
         "Offer file count: 6",
@@ -11565,8 +11565,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-15T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-15T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Document-backed Ingecart offer recovered from local evidence files (5 matched documents). Corrugated packaging account aligned with Ingecart automation, retrofit, and lifecycle service plays.",
         "Offer file count: 5",
@@ -11582,8 +11582,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-15T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-15T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Document-backed Ingecart offer recovered from local evidence files (11 matched documents). Core Iberian target with continuous demand for agile automation, service, and plant upgrades. Saica Group",
         "Offer file count: 8",
@@ -11599,8 +11599,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-15T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-15T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Document-backed Ingecart offer recovered from local evidence files (3 matched documents). Core Iberian target with continuous demand for agile automation, service, and plant upgrades. Saica Group",
         "Offer file count: 3",
@@ -11616,8 +11616,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-15T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-15T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Document-backed Ingecart offer recovered from local evidence files (4 matched documents). Natural Ingecart market with active offers, service, and automation opportunities across several plants.",
         "Offer file count: 4",
@@ -11633,8 +11633,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-15T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-15T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Document-backed Ingecart offer recovered from local evidence files (4 matched documents). Natural Ingecart market with active offers, service, and automation opportunities across several plants.",
         "Offer file count: 4",
@@ -11650,8 +11650,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-15T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-15T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Document-backed Ingecart offer recovered from local evidence files (4 matched documents). Natural Ingecart market with active offers, service, and automation opportunities across several plants.",
         "Offer file count: 4",
@@ -11667,8 +11667,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-15T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-15T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Document-backed Ingecart offer recovered from local evidence files (2 matched documents). Validated customer with a combined base of projects, offers, and active commercial continuity. AVANCE CARTÓN ONDULADO SL\nBAGUIBO SL\nBERVIBOX SL\nCAJA Y DISEÑO SL\nCARTEDYAM SL\nCARTODELTA SL\nCARTOLOT SA\nCARTONAJES ARREGUI SA\nCARTONAJES BARCO SA\nCARTONAJES EL PILAR SA\nCARTONAJES ERABIL SA\nCARTONAJES EUROPA SA\nCARTONAJ",
         "Offer file count: 2",
@@ -11684,8 +11684,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-15T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-15T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Document-backed Ingecart offer recovered from local evidence files (4 matched documents). Natural Ingecart market with active offers, service, and automation opportunities across several plants.",
         "Offer file count: 4",
@@ -11701,8 +11701,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-15T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-15T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Document-backed Ingecart offer recovered from local evidence files (5 matched documents). Strategic Tier 1 group. Best entry point is the plant with an urgent throughput or retrofit need. 👉 Clave estratégica:\n👉 Aquí Ingecart puede ser proveedor principal, no secundario",
         "Offer file count: 5",
@@ -11718,8 +11718,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-15T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-15T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Document-backed Ingecart offer recovered from local evidence files (4 matched documents). Corrugated packaging account aligned with Ingecart automation, retrofit, and lifecycle service plays.",
         "Offer file count: 4",
@@ -11735,8 +11735,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-15T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-15T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Document-backed Ingecart offer recovered from local evidence files (1 matched documents). Corrugated packaging account aligned with Ingecart automation, retrofit, and lifecycle service plays.",
         "Offer file count: 1",
@@ -11752,8 +11752,8 @@
       "priority": "high",
       "category": "follow_up",
       "assignee": "sales",
-      "dueDate": "2026-09-15T11:56:53.256630",
-      "createdAt": "2026-09-10T11:56:53.256630",
+      "dueDate": "2026-09-15T14:48:32.290111",
+      "createdAt": "2026-09-10T14:48:32.290111",
       "notes": [
         "Document-backed Ingecart offer recovered from local evidence files (1 matched documents). Strategic Tier 1 group. Best entry point is the plant with an urgent throughput or retrofit need.",
         "Offer file count: 1",
@@ -11859,8 +11859,8 @@
         "status": "draft",
         "scheduled_at": null,
         "published_at": null,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "e54646dc-3086-5caf-8a4c-94485f3c03e2",
@@ -11884,8 +11884,8 @@
         "status": "draft",
         "scheduled_at": null,
         "published_at": null,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "87e3e1db-3dfb-5c38-80d8-aab993a35dd4",
@@ -11909,8 +11909,8 @@
         "status": "draft",
         "scheduled_at": null,
         "published_at": null,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "963e952a-ac3a-5d3c-8fc9-b8e9099af815",
@@ -11934,8 +11934,8 @@
         "status": "draft",
         "scheduled_at": null,
         "published_at": null,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "561deb61-ed4c-5ed0-a3e5-2235ad342643",
@@ -11959,8 +11959,8 @@
         "status": "draft",
         "scheduled_at": null,
         "published_at": null,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "92ca824c-a4c4-5e5e-91b5-d94b2171504b",
@@ -11984,8 +11984,8 @@
         "status": "draft",
         "scheduled_at": null,
         "published_at": null,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "de84c142-7075-5296-9143-3eb069dc2935",
@@ -12009,8 +12009,8 @@
         "status": "draft",
         "scheduled_at": null,
         "published_at": null,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "83680966-7c65-5434-a430-890c9f806dc6",
@@ -12034,8 +12034,8 @@
         "status": "draft",
         "scheduled_at": null,
         "published_at": null,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "0bc385c7-7eb8-5a0b-b9ec-c68e642a1f09",
@@ -12059,8 +12059,8 @@
         "status": "draft",
         "scheduled_at": null,
         "published_at": null,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "0095e23b-bb07-5587-ad56-28c005ec34ba",
@@ -12084,8 +12084,8 @@
         "status": "draft",
         "scheduled_at": null,
         "published_at": null,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       }
     ],
     "business_intelligence_reports": [
@@ -12134,8 +12134,8 @@
             "score": 0.82
           }
         ],
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "a0522646-c935-5e01-aeac-4437db72ecd0",
@@ -12182,8 +12182,8 @@
             "score": 0.82
           }
         ],
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "77309888-5e32-5d6a-b35b-c154d61ca889",
@@ -12230,8 +12230,8 @@
             "score": 0.82
           }
         ],
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "c94190c8-4e94-5cfe-9a26-7527eae0ee8d",
@@ -12278,8 +12278,8 @@
             "score": 0.82
           }
         ],
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "0e4ea897-ad0b-5876-b7d8-55d935c07b93",
@@ -12326,8 +12326,8 @@
             "score": 0.82
           }
         ],
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "8f9f9144-8273-5d96-8325-2c57f16ab878",
@@ -12374,8 +12374,8 @@
             "score": 0.82
           }
         ],
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "8fecec8c-5820-5500-87ce-b5c3a1d340ea",
@@ -12438,8 +12438,8 @@
             "score": 0.91
           }
         ],
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       }
     ],
     "offers": [
@@ -14655,8 +14655,8 @@
         "customer_value_segment": "premium",
         "risk_level": "medium",
         "notes": "Generated from sold offers and after-sales evidence.",
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "6d2763a7-a8d4-5519-b50f-7e2a03d3555b",
@@ -14673,8 +14673,8 @@
         "customer_value_segment": "premium",
         "risk_level": "medium",
         "notes": "Generated from sold offers and after-sales evidence.",
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "8c15177f-698e-5c1c-922a-f0bbbb36794e",
@@ -14691,8 +14691,8 @@
         "customer_value_segment": "standard",
         "risk_level": "medium",
         "notes": "Generated from sold offers and after-sales evidence.",
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "07ace05c-74b9-5050-ba53-6344dd863d99",
@@ -14709,8 +14709,8 @@
         "customer_value_segment": "standard",
         "risk_level": "medium",
         "notes": "Generated from sold offers and after-sales evidence.",
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "f853a3ab-0ae5-5f41-8d81-bd58d36ba8c1",
@@ -14727,8 +14727,8 @@
         "customer_value_segment": "premium",
         "risk_level": "medium",
         "notes": "Generated from sold offers and after-sales evidence.",
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       }
     ],
     "service_contracts": [
@@ -14750,8 +14750,8 @@
           "remote_reviews": 12
         },
         "notes": "Imported from Smart Plant annual maintenance offer OFF-2026-S133.html",
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "21094e32-6c42-5b9a-badf-7d8ec2ca3ba6",
@@ -14771,8 +14771,8 @@
           "remote_reviews": 12
         },
         "notes": "Imported from Smart Plant annual maintenance offer OFF-2026-S134.html",
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "bcbe8025-3d37-5ef5-9ef2-08848d3e5a4f",
@@ -14792,8 +14792,8 @@
           "remote_reviews": 12
         },
         "notes": "Imported from Smart Plant annual maintenance offer OFF-2026-S135.html",
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "099c2295-33e1-57e8-a9ac-64190fb8c6cf",
@@ -14813,8 +14813,8 @@
           "remote_reviews": 12
         },
         "notes": "Imported from Smart Plant annual maintenance offer OFF-2026-S136.html",
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "2f3108b4-53e8-58c8-87af-b6c92b20bd51",
@@ -14834,8 +14834,8 @@
           "remote_reviews": 12
         },
         "notes": "Imported from Smart Plant annual maintenance offer OFF-2026-S137.html",
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       }
     ],
     "service_interventions": [
@@ -14853,7 +14853,7 @@
         "completed_date": null,
         "was_remote": true,
         "notes": "Generated from after-sales repository.",
-        "created_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "ccdd183f-f4a9-5515-8bc8-e2ff14f94449",
@@ -14869,7 +14869,7 @@
         "completed_date": null,
         "was_remote": false,
         "notes": "Generated from after-sales repository.",
-        "created_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "de734264-ad00-512d-9772-39acbba82723",
@@ -14885,7 +14885,7 @@
         "completed_date": null,
         "was_remote": false,
         "notes": "Generated from after-sales repository.",
-        "created_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111"
       }
     ],
     "after_sales_opportunities": [
@@ -14902,8 +14902,8 @@
         "recommended_action": "Convert the annual maintenance recommendation into a signed service contract and align PM and field service ownership.",
         "status": "proposal",
         "ai_generated": true,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "97dfe36a-7fb7-535d-b0cb-c12d2571088e",
@@ -14918,8 +14918,8 @@
         "recommended_action": "Convert the annual maintenance recommendation into a signed service contract and align PM and field service ownership.",
         "status": "proposal",
         "ai_generated": true,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "90494c74-71a9-5e10-9d6e-bd7fa0cefe1e",
@@ -14934,8 +14934,8 @@
         "recommended_action": "Convert the annual maintenance recommendation into a signed service contract and align PM and field service ownership.",
         "status": "proposal",
         "ai_generated": true,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "02c109e2-02f3-53ea-a2c7-82fede724035",
@@ -14950,8 +14950,8 @@
         "recommended_action": "Convert the annual maintenance recommendation into a signed service contract and align PM and field service ownership.",
         "status": "proposal",
         "ai_generated": true,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "dd19e481-4c90-52d9-b5b8-14a01c22b78a",
@@ -14966,8 +14966,8 @@
         "recommended_action": "Convert the annual maintenance recommendation into a signed service contract and align PM and field service ownership.",
         "status": "proposal",
         "ai_generated": true,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "7b4993e5-fa12-5706-b1a0-6e784b2c4963",
@@ -14982,8 +14982,8 @@
         "recommended_action": "Follow up the proposal, confirm installed-base need, and attach the commercial next step to the customer account.",
         "status": "proposal",
         "ai_generated": false,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "d3a4df2a-6b4e-5e96-b241-a26985bc47f7",
@@ -14998,8 +14998,8 @@
         "recommended_action": "Follow up the proposal, confirm installed-base need, and attach the commercial next step to the customer account.",
         "status": "proposal",
         "ai_generated": false,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "2e20974e-3d8b-5782-8994-e2c27ba320fb",
@@ -15014,8 +15014,8 @@
         "recommended_action": "Follow up the proposal, confirm installed-base need, and attach the commercial next step to the customer account.",
         "status": "proposal",
         "ai_generated": false,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "c83c3aa4-3625-5b4e-b386-9be35149bf16",
@@ -15030,8 +15030,8 @@
         "recommended_action": "Follow up the proposal, confirm installed-base need, and attach the commercial next step to the customer account.",
         "status": "proposal",
         "ai_generated": false,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "bff3cc58-da6f-5ec1-aa77-7702e30aa1f8",
@@ -15046,8 +15046,8 @@
         "recommended_action": "Follow up the proposal, confirm installed-base need, and attach the commercial next step to the customer account.",
         "status": "proposal",
         "ai_generated": false,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "94e50937-85e6-5fbc-921f-bc839e2ff370",
@@ -15062,8 +15062,8 @@
         "recommended_action": "Follow up the proposal, confirm installed-base need, and attach the commercial next step to the customer account.",
         "status": "proposal",
         "ai_generated": false,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       }
     ],
     "spare_parts": [
@@ -15088,8 +15088,8 @@
         "demand_trend": "stable",
         "criticality": "normal",
         "is_active": true,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "397a7a9e-91e4-54e6-a073-87961a9d1400",
@@ -15112,8 +15112,8 @@
         "demand_trend": "stable",
         "criticality": "normal",
         "is_active": true,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "56963785-cfa1-5e43-8067-04a56174c43d",
@@ -15136,8 +15136,8 @@
         "demand_trend": "stable",
         "criticality": "high",
         "is_active": true,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "ecfc3707-419a-5e0e-978c-bfcbcdbefd62",
@@ -15160,8 +15160,8 @@
         "demand_trend": "stable",
         "criticality": "normal",
         "is_active": true,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "07ffebb7-d824-591f-af1e-42452c4cdcbc",
@@ -15184,8 +15184,8 @@
         "demand_trend": "stable",
         "criticality": "high",
         "is_active": true,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "0619718d-c409-5dc1-b23d-295678098c38",
@@ -15208,8 +15208,8 @@
         "demand_trend": "stable",
         "criticality": "high",
         "is_active": true,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "04215efc-061a-5e41-b7d2-ad1f0c6cb405",
@@ -15232,8 +15232,8 @@
         "demand_trend": "stable",
         "criticality": "normal",
         "is_active": true,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "c8684a9e-5da7-5ce0-90cd-37487d1dedac",
@@ -15256,8 +15256,8 @@
         "demand_trend": "stable",
         "criticality": "normal",
         "is_active": true,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "9db81cee-eaf3-5fa5-994b-f5a9b5626fa0",
@@ -15280,8 +15280,8 @@
         "demand_trend": "stable",
         "criticality": "normal",
         "is_active": true,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       },
       {
         "id": "7895b4e5-f0e1-5c51-9ec0-5eb6c1c8f39b",
@@ -15304,8 +15304,8 @@
         "demand_trend": "stable",
         "criticality": "normal",
         "is_active": true,
-        "created_at": "2026-09-10T11:56:53.256630",
-        "updated_at": "2026-09-10T11:56:53.256630"
+        "created_at": "2026-09-10T14:48:32.290111",
+        "updated_at": "2026-09-10T14:48:32.290111"
       }
     ],
     "projects": [

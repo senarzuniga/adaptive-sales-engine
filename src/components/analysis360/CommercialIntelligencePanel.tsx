@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertTriangle, CheckCircle2, Layers3, Radar, Target, Workflow } from 'lucide-react';
-import { CompanyProfile, OpportunityRecord, OrderRecord, ProductRecord, StrategyRecord } from '@/store/DataStore';
+import { CompanyProfile, LeadRecord, OpportunityRecord, OrderRecord, ProductRecord, StrategyRecord } from '@/store/DataStore';
 import { buildCommercialIntelligence } from '@/lib/commercialIntelligence';
 import { fmt } from './AnalysisUtils';
 
@@ -13,10 +13,11 @@ interface Props {
   opportunities: OpportunityRecord[];
   products: ProductRecord[];
   strategy: StrategyRecord[];
+  leads?: LeadRecord[];
 }
 
-export const CommercialIntelligencePanel = ({ company, orders, opportunities, products, strategy }: Props) => {
-  const intelligence = useMemo(() => buildCommercialIntelligence({ company, orders, opportunities, products, strategy }), [company, orders, opportunities, products, strategy]);
+export const CommercialIntelligencePanel = ({ company, orders, opportunities, products, strategy, leads = [] }: Props) => {
+  const intelligence = useMemo(() => buildCommercialIntelligence({ company, orders, opportunities, products, strategy, leads: leads.map((lead) => ({ company: lead.companyName, region: lead.region, interest: lead.notes, sector: lead.sector, value: lead.estimatedValue })) }), [company, leads, opportunities, orders, products, strategy]);
 
   return (
     <div className="space-y-6">

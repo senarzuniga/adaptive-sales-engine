@@ -1,5 +1,34 @@
 export type ProductCategory = 'product' | 'service';
 
+export type ProductCostMode = 'unit' | 'engineering' | 'installation';
+
+export interface ProductCostPresetLine {
+  category: 'materials' | 'engineering' | 'subcontracting' | 'installation' | 'transport' | 'indirect';
+  lineItem: string;
+  mode?: ProductCostMode;
+  quantity?: number;
+  unitCost?: number;
+  surchargePct?: number;
+  hours?: number;
+  hourlyRate?: number;
+  days?: number;
+  resources?: number;
+  notes?: string;
+  role?: string;
+  optional?: boolean;
+  scalesWithLength?: boolean;
+  unitsPerLengthM?: number;
+}
+
+export interface ProductCompetitorBenchmark {
+  name: string;
+  offer: string;
+  performance: string;
+  marketFit: number;
+  fitGap: string;
+  gainFitActions: string[];
+}
+
 export interface ProductCatalogMeta {
   category?: ProductCategory;
   characteristics?: string[];
@@ -7,6 +36,15 @@ export interface ProductCatalogMeta {
   repositories?: string[];
   validated?: boolean;
   source?: 'manual' | 'generated';
+  productInfoUrl?: string;
+  productVideoUrl?: string;
+  linkedReports?: string[];
+  defaultLengthM?: number;
+  configurableByLength?: boolean;
+  costPreset?: ProductCostPresetLine[];
+  competitors?: ProductCompetitorBenchmark[];
+  marketFitNotes?: string[];
+  fitImprovementActions?: string[];
 }
 
 const META_TOKEN = '[ASE_CATALOG_META]';
@@ -27,7 +65,38 @@ function safeParseMeta(raw: string): ProductCatalogMeta {
 }
 
 function cleanList(values?: string[]) {
-  return (values || []).map((value) => value.trim()).filter(Boolean);
+  return (values || []).map((value) => String(value || '').trim()).filter(Boolean);
+}
+
+function cleanCostPreset(costPreset?: ProductCostPresetLine[]) {
+  return (costPreset || []).filter(Boolean).map((line) => ({
+    category: line.category,
+    lineItem: String(line.lineItem || '').trim(),
+    mode: line.mode,
+    quantity: Number.isFinite(line.quantity) ? Number(line.quantity) : undefined,
+    unitCost: Number.isFinite(line.unitCost) ? Number(line.unitCost) : undefined,
+    surchargePct: Number.isFinite(line.surchargePct) ? Number(line.surchargePct) : undefined,
+    hours: Number.isFinite(line.hours) ? Number(line.hours) : undefined,
+    hourlyRate: Number.isFinite(line.hourlyRate) ? Number(line.hourlyRate) : undefined,
+    days: Number.isFinite(line.days) ? Number(line.days) : undefined,
+    resources: Number.isFinite(line.resources) ? Number(line.resources) : undefined,
+    notes: String(line.notes || '').trim() || undefined,
+    role: String(line.role || '').trim() || undefined,
+    optional: line.optional ? true : undefined,
+    scalesWithLength: line.scalesWithLength ? true : undefined,
+    unitsPerLengthM: Number.isFinite(line.unitsPerLengthM) ? Number(line.unitsPerLengthM) : undefined,
+  })).filter((line) => line.lineItem);
+}
+
+function cleanCompetitors(competitors?: ProductCompetitorBenchmark[]) {
+  return (competitors || []).filter(Boolean).map((item) => ({
+    name: String(item.name || '').trim(),
+    offer: String(item.offer || '').trim(),
+    performance: String(item.performance || '').trim(),
+    marketFit: Number.isFinite(item.marketFit) ? Number(item.marketFit) : 0,
+    fitGap: String(item.fitGap || '').trim(),
+    gainFitActions: cleanList(item.gainFitActions),
+  })).filter((item) => item.name);
 }
 
 export function parseProductComments(comments?: string | null): { notes: string; meta: ProductCatalogMeta } {
@@ -45,6 +114,15 @@ export function parseProductComments(comments?: string | null): { notes: string;
       repositories: cleanList(meta.repositories),
       validated: Boolean(meta.validated),
       source: meta.source === 'generated' ? 'generated' : meta.source === 'manual' ? 'manual' : undefined,
+      productInfoUrl: typeof meta.productInfoUrl === 'string' ? meta.productInfoUrl.trim() : undefined,
+      productVideoUrl: typeof meta.productVideoUrl === 'string' ? meta.productVideoUrl.trim() : undefined,
+      linkedReports: cleanList(meta.linkedReports),
+      defaultLengthM: Number.isFinite(meta.defaultLengthM) ? Number(meta.defaultLengthM) : undefined,
+      configurableByLength: typeof meta.configurableByLength === 'boolean' ? meta.configurableByLength : undefined,
+      costPreset: cleanCostPreset(meta.costPreset),
+      competitors: cleanCompetitors(meta.competitors),
+      marketFitNotes: cleanList(meta.marketFitNotes),
+      fitImprovementActions: cleanList(meta.fitImprovementActions),
     },
   };
 }
@@ -57,6 +135,15 @@ export function serializeProductComments(notes: string, meta: ProductCatalogMeta
     repositories: cleanList(meta.repositories),
     validated: meta.validated ? true : undefined,
     source: meta.source,
+    productInfoUrl: meta.productInfoUrl?.trim() || undefined,
+    productVideoUrl: meta.productVideoUrl?.trim() || undefined,
+    linkedReports: cleanList(meta.linkedReports),
+    defaultLengthM: Number.isFinite(meta.defaultLengthM) ? Number(meta.defaultLengthM) : undefined,
+    configurableByLength: typeof meta.configurableByLength === 'boolean' ? meta.configurableByLength : undefined,
+    costPreset: cleanCostPreset(meta.costPreset),
+    competitors: cleanCompetitors(meta.competitors),
+    marketFitNotes: cleanList(meta.marketFitNotes),
+    fitImprovementActions: cleanList(meta.fitImprovementActions),
   };
 
   const hasMeta = Boolean(
@@ -65,7 +152,16 @@ export function serializeProductComments(notes: string, meta: ProductCatalogMeta
     Number.isFinite(normalizedMeta.estimatedCost) ||
     (normalizedMeta.repositories && normalizedMeta.repositories.length > 0) ||
     normalizedMeta.validated ||
-    normalizedMeta.source
+    normalizedMeta.source ||
+    normalizedMeta.productInfoUrl ||
+    normalizedMeta.productVideoUrl ||
+    (normalizedMeta.linkedReports && normalizedMeta.linkedReports.length > 0) ||
+    Number.isFinite(normalizedMeta.defaultLengthM) ||
+    normalizedMeta.configurableByLength ||
+    (normalizedMeta.costPreset && normalizedMeta.costPreset.length > 0) ||
+    (normalizedMeta.competitors && normalizedMeta.competitors.length > 0) ||
+    (normalizedMeta.marketFitNotes && normalizedMeta.marketFitNotes.length > 0) ||
+    (normalizedMeta.fitImprovementActions && normalizedMeta.fitImprovementActions.length > 0)
   );
 
   if (!hasMeta) return notes.trim();

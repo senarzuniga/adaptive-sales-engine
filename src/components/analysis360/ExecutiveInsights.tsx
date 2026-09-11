@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -49,6 +49,12 @@ export const ExecutiveInsights = ({ orders, opportunities, products, strategy, c
   const [insights, setInsights] = useState<InsightData | null>(null);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(true);
+
+  useEffect(() => {
+    if (insights || loading) return;
+    if (orders.length === 0 && opportunities.length === 0 && products.length === 0 && strategy.length === 0) return;
+    setInsights(buildFallbackExecutiveInsights({ orders, opportunities, products, strategy, company }));
+  }, [company, insights, loading, opportunities, orders, products, strategy]);
 
   const generateInsights = async () => {
     setLoading(true);

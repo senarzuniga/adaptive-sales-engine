@@ -12,33 +12,42 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { VoiceTextInput } from '@/components/VoiceTextInput';
 import { toast } from '@/hooks/use-toast';
-import { BarChart3, CheckCircle2, Lightbulb, Package, Search, Sparkles, Target, TrendingUp } from 'lucide-react';
+import { BarChart3, CheckCircle2, ExternalLink, Lightbulb, Package, Search, Sparkles, Target, TrendingUp } from 'lucide-react';
 import { fmt } from '@/components/analysis360/AnalysisUtils';
 import {
-  ProductActionEvaluation,
-  ProductPositionAction,
   buildProductPositioningActions,
   buildProductStrategySnapshot,
   evaluateProductActionFeedback,
+  type ProductActionEvaluation,
+  type ProductPositionAction,
 } from '@/lib/productStrategy';
-import { runProductAnalysisAgent, runProductSearchAgent } from '@/agents/productCatalogAgents';
+import { runProductAnalysisAgent, type ProductStrategicSignals, runProductSearchAgent } from '@/agents/productCatalogAgents';
 import { inferProductCategory } from '@/lib/productCatalog';
+import { buildProductIntelligence, buildSeedProductCatalog, estimateProductPresetCost, mergeProductWithKnowledge } from '@/lib/productKnowledge';
 
 type CatalogDraft = ProductRecord & { draftId: string };
 let fallbackDraftIdCounter = 0;
 
 const getDraftId = () => globalThis.crypto?.randomUUID?.() || `draft-${Date.now()}-${Math.round(Math.random() * 1e6)}-${fallbackDraftIdCounter++}`;
 
-const toDraft = (product: ProductRecord): CatalogDraft => ({
-  ...product,
-  draftId: getDraftId(),
-  category: inferProductCategory(product.type, product.category),
-  characteristics: product.characteristics || [],
-  estimatedCost: product.estimatedCost || 0,
-  repositories: product.repositories || [],
-  validated: Boolean(product.validated),
-  source: product.source || 'manual',
-});
+const toDraft = (product: ProductRecord): CatalogDraft => {
+  const normalized = mergeProductWithKnowledge(product);
+  return {
+    ...normalized,
+    draftId: getDraftId(),
+    category: inferProductCategory(normalized.type, normalized.category),
+    characteristics: normalized.characteristics || [],
+    estimatedCost: normalized.estimatedCost || 0,
+    repositories: normalized.repositories || [],
+    validated: Boolean(normalized.validated),
+    source: normalized.source || 'manual',
+    linkedReports: normalized.linkedReports || [],
+    costPreset: normalized.costPreset || [],
+    competitors: normalized.competitors || [],
+    marketFitNotes: normalized.marketFitNotes || [],
+    fitImprovementActions: normalized.fitImprovementActions || [],
+  };
+};
 
 const normalizeDraft = (draft: CatalogDraft): ProductRecord => ({
   name: (draft.name || '').trim(),
@@ -51,7 +60,18 @@ const normalizeDraft = (draft: CatalogDraft): ProductRecord => ({
   repositories: (draft.repositories || []).map((item) => item.trim()).filter(Boolean),
   validated: Boolean(draft.validated),
   source: draft.source || 'manual',
+  productInfoUrl: (draft.productInfoUrl || '').trim(),
+  productVideoUrl: (draft.productVideoUrl || '').trim(),
+  linkedReports: (draft.linkedReports || []).map((item) => item.trim()).filter(Boolean),
+  defaultLengthM: draft.defaultLengthM ? Number(draft.defaultLengthM) : undefined,
+  configurableByLength: Boolean(draft.configurableByLength),
+  costPreset: draft.costPreset || [],
+  competitors: draft.competitors || [],
+  marketFitNotes: (draft.marketFitNotes || []).map((item) => item.trim()).filter(Boolean),
+  fitImprovementActions: (draft.fitImprovementActions || []).map((item) => item.trim()).filter(Boolean),
 });
+
+const summarizeSignal = (signal: ProductStrategicSignals) => `${signal.lifecycleSignal} lifecycle, ${signal.offerModel}, competition led by ${signal.competitionFocus}.`;
 
 const ProductStrategyPage = () => {
   const { data, addTask, updateTask, setProducts } = useData();
@@ -61,80 +81,50 @@ const ProductStrategyPage = () => {
   const [catalogDrafts, setCatalogDrafts] = useState<CatalogDraft[]>([]);
 
   useEffect(() => {
-    setCatalogDrafts(data.products.map(toDraft));
+    setCatalogDrafts(buildSeedProductCatalog(data.products).map(toDraft));
   }, [data.products]);
 
-  const catalogProducts = useMemo(
-    () => catalogDrafts.map(normalizeDraft).filter((product) => product.name),
-    [catalogDrafts],
-  );
-
-  const snapshot = useMemo(() => buildProductStrategySnapshot({
-    products: catalogProducts,
-    orders: data.orders,
-    opportunities: data.opportunities,
-  }), [catalogProducts, data.orders, data.opportunities]);
-
-  const actionCards = useMemo(
-    () => buildProductPositioningActions(snapshot.products, data.companyProfile.company_name || 'your company'),
-    [snapshot.products, data.companyProfile.company_name],
-  );
-
-  const strategicSignals = useMemo(
-    () => catalogProducts.map((product) => ({
-      product,
-      signal: runProductAnalysisAgent(product),
-    })),
-    [catalogProducts],
-  );
+  const catalogProducts = useMemo(() => catalogDrafts.map(normalizeDraft).filter((product) => product.name), [catalogDrafts]);
+  const snapshot = useMemo(() => buildProductStrategySnapshot({ products: catalogProducts, orders: data.orders, opportunities: data.opportunities }), [catalogProducts, data.orders, data.opportunities]);
+  const actionCards = useMemo(() => buildProductPositioningActions(snapshot.products, data.companyProfile.company_name || 'your company'), [snapshot.products, data.companyProfile.company_name]);
+  const strategicSignals = useMemo(() => Object.fromEntries(catalogProducts.map((product) => [product.name, runProductAnalysisAgent(product)])), [catalogProducts]);
+  const intelligenceCards = useMemo(() => snapshot.products.map((product) => buildProductIntelligence(catalogProducts.find((item) => item.name === product.name) || { name: product.name, averageValue: 0, type: '', comments: '' }, product.marketFitScore)), [catalogProducts, snapshot.products]);
+  const categoriesSummary = useMemo(() => {
+    const byCategory = new Map<string, { label: string; productCount: number; revenue: number; avgFit: number }>();
+    snapshot.products.forEach((product) => {
+      const catalogProduct = catalogProducts.find((item) => item.name === product.name);
+      const label = catalogProduct?.category === 'service' ? 'Service' : 'Product';
+      const current = byCategory.get(label) || { label, productCount: 0, revenue: 0, avgFit: 0 };
+      current.productCount += 1;
+      current.revenue += product.revenue;
+      current.avgFit += product.marketFitScore;
+      byCategory.set(label, current);
+    });
+    return Array.from(byCategory.values()).map((item) => ({ ...item, avgFit: item.productCount > 0 ? item.avgFit / item.productCount : 0 }));
+  }, [catalogProducts, snapshot.products]);
 
   const topInnovation = snapshot.products.filter((product) => product.lifecycleLabel === 'Innovation').length;
   const commodityCount = snapshot.products.filter((product) => product.lifecycleLabel === 'Commodity').length;
-  const avgFit = snapshot.products.length > 0
-    ? snapshot.products.reduce((sum, product) => sum + product.marketFitScore, 0) / snapshot.products.length
-    : 0;
+  const avgFit = snapshot.products.length > 0 ? snapshot.products.reduce((sum, product) => sum + product.marketFitScore, 0) / snapshot.products.length : 0;
 
-  const updateDraft = (draftId: string, field: keyof CatalogDraft, value: unknown) => {
-    setCatalogDrafts((prev) => prev.map((draft) => (draft.draftId === draftId ? { ...draft, [field]: value } : draft)));
+  const updateDraft = (draftId: string, field: keyof CatalogDraft, value: unknown) => setCatalogDrafts((prev) => prev.map((draft) => (draft.draftId === draftId ? { ...draft, [field]: value } : draft)));
+  const addCatalogItem = (category: 'product' | 'service') => setCatalogDrafts((prev) => [...prev, toDraft({ name: '', averageValue: 0, type: category === 'service' ? 'service model' : 'equipment', comments: '', category, characteristics: [], estimatedCost: 0, repositories: [], validated: false, source: 'manual', linkedReports: [], costPreset: [], competitors: [], marketFitNotes: [], fitImprovementActions: [] })]);
+  const removeCatalogItem = (draftId: string) => setCatalogDrafts((prev) => prev.filter((draft) => draft.draftId !== draftId));
+  const loadCanonicalProfiles = () => {
+    setCatalogDrafts(buildSeedProductCatalog(catalogProducts).map(toDraft));
+    toast({ title: 'Canonical profiles loaded', description: 'My Products was synchronized with the product cost and intelligence playbook.' });
   };
-
-  const addCatalogItem = (category: 'product' | 'service') => {
-    setCatalogDrafts((prev) => [...prev, toDraft({
-      name: '',
-      averageValue: 0,
-      type: category === 'service' ? 'service model' : 'equipment',
-      comments: '',
-      category,
-      characteristics: [],
-      estimatedCost: 0,
-      repositories: [],
-      validated: false,
-      source: 'manual',
-    })]);
-  };
-
-  const removeCatalogItem = (draftId: string) => {
-    setCatalogDrafts((prev) => prev.filter((draft) => draft.draftId !== draftId));
-  };
-
   const generateCatalog = () => {
-    const suggestions = runProductSearchAgent({
-      products: catalogProducts,
-      orders: data.orders,
-      opportunities: data.opportunities,
-    });
-
+    const suggestions = runProductSearchAgent({ products: catalogProducts, orders: data.orders, opportunities: data.opportunities });
     if (suggestions.length === 0) {
       toast({ title: 'No new suggestions', description: 'Search agent did not find additional lines to add.' });
       return;
     }
-
-    setCatalogDrafts((prev) => [...prev, ...suggestions.map(toDraft)]);
+    setCatalogDrafts((prev) => buildSeedProductCatalog([...prev.map(normalizeDraft), ...suggestions]).map(toDraft));
     toast({ title: 'Catalog suggestions ready', description: `${suggestions.length} auto-generated items were added for validation.` });
   };
-
   const saveCatalog = async () => {
-    const cleanRecords = catalogProducts.filter((product) => product.name.trim().length > 0);
+    const cleanRecords = buildSeedProductCatalog(catalogProducts.filter((product) => product.name.trim().length > 0));
     await setProducts(cleanRecords);
     toast({ title: 'Catalog saved', description: `${cleanRecords.length} products/services are now available for offer selection.` });
   };
@@ -142,29 +132,15 @@ const ProductStrategyPage = () => {
   const persistActionTask = async (action: ProductPositionAction, evaluation?: ProductActionEvaluation) => {
     const existingId = taskIdsByAction[action.id];
     const feedback = feedbackByAction[action.id]?.trim();
-
     try {
       if (existingId) {
         await updateTask(existingId, {
           priority: evaluation?.priority || action.priority,
-          notes: [
-            `Scenario: ${action.scenario}`,
-            feedback ? `Feedback: ${feedback}` : 'Feedback: pending',
-            evaluation?.evaluation || 'Evaluation not run yet.',
-          ],
-          actionResult: evaluation ? {
-            outcome: 'Feedback evaluation completed',
-            timestamp: new Date().toISOString(),
-            aiAnalysis: evaluation.evaluation,
-            alignmentScore: evaluation.priority === 'high' ? 90 : evaluation.priority === 'medium' ? 75 : 60,
-            recommendations: [evaluation.scenarioAdjustment],
-          } : undefined,
+          notes: [`Scenario: ${action.scenario}`, feedback ? `Feedback: ${feedback}` : 'Feedback: pending', evaluation?.evaluation || 'Evaluation not run yet.'],
         });
-
         toast({ title: 'Monitoring task updated', description: `${action.title} has been reprioritized.` });
         return;
       }
-
       const taskId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${action.id}`;
       await addTask({
         id: taskId,
@@ -177,35 +153,13 @@ const ProductStrategyPage = () => {
         assignee: 'Commercial team',
         dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
         createdAt: new Date().toISOString(),
-        notes: [
-          `Scenario: ${action.scenario}`,
-          `Recommended move: ${action.recommendedMove}`,
-          feedback ? `Feedback: ${feedback}` : 'Feedback: pending',
-        ],
-        actionContent: {
-          goal: action.goal,
-          callScript: action.script,
-          emailTemplate: `Subject: Positioning review for ${action.productName}\n\n${action.supportContent}`,
-          presentationNotes: action.supportContent,
-        },
-        actionResult: evaluation ? {
-          outcome: 'Initial feedback captured',
-          timestamp: new Date().toISOString(),
-          aiAnalysis: evaluation.evaluation,
-          alignmentScore: evaluation.priority === 'high' ? 90 : evaluation.priority === 'medium' ? 75 : 60,
-          recommendations: [evaluation.scenarioAdjustment],
-        } : undefined,
+        notes: [`Scenario: ${action.scenario}`, `Recommended move: ${action.recommendedMove}`, feedback ? `Feedback: ${feedback}` : 'Feedback: pending'],
       });
-
       setTaskIdsByAction((prev) => ({ ...prev, [action.id]: taskId }));
       toast({ title: 'Monitoring task created', description: `${action.title} is now part of the action plan.` });
     } catch (error) {
       console.error('Unable to persist product action', error);
-      toast({
-        title: 'Could not save action',
-        description: 'The recommendation remains visible here, but it was not saved to monitoring.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Could not save action', description: 'The recommendation remains visible here, but it was not saved to monitoring.', variant: 'destructive' });
     }
   };
 
@@ -215,7 +169,6 @@ const ProductStrategyPage = () => {
       toast({ title: 'Add feedback first', description: 'Use text or voice input to evaluate the action.', variant: 'destructive' });
       return;
     }
-
     const evaluation = evaluateProductActionFeedback(action, feedback);
     setEvaluations((prev) => ({ ...prev, [action.id]: evaluation }));
     await persistActionTask(action, evaluation);
@@ -226,12 +179,10 @@ const ProductStrategyPage = () => {
       <div>
         <div className="flex items-center gap-3 mb-2">
           <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded">Pillar 6</span>
-          <Badge variant="outline">Product &amp; Value Positioning Strategy</Badge>
+          <Badge variant="outline">Product, Cost and Market Fit Engine</Badge>
         </div>
-        <h2 className="text-2xl font-semibold text-foreground">Product &amp; Value Positioning Strategy</h2>
-        <p className="text-muted-foreground text-sm mt-1 max-w-3xl">
-          Build and validate your products/services catalog, enrich it with analysis/search agents, and convert it into lifecycle positioning and offer-ready actions.
-        </p>
+        <h2 className="text-2xl font-semibold text-foreground">Product Management, Costing and Market Fit</h2>
+        <p className="text-muted-foreground text-sm mt-1 max-w-4xl">Manage My Products, keep canonical product costs available for pricing, and expose per-product competitor intelligence, performance benchmarks, and fit-improvement guidance.</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -241,281 +192,68 @@ const ProductStrategyPage = () => {
         <Card><CardContent className="pt-5 pb-4"><p className="text-xs text-muted-foreground">Avg Market Fit</p><p className="text-2xl font-bold">{avgFit.toFixed(0)}%</p></CardContent></Card>
       </div>
 
-      <Tabs defaultValue="catalog" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="catalog" className="gap-1"><Package className="h-3.5 w-3.5" /> Catalog Workspace</TabsTrigger>
+      <Tabs defaultValue="my-products" className="space-y-4">
+        <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="my-products" className="gap-1"><Package className="h-3.5 w-3.5" /> My Products</TabsTrigger>
           <TabsTrigger value="portfolio" className="gap-1"><Package className="h-3.5 w-3.5" /> Portfolio</TabsTrigger>
+          <TabsTrigger value="intelligence" className="gap-1"><Sparkles className="h-3.5 w-3.5" /> Market Intelligence</TabsTrigger>
           <TabsTrigger value="fit" className="gap-1"><Target className="h-3.5 w-3.5" /> Market Fit</TabsTrigger>
           <TabsTrigger value="actions" className="gap-1"><Lightbulb className="h-3.5 w-3.5" /> Action Playbook</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="catalog" className="space-y-4">
+        <TabsContent value="my-products" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center justify-between gap-2">
-                <span>Products & Services Catalog</span>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={generateCatalog}><Search className="h-4 w-4 mr-1" /> Generate with agents</Button>
-                  <Button size="sm" onClick={saveCatalog}><CheckCircle2 className="h-4 w-4 mr-1" /> Save catalog</Button>
-                </div>
-              </CardTitle>
+            <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div><CardTitle>My Products</CardTitle><p className="text-sm text-muted-foreground mt-1">Canonical products, reusable offer costs, reference links, and evidence aligned with Ingecart lines.</p></div>
+              <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={loadCanonicalProfiles}>Load canonical profiles</Button><Button variant="outline" onClick={generateCatalog}><Search className="h-4 w-4 mr-2" /> Generate suggestions</Button><Button onClick={saveCatalog}>Save catalog</Button></div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-xs text-muted-foreground">
-                Add products/services with characteristics, estimated costs, and repositories. Auto-generated items stay editable until validated.
-              </p>
-
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" onClick={() => addCatalogItem('product')}>Add product</Button>
-                <Button variant="outline" size="sm" onClick={() => addCatalogItem('service')}>Add service</Button>
-              </div>
-
-              {catalogDrafts.length === 0 ? (
-                <div className="text-sm text-muted-foreground py-6 text-center border rounded-md">No catalog items yet. Add manually or generate with agents.</div>
-              ) : (
-                <div className="space-y-3">
-                  {catalogDrafts.map((item) => (
-                    <div key={item.draftId} className="border rounded-md p-3 space-y-3">
-                      <div className="grid md:grid-cols-5 gap-3">
-                        <div className="md:col-span-2">
-                          <label className="text-xs text-muted-foreground">Name</label>
-                          <Input value={item.name} onChange={(event) => updateDraft(item.draftId, 'name', event.target.value)} />
-                        </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground">Category</label>
-                          <Select value={item.category} onValueChange={(value) => updateDraft(item.draftId, 'category', value as 'product' | 'service')}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="product">Product</SelectItem>
-                              <SelectItem value="service">Service</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground">Average value</label>
-                          <Input type="number" value={item.averageValue} onChange={(event) => updateDraft(item.draftId, 'averageValue', Number(event.target.value))} />
-                        </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground">Estimated cost</label>
-                          <Input type="number" value={item.estimatedCost} onChange={(event) => updateDraft(item.draftId, 'estimatedCost', Number(event.target.value))} />
-                        </div>
-                      </div>
-
-                      <div className="grid md:grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-xs text-muted-foreground">Type / lifecycle signal</label>
-                          <Input value={item.type} onChange={(event) => updateDraft(item.draftId, 'type', event.target.value)} />
-                        </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground">Repositories (comma-separated)</label>
-                          <Input
-                            value={(item.repositories || []).join(', ')}
-                            onChange={(event) => updateDraft(item.draftId, 'repositories', event.target.value.split(',').map((value) => value.trim()).filter(Boolean))}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid md:grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-xs text-muted-foreground">Characteristics (comma-separated)</label>
-                          <Input
-                            value={(item.characteristics || []).join(', ')}
-                            onChange={(event) => updateDraft(item.draftId, 'characteristics', event.target.value.split(',').map((value) => value.trim()).filter(Boolean))}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground">Notes</label>
-                          <Textarea value={item.comments} rows={2} onChange={(event) => updateDraft(item.draftId, 'comments', event.target.value)} />
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs">
-                          <Checkbox checked={item.validated} onCheckedChange={(checked) => updateDraft(item.draftId, 'validated', checked === true)} />
-                          Validated for offer selection
-                          <Badge variant="outline" className="ml-2">Source: {item.source || 'manual'}</Badge>
-                        </div>
-                        <Button variant="ghost" size="sm" onClick={() => removeCatalogItem(item.draftId)}>Remove</Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {strategicSignals.length > 0 && (
-            <Card>
-              <CardHeader><CardTitle className="text-base">Analysis + Search Agent Strategic Signals</CardTitle></CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader><TableRow>
-                    <TableHead className="text-xs">Product/Service</TableHead>
-                    <TableHead className="text-xs">Innovation vs commodity</TableHead>
-                    <TableHead className="text-xs">Offer model</TableHead>
-                    <TableHead className="text-xs">Technology stage</TableHead>
-                    <TableHead className="text-xs">Competes on</TableHead>
-                    <TableHead className="text-xs">Recommended scenario</TableHead>
-                  </TableRow></TableHeader>
-                  <TableBody>
-                    {strategicSignals.map(({ product, signal }) => (
-                      <TableRow key={product.name}>
-                        <TableCell className="text-xs font-medium">{product.name}</TableCell>
-                        <TableCell className="text-xs capitalize">{signal.lifecycleSignal}</TableCell>
-                        <TableCell className="text-xs capitalize">{signal.offerModel}</TableCell>
-                        <TableCell className="text-xs capitalize">{signal.technologyStage}</TableCell>
-                        <TableCell className="text-xs capitalize">{signal.competitionFocus}</TableCell>
-                        <TableCell className="text-xs capitalize">{signal.scenario}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        <TabsContent value="portfolio">
-          {snapshot.products.length === 0 ? (
-            <Card><CardContent className="py-10 text-sm text-muted-foreground text-center">Add or generate catalog items to activate portfolio analysis.</CardContent></Card>
-          ) : (
-            <Card>
-              <CardHeader><CardTitle className="text-base">Lifecycle Positioning Matrix</CardTitle></CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader><TableRow>
-                    <TableHead className="text-xs">Product</TableHead>
-                    <TableHead className="text-xs">Lifecycle</TableHead>
-                    <TableHead className="text-xs text-right">Revenue</TableHead>
-                    <TableHead className="text-xs text-right">Pipeline</TableHead>
-                    <TableHead className="text-xs text-right">Margin</TableHead>
-                    <TableHead className="text-xs">Position</TableHead>
-                  </TableRow></TableHeader>
-                  <TableBody>
-                    {snapshot.products.map((product) => (
-                      <TableRow key={product.name}>
-                        <TableCell className="text-xs font-medium">{product.name}</TableCell>
-                        <TableCell className="text-xs">
-                          <Badge variant={product.lifecycleLabel === 'Innovation' ? 'default' : product.lifecycleLabel === 'Commodity' ? 'secondary' : 'outline'}>
-                            {product.lifecycleLabel}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-xs text-right">{fmt(product.revenue)}</TableCell>
-                        <TableCell className="text-xs text-right">{fmt(product.pipeline)}</TableCell>
-                        <TableCell className="text-xs text-right">{product.avgMargin.toFixed(1)}%</TableCell>
-                        <TableCell className="text-xs">{product.positioning}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        <TabsContent value="fit">
-          {snapshot.products.length === 0 ? (
-            <Card><CardContent className="py-10 text-sm text-muted-foreground text-center">Market-fit scoring appears once products/services are in the catalog.</CardContent></Card>
-          ) : (
-            <div className="grid md:grid-cols-2 gap-4">
-              {snapshot.products.map((product) => (
-                <Card key={product.name}>
-                  <CardHeader><CardTitle className="text-base flex items-center gap-2"><BarChart3 className="h-4 w-4 text-primary" /> {product.name}</CardTitle></CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Market fit score</span>
-                      <span className="font-medium">{product.marketFitScore.toFixed(0)}%</span>
-                    </div>
-                    <Progress value={product.marketFitScore} className="h-2" />
-                    <p className="text-xs text-muted-foreground">Weighted pipeline: {fmt(product.weightedPipeline)}</p>
-                    <p className="text-xs text-muted-foreground">Notes: {product.notes || 'No additional notes provided.'}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="actions" className="space-y-4">
-          {snapshot.products.length === 0 ? (
-            <Card><CardContent className="py-10 text-sm text-muted-foreground text-center">Action playbook activates after adding products/services to the catalog.</CardContent></Card>
-          ) : (
-            <>
-              <div className="grid lg:grid-cols-3 gap-4">
-                <Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary" /> Scale</CardTitle></CardHeader><CardContent className="text-xs text-muted-foreground">Push high-fit offers with consultative value-selling and proof-based expansion.</CardContent></Card>
-                <Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><Target className="h-4 w-4 text-primary" /> Optimize</CardTitle></CardHeader><CardContent className="text-xs text-muted-foreground">Improve market coverage, pricing logic, and route-to-market for core products.</CardContent></Card>
-                <Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Re-evaluate</CardTitle></CardHeader><CardContent className="text-xs text-muted-foreground">Use voice or written feedback to change priority and trigger new scenarios when the market says so.</CardContent></Card>
-              </div>
-
-              <div className="grid xl:grid-cols-2 gap-4">
-                {actionCards.map((action) => {
-                  const evaluation = evaluations[action.id];
+              <div className="flex flex-wrap gap-2"><Button variant="secondary" onClick={() => addCatalogItem('product')}>Add product</Button><Button variant="secondary" onClick={() => addCatalogItem('service')}>Add service</Button></div>
+              <div className="space-y-4">
+                {catalogDrafts.map((draft) => {
+                  const intelligence = buildProductIntelligence(normalizeDraft(draft), 0);
                   return (
-                    <Card key={action.id} className="border-primary/10">
-                      <CardHeader className="space-y-2">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <CardTitle className="text-base">{action.title}</CardTitle>
-                          <div className="flex gap-2">
-                            <Badge variant={action.priority === 'high' ? 'destructive' : action.priority === 'medium' ? 'default' : 'secondary'}>
-                              {evaluation?.priority || action.priority} priority
-                            </Badge>
-                            <Badge variant="outline">{action.scenario}</Badge>
+                    <Card key={draft.draftId} className="border-dashed">
+                      <CardContent className="pt-5 space-y-4">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 flex-1">
+                            <div><label className="text-xs text-muted-foreground">Name</label><Input value={draft.name} onChange={(e) => updateDraft(draft.draftId, 'name', e.target.value)} /></div>
+                            <div><label className="text-xs text-muted-foreground">Type</label><Input value={draft.type} onChange={(e) => updateDraft(draft.draftId, 'type', e.target.value)} /></div>
+                            <div><label className="text-xs text-muted-foreground">Category</label><Select value={draft.category || 'product'} onValueChange={(value) => updateDraft(draft.draftId, 'category', value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="product">Product</SelectItem><SelectItem value="service">Service</SelectItem></SelectContent></Select></div>
+                            <div><label className="text-xs text-muted-foreground">Average sale value</label><Input type="number" value={draft.averageValue || 0} onChange={(e) => updateDraft(draft.draftId, 'averageValue', Number(e.target.value || 0))} /></div>
                           </div>
-                        </div>
-                        <p className="text-xs text-muted-foreground">{action.recommendedMove}</p>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="rounded-md border bg-muted/20 p-3 space-y-2 text-xs">
-                          <div>
-                            <p className="font-semibold text-foreground">Goal</p>
-                            <p className="text-muted-foreground">{action.goal}</p>
-                          </div>
-                          <div>
-                            <p className="font-semibold text-foreground">Support content</p>
-                            <p className="text-muted-foreground whitespace-pre-line">{action.supportContent}</p>
-                          </div>
-                          <div>
-                            <p className="font-semibold text-foreground">Commercial script</p>
-                            <p className="text-muted-foreground whitespace-pre-line">{action.script}</p>
-                          </div>
+                          <Button variant="ghost" size="sm" onClick={() => removeCatalogItem(draft.draftId)}>Remove</Button>
                         </div>
 
-                        <VoiceTextInput
-                          label="Field feedback"
-                          value={feedbackByAction[action.id] || ''}
-                          onChange={(value) => setFeedbackByAction((prev) => ({ ...prev, [action.id]: value }))}
-                          placeholder="Add voice or written feedback from the market. Example: price pressure is high and customers want a stronger service-value offer."
-                          rows={4}
-                        />
-
-                        <div className="flex flex-wrap gap-2">
-                          <Button onClick={() => handleEvaluateFeedback(action)}>Evaluate feedback</Button>
-                          <Button variant="outline" onClick={() => persistActionTask(action, evaluation)}>
-                            {taskIdsByAction[action.id] ? 'Update monitoring task' : 'Create monitoring task'}
-                          </Button>
+                        <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+                          <div className="space-y-3"><div><label className="text-xs text-muted-foreground">Commercial / technical summary</label><Textarea rows={4} value={draft.comments || ''} onChange={(e) => updateDraft(draft.draftId, 'comments', e.target.value)} /></div><div className="grid gap-3 md:grid-cols-2"><div><label className="text-xs text-muted-foreground">Characteristics (one per line)</label><Textarea rows={5} value={(draft.characteristics || []).join('\n')} onChange={(e) => updateDraft(draft.draftId, 'characteristics', e.target.value.split(/\r?\n/))} /></div><div><label className="text-xs text-muted-foreground">Repositories / evidence (one per line)</label><Textarea rows={5} value={(draft.repositories || []).join('\n')} onChange={(e) => updateDraft(draft.draftId, 'repositories', e.target.value.split(/\r?\n/))} /></div></div></div>
+                          <div className="space-y-3"><div><label className="text-xs text-muted-foreground">Product information URL</label><Input value={draft.productInfoUrl || ''} onChange={(e) => updateDraft(draft.draftId, 'productInfoUrl', e.target.value)} /></div><div><label className="text-xs text-muted-foreground">Product video URL</label><Input value={draft.productVideoUrl || ''} onChange={(e) => updateDraft(draft.draftId, 'productVideoUrl', e.target.value)} /></div><div><label className="text-xs text-muted-foreground">Linked reports (one per line)</label><Textarea rows={4} value={(draft.linkedReports || []).join('\n')} onChange={(e) => updateDraft(draft.draftId, 'linkedReports', e.target.value.split(/\r?\n/))} /></div><div className="grid gap-3 md:grid-cols-2"><div><label className="text-xs text-muted-foreground">Reference estimated cost</label><Input type="number" value={draft.estimatedCost || 0} onChange={(e) => updateDraft(draft.draftId, 'estimatedCost', Number(e.target.value || 0))} /></div><div className="flex items-center gap-3 pt-6"><Checkbox checked={Boolean(draft.validated)} onCheckedChange={(checked) => updateDraft(draft.draftId, 'validated', Boolean(checked))} /><span className="text-sm">Validated product</span></div></div></div>
                         </div>
 
-                        {evaluation && (
-                          <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2 text-xs">
-                            <div className="flex items-center gap-2 font-semibold text-emerald-700">
-                              <CheckCircle2 className="h-4 w-4" /> Feedback impact
-                            </div>
-                            <p className="text-muted-foreground">{evaluation.evaluation}</p>
-                            <p><span className="font-medium">Scenario update:</span> {evaluation.scenarioAdjustment}</p>
-                            {evaluation.newActionNeeded && (
-                              <p><span className="font-medium">Follow-up needed:</span> {evaluation.suggestedActionTitle || 'A new action should be added to the plan.'}</p>
-                            )}
-                          </div>
-                        )}
+                        <div className="grid gap-4 xl:grid-cols-3">
+                          <Card className="bg-muted/30"><CardHeader className="pb-2"><CardTitle className="text-base">Reusable cost preset</CardTitle></CardHeader><CardContent className="space-y-2 text-sm">{(draft.costPreset || []).length === 0 ? <p className="text-muted-foreground">No structured preset yet.</p> : (draft.costPreset || []).map((line) => (<div key={`${draft.draftId}-${line.lineItem}`} className="flex items-center justify-between gap-3"><div><p className="font-medium">{line.lineItem}</p><p className="text-xs text-muted-foreground">{line.mode || 'unit'} · {line.category}</p></div><p className="font-semibold">{fmt((line.quantity || 0) * (line.unitCost || 0) + (line.hours || 0) * (line.hourlyRate || 0) + (line.days || 0) * (line.resources || 0) * (line.unitCost || 0))}</p></div>))}<div className="pt-2 border-t flex items-center justify-between"><span className="text-muted-foreground">Preset total</span><span className="font-semibold">{fmt(estimateProductPresetCost(normalizeDraft(draft), draft.defaultLengthM))}</span></div>{draft.configurableByLength ? <Badge variant="secondary">Length-configurable ({draft.defaultLengthM || 80}m default)</Badge> : null}</CardContent></Card>
+                          <Card className="bg-muted/30"><CardHeader className="pb-2"><CardTitle className="text-base">Competitive benchmark</CardTitle></CardHeader><CardContent className="space-y-2 text-sm">{intelligence.competitors.length === 0 ? <p className="text-muted-foreground">No competitor benchmark available.</p> : intelligence.competitors.map((competitor) => (<div key={`${draft.draftId}-${competitor.name}`} className="rounded-lg border p-3 bg-background"><div className="flex items-center justify-between gap-3"><p className="font-medium">{competitor.name}</p><Badge variant="outline">{competitor.marketFit}% fit</Badge></div><p className="text-xs text-muted-foreground mt-1">Offer: {competitor.offer}</p><p className="text-xs text-muted-foreground mt-1">Performance: {competitor.performance}</p><p className="text-xs text-muted-foreground mt-1">Gap: {competitor.fitGap}</p></div>))}</CardContent></Card>
+                          <Card className="bg-muted/30"><CardHeader className="pb-2"><CardTitle className="text-base">Market fit guidance</CardTitle></CardHeader><CardContent className="space-y-2 text-sm"><div className="space-y-1">{intelligence.marketFitNotes.map((note) => <p key={`${draft.draftId}-${note}`} className="text-muted-foreground">- {note}</p>)}</div><div className="pt-2 border-t space-y-1">{intelligence.fitImprovementActions.map((action) => <p key={`${draft.draftId}-${action}`} className="font-medium">- {action}</p>)}</div></CardContent></Card>
+                        </div>
                       </CardContent>
                     </Card>
                   );
                 })}
               </div>
-            </>
-          )}
+            </CardContent>
+          </Card>
         </TabsContent>
+
+        <TabsContent value="portfolio"><div className="grid lg:grid-cols-2 gap-4"><Card><CardHeader><CardTitle>Lifecycle portfolio map</CardTitle></CardHeader><CardContent className="space-y-4">{snapshot.products.map((product) => (<div key={product.name} className="rounded-lg border p-4 space-y-2 bg-muted/20"><div className="flex items-center justify-between gap-3"><div><p className="font-semibold">{product.name}</p><p className="text-sm text-muted-foreground">{product.lifecycleLabel} | {product.positioning}</p></div><Badge variant={product.marketFitScore >= 75 ? 'default' : 'outline'}>{product.marketFitScore}% fit</Badge></div><div className="grid grid-cols-2 gap-4 text-sm"><div><span className="text-muted-foreground">Coverage</span><p className="font-medium">Pipeline {fmt(product.pipeline)} | Weighted {fmt(product.weightedPipeline)}</p></div><div><span className="text-muted-foreground">Revenue</span><p className="font-medium">{fmt(product.revenue)}</p></div></div><Progress value={product.marketFitScore} className="h-2" /><p className="text-sm text-muted-foreground">{product.notes || 'No product notes yet.'}</p></div>))}</CardContent></Card><Card><CardHeader><CardTitle>Category revenue distribution</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Category</TableHead><TableHead>Products</TableHead><TableHead>Revenue</TableHead><TableHead>Avg fit</TableHead></TableRow></TableHeader><TableBody>{categoriesSummary.map((category) => (<TableRow key={category.label}><TableCell className="font-medium">{category.label}</TableCell><TableCell>{category.productCount}</TableCell><TableCell>{fmt(category.revenue)}</TableCell><TableCell>{category.avgFit.toFixed(0)}%</TableCell></TableRow>))}</TableBody></Table></CardContent></Card></div></TabsContent>
+
+        <TabsContent value="intelligence"><div className="grid gap-4 xl:grid-cols-2">{intelligenceCards.map((intel) => (<Card key={intel.product.name}><CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0"><div><CardTitle>{intel.product.name}</CardTitle><p className="text-sm text-muted-foreground mt-1">{intel.fitSummary}</p></div><Badge variant="outline">{intel.competitors.length} competitors</Badge></CardHeader><CardContent className="space-y-4"><div className="grid md:grid-cols-2 gap-4"><div className="space-y-2"><p className="text-sm font-medium">Standard performance benchmark</p>{intel.competitors.map((item) => <p key={`${intel.product.name}-${item.name}-performance`} className="text-sm text-muted-foreground">- {item.name}: {item.performance}</p>)}</div><div className="space-y-2"><p className="text-sm font-medium">How to improve fit</p>{intel.fitImprovementActions.map((item) => <p key={`${intel.product.name}-${item}`} className="text-sm text-muted-foreground">- {item}</p>)}</div></div><div className="space-y-2">{intel.competitors.map((competitor) => (<div key={`${intel.product.name}-${competitor.name}`} className="rounded-lg border p-3"><div className="flex items-center justify-between gap-3"><p className="font-medium">{competitor.name}</p><Badge variant="secondary">{competitor.marketFit}% fit</Badge></div><p className="text-sm text-muted-foreground mt-1">Offer: {competitor.offer}</p><p className="text-sm text-muted-foreground mt-1">Fit gap: {competitor.fitGap}</p><p className="text-sm text-muted-foreground mt-1">Actions: {competitor.gainFitActions.join(' | ')}</p></div>))}</div></CardContent></Card>))}</div></TabsContent>
+
+        <TabsContent value="fit"><div className="grid lg:grid-cols-3 gap-4">{snapshot.products.map((product) => { const signal = strategicSignals[product.name]; return (<Card key={product.name}><CardHeader><CardTitle className="flex items-center justify-between gap-3"><span>{product.name}</span><span className="text-base">{product.marketFitScore}%</span></CardTitle></CardHeader><CardContent className="space-y-3"><Progress value={product.marketFitScore} className="h-2" /><div className="space-y-1 text-sm"><p><span className="text-muted-foreground">Lifecycle:</span> {product.lifecycleLabel}</p><p><span className="text-muted-foreground">Positioning:</span> {product.positioning}</p><p><span className="text-muted-foreground">Margin:</span> {product.avgMargin.toFixed(1)}%</p></div>{signal ? <div className="rounded-lg border bg-muted/20 p-3 space-y-1"><p className="text-sm font-medium flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Search/analysis signal</p><p className="text-sm text-muted-foreground">{summarizeSignal(signal)}</p><p className="text-xs text-muted-foreground">Scenario: {signal.scenario} | Technology stage: {signal.technologyStage}</p></div> : null}</CardContent></Card>); })}</div></TabsContent>
+
+        <TabsContent value="actions"><div className="grid xl:grid-cols-2 gap-4">{actionCards.map((action) => { const evaluation = evaluations[action.id]; return (<Card key={action.id}><CardHeader><div className="flex items-center justify-between gap-3"><CardTitle className="text-lg">{action.title}</CardTitle><Badge variant={action.priority === 'high' ? 'destructive' : action.priority === 'medium' ? 'secondary' : 'outline'}>{action.priority.toUpperCase()}</Badge></div><p className="text-sm text-muted-foreground mt-1">{action.goal}</p></CardHeader><CardContent className="space-y-4"><div className="text-sm space-y-2"><p><span className="font-medium">Scenario:</span> {action.scenario}</p><p><span className="font-medium">Recommended move:</span> {action.recommendedMove}</p><p><span className="font-medium">Support content:</span> {action.supportContent}</p><p><span className="font-medium">Suggested script:</span> {action.script}</p></div><div className="space-y-2"><label className="text-sm font-medium">Field feedback / outcome</label><VoiceTextInput value={feedbackByAction[action.id] || ''} onChange={(value) => setFeedbackByAction((prev) => ({ ...prev, [action.id]: value }))} placeholder="Describe customer reaction, objections, or execution result" rows={3} /><div className="flex gap-2"><Button variant="outline" onClick={() => void persistActionTask(action, evaluation)}>Save to monitoring</Button><Button onClick={() => void handleEvaluateFeedback(action)}>Evaluate feedback</Button></div></div>{evaluation ? <div className="rounded-lg border bg-muted/20 p-4 space-y-2"><p className="text-sm font-medium flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary" /> Evaluation</p><p className="text-sm text-muted-foreground">{evaluation.evaluation}</p><p className="text-sm"><span className="font-medium">Adjustment:</span> {evaluation.scenarioAdjustment}</p><p className="text-sm"><span className="font-medium">Priority:</span> {evaluation.priority.toUpperCase()}</p></div> : null}</CardContent></Card>); })}</div></TabsContent>
       </Tabs>
+
+      <Card><CardHeader><CardTitle className="flex items-center gap-2"><BarChart3 className="h-5 w-5" /> Product knowledge quick links</CardTitle></CardHeader><CardContent className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{catalogProducts.filter((product) => product.productInfoUrl || product.productVideoUrl).map((product) => (<div key={`links-${product.name}`} className="rounded-lg border p-4 space-y-2"><p className="font-medium">{product.name}</p><div className="flex flex-wrap gap-2">{product.productInfoUrl ? <a className="inline-flex items-center gap-1 text-sm text-primary hover:underline" href={product.productInfoUrl} target="_blank" rel="noreferrer">Product info <ExternalLink className="h-3.5 w-3.5" /></a> : null}{product.productVideoUrl ? <a className="inline-flex items-center gap-1 text-sm text-primary hover:underline" href={product.productVideoUrl} target="_blank" rel="noreferrer">Video <ExternalLink className="h-3.5 w-3.5" /></a> : null}</div>{product.linkedReports?.length ? <p className="text-xs text-muted-foreground">Reports: {product.linkedReports.join(' | ')}</p> : null}</div>))}</CardContent></Card>
     </div>
   );
 };

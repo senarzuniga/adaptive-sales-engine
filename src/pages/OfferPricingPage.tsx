@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { buildFallbackOfferAnalysis, classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
 import { inferProductCategory } from '@/lib/productCatalog';
+import { buildOfferCostPreset, mergeProductWithKnowledge } from '@/lib/productKnowledge';
 import { DEFAULT_INGECART_POLICY, buildIngecartOfferTemplate } from '@/lib/utils';
 
 type CostLine = {
@@ -135,6 +136,8 @@ export default function OfferPricingPage() {
   const [activeTab, setActiveTab] = useState('builder');
   const [companyRates, setCompanyRates] = useState<any[]>([]);
   const [catalogSelection, setCatalogSelection] = useState('');
+  const [catalogLengthM, setCatalogLengthM] = useState(80);
+  const [catalogIncludeInstallation, setCatalogIncludeInstallation] = useState(true);
 
   useEffect(() => {
     if (selectedCompanyId) {
@@ -172,6 +175,48 @@ export default function OfferPricingPage() {
     setExpandedItems(prev => new Set(prev).add(item.id));
   };
 
+  const selectedCatalogProduct = useMemo(() => {
+    const selected = data.products.find((product) => product.name === catalogSelection);
+    return selected ? mergeProductWithKnowledge(selected) : null;
+  }, [catalogSelection, data.products]);
+
+  useEffect(() => {
+    if (selectedCatalogProduct) {
+      setCatalogLengthM(selectedCatalogProduct.defaultLengthM || 80);
+      setCatalogIncludeInstallation(true);
+    }
+  }, [selectedCatalogProduct]);
+
+  const presetLineToCostLine = (line: ReturnType<typeof buildOfferCostPreset>[number]): CostLine => {
+    const category = line.category;
+    const quantity = Number(line.quantity || 0);
+    const unitCost = Number(line.unitCost || 0);
+    const surchargePct = Number(line.surchargePct || 0);
+    const hours = Number(line.hours || 0);
+    const hourlyRate = Number(line.hourlyRate || 0);
+    const days = Number(line.days || 0);
+    const resources = Number(line.resources || 0);
+    const baseTotal = category === 'engineering'
+      ? hours * hourlyRate
+      : category === 'installation'
+        ? days * resources * unitCost
+        : quantity * unitCost;
+
+    return {
+      id: crypto.randomUUID(),
+      category,
+      lineItem: line.lineItem,
+      quantity: quantity || 1,
+      unitCost,
+      totalCost: baseTotal + (baseTotal * surchargePct / 100),
+      surchargePct,
+      hours,
+      hourlyRate,
+      days,
+      resources,
+      notes: line.notes || '',
+    };
+  };
   const applyIngecartOfferTemplate = () => {
     const template = buildIngecartOfferTemplate(customerName || 'Ingecart 2018 SL', projectDesc || 'Industrial automation and installation project');
     setOfferTitle(template.projectName);
@@ -184,27 +229,42 @@ export default function OfferPricingPage() {
   };
 
   const addCatalogItem = () => {
-    const selected = data.products.find((product) => product.name === catalogSelection);
+    const selected = selectedCatalogProduct;
     if (!selected) return;
 
     const category = inferProductCategory(selected.type, selected.category);
-    const costCategory = category === 'service' ? 'engineering' : 'materials';
-    const unitCost = Number(selected.estimatedCost || selected.averageValue || 0);
+    const presetLines = buildOfferCostPreset(selected, {
+      lengthM: selected.configurableByLength ? catalogLengthM : selected.defaultLengthM,
+      includeInstallation: catalogIncludeInstallation,
+    });
+    const costLines = presetLines.length > 0
+      ? presetLines.map(presetLineToCostLine)
+      : CATEGORIES.map((cat) => {
+          const fallbackCategory = category === 'service' ? 'engineering' : 'materials';
+          const unitCost = Number(selected.estimatedCost || selected.averageValue || 0);
+          return cat.value === fallbackCategory
+            ? { ...newCostLine(cat.value), lineItem: selected.name, quantity: 1, unitCost, totalCost: unitCost }
+            : newCostLine(cat.value);
+        });
+
+    const descriptor = [selected.characteristics?.join(', '), selected.comments].filter(Boolean).join(' | ');
+    const lengthDescriptor = selected.configurableByLength ? `Length: ${catalogLengthM}m` : null;
+    const installationDescriptor = presetLines.some((line) => line.category === 'installation') ? (catalogIncludeInstallation ? 'Installation included' : 'Installation excluded') : null;
 
     const item: OfferItem = {
       id: crypto.randomUUID(),
       name: selected.name,
       type: category,
       quantity: 1,
-      description: [selected.characteristics?.join(', '), selected.comments].filter(Boolean).join(' Â· '),
-      costLines: CATEGORIES.map((cat) => cat.value === costCategory
-        ? { ...newCostLine(cat.value), lineItem: selected.name, quantity: 1, unitCost, totalCost: unitCost }
-        : newCostLine(cat.value)),
+      description: [descriptor, lengthDescriptor, installationDescriptor].filter(Boolean).join(' | '),
+      costLines,
     };
 
     setItems((prev) => [...prev, item]);
     setExpandedItems((prev) => new Set(prev).add(item.id));
     setCatalogSelection('');
+    setCatalogLengthM(selected.defaultLengthM || 80);
+    setCatalogIncludeInstallation(true);
   };
 
   const removeItem = (id: string) => {
@@ -675,25 +735,45 @@ export default function OfferPricingPage() {
                 <CardTitle className="text-base">{isEs ? 'CatÃ¡logo de productos y servicios' : 'Product & service catalog'}</CardTitle>
                 <CardDescription>{isEs ? 'Selecciona un elemento validado para aÃ±adirlo a la oferta.' : 'Select a validated catalog item and add it to this offer.'}</CardDescription>
               </CardHeader>
-              <CardContent className="flex flex-col md:flex-row gap-2">
-                <Select value={catalogSelection} onValueChange={setCatalogSelection}>
-                  <SelectTrigger className="md:flex-1">
-                    <SelectValue placeholder={isEs ? 'Seleccionar del catÃ¡logo' : 'Select from catalog'} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {data.products
-                      .filter((product) => product.name && (product.validated ?? true))
-                      .map((product) => (
-                        <SelectItem key={`${product.name}-${product.type}`} value={product.name}>
-                          {product.name} Â· {(product.category || 'product')}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                <Button variant="outline" onClick={addCatalogItem} disabled={!catalogSelection}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  {isEs ? 'AÃ±adir del catÃ¡logo' : 'Add from catalog'}
-                </Button>
+              <CardContent className="space-y-3">
+                <div className="flex flex-col md:flex-row gap-2">
+                  <Select value={catalogSelection} onValueChange={setCatalogSelection}>
+                    <SelectTrigger className="md:flex-1">
+                      <SelectValue placeholder={isEs ? 'Seleccionar del catálogo' : 'Select from catalog'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {data.products
+                        .filter((product) => product.name && (product.validated ?? true))
+                        .map((product) => (
+                          <SelectItem key={`${product.name}-${product.type}`} value={product.name}>
+                            {product.name} - {(product.category || 'product')}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" onClick={addCatalogItem} disabled={!catalogSelection}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    {isEs ? 'Añadir del catálogo' : 'Add from catalog'}
+                  </Button>
+                </div>
+                {selectedCatalogProduct ? (
+                  <div className="grid gap-3 md:grid-cols-3 rounded-lg border bg-muted/20 p-3 text-sm">
+                    <div>
+                      <p className="font-medium">{selectedCatalogProduct.name}</p>
+                      <p className="text-muted-foreground mt-1">{selectedCatalogProduct.comments || (isEs ? 'Producto canonizado para costes reutilizables.' : 'Canonical product profile for reusable costs.')}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-foreground">{isEs ? 'Longitud de referencia (m)' : 'Reference length (m)'}</label>
+                      <Input type="number" min={1} value={catalogLengthM} onChange={e => setCatalogLengthM(Number(e.target.value || selectedCatalogProduct.defaultLengthM || 80))} disabled={!selectedCatalogProduct.configurableByLength} />
+                      <p className="text-xs text-muted-foreground">{selectedCatalogProduct.configurableByLength ? (isEs ? 'Este producto ajusta materiales según la longitud seleccionada.' : 'This product scales material costs with the selected length.') : (isEs ? 'Producto con preset fijo de costes.' : 'Product with fixed cost preset.')}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-foreground">{isEs ? 'Opciones de preset' : 'Preset options'}</label>
+                      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={catalogIncludeInstallation} onChange={e => setCatalogIncludeInstallation(e.target.checked)} />{isEs ? 'Incluir instalación' : 'Include installation'}</label>
+                      <p className="text-xs text-muted-foreground">{isEs ? 'Al añadir el producto se cargarán sus líneas de coste reutilizables en la oferta.' : 'Adding the product loads its reusable cost lines into the offer.'}</p>
+                    </div>
+                  </div>
+                ) : null}
               </CardContent>
             </Card>
           )}
@@ -1053,34 +1133,90 @@ export default function OfferPricingPage() {
               <Card>
                 <CardHeader><CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-destructive" />{isEs ? 'Riesgos Detectados' : 'Detected Risks'}</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
-                  {analysis.riskFactors.map((r, i) => (
-                    <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                      {severityBadge(r.severity)}
-                      <div>
-                        <p className="text-sm font-medium">{r.category}</p>
-                        <p className="text-sm text-muted-foreground">{r.description}</p>
-                        {r.impact && <p className="text-xs text-muted-foreground mt-1">{isEs ? 'Impacto' : 'Impact'}: {r.impact}</p>}
-                      </div>
+                <div className="flex flex-col md:flex-row gap-2">
+                  <Select value={catalogSelection} onValueChange={setCatalogSelection}>
+                    <SelectTrigger className="md:flex-1">
+                      <SelectValue placeholder={isEs ? 'Seleccionar del catálogo' : 'Select from catalog'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {data.products
+                        .filter((product) => product.name && (product.validated ?? true))
+                        .map((product) => (
+                          <SelectItem key={`${product.name}-${product.type}`} value={product.name}>
+                            {product.name} - {(product.category || 'product')}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" onClick={addCatalogItem} disabled={!catalogSelection}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    {isEs ? 'Añadir del catálogo' : 'Add from catalog'}
+                  </Button>
+                </div>
+                {selectedCatalogProduct ? (
+                  <div className="grid gap-3 md:grid-cols-3 rounded-lg border bg-muted/20 p-3 text-sm">
+                    <div>
+                      <p className="font-medium">{selectedCatalogProduct.name}</p>
+                      <p className="text-muted-foreground mt-1">{selectedCatalogProduct.comments || (isEs ? 'Producto canonizado para costes reutilizables.' : 'Canonical product profile for reusable costs.')}</p>
                     </div>
-                  ))}
-                </CardContent>
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-foreground">{isEs ? 'Longitud de referencia (m)' : 'Reference length (m)'}</label>
+                      <Input type="number" min={1} value={catalogLengthM} onChange={e => setCatalogLengthM(Number(e.target.value || selectedCatalogProduct.defaultLengthM || 80))} disabled={!selectedCatalogProduct.configurableByLength} />
+                      <p className="text-xs text-muted-foreground">{selectedCatalogProduct.configurableByLength ? (isEs ? 'Este producto ajusta materiales según la longitud seleccionada.' : 'This product scales material costs with the selected length.') : (isEs ? 'Producto con preset fijo de costes.' : 'Product with fixed cost preset.')}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-foreground">{isEs ? 'Opciones de preset' : 'Preset options'}</label>
+                      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={catalogIncludeInstallation} onChange={e => setCatalogIncludeInstallation(e.target.checked)} />{isEs ? 'Incluir instalación' : 'Include installation'}</label>
+                      <p className="text-xs text-muted-foreground">{isEs ? 'Al añadir el producto se cargarán sus líneas de coste reutilizables en la oferta.' : 'Adding the product loads its reusable cost lines into the offer.'}</p>
+                    </div>
+                  </div>
+                ) : null}
+              </CardContent>
               </Card>
 
               {/* Recommendations */}
               <Card>
                 <CardHeader><CardTitle className="flex items-center gap-2"><Lightbulb className="h-5 w-5 text-yellow-500" />{isEs ? 'Recomendaciones' : 'Recommendations'}</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
-                  {analysis.recommendations.map((r, i) => (
-                    <div key={i} className="p-3 rounded-lg border">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="outline" className="text-xs">{r.type.replace('_', ' ')}</Badge>
-                        <p className="text-sm font-medium">{r.title}</p>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{r.description}</p>
-                      {r.estimatedImpact && <p className="text-xs text-primary mt-1">{isEs ? 'Impacto estimado' : 'Est. impact'}: {r.estimatedImpact}</p>}
+                <div className="flex flex-col md:flex-row gap-2">
+                  <Select value={catalogSelection} onValueChange={setCatalogSelection}>
+                    <SelectTrigger className="md:flex-1">
+                      <SelectValue placeholder={isEs ? 'Seleccionar del catálogo' : 'Select from catalog'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {data.products
+                        .filter((product) => product.name && (product.validated ?? true))
+                        .map((product) => (
+                          <SelectItem key={`${product.name}-${product.type}`} value={product.name}>
+                            {product.name} - {(product.category || 'product')}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" onClick={addCatalogItem} disabled={!catalogSelection}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    {isEs ? 'Añadir del catálogo' : 'Add from catalog'}
+                  </Button>
+                </div>
+                {selectedCatalogProduct ? (
+                  <div className="grid gap-3 md:grid-cols-3 rounded-lg border bg-muted/20 p-3 text-sm">
+                    <div>
+                      <p className="font-medium">{selectedCatalogProduct.name}</p>
+                      <p className="text-muted-foreground mt-1">{selectedCatalogProduct.comments || (isEs ? 'Producto canonizado para costes reutilizables.' : 'Canonical product profile for reusable costs.')}</p>
                     </div>
-                  ))}
-                </CardContent>
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-foreground">{isEs ? 'Longitud de referencia (m)' : 'Reference length (m)'}</label>
+                      <Input type="number" min={1} value={catalogLengthM} onChange={e => setCatalogLengthM(Number(e.target.value || selectedCatalogProduct.defaultLengthM || 80))} disabled={!selectedCatalogProduct.configurableByLength} />
+                      <p className="text-xs text-muted-foreground">{selectedCatalogProduct.configurableByLength ? (isEs ? 'Este producto ajusta materiales según la longitud seleccionada.' : 'This product scales material costs with the selected length.') : (isEs ? 'Producto con preset fijo de costes.' : 'Product with fixed cost preset.')}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-foreground">{isEs ? 'Opciones de preset' : 'Preset options'}</label>
+                      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={catalogIncludeInstallation} onChange={e => setCatalogIncludeInstallation(e.target.checked)} />{isEs ? 'Incluir instalación' : 'Include installation'}</label>
+                      <p className="text-xs text-muted-foreground">{isEs ? 'Al añadir el producto se cargarán sus líneas de coste reutilizables en la oferta.' : 'Adding the product loads its reusable cost lines into the offer.'}</p>
+                    </div>
+                  </div>
+                ) : null}
+              </CardContent>
               </Card>
             </>
           )}
@@ -1232,3 +1368,9 @@ export default function OfferPricingPage() {
     </div>
   );
 }
+
+
+
+
+
+

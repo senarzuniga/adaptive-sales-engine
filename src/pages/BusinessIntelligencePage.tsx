@@ -20,6 +20,7 @@ import {
   Clock, CheckCircle2, XCircle, Lightbulb, Eye
 } from 'lucide-react';
 import { buildFallbackIntelligenceReport } from '@/lib/businessIntelligenceFallback';
+import { buildProductIntelligence, buildSeedProductCatalog } from '@/lib/productKnowledge';
 import { isWorkspaceSupabaseConfigured, readWorkspaceRows, writeWorkspaceRows } from '@/lib/workspaceStorage';
 
 type Report = {
@@ -84,6 +85,9 @@ export default function BusinessIntelligencePage() {
     { label: language === 'es' ? 'Trade show' : 'Trade show', subjectType: 'trade-show', analysisType: 'trade-show', name: 'Packaging trade show in Germany', brief: 'Assess participant profile, takeaways, key themes, and relevance for business development.' },
   ];
 
+  const productIntelligenceCards = useMemo(() => {
+    return buildSeedProductCatalog(workspaceData.products || []).map((product) => buildProductIntelligence(product, 0));
+  }, [workspaceData.products]);
   const { data: reports = [], isLoading } = useQuery({
     queryKey: ['bi-reports', selectedCompanyId],
     queryFn: async () => {
@@ -804,3 +808,4 @@ function ReportDetail({ report, language }: { report: Report; language: string }
     </div>
   );
 }
+
