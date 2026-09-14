@@ -65,8 +65,9 @@ describe('product catalog agents', () => {
     const products = buildSeedProductCatalog([]);
     const productsWithDossiers = products.filter((product) => product.technicalDossier);
 
-    expect(CANONICAL_DOSSIER_COUNT).toBe(11);
-    expect(productsWithDossiers).toHaveLength(11);
+    expect(CANONICAL_DOSSIER_COUNT).toBe(12);
+    expect(productsWithDossiers).toHaveLength(12);
+    expect(getCanonicalProductDossier('INGETRANS SMART')?.dossierId).toBe('ING-P01S');
     expect(getCanonicalProductDossier('HD PALLETIZER')?.dossierId).toBe('ING-P06');
     expect(getCanonicalProductDossier('TRUCK LOADING SYSTEM')?.technicalSpecifications.some((item) => item.status === 'pending')).toBe(true);
     expect(productsWithDossiers.every((product) => product.technicalDossier?.performanceKpis.length)).toBe(true);
