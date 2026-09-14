@@ -145,7 +145,7 @@ const PRODUCT_PROFILES: ProductProfile[] = [
     aliases: ['ingetrans smart', 'ingetrans rail-less', 'ingetrans rail less'],
     base: {
       name: 'INGETRANS SMART', averageValue: 620000, estimatedCost: 0, type: 'integrated intralogistics solution', category: 'product',
-      characteristics: ['Rail-less transfer carriage on INGECART IGC-DW drive wheels', 'On-board 48 V LiFePO4 battery with opportunity charging', 'Laser navigation with +/-5 mm station reference', 'No embedded rails, conductor line or fixed feed', 'Complete machine CE marked by INGECART'],
+      characteristics: ['Rail-less transfer carriage on four INGECART IGC-DW100 drive wheels', 'On-board 48 V LiFePO4 battery with opportunity charging', 'Laser navigation with +/-5 mm station reference', 'No embedded rails, conductor line or fixed feed', 'Complete machine CE marked by INGECART'],
       repositories: ['INGECART/PRODUCTO/INGETRANS/INGETRANS_smart_technical data.html', 'AI-FACTORY-v2 knowledge/corrugated_equipment/ingetrans_smart_technical_baseline_R2_2026-09-14.json'],
       validated: true, source: 'manual',
       comments: 'Rail-less variant of INGETRANS (baseline R2, 2026-09-14). Same reel delivery and return function; removes rails, Vahle line and civil works. Estimated cost pending product cost breakdown; offered at the same EXW as rail INGETRANS in current proposals.',
@@ -155,7 +155,7 @@ const PRODUCT_PROFILES: ProductProfile[] = [
       linkedReports: ['INGETRANS_SMART_PRODUCT_REPORT_IGC-DW_R2_2026-09-14.html', 'Paige proposal re4 chapter 5A'],
       costPreset: [
         installationLine('Installation, mapping, station set-up and training', 5, 2, 650),
-        unitLine('materials', 'IGC-DW20 drive and steering wheel', 4, 0, { notes: 'Unit cost pending product cost breakdown' }),
+        unitLine('materials', 'IGC-DW100 drive and steering wheel', 4, 0, { notes: 'Unit cost pending product cost breakdown; only model offered for reel duty' }),
         unitLine('materials', '48 V 200 Ah LiFePO4 battery with BMS', 1, 0, { notes: 'Unit cost pending' }),
         unitLine('materials', 'Automatic charger 48 V / 60 A and charging station', 1, 0, { notes: 'Indicative 3,000-5,000 EUR' }),
         unitLine('materials', 'Safety laser scanners, bumper, E-stops and safety PLC', 1, 0, { notes: 'Unit cost pending' }),
@@ -170,7 +170,7 @@ const PRODUCT_PROFILES: ProductProfile[] = [
         competitor('Rail-guided INGETRANS', 'Embedded-rail transfer carriage', '80 m/min, proven installed base, requires civil works and conductor line.', 80, 'Faster and proven; loses on civil works, installation time and layout flexibility.', ['Position Smart for brownfield, rented buildings and changing layouts', 'Keep rail INGETRANS above about 60 transfers/hour']),
         competitor('Generic AMR with reel cradle', 'Autonomous mobile robot adapted to reels', 'Mature fleet software; payload often below 3,500 kg reels and no INGETRANS pick-up interface.', 68, 'Stronger fleet software, weaker reel handling and roll-stand integration.', ['Lead with reel pick-up mechanism and track handshakes', 'Show full-machine CE and open CANopen/Siemens control']),
       ],
-      marketFitNotes: ['Fit is strongest where rail civil works block the project or the layout is expected to change.', 'Capacity must be confirmed by digital twin; Smart travels at 0.90 m/s versus 80 m/min on rails.'],
+      marketFitNotes: ['Fit is strongest where rail civil works block the project or the layout is expected to change.', 'Capacity must be confirmed by digital twin; Smart travels at 0.43 m/s (IGC-DW100) versus 80 m/min on rails, so dual-reel trips matter.'],
       fitImprovementActions: ['Complete the product cost breakdown for the Smart carrier.', 'Run a pilot with stopping distances and station accuracy measured with real reels.'],
     },
   },
