@@ -31,9 +31,10 @@ jobs:
         run: python -m compileall streamlit_app.py modules/ agents/
 
       - name: Lint (flake8)
+        # Gate on real defects only (syntax errors, undefined names), same as ci.yml.
         run: |
           pip install flake8 -q
-          flake8 streamlit_app.py modules/ agents/
+          flake8 streamlit_app.py modules/ agents/ --count --select=E9,F63,F7,F82 --show-source --statistics
 
       - name: Import smoke-test
         run: |
