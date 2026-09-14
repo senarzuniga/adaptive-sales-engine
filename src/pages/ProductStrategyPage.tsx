@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useData, type ProductRecord } from '@/store/DataStore';
+import { ProductDocumentsCard } from '@/components/ProductDocumentsCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -12,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { VoiceTextInput } from '@/components/VoiceTextInput';
 import { toast } from '@/hooks/use-toast';
-import { BarChart3, CheckCircle2, ExternalLink, FileText, Lightbulb, Package, Pencil, Plus, Search, Sparkles, Target, Trash2, TrendingUp } from 'lucide-react';
+import { BarChart3, CheckCircle2, ExternalLink, FileText, Lightbulb, Package, Pencil, Plus, RotateCcw, Save, Search, Sparkles, Target, Trash2, TrendingUp } from 'lucide-react';
 import { fmt } from '@/components/analysis360/AnalysisUtils';
 import {
   buildProductPositioningActions,
@@ -41,8 +42,13 @@ const COST_MODES: NonNullable<ProductCostPresetLine['mode']>[] = ['unit', 'engin
 const DOSSIER_STATUSES = ['verified', 'commercial-claim', 'modelled', 'pre-engineering', 'pending'] as const;
 
 const getDraftId = () => globalThis.crypto?.randomUUID?.() || `draft-${Date.now()}-${Math.round(Math.random() * 1e6)}-${fallbackDraftIdCounter++}`;
-const dossierList = (value: string) => value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+// Keep raw lines while typing so Enter creates a new line; cleaning happens in normalizeDraft.
+const rawLines = (value: string) => value.split(/\r?\n/);
+const cleanLines = (values?: string[]) => (values || []).map((item) => String(item || '').trim()).filter(Boolean);
+const normalizeName = (value: string) => value.trim().toLowerCase();
 const summarizeSignal = (signal: ProductStrategicSignals) => `${signal.lifecycleSignal} lifecycle, ${signal.offerModel}, competition led by ${signal.competitionFocus}.`;
+
+const formatSpecifications = (items: Dossier['technicalSpecifications']) => items.map((item) => `${item.parameter} | ${item.value} | ${item.status}`).join('\n');
 
 const dossierSpecifications = (value: string): Dossier['technicalSpecifications'] => value
   .split(/\r?\n/)
@@ -52,6 +58,23 @@ const dossierSpecifications = (value: string): Dossier['technicalSpecifications'
     return { parameter, value: specificationValue, status };
   })
   .filter((item) => item.parameter && item.value);
+
+const normalizeDossier = (dossier?: Dossier): Dossier | undefined => {
+  if (!dossier) return undefined;
+  return {
+    ...dossier,
+    dossierId: dossier.dossierId.trim(),
+    revision: dossier.revision.trim(),
+    valueProposition: dossier.valueProposition.trim(),
+    applications: cleanLines(dossier.applications),
+    technicalSpecifications: (dossier.technicalSpecifications || []).filter((item) => item.parameter && item.value),
+    performanceKpis: cleanLines(dossier.performanceKpis),
+    roiFramework: cleanLines(dossier.roiFramework),
+    risksAndLimits: cleanLines(dossier.risksAndLimits),
+    acceptanceCriteria: cleanLines(dossier.acceptanceCriteria),
+    sourceReferences: cleanLines(dossier.sourceReferences),
+  };
+};
 
 const toDraft = (product: ProductRecord): CatalogDraft => {
   const normalized = mergeProductWithKnowledge(product);
@@ -93,8 +116,14 @@ const normalizeDraft = (draft: CatalogDraft): ProductRecord => ({
   competitors: draft.competitors || [],
   marketFitNotes: (draft.marketFitNotes || []).map((item) => item.trim()).filter(Boolean),
   fitImprovementActions: (draft.fitImprovementActions || []).map((item) => item.trim()).filter(Boolean),
-  technicalDossier: draft.technicalDossier,
+  technicalDossier: normalizeDossier(draft.technicalDossier),
 });
+
+// Canonical Ingecart profiles are only injected when an active company has no stored catalog yet;
+// otherwise the persisted records are the source of truth so removals and renames stick.
+const buildDraftsFromStore = (products: ProductRecord[], seedWhenEmpty: boolean): CatalogDraft[] => (
+  products.length === 0 && seedWhenEmpty ? buildSeedProductCatalog([]) : products
+).map(toDraft);
 
 const presetLineTotal = (line: ProductCostPresetLine) => {
   if (line.mode === 'engineering') return (line.hours || 0) * (line.hourlyRate || 0);
@@ -130,18 +159,31 @@ const createEmptyDossier = (productName: string): Dossier => ({
 });
 
 const ProductStrategyPage = () => {
-  const { data, addTask, updateTask, setProducts } = useData();
+  const { data, addTask, updateTask, setProducts, activeCompanyId, loading, loadedCompanyId } = useData();
   const [feedbackByAction, setFeedbackByAction] = useState<Record<string, string>>({});
   const [evaluations, setEvaluations] = useState<Record<string, ProductActionEvaluation>>({});
   const [taskIdsByAction, setTaskIdsByAction] = useState<Record<string, string>>({});
   const [catalogDrafts, setCatalogDrafts] = useState<CatalogDraft[]>([]);
   const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  // Raw text of the specifications textarea while editing, so partial lines are not dropped mid-typing.
+  const [specsText, setSpecsText] = useState<string | null>(null);
+  const selectedNameRef = useRef<string | null>(null);
+  // Canonical seeds are only offered once the active company's dataset has actually been loaded.
+  const catalogReady = Boolean(activeCompanyId) && loadedCompanyId === activeCompanyId && !loading;
 
   useEffect(() => {
-    const nextDrafts = buildSeedProductCatalog(data.products).map(toDraft);
+    if (loading) return;
+    const nextDrafts = buildDraftsFromStore(data.products, catalogReady);
     setCatalogDrafts(nextDrafts);
-  }, [data.products]);
+    setIsDirty(false);
+    setSpecsText(null);
+    const previousName = selectedNameRef.current;
+    const matching = previousName ? nextDrafts.find((draft) => normalizeName(draft.name) === normalizeName(previousName)) : null;
+    setSelectedDraftId(matching?.draftId || nextDrafts[0]?.draftId || null);
+  }, [data.products, loading, catalogReady]);
 
   useEffect(() => {
     if (catalogDrafts.length === 0) {
@@ -175,6 +217,9 @@ const ProductStrategyPage = () => {
   }, [catalogProducts, snapshot.products]);
 
   const selectedDraft = useMemo(() => catalogDrafts.find((draft) => draft.draftId === selectedDraftId) || null, [catalogDrafts, selectedDraftId]);
+  useEffect(() => {
+    selectedNameRef.current = selectedDraft?.name || null;
+  }, [selectedDraft]);
   const selectedSnapshot = useMemo(() => {
     if (!selectedDraft?.name) return null;
     return snapshot.products.find((product) => product.name === selectedDraft.name) || null;
@@ -189,12 +234,17 @@ const ProductStrategyPage = () => {
   const commodityCount = snapshot.products.filter((product) => product.lifecycleLabel === 'Commodity').length;
   const avgFit = snapshot.products.length > 0 ? snapshot.products.reduce((sum, product) => sum + product.marketFitScore, 0) / snapshot.products.length : 0;
 
+  const mutateDrafts = (updater: (prev: CatalogDraft[]) => CatalogDraft[]) => {
+    setCatalogDrafts(updater);
+    setIsDirty(true);
+  };
+
   const updateDraft = (draftId: string, field: keyof CatalogDraft, value: unknown) => {
-    setCatalogDrafts((prev) => prev.map((draft) => (draft.draftId === draftId ? { ...draft, [field]: value } : draft)));
+    mutateDrafts((prev) => prev.map((draft) => (draft.draftId === draftId ? { ...draft, [field]: value } : draft)));
   };
 
   const updateDossier = (draftId: string, field: keyof Dossier, value: unknown) => {
-    setCatalogDrafts((prev) => prev.map((draft) => (
+    mutateDrafts((prev) => prev.map((draft) => (
       draft.draftId === draftId && draft.technicalDossier
         ? { ...draft, technicalDossier: { ...draft.technicalDossier, [field]: value } }
         : draft
@@ -202,7 +252,7 @@ const ProductStrategyPage = () => {
   };
 
   const updateCostPresetLine = (draftId: string, index: number, patch: Partial<ProductCostPresetLine>) => {
-    setCatalogDrafts((prev) => prev.map((draft) => {
+    mutateDrafts((prev) => prev.map((draft) => {
       if (draft.draftId !== draftId) return draft;
       const costPreset = [...(draft.costPreset || [])];
       costPreset[index] = { ...costPreset[index], ...patch };
@@ -211,34 +261,48 @@ const ProductStrategyPage = () => {
   };
 
   const addCostPresetLine = (draftId: string) => {
-    setCatalogDrafts((prev) => prev.map((draft) => draft.draftId === draftId ? { ...draft, costPreset: [...(draft.costPreset || []), newCostPresetLine()] } : draft));
+    mutateDrafts((prev) => prev.map((draft) => draft.draftId === draftId ? { ...draft, costPreset: [...(draft.costPreset || []), newCostPresetLine()] } : draft));
   };
 
   const removeCostPresetLine = (draftId: string, index: number) => {
-    setCatalogDrafts((prev) => prev.map((draft) => draft.draftId === draftId ? { ...draft, costPreset: (draft.costPreset || []).filter((_, lineIndex) => lineIndex !== index) } : draft));
+    mutateDrafts((prev) => prev.map((draft) => draft.draftId === draftId ? { ...draft, costPreset: (draft.costPreset || []).filter((_, lineIndex) => lineIndex !== index) } : draft));
   };
 
   const selectDraft = (draftId: string) => {
     setSelectedDraftId(draftId);
     setIsEditing(false);
+    setSpecsText(null);
+  };
+
+  const toggleEditing = () => {
+    setSpecsText(null);
+    setIsEditing((prev) => !prev);
+  };
+
+  const openForEditing = (draftId: string) => {
+    setSelectedDraftId(draftId);
+    setSpecsText(null);
+    setIsEditing(true);
   };
 
   const addCatalogItem = (category: 'product' | 'service') => {
     const draft = toDraft({ name: '', averageValue: 0, type: category === 'service' ? 'service model' : 'equipment', comments: '', category, characteristics: [], estimatedCost: 0, repositories: [], validated: false, source: 'manual', linkedReports: [], costPreset: [], competitors: [], marketFitNotes: [], fitImprovementActions: [] });
-    setCatalogDrafts((prev) => [...prev, draft]);
+    mutateDrafts((prev) => [...prev, draft]);
     setSelectedDraftId(draft.draftId);
+    setSpecsText(null);
     setIsEditing(true);
   };
   const removeCatalogItem = (draftId: string) => {
-    setCatalogDrafts((prev) => prev.filter((draft) => draft.draftId !== draftId));
+    mutateDrafts((prev) => prev.filter((draft) => draft.draftId !== draftId));
     if (selectedDraftId === draftId) {
       setSelectedDraftId(null);
       setIsEditing(false);
+      setSpecsText(null);
     }
   };
 
   const ensureDossier = (draftId: string) => {
-    setCatalogDrafts((prev) => prev.map((draft) => {
+    mutateDrafts((prev) => prev.map((draft) => {
       if (draft.draftId !== draftId || draft.technicalDossier) return draft;
       return { ...draft, technicalDossier: createEmptyDossier(draft.name) };
     }));
@@ -246,8 +310,8 @@ const ProductStrategyPage = () => {
 
   const loadCanonicalProfiles = () => {
     const nextDrafts = buildSeedProductCatalog(catalogProducts).map(toDraft);
-    setCatalogDrafts(nextDrafts);
-    toast({ title: 'Canonical profiles loaded', description: 'My Products was synchronized with the product cost and intelligence playbook.' });
+    mutateDrafts(() => nextDrafts);
+    toast({ title: 'Canonical profiles loaded', description: 'My Products was synchronized with the product cost and intelligence playbook. Save the catalog to persist them.' });
   };
 
   const generateCatalog = () => {
@@ -256,15 +320,42 @@ const ProductStrategyPage = () => {
       toast({ title: 'No new suggestions', description: 'Search agent did not find additional lines to add.' });
       return;
     }
-    setCatalogDrafts((prev) => buildSeedProductCatalog([...prev.map(normalizeDraft), ...suggestions]).map(toDraft));
+    mutateDrafts((prev) => buildSeedProductCatalog([...prev.map(normalizeDraft), ...suggestions]).map(toDraft));
     toast({ title: 'Catalog suggestions ready', description: `${suggestions.length} auto-generated items were added for validation.` });
   };
 
-  const saveCatalog = async () => {
-    const cleanRecords = buildSeedProductCatalog(catalogProducts.filter((product) => product.name.trim().length > 0));
-    await setProducts(cleanRecords);
+  const discardChanges = () => {
+    setCatalogDrafts(buildDraftsFromStore(data.products, catalogReady));
+    setIsDirty(false);
     setIsEditing(false);
-    toast({ title: 'Catalog saved', description: `${cleanRecords.length} products/services are now available for offer selection.` });
+    setSpecsText(null);
+    toast({ title: 'Changes discarded', description: 'The catalog was restored from the last saved version.' });
+  };
+
+  const saveCatalog = async () => {
+    if (!activeCompanyId) {
+      toast({ title: 'Select a company first', description: 'The catalog is stored per company. Choose or create a company before saving.', variant: 'destructive' });
+      return;
+    }
+    const cleanRecords = catalogProducts.filter((product) => product.name.trim().length > 0);
+    const duplicated = cleanRecords.map((product) => normalizeName(product.name)).filter((name, index, names) => names.indexOf(name) !== index);
+    if (duplicated.length > 0) {
+      toast({ title: 'Duplicated product names', description: `Rename or remove duplicates before saving: ${Array.from(new Set(duplicated)).join(', ')}.`, variant: 'destructive' });
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await setProducts(cleanRecords);
+      setIsEditing(false);
+      setIsDirty(false);
+      setSpecsText(null);
+      toast({ title: 'Catalog saved', description: `${cleanRecords.length} products/services are now available for offer selection.` });
+    } catch (error) {
+      console.error('Unable to save product catalog', error);
+      toast({ title: 'Could not save catalog', description: 'The changes remain in this screen, but they were not persisted. Try again.', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const persistActionTask = async (action: ProductPositionAction, evaluation?: ProductActionEvaluation) => {
@@ -345,39 +436,52 @@ const ProductStrategyPage = () => {
             <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <CardTitle>Configured products</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">Select a product to open its ficha. Use Edit to unlock general information, reusable costs, dossier content, and file references.</p>
+                <p className="text-sm text-muted-foreground mt-1">Select a product to open its ficha, or use the pencil to jump straight into edit mode. Edit unlocks general information, reusable costs, the technical dossier and documentation uploads.</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" onClick={loadCanonicalProfiles}>Load canonical profiles</Button>
                 <Button variant="outline" onClick={generateCatalog}><Search className="h-4 w-4 mr-2" /> Generate suggestions</Button>
                 <Button variant="secondary" onClick={() => addCatalogItem('product')}><Plus className="h-4 w-4 mr-2" /> Add product</Button>
                 <Button variant="secondary" onClick={() => addCatalogItem('service')}><Plus className="h-4 w-4 mr-2" /> Add service</Button>
-                <Button onClick={saveCatalog}>Save catalog</Button>
+                <Button onClick={() => void saveCatalog()} disabled={isSaving}><Save className="h-4 w-4 mr-2" />{isSaving ? 'Saving...' : isDirty ? 'Save catalog *' : 'Save catalog'}</Button>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
+              {isDirty ? <p className="text-xs rounded-md border border-amber-300 bg-amber-50 text-amber-800 px-3 py-2">You have unsaved catalog changes. Use Save catalog to persist them for offers and analysis.</p> : null}
+              {!activeCompanyId ? <p className="text-xs rounded-md border border-destructive/40 bg-destructive/5 text-destructive px-3 py-2">No active company selected. Product changes cannot be saved until a company is active.</p> : null}
               <div className="grid gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
                 <div className="space-y-3">
                   {catalogDrafts.map((draft) => (
-                    <button
-                      key={draft.draftId}
-                      type="button"
-                      onClick={() => selectDraft(draft.draftId)}
-                      className={`w-full rounded-lg border p-4 text-left transition-colors ${selectedDraftId === draft.draftId ? 'border-primary bg-primary/5' : 'hover:border-primary/40'}`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-semibold">{draft.name || 'Untitled product'}</p>
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{draft.comments || 'No description yet.'}</p>
+                    <div key={draft.draftId} className={`flex items-stretch rounded-lg border transition-colors ${selectedDraftId === draft.draftId ? 'border-primary bg-primary/5' : 'hover:border-primary/40'}`}>
+                      <button
+                        type="button"
+                        onClick={() => selectDraft(draft.draftId)}
+                        className="flex-1 min-w-0 p-4 text-left"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-semibold truncate">{draft.name || 'Untitled product'}</p>
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{draft.comments || 'No description yet.'}</p>
+                          </div>
+                          <Badge variant={draft.validated ? 'default' : 'outline'}>{draft.validated ? 'Validated' : 'Draft'}</Badge>
                         </div>
-                        <Badge variant={draft.validated ? 'default' : 'outline'}>{draft.validated ? 'Validated' : 'Draft'}</Badge>
-                      </div>
-                      <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{draft.category || 'product'}</span>
-                        <span>|</span>
-                        <span>{fmt(draft.averageValue || 0)}</span>
-                      </div>
-                    </button>
+                        <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{draft.category || 'product'}</span>
+                          <span>|</span>
+                          <span>{fmt(draft.averageValue || 0)}</span>
+                          {(draft.linkedReports || []).length > 0 ? <><span>|</span><span className="flex items-center gap-1"><FileText className="h-3 w-3" />{(draft.linkedReports || []).length}</span></> : null}
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Edit ${draft.name || 'product'}`}
+                        title="Edit product"
+                        onClick={() => openForEditing(draft.draftId)}
+                        className="flex items-center px-3 border-l text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-r-lg"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                    </div>
                   ))}
                 </div>
                 <div>
@@ -392,7 +496,9 @@ const ProductStrategyPage = () => {
                           <p className="text-sm text-muted-foreground mt-1">{selectedDraft.comments || 'Product ficha without summary yet.'}</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Button variant={isEditing ? 'secondary' : 'outline'} onClick={() => setIsEditing((prev) => !prev)}><Pencil className="h-4 w-4 mr-2" />{isEditing ? 'Finish editing' : 'Edit'}</Button>
+                          <Button variant={isEditing ? 'secondary' : 'outline'} onClick={toggleEditing}><Pencil className="h-4 w-4 mr-2" />{isEditing ? 'Finish editing' : 'Edit'}</Button>
+                          {isEditing ? <Button onClick={() => void saveCatalog()} disabled={isSaving}><Save className="h-4 w-4 mr-2" />{isSaving ? 'Saving...' : 'Save changes'}</Button> : null}
+                          {isDirty ? <Button variant="outline" onClick={discardChanges}><RotateCcw className="h-4 w-4 mr-2" />Discard</Button> : null}
                           {isEditing ? <Button variant="destructive" onClick={() => removeCatalogItem(selectedDraft.draftId)}><Trash2 className="h-4 w-4 mr-2" />Remove</Button> : null}
                         </div>
                       </CardHeader>
@@ -415,7 +521,6 @@ const ProductStrategyPage = () => {
                           <div className="space-y-3">
                             <div><label className="text-xs text-muted-foreground">Product information URL</label><Input value={selectedDraft.productInfoUrl || ''} onChange={(e) => updateDraft(selectedDraft.draftId, 'productInfoUrl', e.target.value)} disabled={!isEditing} /></div>
                             <div><label className="text-xs text-muted-foreground">Product video URL</label><Input value={selectedDraft.productVideoUrl || ''} onChange={(e) => updateDraft(selectedDraft.draftId, 'productVideoUrl', e.target.value)} disabled={!isEditing} /></div>
-                            <div><label className="text-xs text-muted-foreground">Linked reports / file references (one per line)</label><Textarea rows={5} value={(selectedDraft.linkedReports || []).join('\n')} onChange={(e) => updateDraft(selectedDraft.draftId, 'linkedReports', e.target.value.split(/\r?\n/))} disabled={!isEditing} /></div>
                             <div className="grid gap-3 md:grid-cols-2">
                               <div><label className="text-xs text-muted-foreground">Reference estimated cost</label><Input type="number" value={selectedDraft.estimatedCost || 0} onChange={(e) => updateDraft(selectedDraft.draftId, 'estimatedCost', Number(e.target.value || 0))} disabled={!isEditing} /></div>
                               <div><label className="text-xs text-muted-foreground">Length basis (m)</label><Input type="number" value={selectedDraft.defaultLengthM || 0} onChange={(e) => updateDraft(selectedDraft.draftId, 'defaultLengthM', Number(e.target.value || 0))} disabled={!isEditing || !selectedDraft.configurableByLength} /></div>
@@ -426,6 +531,14 @@ const ProductStrategyPage = () => {
                             </div>
                           </div>
                         </div>
+
+                        <ProductDocumentsCard
+                          productName={selectedDraft.name || 'product'}
+                          companyId={activeCompanyId}
+                          references={selectedDraft.linkedReports || []}
+                          isEditing={isEditing}
+                          onChange={(references) => updateDraft(selectedDraft.draftId, 'linkedReports', references)}
+                        />
 
                         {selectedDraft.technicalDossier ? (
                           <Card className="border-primary/30 bg-primary/[0.03]">
@@ -441,19 +554,28 @@ const ProductStrategyPage = () => {
                             <CardContent className="space-y-4">
                               <div><label className="text-xs text-muted-foreground">Value proposition</label><Textarea rows={2} value={selectedDraft.technicalDossier.valueProposition} onChange={(event) => updateDossier(selectedDraft.draftId, 'valueProposition', event.target.value)} disabled={!isEditing} /></div>
                               <div className="grid gap-3 xl:grid-cols-3">
-                                <div><label className="text-xs text-muted-foreground">Applications (one per line)</label><Textarea rows={5} value={selectedDraft.technicalDossier.applications.join('\n')} onChange={(event) => updateDossier(selectedDraft.draftId, 'applications', dossierList(event.target.value))} disabled={!isEditing} /></div>
-                                <div><label className="text-xs text-muted-foreground">Performance KPIs (one per line)</label><Textarea rows={5} value={selectedDraft.technicalDossier.performanceKpis.join('\n')} onChange={(event) => updateDossier(selectedDraft.draftId, 'performanceKpis', dossierList(event.target.value))} disabled={!isEditing} /></div>
-                                <div><label className="text-xs text-muted-foreground">ROI framework (one per line)</label><Textarea rows={5} value={selectedDraft.technicalDossier.roiFramework.join('\n')} onChange={(event) => updateDossier(selectedDraft.draftId, 'roiFramework', dossierList(event.target.value))} disabled={!isEditing} /></div>
+                                <div><label className="text-xs text-muted-foreground">Applications (one per line)</label><Textarea rows={5} value={selectedDraft.technicalDossier.applications.join('\n')} onChange={(event) => updateDossier(selectedDraft.draftId, 'applications', rawLines(event.target.value))} disabled={!isEditing} /></div>
+                                <div><label className="text-xs text-muted-foreground">Performance KPIs (one per line)</label><Textarea rows={5} value={selectedDraft.technicalDossier.performanceKpis.join('\n')} onChange={(event) => updateDossier(selectedDraft.draftId, 'performanceKpis', rawLines(event.target.value))} disabled={!isEditing} /></div>
+                                <div><label className="text-xs text-muted-foreground">ROI framework (one per line)</label><Textarea rows={5} value={selectedDraft.technicalDossier.roiFramework.join('\n')} onChange={(event) => updateDossier(selectedDraft.draftId, 'roiFramework', rawLines(event.target.value))} disabled={!isEditing} /></div>
                               </div>
                               <div>
                                 <label className="text-xs text-muted-foreground">Technical specifications (parameter | value | evidence status)</label>
-                                <Textarea rows={Math.max(4, selectedDraft.technicalDossier.technicalSpecifications.length)} value={selectedDraft.technicalDossier.technicalSpecifications.map((item) => `${item.parameter} | ${item.value} | ${item.status}`).join('\n')} onChange={(event) => updateDossier(selectedDraft.draftId, 'technicalSpecifications', dossierSpecifications(event.target.value))} disabled={!isEditing} />
+                                <Textarea
+                                  rows={Math.max(4, selectedDraft.technicalDossier.technicalSpecifications.length + 1)}
+                                  value={isEditing && specsText !== null ? specsText : formatSpecifications(selectedDraft.technicalDossier.technicalSpecifications)}
+                                  onChange={(event) => {
+                                    setSpecsText(event.target.value);
+                                    updateDossier(selectedDraft.draftId, 'technicalSpecifications', dossierSpecifications(event.target.value));
+                                  }}
+                                  placeholder="Throughput | 1200 units/h | verified"
+                                  disabled={!isEditing}
+                                />
                                 <div className="flex flex-wrap gap-1.5 mt-2">{DOSSIER_STATUSES.map((status) => <Badge key={status} variant="outline" className="text-[10px]">{status}</Badge>)}</div>
                               </div>
                               <div className="grid gap-3 xl:grid-cols-3">
-                                <div><label className="text-xs text-muted-foreground">Risks and limits</label><Textarea rows={5} value={selectedDraft.technicalDossier.risksAndLimits.join('\n')} onChange={(event) => updateDossier(selectedDraft.draftId, 'risksAndLimits', dossierList(event.target.value))} disabled={!isEditing} /></div>
-                                <div><label className="text-xs text-muted-foreground">FAT/SAT acceptance criteria</label><Textarea rows={5} value={selectedDraft.technicalDossier.acceptanceCriteria.join('\n')} onChange={(event) => updateDossier(selectedDraft.draftId, 'acceptanceCriteria', dossierList(event.target.value))} disabled={!isEditing} /></div>
-                                <div><label className="text-xs text-muted-foreground">Sources and traceability</label><Textarea rows={5} value={selectedDraft.technicalDossier.sourceReferences.join('\n')} onChange={(event) => updateDossier(selectedDraft.draftId, 'sourceReferences', dossierList(event.target.value))} disabled={!isEditing} /></div>
+                                <div><label className="text-xs text-muted-foreground">Risks and limits</label><Textarea rows={5} value={selectedDraft.technicalDossier.risksAndLimits.join('\n')} onChange={(event) => updateDossier(selectedDraft.draftId, 'risksAndLimits', rawLines(event.target.value))} disabled={!isEditing} /></div>
+                                <div><label className="text-xs text-muted-foreground">FAT/SAT acceptance criteria</label><Textarea rows={5} value={selectedDraft.technicalDossier.acceptanceCriteria.join('\n')} onChange={(event) => updateDossier(selectedDraft.draftId, 'acceptanceCriteria', rawLines(event.target.value))} disabled={!isEditing} /></div>
+                                <div><label className="text-xs text-muted-foreground">Sources and traceability</label><Textarea rows={5} value={selectedDraft.technicalDossier.sourceReferences.join('\n')} onChange={(event) => updateDossier(selectedDraft.draftId, 'sourceReferences', rawLines(event.target.value))} disabled={!isEditing} /></div>
                               </div>
                             </CardContent>
                           </Card>

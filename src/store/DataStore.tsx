@@ -6,7 +6,7 @@ import { dedupeOpportunities, dedupeOrders, normalizeOpportunityStatus, parseFle
 import { inferProductCategory, parseProductComments, serializeProductComments, type ProductCategory, type ProductCompetitorBenchmark, type ProductCostPresetLine, type ProductTechnicalDossier } from '@/lib/productCatalog';
 
 // â”€â”€â”€ Offline / localStorage mode when Supabase is not configured â”€â”€â”€
-const isSupabaseConfigured =
+export const isSupabaseConfigured =
   !!import.meta.env.VITE_SUPABASE_URL &&
   import.meta.env.VITE_SUPABASE_URL !== 'https://placeholder.supabase.co';
 
@@ -498,6 +498,7 @@ interface DataContextType {
   clearAll: () => void;
   hasData: boolean;
   loading: boolean;
+  loadedCompanyId: string | null;
   commercialSnapshot: ReturnType<typeof buildCommercialIntelligence>;
 }
 
@@ -523,6 +524,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     localStorage.getItem('acs_active_company') || null
   );
   const [loading, setLoading] = useState(false);
+  // Company whose dataset finished loading; lets panels distinguish "not loaded yet" from "empty".
+  const [loadedCompanyId, setLoadedCompanyId] = useState<string | null>(null);
 
   const commercialSnapshot = useMemo(() => buildCommercialIntelligence({
     company: data.companyProfile,
@@ -624,6 +627,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       });
     } finally {
       setLoading(false);
+      setLoadedCompanyId(companyId);
     }
   }, []);
 
@@ -1306,7 +1310,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       createCompany, deleteCompany, exportCompanyPack, importCompanyPack, triggerEnrichment,
       setOrders, setOpportunities, setProducts, setStrategy, setLeads, setContacts, setCompanyProfile,
       setDataManagementResults, setEnrichedProfiles,
-      addUploadLog, addTask, updateTask, deleteTask, clearDataset, clearAll, hasData, loading,
+      addUploadLog, addTask, updateTask, deleteTask, clearDataset, clearAll, hasData, loading, loadedCompanyId,
       commercialSnapshot,
     }}>
       {children}
