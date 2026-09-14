@@ -13,6 +13,8 @@ export default tseslint.config(
       "middleware.ts",
       "page.tsx",
       "src/utils/supabase/**",
+      // Archived duplicate/build artifacts kept for reference; not part of the app build.
+      "Architecture/outputs/**",
     ],
   },
   {

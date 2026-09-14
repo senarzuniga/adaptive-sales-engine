@@ -150,7 +150,7 @@ export const AGENT_DEFINITIONS = {
 } as const;
 
 const nowIso = () => new Date().toISOString();
-const cleanText = (value: unknown) => String(value ?? '').replace(/\u0000/g, '').trim();
+const cleanText = (value: unknown) => String(value ?? '').split('\u0000').join('').trim();
 const normalizeKey = (value: string) => cleanText(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 const unique = <T,>(items: T[]) => [...new Set(items)];
 

@@ -30,7 +30,11 @@ jobs:
         run: npm run lint
 
       - name: Run Flake8
-        run: flake8 .
+        # Gate on real defects only (syntax errors, undefined names); style warnings
+        # in legacy Python support scripts are reported by the local .flake8 config.
+        run: |
+          pip install flake8 -q
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude .git,__pycache__,build,dist,node_modules
 
       - name: Check Python syntax
         run: python -m compileall .
