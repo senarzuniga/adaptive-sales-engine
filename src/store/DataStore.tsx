@@ -268,7 +268,120 @@ export interface UploadLogEntry {
   timestamp: string;
 }
 
-// â”€â”€â”€ DB â†” App mappers â”€â”€â”€
+export interface AIActionRecord {
+  id: string;
+  title: string;
+  description: string;
+  priority: 'critical' | 'warning' | 'good';
+  account?: string;
+  impact: number;
+  dueDate?: string;
+  route: string;
+  secondaryRoute?: string;
+  approvalRequired: boolean;
+  suggestedAction: string;
+  source: 'central-data' | 'workspace' | 'manual';
+}
+
+const formatCompactMoney = (value: number) => {
+  if (!Number.isFinite(value) || value <= 0) return '€0';
+  return value >= 1_000_000 ? `€${(value / 1_000_000).toFixed(1)}M` : value >= 1_000 ? `€${(value / 1_000).toFixed(0)}K` : `€${Math.round(value)}`;
+};
+
+const buildAiActionQueue = ({
+  company,
+  opportunities,
+  leads,
+  contacts,
+  tasks,
+}: {
+  company: CompanyProfile;
+  opportunities: OpportunityRecord[];
+  leads: LeadRecord[];
+  contacts: ContactRecord[];
+  tasks: MonitoringTask[];
+}): AIActionRecord[] => {
+  const actions: AIActionRecord[] = [];
+  const openOpps = opportunities.filter((opp) => isOpenOpportunityStatus(opp.status));
+  const highRiskOpps = openOpps.filter((opp) => (opp.contractProb || 0) < 60 || (opp.estRevenue || 0) > 500000);
+
+  highRiskOpps.forEach((opp, index) => {
+    actions.push({
+      id: `ai-open-opp-${index}`,
+      title: `${opp.customerName || 'Customer'} — review ${opp.oppNumber || 'opportunity'}`,
+      description: `${opp.productFamily || 'Scope'} with ${opp.contractProb || 0}% probability and ${formatCompactMoney(opp.estRevenue || 0)} value needs commercial intervention.`,
+      priority: (opp.contractProb || 0) < 35 ? 'critical' : 'warning',
+      account: opp.customerName || company.company_name || 'Account',
+      impact: opp.estRevenue || 0,
+      dueDate: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10),
+      route: '/kam',
+      secondaryRoute: '/commercial-actions-repository',
+      approvalRequired: true,
+      suggestedAction: 'Confirm decision timeline and prepare an executive follow-up email to the buying center.',
+      source: 'central-data',
+    });
+  });
+
+  const overdueTasks = tasks.filter((task) => task.status !== 'done' && task.dueDate && new Date(task.dueDate) < new Date());
+  overdueTasks.slice(0, 4).forEach((task, index) => {
+    actions.push({
+      id: `ai-task-${task.id || index}`,
+      title: `Task requires attention — ${task.title}`,
+      description: task.description || 'This action is overdue and should be escalated to the responsible owner.',
+      priority: task.priority === 'critical' ? 'critical' : 'warning',
+      account: company.company_name || 'Company',
+      impact: 0,
+      dueDate: task.dueDate,
+      route: '/monitoring',
+      approvalRequired: false,
+      suggestedAction: task.actionContent?.callScript || 'Evaluate owner, update due date and align the next decision to keep execution on track.',
+      source: 'central-data',
+    });
+  });
+
+  const highValueLeads = leads.filter((lead) => (lead.estimatedValue || 0) > 100000).slice(0, 3);
+  highValueLeads.forEach((lead, index) => {
+    actions.push({
+      id: `ai-lead-${index}`,
+      title: `${lead.companyName || lead.leadName} — qualify next opportunity`,
+      description: `A high-value lead with ${formatCompactMoney(lead.estimatedValue || 0)} potential needs a qualification call and stakeholder mapping.`,
+      priority: 'good',
+      account: lead.companyName || lead.leadName || company.company_name || 'Account',
+      impact: lead.estimatedValue || 0,
+      dueDate: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10),
+      route: '/ai-sales',
+      secondaryRoute: '/kam',
+      approvalRequired: false,
+      suggestedAction: 'Book an intro call, validate requirements, and add the customer to the active pipeline.',
+      source: 'central-data',
+    });
+  });
+
+  const customerWithoutRecentContact = contacts.filter((contact) => !contact.email || !contact.role).slice(0, 2);
+  customerWithoutRecentContact.forEach((contact, index) => {
+    actions.push({
+      id: `ai-contact-${index}`,
+      title: `Complete stakeholder coverage — ${contact.companyName || 'Account'}`,
+      description: 'This commercial account is missing the contact data needed for a reliable executive follow-up sequence.',
+      priority: 'good',
+      account: contact.companyName || company.company_name || 'Account',
+      impact: 0,
+      dueDate: new Date(Date.now() + 4 * 86400000).toISOString().slice(0, 10),
+      route: '/team-directory',
+      approvalRequired: false,
+      suggestedAction: 'Request role, email and decision owner to improve account traceability and action quality.',
+      source: 'central-data',
+    });
+  });
+
+  const deduped = actions.filter((action, index, array) => array.findIndex((candidate) => candidate.title === action.title && candidate.account === action.account) === index);
+  return deduped.slice(0, 8).sort((left, right) => {
+    const priorityScore = { critical: 3, warning: 2, good: 1 };
+    return (priorityScore[right.priority] + right.impact / 500000) - (priorityScore[left.priority] + left.impact / 500000);
+  });
+};
+
+// ─── DB ↔ App mappers ───
 function dbToOrder(r: any): OrderRecord {
   return {
     id: r.id, truthSource: r.truth_source || 'sales_document', poDate: r.po_date || '', firstOfferDate: r.first_offer_date || '',
@@ -500,6 +613,7 @@ interface DataContextType {
   loading: boolean;
   loadedCompanyId: string | null;
   commercialSnapshot: ReturnType<typeof buildCommercialIntelligence>;
+  aiActionQueue: AIActionRecord[];
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -534,6 +648,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     products: data.products,
     strategy: data.strategy,
   }), [data.companyProfile, data.orders, data.opportunities, data.products, data.strategy]);
+
+    const aiActionQueue = useMemo(() => buildAiActionQueue({
+    company: data.companyProfile,
+    opportunities: data.opportunities,
+    leads: data.leads,
+    contacts: data.contacts,
+    tasks: data.tasks,
+  }), [data.companyProfile, data.contacts, data.leads, data.opportunities, data.tasks]);
 
   // â”€â”€â”€ Load companies list â”€â”€â”€
   const loadCompanies = useCallback(async () => {
@@ -1311,7 +1433,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setOrders, setOpportunities, setProducts, setStrategy, setLeads, setContacts, setCompanyProfile,
       setDataManagementResults, setEnrichedProfiles,
       addUploadLog, addTask, updateTask, deleteTask, clearDataset, clearAll, hasData, loading, loadedCompanyId,
-      commercialSnapshot,
+      commercialSnapshot, aiActionQueue,
     }}>
       {children}
     </DataContext.Provider>

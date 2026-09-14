@@ -75,7 +75,7 @@ const loadBundledWorkspaceSnapshot = async (companyName: string): Promise<Worksp
 const DashboardPage = () => {
   const navigate = useNavigate();
   const { language } = useLanguage();
-  const { data, hasData, activeCompanyId, companies, commercialSnapshot } = useData();
+  const { data, hasData, activeCompanyId, companies, commercialSnapshot, aiActionQueue } = useData();
   const [workspaceSnapshot, setWorkspaceSnapshot] = useState<WorkspaceSnapshot>(EMPTY_SNAPSHOT);
   const activeCompany = useMemo(() => companies.find((company) => company.id === activeCompanyId) || data.companyProfile, [activeCompanyId, companies, data.companyProfile]);
   const labels = useMemo(() => language === 'es' ? {
@@ -219,29 +219,33 @@ const DashboardPage = () => {
   const revenueAtRisk = openOffersAtRisk.reduce((sum, offer) => sum + asNumber(offer.contract_value), 0) + criticalProjects.reduce((sum, project) => sum + project.contractValue * 0.35, 0) + pendingCollections;
 
   const nextBestActions = useMemo(() => {
-    const actions: Array<{ id: string; priority: 'critical' | 'warning' | 'good'; title: string; subtitle: string; recommendation: string; route: string; secondaryRoute?: string; score: number; }> = [];
-    openOffers.forEach((offer) => {
-      const probability = Math.max(0, Math.min(100, asNumber(offer.probability)));
-      const expiry = daysUntil(offer.decision_date);
-      if (expiry !== null && expiry <= 7) {
-        actions.push({ id: `offer-expiry-${offer.offer_number}`, priority: 'critical', title: String(offer.customer_name || offer.title || 'Offer follow-up'), subtitle: `${String(offer.offer_number || 'Offer')} - ${compactEuro(asNumber(offer.contract_value))} - expires in ${expiry} day${expiry === 1 ? '' : 's'}`, recommendation: String(offer.next_action || 'Call the customer and protect the commercial close.'), route: '/commercial-actions-repository', secondaryRoute: '/email-cobot', score: 100 - expiry });
-      } else if (probability < 75 && asNumber(offer.contract_value) > 50000) {
-        actions.push({ id: `offer-risk-${offer.offer_number}`, priority: 'warning', title: String(offer.customer_name || offer.title || 'Offer at risk'), subtitle: `${String(offer.offer_number || 'Offer')} - ${compactEuro(asNumber(offer.contract_value))} - ${probability.toFixed(0)}% probability`, recommendation: String(offer.next_action || getProbabilityGuidance(probability).actionFocus), route: '/commercial-actions-repository', secondaryRoute: '/ai-sales', score: Math.round(asNumber(offer.contract_value) / 1000 + probability) });
-      }
-    });
-    projectCards.forEach((project) => {
-      if (project.overallTone === 'critical') {
-        actions.push({ id: `project-critical-${project.id}`, priority: 'critical', title: `${project.projectNumber} - ${project.title}`, subtitle: `${project.customerName} - schedule ${project.scheduleTone} - cash ${project.cashTone}`, recommendation: project.overdue ? 'Escalate the overdue project decision and recover the schedule.' : 'Review project risks, cash gates, and execution blockers immediately.', route: '/project-management', secondaryRoute: '/budget-command-center', score: 95 + project.highRisks });
-      }
-    });
-    data.tasks.forEach((task) => {
-      if (task.status === 'done' || !task.dueDate || !(new Date(task.dueDate) < new Date())) return;
-      actions.push({ id: `task-${task.id}`, priority: task.priority === 'critical' || task.priority === 'high' ? 'critical' : 'warning', title: task.title, subtitle: `${task.assignee || 'ASE'} - overdue action`, recommendation: task.actionContent?.emailTemplate || task.description, route: '/weekly-planner', secondaryRoute: '/commercial-actions-repository', score: task.priority === 'critical' ? 93 : 82 });
-    });
-    if (pendingCollections > 0) actions.push({ id: 'collections-follow-up', priority: 'warning', title: 'Collections follow-up', subtitle: `${compactEuro(pendingCollections)} pending collection exposure`, recommendation: 'Review invoiced milestones, confirm the payment calendar, and escalate the highest-risk items.', route: '/budget-command-center', secondaryRoute: '/project-management', score: Math.round(pendingCollections / 5000) });
-    commercialSnapshot.actions.slice(0, 4).forEach((action, index) => actions.push({ id: `ai-action-${index}-${action.title}`, priority: action.priority === 'critical' ? 'critical' : action.priority === 'high' ? 'warning' : 'good', title: action.title, subtitle: `${action.customer || activeCompany.company_name || 'Account'} - ${compactEuro(action.expectedImpact)}`, recommendation: action.rationale, route: '/ai-sales', secondaryRoute: '/commercial-actions-repository', score: 60 - index }));
-    return actions.sort((left, right) => right.score - left.score).filter((action, index, array) => array.findIndex((item) => item.title === action.title && item.subtitle === action.subtitle) === index).slice(0, 6);
-  }, [activeCompany.company_name, commercialSnapshot.actions, data.tasks, openOffers, pendingCollections, projectCards]);
+    const baseActions = aiActionQueue.length > 0 ? aiActionQueue : [{
+      id: 'ai-discovery',
+      title: 'No critical actions detected',
+      description: 'Keep the commercial rhythm and enrich the opportunity context.',
+      priority: 'good' as const,
+      impact: 0,
+      route: '/commercial-actions-repository',
+      approvalRequired: false,
+      suggestedAction: 'Follow the current CRM cadence and refresh the sales context when new information arrives.',
+      source: 'central-data' as const,
+    }];
+
+    return baseActions
+      .map((action) => ({
+        id: action.id,
+        priority: action.priority,
+        title: action.title,
+        subtitle: action.account ? `${action.account}${action.impact ? ` — ${compactEuro(action.impact)}` : ''}` : action.description,
+        recommendation: action.suggestedAction,
+        route: action.route,
+        secondaryRoute: action.secondaryRoute,
+        score: Math.max(40, (action.priority === 'critical' ? 100 : action.priority === 'warning' ? 82 : 60) + Math.round(action.impact / 50000)),
+      }))
+      .sort((left, right) => right.score - left.score)
+      .filter((action, index, array) => array.findIndex((item) => item.title === action.title && item.subtitle === action.subtitle) === index)
+      .slice(0, 6);
+  }, [aiActionQueue]);
 
   const funnelStages = useMemo(() => {
     const qualifiedLeads = data.leads.filter((lead) => /qual|target|active/i.test(String(lead.status || '')) || asNumber(lead.estimatedValue) > 0);

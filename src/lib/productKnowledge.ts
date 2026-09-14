@@ -207,14 +207,25 @@ const PRODUCT_PROFILES: ProductProfile[] = [
     },
   },
   {
-    aliases: ['heavy duty palletizer', 'hd palletizer'],
+    aliases: ['heavy duty palletizer', 'hd palletizer', 'heavy duty palletizer + squaring system', 'dual robotic palletizer', 'robot ffg doble'],
       base: {
-        name: 'HEAVY DUTY PALLETIZER', averageValue: 450000, estimatedCost: 324000, type: 'core equipment', category: 'product',
-        characteristics: ['High-duty robotic palletizing', 'Four-side squaring', 'Mixed bundle and multi-output operation'], repositories: ['INGECART/PRODUCTO/PALETIZADOR', 'ingesite solutions'], validated: true, source: 'manual', comments: 'Heavy-duty end-of-line architecture; commercial cycle claims require SKU-specific FAT.'
+        name: 'HEAVY DUTY PALLETIZER', averageValue: 1052000, estimatedCost: 665850, type: 'core equipment', category: 'product',
+        characteristics: ['High-duty robotic palletizing', 'Four-side squaring', 'Mixed bundle and multi-output operation', 'Dual KUKA robot reference configuration (Cascades Piscataway)'], repositories: ['INGECART/PRODUCTO/PALETIZADOR', 'INGECART/COMMERCIAL/PROYECTOS/CASCADES/PALLETIZER 2026', 'ingesite solutions'], validated: true, source: 'manual', comments: 'Heavy-duty end-of-line architecture; commercial cycle claims require SKU-specific FAT. Cost baseline from Cascades Piscataway dual robotic palletizer (IC-DR-12.25 / OFF-2026-80): SIFISE turnkey + 2 KUKA robots + 1,240 engineering/PM hours + installation, travel and transport (supplier quotes x0.85).'
       },
       meta: {
         productInfoUrl: 'https://senarzuniga.github.io/ingesite.github.io/solutions/heavy-duty-palletizer.html', productVideoUrl: VIDEO_URL,
-        linkedReports: ['AUTOMATIC ROBOT PALLETIZER SYSTEM.docx', 'Heavy Duty Palletizer comparative report'],
+        linkedReports: ['AUTOMATIC ROBOT PALLETIZER SYSTEM.docx', 'Heavy Duty Palletizer comparative report', 'Proposal Cascades - Dual Robotic Palletizer IC-DR-12.25 v3.pdf'],
+        costPreset: [
+          unitLine('subcontracting', 'SIFISE - llave en mano, programacion y puesta en marcha', 1, 368857, { notes: 'Proveedor 1 - turnkey, programming and commissioning' }),
+          unitLine('materials', 'KUKA - robot paletizado', 2, 35871.5, { notes: 'Proveedor 2 - 2 palletizing robot units (71,743 EUR total)' }),
+          engineeringLine('Direccion ingenieria', 360, 85, 'DIRECTOR ING. MECANICA'),
+          engineeringLine('Ingenieria', 560, 65, 'ING MECANICO'),
+          engineeringLine('Direccion ingenieria electrica', 160, 85, 'DIRECTOR ING. ELECTRICA'),
+          engineeringLine('Gestion de proyecto', 160, 70, 'GESTION DE PROYECTO'),
+          unitLine('installation', 'Installation', 1, 46750, { notes: 'Quote 55,000 EUR x 0.85' }),
+          unitLine('indirect', 'Hotels, flights and food', 1, 32300, { notes: 'Quote 38,000 EUR x 0.85' }),
+          unitLine('transport', 'Transport & packaging', 1, 54400, { notes: 'Quote 64,000 EUR x 0.85' }),
+        ],
         competitors: [competitor('BW Integrated Systems', 'High-speed robotic palletizing', 'Broad high-speed end-of-line portfolio and global references.', 76, 'Strong installed base and standardization.', ['Demonstrate corrugated bundle handling quality', 'Contract on good bundles by SKU rather than headline cycles'])],
         marketFitNotes: ['Strong fit when end-of-line blocking constrains sellable converting output.'],
         fitImprovementActions: ['Build an approved SKU and pattern performance matrix.', 'Separate single-robot and dual-robot commercial variants.'],

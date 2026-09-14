@@ -279,7 +279,7 @@
     },
     {
       "name": "Heavy Duty Palletizer + Squaring System",
-      "averageValue": 450000,
+      "averageValue": 1052000,
       "type": "solution",
       "comments": "Imported from solution page heavy-duty-palletizer.html",
       "category": "product",
@@ -288,7 +288,7 @@
         "Product Description",
         "Contact"
       ],
-      "estimatedCost": 324000.0,
+      "estimatedCost": 665850.0,
       "repositories": [
         "C:\\Users\\isena\\Documents\\GitHub\\ingesite.github.io\\solutions\\heavy-duty-palletizer.html"
       ],
