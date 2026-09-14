@@ -2,7 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { buildCommercialIntelligence, harmonizeCommercialRecords } from '@/lib/commercialIntelligence';
-import { dedupeOpportunities, dedupeOrders, normalizeOpportunityStatus, parseFlexibleNumber } from '@/lib/salesData';
+import { dedupeOpportunities, dedupeOrders, isOpenOpportunityStatus, normalizeOpportunityStatus, parseFlexibleNumber } from '@/lib/salesData';
 import { inferProductCategory, parseProductComments, serializeProductComments, type ProductCategory, type ProductCompetitorBenchmark, type ProductCostPresetLine, type ProductTechnicalDossier } from '@/lib/productCatalog';
 
 // â”€â”€â”€ Offline / localStorage mode when Supabase is not configured â”€â”€â”€
