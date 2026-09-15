@@ -75,21 +75,21 @@ type AnalysisResult = {
 };
 
 const CATEGORIES = [
-  { value: 'materials', label: 'Materials & Equipment' },
+  { value: 'materials', label: 'Comercio' },
   { value: 'engineering', label: 'Engineering' },
-  { value: 'subcontracting', label: 'Subcontracting' },
+  { value: 'subcontracting', label: 'Subcontratas' },
   { value: 'installation', label: 'Installation' },
   { value: 'transport', label: 'Transport & Logistics' },
-  { value: 'indirect', label: 'Indirect Costs & Fees' },
+  { value: 'indirect', label: 'Otros' },
 ];
 
 const CATEGORIES_ES: Record<string, string> = {
-  materials: 'Materiales y Equipos',
+  materials: 'Comercio',
   engineering: 'Ingeniería',
-  subcontracting: 'Subcontratación',
+  subcontracting: 'Subcontratas',
   installation: 'Instalación',
   transport: 'Transporte y Logística',
-  indirect: 'Costes Indirectos y Tasas',
+  indirect: 'Otros',
 };
 
 const newCostLine = (category: string): CostLine => ({

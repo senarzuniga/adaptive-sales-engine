@@ -40,6 +40,14 @@ type CategorySummary = {
 
 let fallbackDraftIdCounter = 0;
 const COST_CATEGORIES: ProductCostPresetLine['category'][] = ['materials', 'engineering', 'subcontracting', 'installation', 'transport', 'indirect'];
+const COST_CATEGORY_LABELS: Record<ProductCostPresetLine['category'], string> = {
+  materials: 'Comercio',
+  engineering: 'Engineering',
+  subcontracting: 'Subcontratas',
+  installation: 'Installation',
+  transport: 'Transport & Logistics',
+  indirect: 'Otros',
+};
 const COST_MODES: NonNullable<ProductCostPresetLine['mode']>[] = ['unit', 'engineering', 'installation'];
 const DOSSIER_STATUSES = ['verified', 'commercial-claim', 'modelled', 'pre-engineering', 'pending'] as const;
 
@@ -662,7 +670,7 @@ const ProductStrategyPage = () => {
                               <div key={`${selectedDraft.draftId}-${index}`} className="rounded-lg border bg-background p-3 space-y-3">
                                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
                                   <div className="xl:col-span-2"><label className="text-xs text-muted-foreground">Line item</label><Input value={line.lineItem || ''} onChange={(e) => updateCostPresetLine(selectedDraft.draftId, index, { lineItem: e.target.value })} disabled={!isEditing} /></div>
-                                  <div><label className="text-xs text-muted-foreground">Category</label><Select value={line.category} onValueChange={(value) => updateCostPresetLine(selectedDraft.draftId, index, { category: value as ProductCostPresetLine['category'] })} disabled={!isEditing}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{COST_CATEGORIES.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}</SelectContent></Select></div>
+                                  <div><label className="text-xs text-muted-foreground">Category</label><Select value={line.category} onValueChange={(value) => updateCostPresetLine(selectedDraft.draftId, index, { category: value as ProductCostPresetLine['category'] })} disabled={!isEditing}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{COST_CATEGORIES.map((category) => <SelectItem key={category} value={category}>{COST_CATEGORY_LABELS[category]}</SelectItem>)}</SelectContent></Select></div>
                                   <div><label className="text-xs text-muted-foreground">Mode</label><Select value={line.mode || 'unit'} onValueChange={(value) => updateCostPresetLine(selectedDraft.draftId, index, { mode: value as ProductCostPresetLine['mode'] })} disabled={!isEditing}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{COST_MODES.map((mode) => <SelectItem key={mode} value={mode}>{mode}</SelectItem>)}</SelectContent></Select></div>
                                   <div><label className="text-xs text-muted-foreground">Unit cost</label><Input type="number" value={line.unitCost || 0} onChange={(e) => updateCostPresetLine(selectedDraft.draftId, index, { unitCost: Number(e.target.value || 0) })} disabled={!isEditing} /></div>
                                   <div className="flex items-end justify-end">{isEditing ? <Button variant="ghost" size="sm" onClick={() => removeCostPresetLine(selectedDraft.draftId, index)}><Trash2 className="h-4 w-4" /></Button> : <Badge variant="outline">{fmt(presetLineTotal(line))}</Badge>}</div>
