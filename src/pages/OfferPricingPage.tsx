@@ -399,15 +399,47 @@ export default function OfferPricingPage() {
 
   const totals = useMemo(() => {
     const byCat: Record<string, number> = {};
-    let total = 0;
+    let direct = 0;
     items.forEach(item => {
       item.costLines.forEach(cl => {
         byCat[cl.category] = (byCat[cl.category] || 0) + cl.totalCost * item.quantity;
-        total += cl.totalCost * item.quantity;
+        direct += cl.totalCost * item.quantity;
       });
     });
-    return { byCat, total, sellingPrice: total * (1 + targetMargin / 100), margin: total * targetMargin / 100 };
-  }, [items, targetMargin]);
+    const materials = byCat.materials || 0;
+    const engineering = byCat.engineering || 0;
+    // Warranty only covers supplied goods (Comercio) and engineering hours.
+    const warranty = (materials + engineering) * (Number(pricingPolicy.warrantyPct) || 0) / 100;
+    const materialStructure = materials * (Number(pricingPolicy.materialStructurePct) || 0) / 100;
+    const financial = direct * (Number(pricingPolicy.financialPct) || 0) / 100;
+    const commercialMgmt = direct * (Number(pricingPolicy.commercialMgmtPct) || 0) / 100;
+    const policyCharges = { warranty, materialStructure, financial, commercialMgmt };
+    const total = direct + warranty + materialStructure + financial + commercialMgmt;
+    return { byCat, direct, policyCharges, total, sellingPrice: total * (1 + targetMargin / 100), margin: total * targetMargin / 100 };
+  }, [items, targetMargin, pricingPolicy]);
+
+  // Offer numbers follow OFF-YYYY-NNN and continue the highest sequence already used this year.
+  const generateOfferNumber = (existing: any[]) => {
+    const year = new Date().getFullYear();
+    const prefix = `OFF-${year}-`;
+    const known = [
+      ...existing.map((offer) => String(offer?.offer_number || '')),
+      ...data.opportunities.map((opportunity) => String(opportunity.oppNumber || '')),
+      ...data.orders.map((order) => String(order.oppNumber || '')),
+    ];
+    const maxSeq = known.reduce((max, value) => {
+      const match = value.toUpperCase().match(new RegExp(`^${prefix}(\\d+)`));
+      return match ? Math.max(max, Number(match[1])) : max;
+    }, 0);
+    return `${prefix}${String(maxSeq + 1).padStart(3, '0')}`;
+  };
+
+  useEffect(() => {
+    if (!offerNumber.trim()) setOfferNumber(generateOfferNumber(savedOffers));
+  }, [savedOffers, data.opportunities, data.orders]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const updatePolicyPct = (field: 'warrantyPct' | 'financialPct' | 'commercialMgmtPct' | 'materialStructurePct', value: string) =>
+    setPricingPolicy((prev) => ({ ...prev, [field]: value === '' ? 0 : Number(value) }));
 
   const requestOfferAnalysis = async (): Promise<AnalysisResult> => {
     const costBreakdown = {
@@ -431,6 +463,8 @@ export default function OfferPricingPage() {
         ),
       })),
       totalCost: totals.total,
+      directCost: totals.direct,
+      policyCharges: totals.policyCharges,
       targetMargin,
       currency,
       costPolicy: pricingPolicy,
@@ -757,7 +791,13 @@ export default function OfferPricingPage() {
               </div>
               <div>
                 <label className="text-sm font-medium text-foreground">{isEs ? 'Nº Oferta' : 'Offer #'}</label>
-                <Input value={offerNumber} onChange={e => setOfferNumber(e.target.value)} placeholder="OFF-2026-001" />
+                <div className="flex gap-1">
+                  <Input value={offerNumber} onChange={e => setOfferNumber(e.target.value)} placeholder="OFF-2026-001" />
+                  <Button variant="outline" size="icon" title={isEs ? 'Generar siguiente número' : 'Generate next number'} onClick={() => setOfferNumber(generateOfferNumber(savedOffers))}>
+                    <Settings2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">{isEs ? 'Generado automáticamente; editable.' : 'Auto-generated; editable.'}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-foreground">{isEs ? 'Cliente' : 'Customer'}</label>
@@ -790,25 +830,21 @@ export default function OfferPricingPage() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">{isEs ? 'Política de costes y plantilla' : 'Cost policy & template'}</CardTitle>
-              <CardDescription>{isEs ? 'Aplica la configuración base Ingecart para garantías, financiación, gestión comercial, materiales e instalación.' : 'Apply the Ingecart default commercial cost policy for warranty, financing, sales management, materials and installation.'}</CardDescription>
+              <CardDescription>{isEs ? 'Porcentajes editables que se añaden al coste directo. La garantía se aplica solo a Comercio e Ingeniería; estructura de materiales solo a Comercio; financiación y gestión comercial al coste directo total.' : 'Editable percentages added on top of the direct cost. Warranty applies only to Comercio and Engineering; material structure only to Comercio; finance and commercial management to the total direct cost.'}</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="rounded-md border bg-muted/20 p-3">
-                <div className="text-xs text-muted-foreground">{isEs ? 'Garantía' : 'Warranty'}</div>
-                <div className="font-semibold">{pricingPolicy.warrantyPct}%</div>
-              </div>
-              <div className="rounded-md border bg-muted/20 p-3">
-                <div className="text-xs text-muted-foreground">{isEs ? 'Financiación' : 'Finance'}</div>
-                <div className="font-semibold">{pricingPolicy.financialPct}%</div>
-              </div>
-              <div className="rounded-md border bg-muted/20 p-3">
-                <div className="text-xs text-muted-foreground">{isEs ? 'Gestión comercial' : 'Commercial mgmt.'}</div>
-                <div className="font-semibold">{pricingPolicy.commercialMgmtPct}%</div>
-              </div>
-              <div className="rounded-md border bg-muted/20 p-3">
-                <div className="text-xs text-muted-foreground">{isEs ? 'Materiales' : 'Materials'}</div>
-                <div className="font-semibold">{pricingPolicy.materialStructurePct}%</div>
-              </div>
+              {([
+                { field: 'warrantyPct', label: isEs ? 'Garantía %' : 'Warranty %', charge: totals.policyCharges.warranty, scope: isEs ? 'Comercio + Ingeniería' : 'Comercio + Engineering' },
+                { field: 'financialPct', label: isEs ? 'Financiación %' : 'Finance %', charge: totals.policyCharges.financial, scope: isEs ? 'Coste directo' : 'Direct cost' },
+                { field: 'commercialMgmtPct', label: isEs ? 'Gestión comercial %' : 'Commercial mgmt. %', charge: totals.policyCharges.commercialMgmt, scope: isEs ? 'Coste directo' : 'Direct cost' },
+                { field: 'materialStructurePct', label: isEs ? 'Estructura materiales %' : 'Material structure %', charge: totals.policyCharges.materialStructure, scope: 'Comercio' },
+              ] as const).map((entry) => (
+                <div key={entry.field} className="rounded-md border bg-muted/20 p-3 space-y-1">
+                  <label className="text-xs text-muted-foreground" htmlFor={`policy-${entry.field}`}>{entry.label}</label>
+                  <Input id={`policy-${entry.field}`} type="number" step="0.5" min="0" className="h-8" value={pricingPolicy[entry.field]} onChange={(e) => updatePolicyPct(entry.field, e.target.value)} />
+                  <div className="text-[11px] text-muted-foreground">{entry.scope} · <span className="font-medium text-foreground">{fmt(entry.charge)}</span></div>
+                </div>
+              ))}
               <div className="md:col-span-4 flex justify-end">
                 <Button variant="outline" onClick={applyIngecartOfferTemplate}>
                   <Settings2 className="h-4 w-4 mr-2" />
@@ -1058,6 +1094,7 @@ export default function OfferPricingPage() {
                 <div>
                   <p className="text-xs text-muted-foreground">{isEs ? 'Coste Total' : 'Total Cost'}</p>
                   <p className="text-xl font-bold text-foreground">{fmt(totals.total)}</p>
+                  <p className="text-[11px] text-muted-foreground">{isEs ? 'Directo' : 'Direct'} {fmt(totals.direct)} + {isEs ? 'política' : 'policy'} {fmt(totals.total - totals.direct)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">{isEs ? 'Precio Venta' : 'Selling Price'}</p>
@@ -1458,6 +1495,22 @@ export default function OfferPricingPage() {
                       <Progress value={pct} className="flex-1 h-2" />
                       <span className="text-sm font-medium w-24 text-right">{fmt(val)}</span>
                       <span className="text-xs text-muted-foreground w-12 text-right">{fmtPct(pct)}</span>
+                    </div>
+                  );
+                })}
+                {([
+                  { key: 'warranty', label: isEs ? `Garantía ${pricingPolicy.warrantyPct}%` : `Warranty ${pricingPolicy.warrantyPct}%`, val: totals.policyCharges.warranty },
+                  { key: 'materialStructure', label: isEs ? `Estructura materiales ${pricingPolicy.materialStructurePct}%` : `Material structure ${pricingPolicy.materialStructurePct}%`, val: totals.policyCharges.materialStructure },
+                  { key: 'financial', label: isEs ? `Financiación ${pricingPolicy.financialPct}%` : `Finance ${pricingPolicy.financialPct}%`, val: totals.policyCharges.financial },
+                  { key: 'commercialMgmt', label: isEs ? `Gestión comercial ${pricingPolicy.commercialMgmtPct}%` : `Commercial mgmt. ${pricingPolicy.commercialMgmtPct}%`, val: totals.policyCharges.commercialMgmt },
+                ]).map((entry) => {
+                  const pct = totals.total > 0 ? (entry.val / totals.total) * 100 : 0;
+                  return (
+                    <div key={entry.key} className="flex items-center gap-3 text-muted-foreground">
+                      <span className="text-sm w-40 truncate italic">{entry.label}</span>
+                      <Progress value={pct} className="flex-1 h-2" />
+                      <span className="text-sm font-medium w-24 text-right">{fmt(entry.val)}</span>
+                      <span className="text-xs w-12 text-right">{fmtPct(pct)}</span>
                     </div>
                   );
                 })}
