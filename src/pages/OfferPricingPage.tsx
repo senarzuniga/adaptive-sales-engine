@@ -25,6 +25,7 @@ import { buildOfferCostPreset, mergeProductWithKnowledge } from '@/lib/productKn
 import { DEFAULT_INGECART_POLICY, buildIngecartOfferTemplate } from '@/lib/utils';
 import { InstallationPlanner } from '@/components/costs/InstallationPlanner';
 import { computeInstallationCost, createInstallationPlan, describeInstallationPlan, type InstallationPlan } from '@/lib/installationCost';
+import { isWorkspaceSupabaseConfigured, readWorkspaceRows, writeWorkspaceRows } from '@/lib/workspaceStorage';
 
 type CostLine = {
   id: string;
@@ -125,12 +126,14 @@ const isMissingRelationError = (error: any) => {
 export default function OfferPricingPage() {
   const navigate = useNavigate();
   const { language } = useLanguage();
-  const { activeCompanyId: selectedCompanyId, data } = useData();
+  const { activeCompanyId: selectedCompanyId, data, setContacts } = useData();
   const isEs = language === 'es';
 
   const [offerTitle, setOfferTitle] = useState('');
   const [offerNumber, setOfferNumber] = useState('');
   const [customerName, setCustomerName] = useState('');
+  const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('existing');
+  const [newCustomer, setNewCustomer] = useState({ name: '', country: '', contactName: '', email: '' });
   const [projectDesc, setProjectDesc] = useState('');
   const [currency, setCurrency] = useState('EUR');
   const [targetMargin, setTargetMargin] = useState(20);
@@ -167,8 +170,14 @@ export default function OfferPricingPage() {
 
   const loadOffers = async () => {
     if (!selectedCompanyId) return;
-    const { data } = await supabase.from('offers').select('*').eq('company_id', selectedCompanyId).order('created_at', { ascending: false });
-    if (data) setSavedOffers(data);
+    const local = readWorkspaceRows<any>('offers', selectedCompanyId);
+    if (!isWorkspaceSupabaseConfigured) {
+      setSavedOffers([...local].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || ''))));
+      return;
+    }
+    const { data: remote } = await supabase.from('offers').select('*').eq('company_id', selectedCompanyId).order('created_at', { ascending: false });
+    const remoteIds = new Set((remote || []).map((row: any) => row.id));
+    setSavedOffers([...(remote || []), ...local.filter((row) => !remoteIds.has(row.id))]);
   };
 
   const toggleItem = (id: string) => {
@@ -408,8 +417,9 @@ export default function OfferPricingPage() {
     });
     const materials = byCat.materials || 0;
     const engineering = byCat.engineering || 0;
-    // Warranty only covers supplied goods (Comercio) and engineering hours.
-    const warranty = (materials + engineering) * (Number(pricingPolicy.warrantyPct) || 0) / 100;
+    const subcontracting = byCat.subcontracting || 0;
+    // Warranty covers supplied goods (Comercio), engineering hours and subcontracted work.
+    const warranty = (materials + engineering + subcontracting) * (Number(pricingPolicy.warrantyPct) || 0) / 100;
     const materialStructure = materials * (Number(pricingPolicy.materialStructurePct) || 0) / 100;
     const financial = direct * (Number(pricingPolicy.financialPct) || 0) / 100;
     const commercialMgmt = direct * (Number(pricingPolicy.commercialMgmtPct) || 0) / 100;
@@ -434,12 +444,56 @@ export default function OfferPricingPage() {
     return `${prefix}${String(maxSeq + 1).padStart(3, '0')}`;
   };
 
+  // Keep proposing the next number until the user types their own.
+  const offerNumberIsAuto = React.useRef(true);
   useEffect(() => {
-    if (!offerNumber.trim()) setOfferNumber(generateOfferNumber(savedOffers));
+    if (offerNumberIsAuto.current) {
+      const next = generateOfferNumber(savedOffers);
+      if (next !== offerNumber) setOfferNumber(next);
+    }
   }, [savedOffers, data.opportunities, data.orders]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const editOfferNumber = (value: string) => {
+    offerNumberIsAuto.current = value.trim() === '';
+    setOfferNumber(value);
+  };
 
   const updatePolicyPct = (field: 'warrantyPct' | 'financialPct' | 'commercialMgmtPct' | 'materialStructurePct', value: string) =>
     setPricingPolicy((prev) => ({ ...prev, [field]: value === '' ? 0 : Number(value) }));
+
+  // Known customers come from the central store (orders, opportunities, leads, contacts) plus saved offers.
+  const knownCustomers = useMemo(() => {
+    const names = new Map<string, string>();
+    const add = (value: unknown) => {
+      const name = String(value || '').trim();
+      if (name && !names.has(name.toLowerCase())) names.set(name.toLowerCase(), name);
+    };
+    data.orders.forEach((order) => add(order.customerName));
+    data.opportunities.forEach((opportunity) => add(opportunity.customerName));
+    data.leads.forEach((lead) => add(lead.companyName));
+    data.contacts.forEach((contact) => add(contact.companyName));
+    savedOffers.forEach((offer) => add(offer.customer_name));
+    return Array.from(names.values()).sort((a, b) => a.localeCompare(b));
+  }, [data.contacts, data.leads, data.opportunities, data.orders, savedOffers]);
+
+  const createCustomer = () => {
+    const name = newCustomer.name.trim();
+    if (!name) {
+      toast({ title: isEs ? 'Nombre de cliente requerido' : 'Customer name required', variant: 'destructive' });
+      return;
+    }
+    const exists = knownCustomers.some((known) => known.toLowerCase() === name.toLowerCase());
+    if (!exists) {
+      setContacts([
+        ...data.contacts,
+        { name: newCustomer.contactName.trim(), email: newCustomer.email.trim(), phone: '', role: '', department: '', companyName: name, region: '', country: newCustomer.country.trim(), kam: '', notes: 'Created from Offer Pricing' },
+      ]);
+    }
+    setCustomerName(name);
+    setCustomerMode('existing');
+    setNewCustomer({ name: '', country: '', contactName: '', email: '' });
+    toast({ title: exists ? (isEs ? 'Cliente seleccionado' : 'Customer selected') : (isEs ? 'Cliente creado' : 'Customer created'), description: name });
+  };
 
   const requestOfferAnalysis = async (): Promise<AnalysisResult> => {
     const costBreakdown = {
@@ -576,11 +630,72 @@ export default function OfferPricingPage() {
     }
   };
 
+  // Persists the whole offer (header, items, cost lines, scenarios, scores) in the local workspace,
+  // which is the same store the dashboard, KAM and project panels read when Supabase is unavailable.
+  const persistOfferLocally = (analysisToPersist: AnalysisResult | null, header: { title: string; number: string }) => {
+    const companyId = selectedCompanyId as string;
+    const now = new Date().toISOString();
+    const offer = {
+      id: crypto.randomUUID(),
+      company_id: companyId,
+      offer_number: header.number,
+      title: header.title,
+      customer_name: customerName,
+      project_description: projectDesc,
+      currency,
+      status: 'draft',
+      contract_value: Math.round(totals.sellingPrice),
+      total_cost: Math.round(totals.total),
+      probability: 50,
+      target_margin: targetMargin,
+      cost_policy: pricingPolicy,
+      created_at: now,
+      updated_at: now,
+      storage: 'local',
+    };
+    const offerItems: any[] = [];
+    const costRows: any[] = [];
+    items.forEach((item) => {
+      const dbItem = { id: crypto.randomUUID(), offer_id: offer.id, item_name: item.name, item_type: item.type, quantity: item.quantity, description: item.description, created_at: now };
+      offerItems.push(dbItem);
+      item.costLines.filter((cl) => cl.totalCost > 0).forEach((cl) => costRows.push({
+        id: crypto.randomUUID(), offer_item_id: dbItem.id, category: cl.category, line_item: cl.lineItem,
+        quantity: cl.quantity, unit_cost: cl.unitCost, total_cost: cl.totalCost, surcharge_pct: cl.surchargePct,
+        structure_pct: cl.structurePct, hours: cl.hours, hourly_rate: cl.hourlyRate, days: cl.days, resources: cl.resources,
+        notes: cl.notes, installation: cl.installation || null, created_at: now,
+      }));
+    });
+    writeWorkspaceRows('offers', companyId, [offer, ...readWorkspaceRows<any>('offers', companyId)]);
+    writeWorkspaceRows('offer_items', companyId, [...readWorkspaceRows<any>('offer_items', companyId), ...offerItems]);
+    writeWorkspaceRows('cost_breakdowns', companyId, [...readWorkspaceRows<any>('cost_breakdowns', companyId), ...costRows]);
+    if (analysisToPersist) {
+      writeWorkspaceRows('offer_scenarios', companyId, [
+        ...readWorkspaceRows<any>('offer_scenarios', companyId),
+        ...analysisToPersist.scenarios.map((s) => ({ id: crypto.randomUUID(), offer_id: offer.id, scenario_type: s.type, total_cost: s.totalCost, selling_price: s.sellingPrice, margin_amount: s.marginAmount, margin_pct: s.marginPct, risk_level: s.riskLevel, ai_analysis: { adjustments: s.adjustments }, created_at: now })),
+      ]);
+      writeWorkspaceRows('offer_scores', companyId, [
+        ...readWorkspaceRows<any>('offer_scores', companyId),
+        { id: crypto.randomUUID(), offer_id: offer.id, margin_score: analysisToPersist.scoring.marginScore, risk_score: analysisToPersist.scoring.riskScore, global_score: analysisToPersist.scoring.globalScore, risk_factors: analysisToPersist.riskFactors, recommendations: analysisToPersist.recommendations, ai_explanation: analysisToPersist.scoring.explanation, created_at: now },
+      ]);
+    }
+    return offer;
+  };
+
   const saveOffer = async () => {
     if (!selectedCompanyId) {
       toast({ title: isEs ? 'Seleccione empresa' : 'Select a company', variant: 'destructive' });
       return;
     }
+    if (!customerName.trim()) {
+      toast({ title: isEs ? 'Cliente requerido' : 'Customer required', description: isEs ? 'Selecciona un cliente existente o crea uno nuevo.' : 'Pick an existing customer or create a new one.', variant: 'destructive' });
+      return;
+    }
+    const firstItem = items.find((item) => item.name.trim())?.name;
+    const resolvedTitle = offerTitle.trim() || `${customerName} - ${firstItem || (isEs ? 'Oferta' : 'Offer')}`;
+    const resolvedNumber = offerNumber.trim() || generateOfferNumber(savedOffers);
+    if (resolvedTitle !== offerTitle) setOfferTitle(resolvedTitle);
+    if (resolvedNumber !== offerNumber) setOfferNumber(resolvedNumber);
+    const header = { title: resolvedTitle, number: resolvedNumber };
     setSaving(true);
     try {
       let analysisToPersist = analysis;
@@ -594,11 +709,29 @@ export default function OfferPricingPage() {
         }
       }
 
-      const { data: offer, error: offerErr } = await supabase.from('offers').insert({
-        company_id: selectedCompanyId, offer_number: offerNumber, title: offerTitle,
-        customer_name: customerName, project_description: projectDesc, currency, status: 'draft',
-      }).select().single();
-      if (offerErr) throw offerErr;
+      if (!isWorkspaceSupabaseConfigured) {
+        const offer = persistOfferLocally(analysisToPersist, header);
+        toast({ title: isEs ? 'Oferta guardada' : 'Offer saved', description: `${offer.offer_number} · ${isEs ? 'guardada en el espacio de trabajo local de la empresa' : 'stored in the company local workspace'}` });
+        loadOffers();
+        return;
+      }
+
+      let offer: any;
+      try {
+        const { data: inserted, error: offerErr } = await supabase.from('offers').insert({
+          company_id: selectedCompanyId, offer_number: header.number, title: header.title,
+          customer_name: customerName, project_description: projectDesc, currency, status: 'draft',
+        }).select().single();
+        if (offerErr) throw offerErr;
+        offer = inserted;
+      } catch (remoteError: any) {
+        // Remote store unavailable: never lose the offer, fall back to the local workspace.
+        console.warn('[offers] remote save failed, persisting locally', remoteError);
+        offer = persistOfferLocally(analysisToPersist, header);
+        toast({ title: isEs ? 'Oferta guardada localmente' : 'Offer saved locally', description: isEs ? 'Supabase no respondió; la oferta se guardó en el espacio de trabajo local.' : 'Supabase did not respond; the offer was stored in the local workspace.' });
+        loadOffers();
+        return;
+      }
 
       for (const item of items) {
         const { data: dbItem, error: itemErr } = await supabase.from('offer_items').insert({
@@ -655,16 +788,61 @@ export default function OfferPricingPage() {
 
   const [convertingId, setConvertingId] = useState<string | null>(null);
 
+  const isLocalOffer = (offer: any) => offer?.storage === 'local' || !isWorkspaceSupabaseConfigured;
+
   const updateOfferStatus = async (offerId: string, status: string) => {
+    const target = savedOffers.find((offer) => offer.id === offerId);
+    if (isLocalOffer(target)) {
+      writeWorkspaceRows('offers', selectedCompanyId, readWorkspaceRows<any>('offers', selectedCompanyId).map((offer) => (offer.id === offerId ? { ...offer, status, updated_at: new Date().toISOString() } : offer)));
+      loadOffers();
+      return;
+    }
     await supabase.from('offers').update({ status }).eq('id', offerId);
     await enqueuePipelineJob('offer_status_changed', offerId, { status });
     loadOffers();
+  };
+
+  const convertLocalOfferToProject = (offer: any) => {
+    const companyId = selectedCompanyId as string;
+    const now = new Date().toISOString();
+    writeWorkspaceRows('offers', companyId, readWorkspaceRows<any>('offers', companyId).map((row) => (row.id === offer.id ? { ...row, status: 'won', updated_at: now } : row)));
+    const itemIds = readWorkspaceRows<any>('offer_items', companyId).filter((row) => row.offer_id === offer.id).map((row) => row.id);
+    const costBreakdowns = readWorkspaceRows<any>('cost_breakdowns', companyId).filter((row) => itemIds.includes(row.offer_item_id));
+    const scenarios = readWorkspaceRows<any>('offer_scenarios', companyId).filter((row) => row.offer_id === offer.id);
+    const baseScenario = scenarios.find((s) => s.scenario_type === 'base') || scenarios[0];
+    const projectNumber = `PRJ-${offer.offer_number || Date.now()}`;
+    const project = {
+      id: crypto.randomUUID(), company_id: companyId, offer_id: offer.id, project_number: projectNumber,
+      title: offer.title || 'New Project', customer_name: offer.customer_name || '', project_type: 'machine', complexity: 'medium', risk_level: 'medium',
+      contract_value: baseScenario?.selling_price || offer.contract_value || 0, margin_target: baseScenario?.margin_pct || offer.target_margin || 0,
+      total_budget: baseScenario?.total_cost || offer.total_cost || 0, scope_of_supply: offer.project_description || '', currency: offer.currency || 'EUR',
+      notes: `Auto-created from offer ${offer.offer_number}.`, status: 'planning', created_at: now, updated_at: now,
+    };
+    writeWorkspaceRows('projects', companyId, [project, ...readWorkspaceRows<any>('projects', companyId)]);
+    if (costBreakdowns.length > 0) {
+      const costsByCategory: Record<string, number> = {};
+      costBreakdowns.forEach((c) => { costsByCategory[c.category] = (costsByCategory[c.category] || 0) + (c.total_cost || 0); });
+      const rows = Object.entries(costsByCategory).map(([category, amount]) => ({
+        id: crypto.randomUUID(), project_id: project.id,
+        category: category === 'materials' ? 'procurement' : category === 'transport' ? 'travel' : category === 'indirect' ? 'overhead' : category,
+        line_item: `From offer: ${category}`, budget_amount: amount, actual_amount: 0, created_at: now,
+      }));
+      writeWorkspaceRows('project_costs', companyId, [...readWorkspaceRows<any>('project_costs', companyId), ...rows]);
+    }
+    return projectNumber;
   };
 
   const convertToProject = async (offer: any) => {
     if (!selectedCompanyId) return;
     setConvertingId(offer.id);
     try {
+      if (isLocalOffer(offer)) {
+        const projectNumber = convertLocalOfferToProject(offer);
+        loadOffers();
+        toast({ title: isEs ? 'Proyecto creado' : 'Project Created', description: isEs ? `Proyecto ${projectNumber} creado desde oferta. Redirigiendo...` : `Project ${projectNumber} created from offer. Redirecting...` });
+        setTimeout(() => navigate('/project-management'), 1000);
+        return;
+      }
       // Mark offer as won
       await supabase.from('offers').update({ status: 'won' }).eq('id', offer.id);
       await enqueuePipelineJob('offer_status_changed', offer.id, { status: 'won' });
@@ -760,7 +938,7 @@ export default function OfferPricingPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={saveOffer} disabled={saving || !offerTitle}>
+          <Button variant="outline" onClick={saveOffer} disabled={saving || !selectedCompanyId} title={!customerName ? (isEs ? 'Selecciona o crea un cliente para guardar' : 'Select or create a customer to save') : undefined}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
             {isEs ? 'Guardar' : 'Save'}
           </Button>
@@ -792,8 +970,8 @@ export default function OfferPricingPage() {
               <div>
                 <label className="text-sm font-medium text-foreground">{isEs ? 'Nº Oferta' : 'Offer #'}</label>
                 <div className="flex gap-1">
-                  <Input value={offerNumber} onChange={e => setOfferNumber(e.target.value)} placeholder="OFF-2026-001" />
-                  <Button variant="outline" size="icon" title={isEs ? 'Generar siguiente número' : 'Generate next number'} onClick={() => setOfferNumber(generateOfferNumber(savedOffers))}>
+                  <Input value={offerNumber} onChange={e => editOfferNumber(e.target.value)} placeholder="OFF-2026-001" />
+                  <Button variant="outline" size="icon" title={isEs ? 'Generar siguiente número' : 'Generate next number'} onClick={() => { offerNumberIsAuto.current = true; setOfferNumber(generateOfferNumber(savedOffers)); }}>
                     <Settings2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -801,7 +979,33 @@ export default function OfferPricingPage() {
               </div>
               <div>
                 <label className="text-sm font-medium text-foreground">{isEs ? 'Cliente' : 'Customer'}</label>
-                <Input value={customerName} onChange={e => setCustomerName(e.target.value)} />
+                {customerMode === 'existing' ? (
+                  <div className="flex gap-1">
+                    <Select value={customerName || '__none__'} onValueChange={(value) => { if (value === '__new__') { setCustomerMode('new'); } else { setCustomerName(value === '__none__' ? '' : value); } }}>
+                      <SelectTrigger aria-label={isEs ? 'Seleccionar cliente' : 'Select customer'}><SelectValue placeholder={isEs ? 'Selecciona un cliente' : 'Select a customer'} /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">{isEs ? '— Sin cliente —' : '— No customer —'}</SelectItem>
+                        {customerName && !knownCustomers.includes(customerName) ? <SelectItem value={customerName}>{customerName}</SelectItem> : null}
+                        {knownCustomers.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                        <SelectItem value="__new__">{isEs ? '+ Crear cliente nuevo' : '+ Create new customer'}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button variant="outline" size="icon" title={isEs ? 'Crear cliente nuevo' : 'Create new customer'} onClick={() => setCustomerMode('new')}><Plus className="h-4 w-4" /></Button>
+                  </div>
+                ) : (
+                  <div className="space-y-1 rounded-md border p-2 bg-muted/20">
+                    <Input className="h-8" aria-label={isEs ? 'Nombre del cliente' : 'Customer name'} placeholder={isEs ? 'Nombre del cliente *' : 'Customer name *'} value={newCustomer.name} onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })} />
+                    <div className="grid grid-cols-2 gap-1">
+                      <Input className="h-8" placeholder={isEs ? 'País' : 'Country'} value={newCustomer.country} onChange={(e) => setNewCustomer({ ...newCustomer, country: e.target.value })} />
+                      <Input className="h-8" placeholder={isEs ? 'Contacto' : 'Contact person'} value={newCustomer.contactName} onChange={(e) => setNewCustomer({ ...newCustomer, contactName: e.target.value })} />
+                    </div>
+                    <Input className="h-8" type="email" placeholder="Email" value={newCustomer.email} onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} />
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setCustomerMode('existing')}>{isEs ? 'Cancelar' : 'Cancel'}</Button>
+                      <Button size="sm" className="h-7 text-xs" onClick={createCustomer}>{isEs ? 'Crear y usar' : 'Create & use'}</Button>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="md:col-span-2">
                 <label className="text-sm font-medium text-foreground">{isEs ? 'Descripción del proyecto' : 'Project Description'}</label>
@@ -830,11 +1034,11 @@ export default function OfferPricingPage() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">{isEs ? 'Política de costes y plantilla' : 'Cost policy & template'}</CardTitle>
-              <CardDescription>{isEs ? 'Porcentajes editables que se añaden al coste directo. La garantía se aplica solo a Comercio e Ingeniería; estructura de materiales solo a Comercio; financiación y gestión comercial al coste directo total.' : 'Editable percentages added on top of the direct cost. Warranty applies only to Comercio and Engineering; material structure only to Comercio; finance and commercial management to the total direct cost.'}</CardDescription>
+              <CardDescription>{isEs ? 'Porcentajes editables que se añaden al coste directo. La garantía se aplica a Comercio, Ingeniería y Subcontratas; estructura de materiales solo a Comercio; financiación y gestión comercial al coste directo total.' : 'Editable percentages added on top of the direct cost. Warranty applies to Comercio, Engineering and Subcontratas; material structure only to Comercio; finance and commercial management to the total direct cost.'}</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {([
-                { field: 'warrantyPct', label: isEs ? 'Garantía %' : 'Warranty %', charge: totals.policyCharges.warranty, scope: isEs ? 'Comercio + Ingeniería' : 'Comercio + Engineering' },
+                { field: 'warrantyPct', label: isEs ? 'Garantía %' : 'Warranty %', charge: totals.policyCharges.warranty, scope: isEs ? 'Comercio + Ingeniería + Subcontratas' : 'Comercio + Engineering + Subcontratas' },
                 { field: 'financialPct', label: isEs ? 'Financiación %' : 'Finance %', charge: totals.policyCharges.financial, scope: isEs ? 'Coste directo' : 'Direct cost' },
                 { field: 'commercialMgmtPct', label: isEs ? 'Gestión comercial %' : 'Commercial mgmt. %', charge: totals.policyCharges.commercialMgmt, scope: isEs ? 'Coste directo' : 'Direct cost' },
                 { field: 'materialStructurePct', label: isEs ? 'Estructura materiales %' : 'Material structure %', charge: totals.policyCharges.materialStructure, scope: 'Comercio' },
