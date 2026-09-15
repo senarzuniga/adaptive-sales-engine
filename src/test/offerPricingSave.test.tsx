@@ -83,4 +83,33 @@ describe('Offer pricing save flow without Supabase', () => {
     const costRows = JSON.parse(localStorage.getItem(`acs_workspace_cost_breakdowns_${companyId}`) || '[]');
     expect(costRows.some((row: any) => row.category === 'materials' && row.total_cost === 1000)).toBe(true);
   }, 30000);
+
+  it('re-opens a saved offer in the builder and updates it in place', async () => {
+    const offerId = 'local-offer-1';
+    localStorage.setItem(`acs_workspace_offers_${companyId}`, JSON.stringify([{ id: offerId, company_id: companyId, offer_number: 'OFF-2026-200', title: 'Cascades - Palletizer', customer_name: 'Cascades', currency: 'EUR', status: 'draft', target_margin: 25, created_at: '2026-01-01T00:00:00.000Z', storage: 'local' }]));
+    localStorage.setItem(`acs_workspace_offer_items_${companyId}`, JSON.stringify([{ id: 'item-1', offer_id: offerId, item_name: 'HD Palletizer', item_type: 'product', quantity: 1, description: '' }]));
+    localStorage.setItem(`acs_workspace_cost_breakdowns_${companyId}`, JSON.stringify([{ id: 'cost-1', offer_item_id: 'item-1', category: 'materials', line_item: 'KUKA robots', quantity: 2, unit_cost: 35871.5, total_cost: 71743, surcharge_pct: 0, structure_pct: 0 }]));
+    renderPage();
+
+    const historyTab = await screen.findByRole('tab', { name: /history/i });
+    fireEvent.mouseDown(historyTab, { button: 0 });
+    fireEvent.click(historyTab);
+    fireEvent.click(await screen.findByLabelText('Edit offer OFF-2026-200'));
+
+    await waitFor(() => expect((screen.getByPlaceholderText('OFF-2026-001') as HTMLInputElement).value).toBe('OFF-2026-200'));
+    const lineItem = screen.getByDisplayValue('KUKA robots');
+    expect(lineItem).toBeTruthy();
+    fireEvent.change(screen.getByPlaceholderText('E.g: Assembly line'), { target: { value: 'Cascades - Dual Palletizer' } });
+    fireEvent.click(screen.getByRole('button', { name: /^update$/i }));
+
+    await waitFor(() => {
+      const offers = JSON.parse(localStorage.getItem(`acs_workspace_offers_${companyId}`) || '[]');
+      expect(offers).toHaveLength(1);
+      expect(offers[0].id).toBe(offerId);
+      expect(offers[0].title).toBe('Cascades - Dual Palletizer');
+      expect(offers[0].offer_number).toBe('OFF-2026-200');
+    }, { timeout: 15000 });
+    const costRows = JSON.parse(localStorage.getItem(`acs_workspace_cost_breakdowns_${companyId}`) || '[]');
+    expect(costRows.filter((row: any) => row.line_item === 'KUKA robots')).toHaveLength(1);
+  }, 30000);
 });

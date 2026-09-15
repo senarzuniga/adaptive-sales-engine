@@ -148,6 +148,7 @@ export default function OfferPricingPage() {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingOfferId, setEditingOfferId] = useState<string | null>(null);
   const [savedOffers, setSavedOffers] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('builder');
   const [companyRates, setCompanyRates] = useState<any[]>([]);
@@ -632,24 +633,26 @@ export default function OfferPricingPage() {
 
   // Persists the whole offer (header, items, cost lines, scenarios, scores) in the local workspace,
   // which is the same store the dashboard, KAM and project panels read when Supabase is unavailable.
+  // When editing, the previous rows of the same offer are replaced.
   const persistOfferLocally = (analysisToPersist: AnalysisResult | null, header: { title: string; number: string }) => {
     const companyId = selectedCompanyId as string;
     const now = new Date().toISOString();
+    const previous = editingOfferId ? readWorkspaceRows<any>('offers', companyId).find((row) => row.id === editingOfferId) : null;
     const offer = {
-      id: crypto.randomUUID(),
+      id: previous?.id || crypto.randomUUID(),
       company_id: companyId,
       offer_number: header.number,
       title: header.title,
       customer_name: customerName,
       project_description: projectDesc,
       currency,
-      status: 'draft',
+      status: previous?.status || 'draft',
       contract_value: Math.round(totals.sellingPrice),
       total_cost: Math.round(totals.total),
-      probability: 50,
+      probability: previous?.probability ?? 50,
       target_margin: targetMargin,
       cost_policy: pricingPolicy,
-      created_at: now,
+      created_at: previous?.created_at || now,
       updated_at: now,
       storage: 'local',
     };
@@ -662,23 +665,130 @@ export default function OfferPricingPage() {
         id: crypto.randomUUID(), offer_item_id: dbItem.id, category: cl.category, line_item: cl.lineItem,
         quantity: cl.quantity, unit_cost: cl.unitCost, total_cost: cl.totalCost, surcharge_pct: cl.surchargePct,
         structure_pct: cl.structurePct, hours: cl.hours, hourly_rate: cl.hourlyRate, days: cl.days, resources: cl.resources,
-        notes: cl.notes, installation: cl.installation || null, created_at: now,
+        notes: cl.notes, installation: cl.installation || null, linked_travel_line_id: cl.linkedTravelLineId || null, created_at: now,
       }));
     });
-    writeWorkspaceRows('offers', companyId, [offer, ...readWorkspaceRows<any>('offers', companyId)]);
-    writeWorkspaceRows('offer_items', companyId, [...readWorkspaceRows<any>('offer_items', companyId), ...offerItems]);
-    writeWorkspaceRows('cost_breakdowns', companyId, [...readWorkspaceRows<any>('cost_breakdowns', companyId), ...costRows]);
+    const oldItemIds = new Set(readWorkspaceRows<any>('offer_items', companyId).filter((row) => row.offer_id === offer.id).map((row) => row.id));
+    writeWorkspaceRows('offers', companyId, [offer, ...readWorkspaceRows<any>('offers', companyId).filter((row) => row.id !== offer.id)]);
+    writeWorkspaceRows('offer_items', companyId, [...readWorkspaceRows<any>('offer_items', companyId).filter((row) => row.offer_id !== offer.id), ...offerItems]);
+    writeWorkspaceRows('cost_breakdowns', companyId, [...readWorkspaceRows<any>('cost_breakdowns', companyId).filter((row) => !oldItemIds.has(row.offer_item_id)), ...costRows]);
     if (analysisToPersist) {
       writeWorkspaceRows('offer_scenarios', companyId, [
-        ...readWorkspaceRows<any>('offer_scenarios', companyId),
+        ...readWorkspaceRows<any>('offer_scenarios', companyId).filter((row) => row.offer_id !== offer.id),
         ...analysisToPersist.scenarios.map((s) => ({ id: crypto.randomUUID(), offer_id: offer.id, scenario_type: s.type, total_cost: s.totalCost, selling_price: s.sellingPrice, margin_amount: s.marginAmount, margin_pct: s.marginPct, risk_level: s.riskLevel, ai_analysis: { adjustments: s.adjustments }, created_at: now })),
       ]);
       writeWorkspaceRows('offer_scores', companyId, [
-        ...readWorkspaceRows<any>('offer_scores', companyId),
+        ...readWorkspaceRows<any>('offer_scores', companyId).filter((row) => row.offer_id !== offer.id),
         { id: crypto.randomUUID(), offer_id: offer.id, margin_score: analysisToPersist.scoring.marginScore, risk_score: analysisToPersist.scoring.riskScore, global_score: analysisToPersist.scoring.globalScore, risk_factors: analysisToPersist.riskFactors, recommendations: analysisToPersist.recommendations, ai_explanation: analysisToPersist.scoring.explanation, created_at: now },
       ]);
     }
+    setEditingOfferId(offer.id);
     return offer;
+  };
+
+  const resetBuilder = () => {
+    setEditingOfferId(null);
+    setOfferTitle('');
+    setCustomerName('');
+    setProjectDesc('');
+    setCurrency('EUR');
+    setTargetMargin(20);
+    setPricingPolicy(DEFAULT_INGECART_POLICY);
+    setAnalysis(null);
+    const firstItem: OfferItem = { id: crypto.randomUUID(), name: '', type: 'product', quantity: 1, description: '', costLines: CATEGORIES.map(c => newCostLine(c.value)) };
+    setItems([firstItem]);
+    setExpandedItems(new Set([firstItem.id]));
+    offerNumberIsAuto.current = true;
+    setOfferNumber(generateOfferNumber(savedOffers));
+    setActiveTab('builder');
+  };
+
+  // Rebuilds a builder cost line from a persisted cost_breakdowns row.
+  const rowToCostLine = (row: any): CostLine => ({
+    id: row.id || crypto.randomUUID(),
+    category: row.category,
+    lineItem: row.line_item || '',
+    quantity: Number(row.quantity ?? 1),
+    unitCost: Number(row.unit_cost || 0),
+    totalCost: Number(row.total_cost || 0),
+    surchargePct: Number(row.surcharge_pct || 0),
+    structurePct: Number(row.structure_pct || 0),
+    hours: Number(row.hours || 0),
+    hourlyRate: Number(row.hourly_rate || 0),
+    days: Number(row.days || 0),
+    resources: Number(row.resources || 0),
+    notes: row.notes || '',
+    installation: row.installation || undefined,
+    linkedTravelLineId: row.linked_travel_line_id || undefined,
+  });
+
+  // Loads a saved offer (local or remote) back into the builder for editing.
+  const loadOfferForEditing = async (offer: any) => {
+    if (!selectedCompanyId) return;
+    let offerItems: any[] = [];
+    let costRows: any[] = [];
+    if (isLocalOffer(offer)) {
+      offerItems = readWorkspaceRows<any>('offer_items', selectedCompanyId).filter((row) => row.offer_id === offer.id);
+      const itemIds = new Set(offerItems.map((row) => row.id));
+      costRows = readWorkspaceRows<any>('cost_breakdowns', selectedCompanyId).filter((row) => itemIds.has(row.offer_item_id));
+    } else {
+      const { data: remoteItems } = await supabase.from('offer_items').select('*').eq('offer_id', offer.id);
+      offerItems = remoteItems || [];
+      const itemIds = offerItems.map((row: any) => row.id);
+      if (itemIds.length > 0) {
+        const { data: remoteCosts } = await supabase.from('cost_breakdowns').select('*').in('offer_item_id', itemIds);
+        costRows = remoteCosts || [];
+      }
+    }
+    const builtItems: OfferItem[] = offerItems.map((row) => {
+      const lines = costRows.filter((cost) => cost.offer_item_id === row.id).map(rowToCostLine);
+      const present = new Set(lines.map((line) => line.category));
+      return {
+        id: row.id || crypto.randomUUID(),
+        name: row.item_name || '',
+        type: (row.item_type || 'product') as OfferItem['type'],
+        quantity: Number(row.quantity || 1),
+        description: row.description || '',
+        // Keep one empty line per missing category so every family stays editable.
+        costLines: [...lines, ...CATEGORIES.filter((c) => !present.has(c.value)).map((c) => newCostLine(c.value))],
+      };
+    });
+    const fallbackItem: OfferItem = { id: crypto.randomUUID(), name: '', type: 'product', quantity: 1, description: '', costLines: CATEGORIES.map(c => newCostLine(c.value)) };
+    const nextItems = builtItems.length > 0 ? builtItems : [fallbackItem];
+    setEditingOfferId(offer.id);
+    setOfferTitle(offer.title || '');
+    offerNumberIsAuto.current = false;
+    setOfferNumber(offer.offer_number || '');
+    setCustomerName(offer.customer_name || '');
+    setCustomerMode('existing');
+    setProjectDesc(offer.project_description || '');
+    setCurrency(offer.currency || 'EUR');
+    if (offer.target_margin !== undefined && offer.target_margin !== null) setTargetMargin(Number(offer.target_margin));
+    if (offer.cost_policy) setPricingPolicy({ ...DEFAULT_INGECART_POLICY, ...offer.cost_policy });
+    setAnalysis(null);
+    setItems(nextItems);
+    setExpandedItems(new Set(nextItems.map((item) => item.id)));
+    setActiveTab('builder');
+    toast({ title: isEs ? 'Oferta cargada para edición' : 'Offer loaded for editing', description: `${offer.offer_number || ''} ${offer.title || ''}`.trim() });
+  };
+
+  // Remote update: refresh the header and replace items/cost lines.
+  const updateRemoteOffer = async (header: { title: string; number: string }) => {
+    const offerId = editingOfferId as string;
+    const { data: updated, error } = await supabase.from('offers').update({
+      offer_number: header.number, title: header.title, customer_name: customerName,
+      project_description: projectDesc, currency, updated_at: new Date().toISOString(),
+    }).eq('id', offerId).select().single();
+    if (error) throw error;
+    const { data: oldItems } = await supabase.from('offer_items').select('id').eq('offer_id', offerId);
+    const oldIds = (oldItems || []).map((row: any) => row.id);
+    if (oldIds.length > 0) {
+      await supabase.from('cost_breakdowns').delete().in('offer_item_id', oldIds);
+      await supabase.from('offer_items').delete().eq('offer_id', offerId);
+    }
+    await supabase.from('offer_scenarios').delete().eq('offer_id', offerId);
+    await supabase.from('offer_scores').delete().eq('offer_id', offerId);
+    return updated;
   };
 
   const saveOffer = async () => {
@@ -717,13 +827,24 @@ export default function OfferPricingPage() {
       }
 
       let offer: any;
+      const editingLocal = editingOfferId ? savedOffers.find((row) => row.id === editingOfferId)?.storage === 'local' : false;
       try {
-        const { data: inserted, error: offerErr } = await supabase.from('offers').insert({
-          company_id: selectedCompanyId, offer_number: header.number, title: header.title,
-          customer_name: customerName, project_description: projectDesc, currency, status: 'draft',
-        }).select().single();
-        if (offerErr) throw offerErr;
-        offer = inserted;
+        if (editingOfferId && editingLocal) {
+          offer = persistOfferLocally(analysisToPersist, header);
+          toast({ title: isEs ? 'Oferta actualizada' : 'Offer updated', description: offer.offer_number });
+          loadOffers();
+          return;
+        }
+        if (editingOfferId) {
+          offer = await updateRemoteOffer(header);
+        } else {
+          const { data: inserted, error: offerErr } = await supabase.from('offers').insert({
+            company_id: selectedCompanyId, offer_number: header.number, title: header.title,
+            customer_name: customerName, project_description: projectDesc, currency, status: 'draft',
+          }).select().single();
+          if (offerErr) throw offerErr;
+          offer = inserted;
+        }
       } catch (remoteError: any) {
         // Remote store unavailable: never lose the offer, fall back to the local workspace.
         console.warn('[offers] remote save failed, persisting locally', remoteError);
@@ -940,7 +1061,7 @@ export default function OfferPricingPage() {
         <div className="flex gap-2">
           <Button variant="outline" onClick={saveOffer} disabled={saving || !selectedCompanyId} title={!customerName ? (isEs ? 'Selecciona o crea un cliente para guardar' : 'Select or create a customer to save') : undefined}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-            {isEs ? 'Guardar' : 'Save'}
+            {editingOfferId ? (isEs ? 'Actualizar' : 'Update') : (isEs ? 'Guardar' : 'Save')}
           </Button>
           <Button onClick={runAnalysis} disabled={analyzing}>
             {analyzing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Brain className="h-4 w-4 mr-2" />}
@@ -961,7 +1082,15 @@ export default function OfferPricingPage() {
         <TabsContent value="builder" className="space-y-4">
           {/* Offer header */}
           <Card>
-            <CardHeader><CardTitle className="text-lg">{isEs ? 'Datos de la Oferta' : 'Offer Details'}</CardTitle></CardHeader>
+            <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle className="text-lg">{isEs ? 'Datos de la Oferta' : 'Offer Details'}</CardTitle>
+              {editingOfferId ? (
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">{isEs ? 'Editando' : 'Editing'} {offerNumber}</Badge>
+                  <Button size="sm" variant="ghost" onClick={resetBuilder}><Plus className="h-3 w-3 mr-1" />{isEs ? 'Nueva oferta' : 'New offer'}</Button>
+                </div>
+              ) : null}
+            </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="text-sm font-medium text-foreground">{isEs ? 'Título' : 'Title'}</label>
@@ -1633,6 +1762,11 @@ export default function OfferPricingPage() {
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">{new Date(o.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                          <Button size="sm" variant="outline" onClick={() => void loadOfferForEditing(o)} aria-label={`Edit offer ${o.offer_number || o.id}`}>
+                            <Settings2 className="h-3 w-3 mr-1" />
+                            {isEs ? 'Editar' : 'Edit'}
+                          </Button>
                           {o.status !== 'won' ? (
                             <Button
                               size="sm"
@@ -1653,6 +1787,7 @@ export default function OfferPricingPage() {
                               {isEs ? 'Ver Proyecto' : 'View Project'}
                             </Button>
                           )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
