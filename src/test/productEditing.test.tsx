@@ -117,6 +117,41 @@ describe('Product ficha editing flow', () => {
     expect(screen.queryByLabelText('Edit Retal')).toBeNull();
   }, 20000);
 
+  it('saves an edited product as a new one and keeps the original untouched', async () => {
+    seedProducts([
+      { name: 'SR1400', type: 'equipment line', averageValue: 95000, estimatedCost: 55000, comments: 'scrap conveyor' },
+    ]);
+    renderPage();
+
+    await waitFor(() => expect(screen.getByLabelText('Edit SR1400')).toBeTruthy());
+    fireEvent.click(screen.getByLabelText('Edit SR1400'));
+
+    fireEvent.change(fieldInput('Name'), { target: { value: 'SR1400 HEAVY' } });
+    fireEvent.change(fieldInput('Reference estimated cost'), { target: { value: '72000' } });
+    fireEvent.click(screen.getByRole('button', { name: /save as new/i }));
+
+    await waitFor(() => {
+      const stored = readStoredProducts();
+      expect(stored.map((product) => product.name).sort()).toEqual(['SR1400', 'SR1400 HEAVY']);
+      expect(stored.find((product) => product.name === 'SR1400')?.estimatedCost).toBe(55000);
+      expect(stored.find((product) => product.name === 'SR1400 HEAVY')?.estimatedCost).toBe(72000);
+    });
+    await waitFor(() => expect(screen.getByLabelText('Edit SR1400 HEAVY')).toBeTruthy());
+  }, 20000);
+
+  it('duplicates a product with a unique name when the name is not changed', async () => {
+    seedProducts([{ name: 'Retal', type: 'equipment', averageValue: 12000, comments: 'scrap handling' }]);
+    renderPage();
+
+    await waitFor(() => expect(screen.getByLabelText('Edit Retal')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /^duplicate$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+
+    await waitFor(() => {
+      expect(readStoredProducts().map((product) => product.name).sort()).toEqual(['Retal', 'Retal (copy)']);
+    });
+  }, 20000);
+
   it('seeds canonical Ingecart profiles when the company has no catalog yet', async () => {
     seedProducts([]);
     renderPage();

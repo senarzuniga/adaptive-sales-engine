@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { VoiceTextInput } from '@/components/VoiceTextInput';
 import { toast } from '@/hooks/use-toast';
-import { BarChart3, CheckCircle2, ExternalLink, FileText, Lightbulb, Package, Pencil, Plus, RotateCcw, Save, Search, Sparkles, Target, Trash2, TrendingUp } from 'lucide-react';
+import { BarChart3, CheckCircle2, Copy, CopyPlus, ExternalLink, FileText, Lightbulb, Package, Pencil, Plus, RotateCcw, Save, Search, Sparkles, Target, Trash2, TrendingUp } from 'lucide-react';
 import { fmt } from '@/components/analysis360/AnalysisUtils';
 import {
   buildProductPositioningActions,
@@ -171,6 +171,8 @@ const ProductStrategyPage = () => {
   // Raw text of the specifications textarea while editing, so partial lines are not dropped mid-typing.
   const [specsText, setSpecsText] = useState<string | null>(null);
   const selectedNameRef = useRef<string | null>(null);
+  // Snapshot of the ficha as it was before edit mode started, so "Save as new" can restore the original.
+  const editBaselineRef = useRef<CatalogDraft | null>(null);
   // Canonical seeds are only offered once the active company's dataset has actually been loaded.
   const catalogReady = Boolean(activeCompanyId) && loadedCompanyId === activeCompanyId && !loading;
 
@@ -274,15 +276,48 @@ const ProductStrategyPage = () => {
     setSpecsText(null);
   };
 
+  const beginEditing = (draft: CatalogDraft | null) => {
+    editBaselineRef.current = draft ? (JSON.parse(JSON.stringify(draft)) as CatalogDraft) : null;
+  };
+
   const toggleEditing = () => {
     setSpecsText(null);
-    setIsEditing((prev) => !prev);
+    setIsEditing((prev) => {
+      if (!prev) beginEditing(selectedDraft);
+      return !prev;
+    });
   };
 
   const openForEditing = (draftId: string) => {
+    beginEditing(catalogDrafts.find((draft) => draft.draftId === draftId) || null);
     setSelectedDraftId(draftId);
     setSpecsText(null);
     setIsEditing(true);
+  };
+
+  const uniqueProductName = (baseName: string, drafts: CatalogDraft[], excludeDraftId?: string) => {
+    const taken = new Set(drafts.filter((draft) => draft.draftId !== excludeDraftId).map((draft) => normalizeName(draft.name)));
+    const root = baseName.trim() || 'New product';
+    if (!taken.has(normalizeName(root))) return root;
+    let candidate = `${root} (copy)`;
+    let counter = 2;
+    while (taken.has(normalizeName(candidate))) {
+      candidate = `${root} (copy ${counter})`;
+      counter += 1;
+    }
+    return candidate;
+  };
+
+  const duplicateCatalogItem = (draftId: string) => {
+    const source = catalogDrafts.find((draft) => draft.draftId === draftId);
+    if (!source) return;
+    const copy = toDraft({ ...normalizeDraft(source), name: uniqueProductName(source.name, catalogDrafts), source: 'manual', validated: false });
+    mutateDrafts((prev) => [...prev, copy]);
+    beginEditing(copy);
+    setSelectedDraftId(copy.draftId);
+    setSpecsText(null);
+    setIsEditing(true);
+    toast({ title: 'Product duplicated', description: `${copy.name} was created from ${source.name}. Adjust it and save the catalog.` });
   };
 
   const addCatalogItem = (category: 'product' | 'service') => {
@@ -329,19 +364,20 @@ const ProductStrategyPage = () => {
     setIsDirty(false);
     setIsEditing(false);
     setSpecsText(null);
+    editBaselineRef.current = null;
     toast({ title: 'Changes discarded', description: 'The catalog was restored from the last saved version.' });
   };
 
-  const saveCatalog = async () => {
+  const saveCatalog = async (draftsToSave: CatalogDraft[] = catalogDrafts) => {
     if (!activeCompanyId) {
       toast({ title: 'Select a company first', description: 'The catalog is stored per company. Choose or create a company before saving.', variant: 'destructive' });
-      return;
+      return false;
     }
-    const cleanRecords = catalogProducts.filter((product) => product.name.trim().length > 0);
+    const cleanRecords = draftsToSave.map(normalizeDraft).filter((product) => product.name.trim().length > 0);
     const duplicated = cleanRecords.map((product) => normalizeName(product.name)).filter((name, index, names) => names.indexOf(name) !== index);
     if (duplicated.length > 0) {
       toast({ title: 'Duplicated product names', description: `Rename or remove duplicates before saving: ${Array.from(new Set(duplicated)).join(', ')}.`, variant: 'destructive' });
-      return;
+      return false;
     }
     setIsSaving(true);
     try {
@@ -349,13 +385,37 @@ const ProductStrategyPage = () => {
       setIsEditing(false);
       setIsDirty(false);
       setSpecsText(null);
+      editBaselineRef.current = null;
       toast({ title: 'Catalog saved', description: `${cleanRecords.length} products/services are now available for offer selection.` });
+      return true;
     } catch (error) {
       console.error('Unable to save product catalog', error);
       toast({ title: 'Could not save catalog', description: 'The changes remain in this screen, but they were not persisted. Try again.', variant: 'destructive' });
+      return false;
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Persists the edited ficha as a brand-new product and restores the original one untouched.
+  const saveAsNewProduct = async () => {
+    if (!selectedDraft) return;
+    const baseline = editBaselineRef.current && editBaselineRef.current.draftId === selectedDraft.draftId ? editBaselineRef.current : null;
+    const edited = normalizeDraft(selectedDraft);
+    const restoredDrafts = baseline
+      ? catalogDrafts.map((draft) => (draft.draftId === selectedDraft.draftId ? baseline : draft))
+      : catalogDrafts.filter((draft) => draft.draftId !== selectedDraft.draftId);
+    const newDraft = toDraft({
+      ...edited,
+      name: uniqueProductName(edited.name || baseline?.name || 'Product', restoredDrafts),
+      source: 'manual',
+    });
+    const nextDrafts = [...restoredDrafts, newDraft];
+    selectedNameRef.current = newDraft.name;
+    setCatalogDrafts(nextDrafts);
+    setSelectedDraftId(newDraft.draftId);
+    const saved = await saveCatalog(nextDrafts);
+    if (saved) toast({ title: 'Saved as new product', description: `${newDraft.name} was created${baseline ? ` and ${baseline.name} was kept unchanged` : ''}.` });
   };
 
   const persistActionTask = async (action: ProductPositionAction, evaluation?: ProductActionEvaluation) => {
@@ -498,6 +558,8 @@ const ProductStrategyPage = () => {
                         <div className="flex flex-wrap gap-2">
                           <Button variant={isEditing ? 'secondary' : 'outline'} onClick={toggleEditing}><Pencil className="h-4 w-4 mr-2" />{isEditing ? 'Finish editing' : 'Edit'}</Button>
                           {isEditing ? <Button onClick={() => void saveCatalog()} disabled={isSaving}><Save className="h-4 w-4 mr-2" />{isSaving ? 'Saving...' : 'Save changes'}</Button> : null}
+                          {isEditing ? <Button variant="outline" onClick={() => void saveAsNewProduct()} disabled={isSaving} title="Keep the original product and store these edits as a new product"><CopyPlus className="h-4 w-4 mr-2" />Save as new</Button> : null}
+                          {!isEditing ? <Button variant="outline" onClick={() => duplicateCatalogItem(selectedDraft.draftId)} title="Create an editable copy of this product"><Copy className="h-4 w-4 mr-2" />Duplicate</Button> : null}
                           {isDirty ? <Button variant="outline" onClick={discardChanges}><RotateCcw className="h-4 w-4 mr-2" />Discard</Button> : null}
                           {isEditing ? <Button variant="destructive" onClick={() => removeCatalogItem(selectedDraft.draftId)}><Trash2 className="h-4 w-4 mr-2" />Remove</Button> : null}
                         </div>
