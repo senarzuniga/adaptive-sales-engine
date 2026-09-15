@@ -152,6 +152,32 @@ describe('Product ficha editing flow', () => {
     });
   }, 20000);
 
+  it('enables a detailed installation plan on a preset line and persists labour + travel parameters', async () => {
+    seedProducts([
+      { name: 'SR1400', type: 'equipment line', averageValue: 95000, comments: 'scrap conveyor', costPreset: [{ category: 'installation', lineItem: 'SR1400 installation', mode: 'installation', days: 8, resources: 2, unitCost: 550 }] },
+    ]);
+    renderPage();
+
+    await waitFor(() => expect(screen.getByLabelText('Edit SR1400')).toBeTruthy());
+    fireEvent.click(screen.getByLabelText('Edit SR1400'));
+
+    fireEvent.click(screen.getByLabelText('Detailed installation plan SR1400 installation'));
+    await waitFor(() => expect(screen.getByTestId('preset-0-planner')).toBeTruthy());
+    // 8 d x 2 tech x (10 h x 65 + 80 + 20) = 12,000 labour; car with 0 km + 8 nights x 2 x 120 = 1,920 travel
+    expect(screen.getByTestId('preset-0-labor').textContent).toContain('12,000');
+    expect(screen.getByTestId('preset-0-travel').textContent).toContain('1,920');
+
+    fireEvent.change(fieldInput('Km per round trip'), { target: { value: '400' } });
+    await waitFor(() => expect(screen.getByTestId('preset-0-travel').textContent).toContain('2,200'));
+
+    fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+    await waitFor(() => {
+      const stored = readStoredProducts().find((product) => product.name === 'SR1400');
+      expect(stored?.costPreset?.[0]?.installation?.distanceKm).toBe(400);
+      expect(stored?.costPreset?.[0]?.installation?.days).toBe(8);
+    });
+  }, 20000);
+
   it('seeds canonical Ingecart profiles when the company has no catalog yet', async () => {
     seedProducts([]);
     renderPage();

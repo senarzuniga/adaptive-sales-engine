@@ -1,3 +1,5 @@
+import type { InstallationPlan } from '@/lib/installationCost';
+
 export type ProductCategory = 'product' | 'service';
 
 export type ProductCostMode = 'unit' | 'engineering' | 'installation';
@@ -18,6 +20,8 @@ export interface ProductCostPresetLine {
   optional?: boolean;
   scalesWithLength?: boolean;
   unitsPerLengthM?: number;
+  /** Detailed labour + travel plan; when present it supersedes days x resources x unitCost. */
+  installation?: InstallationPlan;
 }
 
 export interface ProductCompetitorBenchmark {
@@ -108,6 +112,7 @@ function cleanCostPreset(costPreset?: ProductCostPresetLine[]) {
     optional: line.optional ? true : undefined,
     scalesWithLength: line.scalesWithLength ? true : undefined,
     unitsPerLengthM: Number.isFinite(line.unitsPerLengthM) ? Number(line.unitsPerLengthM) : undefined,
+    installation: line.installation && typeof line.installation === 'object' ? { ...line.installation } : undefined,
   })).filter((line) => line.lineItem);
 }
 

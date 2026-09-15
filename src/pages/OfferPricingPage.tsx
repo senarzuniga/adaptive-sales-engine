@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useData } from '@/store/DataStore';
@@ -23,6 +23,8 @@ import { buildFallbackOfferAnalysis, classifyEdgeRuntimeError, invokeEdgeWithRet
 import { inferProductCategory } from '@/lib/productCatalog';
 import { buildOfferCostPreset, mergeProductWithKnowledge } from '@/lib/productKnowledge';
 import { DEFAULT_INGECART_POLICY, buildIngecartOfferTemplate } from '@/lib/utils';
+import { InstallationPlanner } from '@/components/costs/InstallationPlanner';
+import { computeInstallationCost, createInstallationPlan, describeInstallationPlan, type InstallationPlan } from '@/lib/installationCost';
 
 type CostLine = {
   id: string;
@@ -37,6 +39,10 @@ type CostLine = {
   days: number;
   resources: number;
   notes: string;
+  /** Detailed labour + travel plan for installation lines. */
+  installation?: InstallationPlan;
+  /** Transport line that carries the travel & expenses of this installation plan. */
+  linkedTravelLineId?: string;
 };
 
 type OfferItem = {
@@ -217,6 +223,69 @@ export default function OfferPricingPage() {
       notes: line.notes || '',
     };
   };
+
+  // Builds the labour line (installation) and its linked travel & expenses line (transport) from a plan.
+  const buildInstallationLines = (plan: InstallationPlan, base: Partial<CostLine> & { lineItem: string }, existing?: { laborId?: string; travelId?: string }): { labor: CostLine; travel: CostLine } => {
+    const result = computeInstallationCost(plan, pricingPolicy);
+    const travelId = existing?.travelId || crypto.randomUUID();
+    const labor: CostLine = {
+      ...newCostLine('installation'),
+      ...base,
+      id: existing?.laborId || crypto.randomUUID(),
+      category: 'installation',
+      quantity: 1,
+      days: plan.days,
+      resources: plan.resources,
+      unitCost: Math.round(result.laborPerResourceDay * 100) / 100,
+      surchargePct: 0,
+      totalCost: result.labor,
+      notes: describeInstallationPlan(plan, result),
+      installation: plan,
+      linkedTravelLineId: travelId,
+    };
+    const travel: CostLine = {
+      ...newCostLine('transport'),
+      id: travelId,
+      lineItem: `${base.lineItem || 'Installation'} - travel & expenses`,
+      quantity: 1,
+      unitCost: result.travel,
+      totalCost: result.travel,
+      notes: result.breakdown.filter((entry) => entry.group === 'travel').map((entry) => `${entry.label}: ${Math.round(entry.amount)} EUR`).join(' | '),
+    };
+    return { labor, travel };
+  };
+
+  const presetLinesToCostLines = (presetLines: ReturnType<typeof buildOfferCostPreset>): CostLine[] =>
+    presetLines.flatMap((line) => {
+      if (line.category === 'installation' && line.installation) {
+        const { labor, travel } = buildInstallationLines(line.installation, { lineItem: line.lineItem });
+        return [labor, travel];
+      }
+      return [presetLineToCostLine(line)];
+    });
+
+  const [plannerLineId, setPlannerLineId] = useState<string | null>(null);
+
+  const applyInstallationPlan = (itemId: string, lineId: string, plan: InstallationPlan | null) => {
+    setItems((prev) => prev.map((item) => {
+      if (item.id !== itemId) return item;
+      const current = item.costLines.find((cl) => cl.id === lineId);
+      if (!current) return item;
+      if (!plan) {
+        const base = current.days * current.resources * current.unitCost;
+        return {
+          ...item,
+          costLines: item.costLines
+            .filter((cl) => cl.id !== current.linkedTravelLineId)
+            .map((cl) => (cl.id === lineId ? { ...cl, installation: undefined, linkedTravelLineId: undefined, totalCost: base + (base * cl.surchargePct / 100) } : cl)),
+        };
+      }
+      const { labor, travel } = buildInstallationLines(plan, { lineItem: current.lineItem || 'Installation' }, { laborId: current.id, travelId: current.linkedTravelLineId });
+      const hasTravel = item.costLines.some((cl) => cl.id === travel.id);
+      const costLines = item.costLines.map((cl) => (cl.id === lineId ? labor : cl.id === travel.id ? travel : cl));
+      return { ...item, costLines: hasTravel ? costLines : [...costLines, travel] };
+    }));
+  };
   const applyIngecartOfferTemplate = () => {
     const template = buildIngecartOfferTemplate(customerName || 'Ingecart 2018 SL', projectDesc || 'Industrial automation and installation project');
     setOfferTitle(template.projectName);
@@ -238,7 +307,7 @@ export default function OfferPricingPage() {
       includeInstallation: catalogIncludeInstallation,
     });
     const costLines = presetLines.length > 0
-      ? presetLines.map(presetLineToCostLine)
+      ? presetLinesToCostLines(presetLines)
       : CATEGORIES.map((cat) => {
           const fallbackCategory = category === 'service' ? 'engineering' : 'materials';
           const unitCost = Number(selected.estimatedCost || selected.averageValue || 0);
@@ -306,9 +375,12 @@ export default function OfferPricingPage() {
   };
 
   const removeCostLine = (itemId: string, lineId: string) => {
-    setItems(prev => prev.map(item =>
-      item.id === itemId ? { ...item, costLines: item.costLines.filter(cl => cl.id !== lineId) } : item
-    ));
+    setItems(prev => prev.map(item => {
+      if (item.id !== itemId) return item;
+      const target = item.costLines.find(cl => cl.id === lineId);
+      const idsToDrop = new Set([lineId, target?.linkedTravelLineId].filter(Boolean) as string[]);
+      return { ...item, costLines: item.costLines.filter(cl => !idsToDrop.has(cl.id)) };
+    }));
   };
 
   const totals = useMemo(() => {
@@ -739,7 +811,7 @@ export default function OfferPricingPage() {
                 <div className="flex flex-col md:flex-row gap-2">
                   <Select value={catalogSelection} onValueChange={setCatalogSelection}>
                     <SelectTrigger className="md:flex-1">
-                      <SelectValue placeholder={isEs ? 'Seleccionar del catálogo' : 'Select from catalog'} />
+                      <SelectValue placeholder={isEs ? 'Seleccionar del catï¿½logo' : 'Select from catalog'} />
                     </SelectTrigger>
                     <SelectContent>
                       {data.products
@@ -753,7 +825,7 @@ export default function OfferPricingPage() {
                   </Select>
                   <Button variant="outline" onClick={addCatalogItem} disabled={!catalogSelection}>
                     <Plus className="h-4 w-4 mr-2" />
-                    {isEs ? 'Añadir del catálogo' : 'Add from catalog'}
+                    {isEs ? 'Aï¿½adir del catï¿½logo' : 'Add from catalog'}
                   </Button>
                 </div>
                 {selectedCatalogProduct ? (
@@ -765,12 +837,12 @@ export default function OfferPricingPage() {
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-foreground">{isEs ? 'Longitud de referencia (m)' : 'Reference length (m)'}</label>
                       <Input type="number" min={1} value={catalogLengthM} onChange={e => setCatalogLengthM(Number(e.target.value || selectedCatalogProduct.defaultLengthM || 80))} disabled={!selectedCatalogProduct.configurableByLength} />
-                      <p className="text-xs text-muted-foreground">{selectedCatalogProduct.configurableByLength ? (isEs ? 'Este producto ajusta materiales según la longitud seleccionada.' : 'This product scales material costs with the selected length.') : (isEs ? 'Producto con preset fijo de costes.' : 'Product with fixed cost preset.')}</p>
+                      <p className="text-xs text-muted-foreground">{selectedCatalogProduct.configurableByLength ? (isEs ? 'Este producto ajusta materiales segï¿½n la longitud seleccionada.' : 'This product scales material costs with the selected length.') : (isEs ? 'Producto con preset fijo de costes.' : 'Product with fixed cost preset.')}</p>
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-foreground">{isEs ? 'Opciones de preset' : 'Preset options'}</label>
-                      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={catalogIncludeInstallation} onChange={e => setCatalogIncludeInstallation(e.target.checked)} />{isEs ? 'Incluir instalación' : 'Include installation'}</label>
-                      <p className="text-xs text-muted-foreground">{isEs ? 'Al añadir el producto se cargarán sus líneas de coste reutilizables en la oferta.' : 'Adding the product loads its reusable cost lines into the offer.'}</p>
+                      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={catalogIncludeInstallation} onChange={e => setCatalogIncludeInstallation(e.target.checked)} />{isEs ? 'Incluir instalaciï¿½n' : 'Include installation'}</label>
+                      <p className="text-xs text-muted-foreground">{isEs ? 'Al aï¿½adir el producto se cargarï¿½n sus lï¿½neas de coste reutilizables en la oferta.' : 'Adding the product loads its reusable cost lines into the offer.'}</p>
                     </div>
                   </div>
                 ) : null}
@@ -874,7 +946,8 @@ export default function OfferPricingPage() {
                               </TableHeader>
                               <TableBody>
                                 {lines.map(cl => (
-                                  <TableRow key={cl.id}>
+                                  <React.Fragment key={cl.id}>
+                                  <TableRow>
                                     <TableCell>
                                       <Input className="h-8 text-xs" value={cl.lineItem} onChange={e => updateCostLine(item.id, cl.id, 'lineItem', e.target.value)} />
                                     </TableCell>
@@ -885,10 +958,26 @@ export default function OfferPricingPage() {
                                       </>
                                     ) : cat.value === 'installation' ? (
                                       <>
-                                        <TableCell><Input className="h-8 text-xs w-16" type="number" value={cl.days} onChange={e => updateCostLine(item.id, cl.id, 'days', Number(e.target.value))} /></TableCell>
-                                        <TableCell><Input className="h-8 text-xs w-16" type="number" value={cl.resources} onChange={e => updateCostLine(item.id, cl.id, 'resources', Number(e.target.value))} /></TableCell>
-                                        <TableCell><Input className="h-8 text-xs w-20" type="number" value={cl.unitCost} onChange={e => updateCostLine(item.id, cl.id, 'unitCost', Number(e.target.value))} /></TableCell>
-                                        <TableCell><Input className="h-8 text-xs w-16" type="number" value={cl.surchargePct} onChange={e => updateCostLine(item.id, cl.id, 'surchargePct', Number(e.target.value))} /></TableCell>
+                                        <TableCell><Input className="h-8 text-xs w-16" type="number" value={cl.days} disabled={Boolean(cl.installation)} onChange={e => updateCostLine(item.id, cl.id, 'days', Number(e.target.value))} /></TableCell>
+                                        <TableCell><Input className="h-8 text-xs w-16" type="number" value={cl.resources} disabled={Boolean(cl.installation)} onChange={e => updateCostLine(item.id, cl.id, 'resources', Number(e.target.value))} /></TableCell>
+                                        <TableCell><Input className="h-8 text-xs w-20" type="number" value={cl.unitCost} disabled={Boolean(cl.installation)} onChange={e => updateCostLine(item.id, cl.id, 'unitCost', Number(e.target.value))} /></TableCell>
+                                        <TableCell>
+                                          <div className="flex items-center gap-1">
+                                            <Input className="h-8 text-xs w-16" type="number" value={cl.surchargePct} disabled={Boolean(cl.installation)} onChange={e => updateCostLine(item.id, cl.id, 'surchargePct', Number(e.target.value))} />
+                                            <Button
+                                              variant={cl.installation ? 'secondary' : 'outline'}
+                                              size="sm"
+                                              className="h-8 text-xs whitespace-nowrap"
+                                              title={isEs ? 'Planificar mano de obra, dietas y viÃ¡ticos' : 'Plan labour, per diem and travel expenses'}
+                                              onClick={() => {
+                                                if (!cl.installation) applyInstallationPlan(item.id, cl.id, createInstallationPlan({ days: cl.days || 1, resources: cl.resources || 1 }));
+                                                setPlannerLineId(plannerLineId === cl.id ? null : cl.id);
+                                              }}
+                                            >
+                                              <Settings2 className="h-3 w-3 mr-1" />{isEs ? 'Planificar' : 'Planner'}
+                                            </Button>
+                                          </div>
+                                        </TableCell>
                                       </>
                                     ) : (
                                       <>
@@ -904,6 +993,27 @@ export default function OfferPricingPage() {
                                       </Button>
                                     </TableCell>
                                   </TableRow>
+                                  {cat.value === 'installation' && cl.installation && plannerLineId === cl.id ? (
+                                    <TableRow>
+                                      <TableCell colSpan={7} className="bg-muted/20">
+                                        <div className="space-y-2">
+                                          <InstallationPlanner
+                                            idPrefix={`offer-${cl.id}`}
+                                            plan={cl.installation}
+                                            policy={pricingPolicy}
+                                            onChange={(plan) => applyInstallationPlan(item.id, cl.id, plan)}
+                                          />
+                                          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                                            <span>{isEs ? 'La mano de obra queda en esta lÃ­nea; los viÃ¡ticos se cargan en la lÃ­nea vinculada de Transporte y LogÃ­stica.' : 'Labour stays on this line; travel & expenses are carried by the linked Transport & Logistics line.'}</span>
+                                            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { applyInstallationPlan(item.id, cl.id, null); setPlannerLineId(null); }}>
+                                              {isEs ? 'Quitar plan detallado' : 'Remove detailed plan'}
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                  ) : null}
+                                  </React.Fragment>
                                 ))}
                               </TableBody>
                             </Table>
@@ -1136,7 +1246,7 @@ export default function OfferPricingPage() {
                 <div className="flex flex-col md:flex-row gap-2">
                   <Select value={catalogSelection} onValueChange={setCatalogSelection}>
                     <SelectTrigger className="md:flex-1">
-                      <SelectValue placeholder={isEs ? 'Seleccionar del catálogo' : 'Select from catalog'} />
+                      <SelectValue placeholder={isEs ? 'Seleccionar del catï¿½logo' : 'Select from catalog'} />
                     </SelectTrigger>
                     <SelectContent>
                       {data.products
@@ -1150,7 +1260,7 @@ export default function OfferPricingPage() {
                   </Select>
                   <Button variant="outline" onClick={addCatalogItem} disabled={!catalogSelection}>
                     <Plus className="h-4 w-4 mr-2" />
-                    {isEs ? 'Añadir del catálogo' : 'Add from catalog'}
+                    {isEs ? 'Aï¿½adir del catï¿½logo' : 'Add from catalog'}
                   </Button>
                 </div>
                 {selectedCatalogProduct ? (
@@ -1162,12 +1272,12 @@ export default function OfferPricingPage() {
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-foreground">{isEs ? 'Longitud de referencia (m)' : 'Reference length (m)'}</label>
                       <Input type="number" min={1} value={catalogLengthM} onChange={e => setCatalogLengthM(Number(e.target.value || selectedCatalogProduct.defaultLengthM || 80))} disabled={!selectedCatalogProduct.configurableByLength} />
-                      <p className="text-xs text-muted-foreground">{selectedCatalogProduct.configurableByLength ? (isEs ? 'Este producto ajusta materiales según la longitud seleccionada.' : 'This product scales material costs with the selected length.') : (isEs ? 'Producto con preset fijo de costes.' : 'Product with fixed cost preset.')}</p>
+                      <p className="text-xs text-muted-foreground">{selectedCatalogProduct.configurableByLength ? (isEs ? 'Este producto ajusta materiales segï¿½n la longitud seleccionada.' : 'This product scales material costs with the selected length.') : (isEs ? 'Producto con preset fijo de costes.' : 'Product with fixed cost preset.')}</p>
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-foreground">{isEs ? 'Opciones de preset' : 'Preset options'}</label>
-                      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={catalogIncludeInstallation} onChange={e => setCatalogIncludeInstallation(e.target.checked)} />{isEs ? 'Incluir instalación' : 'Include installation'}</label>
-                      <p className="text-xs text-muted-foreground">{isEs ? 'Al añadir el producto se cargarán sus líneas de coste reutilizables en la oferta.' : 'Adding the product loads its reusable cost lines into the offer.'}</p>
+                      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={catalogIncludeInstallation} onChange={e => setCatalogIncludeInstallation(e.target.checked)} />{isEs ? 'Incluir instalaciï¿½n' : 'Include installation'}</label>
+                      <p className="text-xs text-muted-foreground">{isEs ? 'Al aï¿½adir el producto se cargarï¿½n sus lï¿½neas de coste reutilizables en la oferta.' : 'Adding the product loads its reusable cost lines into the offer.'}</p>
                     </div>
                   </div>
                 ) : null}
@@ -1181,7 +1291,7 @@ export default function OfferPricingPage() {
                 <div className="flex flex-col md:flex-row gap-2">
                   <Select value={catalogSelection} onValueChange={setCatalogSelection}>
                     <SelectTrigger className="md:flex-1">
-                      <SelectValue placeholder={isEs ? 'Seleccionar del catálogo' : 'Select from catalog'} />
+                      <SelectValue placeholder={isEs ? 'Seleccionar del catï¿½logo' : 'Select from catalog'} />
                     </SelectTrigger>
                     <SelectContent>
                       {data.products
@@ -1195,7 +1305,7 @@ export default function OfferPricingPage() {
                   </Select>
                   <Button variant="outline" onClick={addCatalogItem} disabled={!catalogSelection}>
                     <Plus className="h-4 w-4 mr-2" />
-                    {isEs ? 'Añadir del catálogo' : 'Add from catalog'}
+                    {isEs ? 'Aï¿½adir del catï¿½logo' : 'Add from catalog'}
                   </Button>
                 </div>
                 {selectedCatalogProduct ? (
@@ -1207,12 +1317,12 @@ export default function OfferPricingPage() {
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-foreground">{isEs ? 'Longitud de referencia (m)' : 'Reference length (m)'}</label>
                       <Input type="number" min={1} value={catalogLengthM} onChange={e => setCatalogLengthM(Number(e.target.value || selectedCatalogProduct.defaultLengthM || 80))} disabled={!selectedCatalogProduct.configurableByLength} />
-                      <p className="text-xs text-muted-foreground">{selectedCatalogProduct.configurableByLength ? (isEs ? 'Este producto ajusta materiales según la longitud seleccionada.' : 'This product scales material costs with the selected length.') : (isEs ? 'Producto con preset fijo de costes.' : 'Product with fixed cost preset.')}</p>
+                      <p className="text-xs text-muted-foreground">{selectedCatalogProduct.configurableByLength ? (isEs ? 'Este producto ajusta materiales segï¿½n la longitud seleccionada.' : 'This product scales material costs with the selected length.') : (isEs ? 'Producto con preset fijo de costes.' : 'Product with fixed cost preset.')}</p>
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-foreground">{isEs ? 'Opciones de preset' : 'Preset options'}</label>
-                      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={catalogIncludeInstallation} onChange={e => setCatalogIncludeInstallation(e.target.checked)} />{isEs ? 'Incluir instalación' : 'Include installation'}</label>
-                      <p className="text-xs text-muted-foreground">{isEs ? 'Al añadir el producto se cargarán sus líneas de coste reutilizables en la oferta.' : 'Adding the product loads its reusable cost lines into the offer.'}</p>
+                      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={catalogIncludeInstallation} onChange={e => setCatalogIncludeInstallation(e.target.checked)} />{isEs ? 'Incluir instalaciï¿½n' : 'Include installation'}</label>
+                      <p className="text-xs text-muted-foreground">{isEs ? 'Al aï¿½adir el producto se cargarï¿½n sus lï¿½neas de coste reutilizables en la oferta.' : 'Adding the product loads its reusable cost lines into the offer.'}</p>
                     </div>
                   </div>
                 ) : null}

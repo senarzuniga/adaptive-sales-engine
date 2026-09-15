@@ -24,7 +24,9 @@ import {
 } from '@/lib/productStrategy';
 import { runProductAnalysisAgent, type ProductStrategicSignals, runProductSearchAgent } from '@/agents/productCatalogAgents';
 import { inferProductCategory, type ProductCostPresetLine } from '@/lib/productCatalog';
-import { buildProductIntelligence, buildSeedProductCatalog, estimateProductPresetCost, mergeProductWithKnowledge } from '@/lib/productKnowledge';
+import { buildProductIntelligence, buildSeedProductCatalog, estimateProductPresetCost, mergeProductWithKnowledge, presetLineTotal as presetLineTotalWithPolicy } from '@/lib/productKnowledge';
+import { InstallationPlanner } from '@/components/costs/InstallationPlanner';
+import { createInstallationPlan } from '@/lib/installationCost';
 
 type CatalogDraft = ProductRecord & { draftId: string };
 type Dossier = NonNullable<ProductRecord['technicalDossier']>;
@@ -125,11 +127,7 @@ const buildDraftsFromStore = (products: ProductRecord[], seedWhenEmpty: boolean)
   products.length === 0 && seedWhenEmpty ? buildSeedProductCatalog([]) : products
 ).map(toDraft);
 
-const presetLineTotal = (line: ProductCostPresetLine) => {
-  if (line.mode === 'engineering') return (line.hours || 0) * (line.hourlyRate || 0);
-  if (line.mode === 'installation') return (line.days || 0) * (line.resources || 0) * (line.unitCost || 0);
-  return (line.quantity || 0) * (line.unitCost || 0);
-};
+const presetLineTotal = (line: ProductCostPresetLine) => presetLineTotalWithPolicy(line);
 
 const newCostPresetLine = (category: ProductCostPresetLine['category'] = 'materials'): ProductCostPresetLine => ({
   category,
@@ -674,11 +672,36 @@ const ProductStrategyPage = () => {
                                   <div><label className="text-xs text-muted-foreground">Hours</label><Input type="number" value={line.hours || 0} onChange={(e) => updateCostPresetLine(selectedDraft.draftId, index, { hours: Number(e.target.value || 0) })} disabled={!isEditing || line.mode !== 'engineering'} /></div>
                                   <div><label className="text-xs text-muted-foreground">Hourly rate</label><Input type="number" value={line.hourlyRate || 0} onChange={(e) => updateCostPresetLine(selectedDraft.draftId, index, { hourlyRate: Number(e.target.value || 0) })} disabled={!isEditing || line.mode !== 'engineering'} /></div>
                                   <div><label className="text-xs text-muted-foreground">Scale per meter</label><Input type="number" value={line.unitsPerLengthM || 0} onChange={(e) => updateCostPresetLine(selectedDraft.draftId, index, { unitsPerLengthM: Number(e.target.value || 0), scalesWithLength: Number(e.target.value || 0) > 0 })} disabled={!isEditing} /></div>
-                                  <div><label className="text-xs text-muted-foreground">Days</label><Input type="number" value={line.days || 0} onChange={(e) => updateCostPresetLine(selectedDraft.draftId, index, { days: Number(e.target.value || 0) })} disabled={!isEditing || line.mode !== 'installation'} /></div>
-                                  <div><label className="text-xs text-muted-foreground">Resources</label><Input type="number" value={line.resources || 0} onChange={(e) => updateCostPresetLine(selectedDraft.draftId, index, { resources: Number(e.target.value || 0) })} disabled={!isEditing || line.mode !== 'installation'} /></div>
+                                  <div><label className="text-xs text-muted-foreground">Days</label><Input type="number" value={line.days || 0} onChange={(e) => updateCostPresetLine(selectedDraft.draftId, index, { days: Number(e.target.value || 0) })} disabled={!isEditing || line.mode !== 'installation' || Boolean(line.installation)} /></div>
+                                  <div><label className="text-xs text-muted-foreground">Resources</label><Input type="number" value={line.resources || 0} onChange={(e) => updateCostPresetLine(selectedDraft.draftId, index, { resources: Number(e.target.value || 0) })} disabled={!isEditing || line.mode !== 'installation' || Boolean(line.installation)} /></div>
                                   <div><label className="text-xs text-muted-foreground">Optional</label><div className="pt-2"><Checkbox checked={Boolean(line.optional)} onCheckedChange={(checked) => updateCostPresetLine(selectedDraft.draftId, index, { optional: Boolean(checked) })} disabled={!isEditing} /></div></div>
                                   <div><label className="text-xs text-muted-foreground">Notes</label><Input value={line.notes || ''} onChange={(e) => updateCostPresetLine(selectedDraft.draftId, index, { notes: e.target.value })} disabled={!isEditing} /></div>
                                 </div>
+                                {line.mode === 'installation' ? (
+                                  <div className="space-y-2">
+                                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                                      <Checkbox
+                                        checked={Boolean(line.installation)}
+                                        disabled={!isEditing}
+                                        aria-label={`Detailed installation plan ${line.lineItem || index + 1}`}
+                                        onCheckedChange={(checked) => updateCostPresetLine(selectedDraft.draftId, index, {
+                                          installation: checked
+                                            ? (line.installation || createInstallationPlan({ days: line.days || 0, resources: line.resources || 1 }))
+                                            : undefined,
+                                        })}
+                                      />
+                                      Detailed labour + travel plan (per diem, supplements, hotel, mileage/flights). When enabled it replaces days x resources x unit cost.
+                                    </label>
+                                    {line.installation ? (
+                                      <InstallationPlanner
+                                        idPrefix={`preset-${index}`}
+                                        plan={line.installation}
+                                        disabled={!isEditing}
+                                        onChange={(plan) => updateCostPresetLine(selectedDraft.draftId, index, { installation: plan, days: plan.days, resources: plan.resources })}
+                                      />
+                                    ) : null}
+                                  </div>
+                                ) : null}
                               </div>
                             ))}
                             <div className="flex items-center justify-between border-t pt-3 text-sm"><span className="text-muted-foreground">Preset total</span><span className="font-semibold">{fmt(estimateProductPresetCost(normalizeDraft(selectedDraft), selectedDraft.defaultLengthM))}</span></div>

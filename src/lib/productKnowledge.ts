@@ -1,6 +1,8 @@
 import type { ProductRecord } from '@/store/DataStore';
 import { inferProductCategory, type ProductCatalogMeta, type ProductCostPresetLine, type ProductCompetitorBenchmark } from '@/lib/productCatalog';
 import { getCanonicalProductDossier } from '@/lib/productTechnicalDossiers';
+import { computeInstallationCost } from '@/lib/installationCost';
+import { DEFAULT_INGECART_POLICY, type OfferCostPolicy } from '@/lib/utils';
 
 const SOLUTIONS_URL = 'https://senarzuniga.github.io/ingesite.github.io/index.html#solutions';
 const VIDEO_URL = 'https://ingesitehub.netlify.app/#technology';
@@ -363,12 +365,18 @@ export function buildSeedProductCatalog(products: ProductRecord[]): ProductRecor
   return Array.from(merged.values()).sort((left, right) => left.name.localeCompare(right.name));
 }
 
-export function estimateProductPresetCost(product: ProductRecord, lengthM?: number, includeInstallation = true): number {
-  return buildOfferCostPreset(product, { lengthM, includeInstallation }).reduce((sum, line) => {
-    if (line.mode === 'engineering') return sum + (line.hours || 0) * (line.hourlyRate || 0);
-    if (line.mode === 'installation') return sum + (line.days || 0) * (line.resources || 0) * (line.unitCost || 0);
-    return sum + (line.quantity || 0) * (line.unitCost || 0);
-  }, 0);
+/** Total of a single preset line; installation lines with a detailed plan include labour + travel & expenses. */
+export function presetLineTotal(line: ProductCostPresetLine, policy: OfferCostPolicy = DEFAULT_INGECART_POLICY): number {
+  if (line.mode === 'engineering') return (line.hours || 0) * (line.hourlyRate || 0);
+  if (line.mode === 'installation') {
+    if (line.installation) return computeInstallationCost(line.installation, policy).total;
+    return (line.days || 0) * (line.resources || 0) * (line.unitCost || 0);
+  }
+  return (line.quantity || 0) * (line.unitCost || 0);
+}
+
+export function estimateProductPresetCost(product: ProductRecord, lengthM?: number, includeInstallation = true, policy: OfferCostPolicy = DEFAULT_INGECART_POLICY): number {
+  return buildOfferCostPreset(product, { lengthM, includeInstallation }).reduce((sum, line) => sum + presetLineTotal(line, policy), 0);
 }
 
 export function buildOfferCostPreset(product: ProductRecord, options: { lengthM?: number; includeInstallation?: boolean } = {}): ProductCostPresetLine[] {
