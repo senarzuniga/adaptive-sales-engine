@@ -34,6 +34,8 @@ type CostLine = {
   unitCost: number;
   totalCost: number;
   surchargePct: number;
+  /** Internal structure management overhead (%) added on top of the line cost. */
+  structurePct: number;
   hours: number;
   hourlyRate: number;
   days: number;
@@ -100,12 +102,17 @@ const newCostLine = (category: string): CostLine => ({
   unitCost: 0,
   totalCost: 0,
   surchargePct: 0,
+  structurePct: 0,
   hours: 0,
   hourlyRate: 0,
   days: 0,
   resources: 0,
   notes: '',
 });
+
+// Line total = base + surcharge % + internal structure overhead %.
+const lineTotal = (base: number, surchargePct: number, structurePct: number) =>
+  base + base * (Number(surchargePct) || 0) / 100 + base * (Number(structurePct) || 0) / 100;
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
@@ -198,6 +205,7 @@ export default function OfferPricingPage() {
     const quantity = Number(line.quantity || 0);
     const unitCost = Number(line.unitCost || 0);
     const surchargePct = Number(line.surchargePct || 0);
+    const structurePct = Number(line.structurePct || 0);
     const hours = Number(line.hours || 0);
     const hourlyRate = Number(line.hourlyRate || 0);
     const days = Number(line.days || 0);
@@ -214,8 +222,9 @@ export default function OfferPricingPage() {
       lineItem: line.lineItem,
       quantity: quantity || 1,
       unitCost,
-      totalCost: baseTotal + (baseTotal * surchargePct / 100),
+      totalCost: lineTotal(baseTotal, surchargePct, structurePct),
       surchargePct,
+      structurePct,
       hours,
       hourlyRate,
       days,
@@ -228,6 +237,7 @@ export default function OfferPricingPage() {
   const buildInstallationLines = (plan: InstallationPlan, base: Partial<CostLine> & { lineItem: string }, existing?: { laborId?: string; travelId?: string }): { labor: CostLine; travel: CostLine } => {
     const result = computeInstallationCost(plan, pricingPolicy);
     const travelId = existing?.travelId || crypto.randomUUID();
+    const structurePct = Number(base.structurePct || 0);
     const labor: CostLine = {
       ...newCostLine('installation'),
       ...base,
@@ -238,7 +248,8 @@ export default function OfferPricingPage() {
       resources: plan.resources,
       unitCost: Math.round(result.laborPerResourceDay * 100) / 100,
       surchargePct: 0,
-      totalCost: result.labor,
+      structurePct,
+      totalCost: lineTotal(result.labor, 0, structurePct),
       notes: describeInstallationPlan(plan, result),
       installation: plan,
       linkedTravelLineId: travelId,
@@ -249,7 +260,8 @@ export default function OfferPricingPage() {
       lineItem: `${base.lineItem || 'Installation'} - travel & expenses`,
       quantity: 1,
       unitCost: result.travel,
-      totalCost: result.travel,
+      structurePct,
+      totalCost: lineTotal(result.travel, 0, structurePct),
       notes: result.breakdown.filter((entry) => entry.group === 'travel').map((entry) => `${entry.label}: ${Math.round(entry.amount)} EUR`).join(' | '),
     };
     return { labor, travel };
@@ -258,7 +270,7 @@ export default function OfferPricingPage() {
   const presetLinesToCostLines = (presetLines: ReturnType<typeof buildOfferCostPreset>): CostLine[] =>
     presetLines.flatMap((line) => {
       if (line.category === 'installation' && line.installation) {
-        const { labor, travel } = buildInstallationLines(line.installation, { lineItem: line.lineItem });
+        const { labor, travel } = buildInstallationLines(line.installation, { lineItem: line.lineItem, structurePct: Number(line.structurePct || 0) });
         return [labor, travel];
       }
       return [presetLineToCostLine(line)];
@@ -277,10 +289,10 @@ export default function OfferPricingPage() {
           ...item,
           costLines: item.costLines
             .filter((cl) => cl.id !== current.linkedTravelLineId)
-            .map((cl) => (cl.id === lineId ? { ...cl, installation: undefined, linkedTravelLineId: undefined, totalCost: base + (base * cl.surchargePct / 100) } : cl)),
+            .map((cl) => (cl.id === lineId ? { ...cl, installation: undefined, linkedTravelLineId: undefined, totalCost: lineTotal(base, cl.surchargePct, cl.structurePct) } : cl)),
         };
       }
-      const { labor, travel } = buildInstallationLines(plan, { lineItem: current.lineItem || 'Installation' }, { laborId: current.id, travelId: current.linkedTravelLineId });
+      const { labor, travel } = buildInstallationLines(plan, { lineItem: current.lineItem || 'Installation', structurePct: current.structurePct }, { laborId: current.id, travelId: current.linkedTravelLineId });
       const hasTravel = item.costLines.some((cl) => cl.id === travel.id);
       const costLines = item.costLines.map((cl) => (cl.id === lineId ? labor : cl.id === travel.id ? travel : cl));
       return { ...item, costLines: hasTravel ? costLines : [...costLines, travel] };
@@ -359,14 +371,16 @@ export default function OfferPricingPage() {
         costLines: item.costLines.map(cl => {
           if (cl.id !== lineId) return cl;
           const updated = { ...cl, [field]: value };
-          if (updated.category === 'engineering') {
-            updated.totalCost = updated.hours * updated.hourlyRate;
+          if (updated.category === 'installation' && updated.installation) {
+            // Plan-driven line: base labour stays, only the overhead can change here.
+            const labor = computeInstallationCost(updated.installation, pricingPolicy).labor;
+            updated.totalCost = lineTotal(labor, 0, updated.structurePct);
+          } else if (updated.category === 'engineering') {
+            updated.totalCost = lineTotal(updated.hours * updated.hourlyRate, 0, updated.structurePct);
           } else if (updated.category === 'installation') {
-            const baseCost = updated.days * updated.resources * updated.unitCost;
-            updated.totalCost = baseCost + (baseCost * updated.surchargePct / 100);
+            updated.totalCost = lineTotal(updated.days * updated.resources * updated.unitCost, updated.surchargePct, updated.structurePct);
           } else {
-            const base = updated.quantity * updated.unitCost;
-            updated.totalCost = base + (base * updated.surchargePct / 100);
+            updated.totalCost = lineTotal(updated.quantity * updated.unitCost, updated.surchargePct, updated.structurePct);
           }
           return updated;
         }),
@@ -412,6 +426,7 @@ export default function OfferPricingPage() {
             days: cl.days,
             resources: cl.resources,
             surchargePct: cl.surchargePct,
+            structurePct: cl.structurePct,
           }))])
         ),
       })),
@@ -562,7 +577,9 @@ export default function OfferPricingPage() {
           offer_item_id: dbItem.id, category: cl.category, line_item: cl.lineItem,
           quantity: cl.quantity, unit_cost: cl.unitCost, total_cost: cl.totalCost,
           surcharge_pct: cl.surchargePct, hours: cl.hours, hourly_rate: cl.hourlyRate,
-          days: cl.days, resources: cl.resources, notes: cl.notes,
+          days: cl.days, resources: cl.resources,
+          // cost_breakdowns has no dedicated column yet; keep the overhead traceable in notes.
+          notes: cl.structurePct ? [cl.notes, `Structure overhead ${cl.structurePct}%`].filter(Boolean).join(' | ') : cl.notes,
         }));
         if (costRows.length > 0) {
           const { error: costErr } = await supabase.from('cost_breakdowns').insert(costRows);
@@ -940,6 +957,7 @@ export default function OfferPricingPage() {
                                       <TableHead>{isEs ? 'Recargo %' : 'Surcharge %'}</TableHead>
                                     </>
                                   )}
+                                  <TableHead title={isEs ? 'Cargo de gestión de estructura interna' : 'Internal structure management overhead'}>{isEs ? 'Estructura %' : 'Structure %'}</TableHead>
                                   <TableHead className="text-right">Total</TableHead>
                                   <TableHead className="w-[40px]"></TableHead>
                                 </TableRow>
@@ -986,6 +1004,7 @@ export default function OfferPricingPage() {
                                         <TableCell><Input className="h-8 text-xs w-16" type="number" value={cl.surchargePct} onChange={e => updateCostLine(item.id, cl.id, 'surchargePct', Number(e.target.value))} /></TableCell>
                                       </>
                                     )}
+                                    <TableCell><Input className="h-8 text-xs w-16" type="number" step="0.5" aria-label={`Structure overhead ${cl.lineItem || cl.id}`} value={cl.structurePct} onChange={e => updateCostLine(item.id, cl.id, 'structurePct', Number(e.target.value))} /></TableCell>
                                     <TableCell className="text-right font-medium">{fmt(cl.totalCost)}</TableCell>
                                     <TableCell>
                                       <Button variant="ghost" size="sm" onClick={() => removeCostLine(item.id, cl.id)}>
@@ -995,7 +1014,7 @@ export default function OfferPricingPage() {
                                   </TableRow>
                                   {cat.value === 'installation' && cl.installation && plannerLineId === cl.id ? (
                                     <TableRow>
-                                      <TableCell colSpan={7} className="bg-muted/20">
+                                      <TableCell colSpan={8} className="bg-muted/20">
                                         <div className="space-y-2">
                                           <InstallationPlanner
                                             idPrefix={`offer-${cl.id}`}

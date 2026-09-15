@@ -39,3 +39,17 @@ describe('installation cost engine', () => {
     expect(presetLineTotal({ category: 'installation', lineItem: 'Install', mode: 'installation', installation: plan })).toBe(8 * 2 * (650 + 80 + 20));
   });
 });
+
+describe('internal structure overhead per cost line', () => {
+  it('adds the structure percentage on top of the line cost for every line mode', () => {
+    expect(presetLineTotal({ category: 'materials', lineItem: 'Motor', mode: 'unit', quantity: 2, unitCost: 1000, structurePct: 15 })).toBe(2300);
+    expect(presetLineTotal({ category: 'engineering', lineItem: 'PM', mode: 'engineering', hours: 10, hourlyRate: 70, structurePct: 10 })).toBe(770);
+    expect(presetLineTotal({ category: 'installation', lineItem: 'Install', mode: 'installation', days: 2, resources: 2, unitCost: 500, structurePct: 5 })).toBe(2100);
+    const plan = createInstallationPlan({ days: 1, resources: 1, travelMode: 'none', hotelNights: 0 });
+    expect(presetLineTotal({ category: 'installation', lineItem: 'Install', mode: 'installation', installation: plan, structurePct: 20 })).toBeCloseTo(750 * 1.2);
+  });
+
+  it('treats a missing structure percentage as zero', () => {
+    expect(presetLineTotal({ category: 'materials', lineItem: 'Motor', mode: 'unit', quantity: 1, unitCost: 100 })).toBe(100);
+  });
+});

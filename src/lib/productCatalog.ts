@@ -11,6 +11,8 @@ export interface ProductCostPresetLine {
   quantity?: number;
   unitCost?: number;
   surchargePct?: number;
+  /** Internal structure management overhead applied on top of the line cost (percentage). */
+  structurePct?: number;
   hours?: number;
   hourlyRate?: number;
   days?: number;
@@ -103,6 +105,7 @@ function cleanCostPreset(costPreset?: ProductCostPresetLine[]) {
     quantity: Number.isFinite(line.quantity) ? Number(line.quantity) : undefined,
     unitCost: Number.isFinite(line.unitCost) ? Number(line.unitCost) : undefined,
     surchargePct: Number.isFinite(line.surchargePct) ? Number(line.surchargePct) : undefined,
+    structurePct: Number.isFinite(line.structurePct) ? Number(line.structurePct) : undefined,
     hours: Number.isFinite(line.hours) ? Number(line.hours) : undefined,
     hourlyRate: Number.isFinite(line.hourlyRate) ? Number(line.hourlyRate) : undefined,
     days: Number.isFinite(line.days) ? Number(line.days) : undefined,

@@ -365,14 +365,22 @@ export function buildSeedProductCatalog(products: ProductRecord[]): ProductRecor
   return Array.from(merged.values()).sort((left, right) => left.name.localeCompare(right.name));
 }
 
-/** Total of a single preset line; installation lines with a detailed plan include labour + travel & expenses. */
-export function presetLineTotal(line: ProductCostPresetLine, policy: OfferCostPolicy = DEFAULT_INGECART_POLICY): number {
+/** Base cost of a preset line before surcharges; installation lines with a detailed plan include labour + travel & expenses. */
+export function presetLineBaseCost(line: ProductCostPresetLine, policy: OfferCostPolicy = DEFAULT_INGECART_POLICY): number {
   if (line.mode === 'engineering') return (line.hours || 0) * (line.hourlyRate || 0);
   if (line.mode === 'installation') {
     if (line.installation) return computeInstallationCost(line.installation, policy).total;
     return (line.days || 0) * (line.resources || 0) * (line.unitCost || 0);
   }
   return (line.quantity || 0) * (line.unitCost || 0);
+}
+
+/** Applies the internal structure management overhead (%) to a base cost. */
+export const applyStructureOverhead = (base: number, structurePct?: number) => base + base * (Number(structurePct) || 0) / 100;
+
+/** Total of a single preset line including the internal structure overhead. */
+export function presetLineTotal(line: ProductCostPresetLine, policy: OfferCostPolicy = DEFAULT_INGECART_POLICY): number {
+  return applyStructureOverhead(presetLineBaseCost(line, policy), line.structurePct);
 }
 
 export function estimateProductPresetCost(product: ProductRecord, lengthM?: number, includeInstallation = true, policy: OfferCostPolicy = DEFAULT_INGECART_POLICY): number {
