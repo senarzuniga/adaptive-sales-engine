@@ -6,6 +6,7 @@ import { dedupeOpportunities, dedupeOrders, isOpenOpportunityStatus, normalizeOp
 import { inferProductCategory, parseProductComments, serializeProductComments, type ProductCategory, type ProductCompetitorBenchmark, type ProductCostPresetLine, type ProductTechnicalDossier } from '@/lib/productCatalog';
 import type { DatasetQualityReport, NormalizedEntityRegistries } from '@/agents/dataManagementAgent';
 import type { EnrichedCompanyProfile } from '@/agents/customerEnrichmentAgent';
+import { buildSeedProductCatalog } from '@/lib/productKnowledge';
 
 // Offline / localStorage mode when Supabase is not configured
 export const isSupabaseConfigured =
@@ -585,6 +586,12 @@ const emptyRegistries: NormalizedEntityRegistries = {
   contacts: {},
 };
 
+const shouldHydrateCanonicalIngecartProducts = (companyName?: string) => String(companyName || '').toLowerCase().includes('ingecart');
+
+const hydrateCompanyProducts = (companyName: string | undefined, products: ProductRecord[]) => (
+  shouldHydrateCanonicalIngecartProducts(companyName) ? buildSeedProductCatalog(products || []) : (products || [])
+);
+
 interface DataContextType {
   data: DataState;
   companies: CompanyProfile[];
@@ -694,7 +701,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setData({
           orders: dedupeOrders(LS.get(`acs_orders_${companyId}`, [])),
           opportunities: dedupeOpportunities(LS.get(`acs_opps_${companyId}`, [])),
-          products: LS.get(`acs_products_${companyId}`, []),
+          products: hydrateCompanyProducts(profile.company_name, LS.get(`acs_products_${companyId}`, [])),
           strategy: LS.get(`acs_strategy_${companyId}`, []),
           leads: LS.get(`acs_leads_${companyId}`, []),
           contacts: LS.get(`acs_contacts_${companyId}`, []),
@@ -720,7 +727,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setData({
         orders: dedupeOrders((ordersRes.data || []).map(dbToOrder)),
         opportunities: dedupeOpportunities((oppsRes.data || []).map(dbToOpportunity)),
-        products: (prodsRes.data || []).map(dbToProduct),
+        products: hydrateCompanyProducts(compRes.data?.company_name, (prodsRes.data || []).map(dbToProduct)),
         strategy: (stratRes.data || []).map(dbToStrategy),
         leads: LS.get(`acs_leads_${companyId}`, []),
         contacts: LS.get(`acs_contacts_${companyId}`, []),
@@ -834,7 +841,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await supabase.from('companies').delete().eq('id', id);
     if (activeCompanyId === id) setActiveCompany(null);
     await loadCompanies();
-  }, [activeCompanyId, setActiveCompany, loadCompanies]);  // Export / Import
+  }, [activeCompanyId, setActiveCompany, loadCompanies]);
+  // Export / Import
   const exportCompanyPack = useCallback(async (): Promise<string> => {
     const workspace = activeCompanyId ? await fetchWorkspacePack(activeCompanyId) : {};
     return JSON.stringify({
