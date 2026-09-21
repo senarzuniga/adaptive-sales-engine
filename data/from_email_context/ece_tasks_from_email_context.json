@@ -1,0 +1,164 @@
+[
+  {
+    "task_id": "IP_WL_001",
+    "title": "Trident Electrical Panel Location",
+    "description": "Confirm panel location on column + WiFi node position",
+    "project_id": "IP_WATERLOO_001",
+    "assigned_to": "Gerard",
+    "priority": 5,
+    "status": "not_started",
+    "due_date": "2026-09-24",
+    "created_date": "2026-09-21T08:59:52.867771",
+    "is_blocker": true,
+    "impact": "Material Release Authorization",
+    "tags": [
+      "from_email_context",
+      "IP_WATERLOO_001",
+      "CRITICAL"
+    ]
+  },
+  {
+    "task_id": "IP_WL_002",
+    "title": "Communications Cabling - OM4 Fibre",
+    "description": "Confirm OM4 multimode 50/125 cable, armoured, 8 fibres, LSZH/LSHF",
+    "project_id": "IP_WATERLOO_001",
+    "assigned_to": "Gerard",
+    "priority": 5,
+    "status": "not_started",
+    "due_date": "2026-09-24",
+    "created_date": "2026-09-21T08:59:52.867771",
+    "is_blocker": true,
+    "impact": "Material Procurement",
+    "tags": [
+      "from_email_context",
+      "IP_WATERLOO_001",
+      "CRITICAL"
+    ]
+  },
+  {
+    "task_id": "IP_WL_003",
+    "title": "Cat6 F/FTP Cabling Specs",
+    "description": "Confirm Cat6 F/FTP, 4 pairs, AWG23, shielded, LSZH/LSHF, shielded RJ45",
+    "project_id": "IP_WATERLOO_001",
+    "assigned_to": "Gerard",
+    "priority": 5,
+    "status": "not_started",
+    "due_date": "2026-09-24",
+    "created_date": "2026-09-21T08:59:52.867771",
+    "is_blocker": true,
+    "impact": "Material Procurement",
+    "tags": [
+      "from_email_context",
+      "IP_WATERLOO_001",
+      "CRITICAL"
+    ]
+  },
+  {
+    "task_id": "IP_WL_004",
+    "title": "Mandatory Fibre Testing Pre-Install",
+    "description": "Fibre testing and certification BEFORE installation; hand over pre-tested with docs",
+    "project_id": "IP_WATERLOO_001",
+    "assigned_to": "Gerard",
+    "priority": 5,
+    "status": "not_started",
+    "due_date": "2026-09-27",
+    "created_date": "2026-09-21T08:59:52.867771",
+    "is_blocker": false,
+    "impact": "Risk Mitigation / Compliance",
+    "tags": [
+      "from_email_context",
+      "IP_WATERLOO_001",
+      "CRITICAL"
+    ]
+  },
+  {
+    "task_id": "IP_WL_005",
+    "title": "Material Release Authorization",
+    "description": "Dependent on confirmations of items 1-4",
+    "project_id": "IP_WATERLOO_001",
+    "assigned_to": "Diego",
+    "priority": 5,
+    "status": "blocked",
+    "due_date": "2026-09-27",
+    "created_date": "2026-09-21T08:59:52.867771",
+    "is_blocker": true,
+    "impact": "Project Execution",
+    "tags": [
+      "from_email_context",
+      "IP_WATERLOO_001",
+      "CRITICAL"
+    ]
+  },
+  {
+    "task_id": "IP_WL_006",
+    "title": "Customer Confidence Reset Call",
+    "description": "Call with Scott (Mike + Diego) to address frustration and reset alignment",
+    "project_id": "IP_WATERLOO_001",
+    "assigned_to": "Diego",
+    "priority": 5,
+    "status": "in_progress",
+    "due_date": "2026-09-23",
+    "created_date": "2026-09-21T08:59:52.867771",
+    "is_blocker": false,
+    "impact": "Relationship Recovery",
+    "tags": [
+      "from_email_context",
+      "IP_WATERLOO_001",
+      "CRITICAL"
+    ]
+  },
+  {
+    "task_id": "SQ_001",
+    "title": "Commission Structure Decision",
+    "description": "Mike decision on 5% vs 8% vs 10% commission-based model. DEAL VIABILITY DEPENDS ON THIS.",
+    "project_id": "SIGMAQ_001",
+    "assigned_to": "Mike",
+    "priority": 5,
+    "status": "not_started",
+    "due_date": "2026-09-28",
+    "created_date": "2026-09-21T08:59:52.867771",
+    "is_blocker": true,
+    "impact": "Deal Viability",
+    "tags": [
+      "from_email_context",
+      "SIGMAQ_001",
+      "CRITICAL"
+    ]
+  },
+  {
+    "task_id": "SQ_002",
+    "title": "Customer Budget Confirmation",
+    "description": "Confirm SigmaQ budget ceiling remains ~480k EUR per unit",
+    "project_id": "SIGMAQ_001",
+    "assigned_to": "Rafael",
+    "priority": 4,
+    "status": "not_started",
+    "due_date": "2026-09-26",
+    "created_date": "2026-09-21T08:59:52.867771",
+    "is_blocker": false,
+    "impact": "Pricing Constraints",
+    "tags": [
+      "from_email_context",
+      "SIGMAQ_001",
+      "HIGH"
+    ]
+  },
+  {
+    "task_id": "SQ_003",
+    "title": "Pricing Proposal (Commission Model)",
+    "description": "Prepare and send pricing under commission structure",
+    "project_id": "SIGMAQ_001",
+    "assigned_to": "Diego",
+    "priority": 5,
+    "status": "blocked",
+    "due_date": "2026-09-29",
+    "created_date": "2026-09-21T08:59:52.867771",
+    "is_blocker": true,
+    "impact": "Deal Closure",
+    "tags": [
+      "from_email_context",
+      "SIGMAQ_001",
+      "CRITICAL"
+    ]
+  }
+]

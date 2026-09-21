@@ -1,0 +1,49 @@
+{
+  "relevance_scoring": {
+    "algorithm": "Weighted Scoring (0-100)",
+    "factors": [
+      {
+        "name": "Source Relevance",
+        "weight": 0.2
+      },
+      {
+        "name": "Project Criticality",
+        "weight": 0.25
+      },
+      {
+        "name": "Stakeholder Importance",
+        "weight": 0.2
+      },
+      {
+        "name": "Timing Sensitivity",
+        "weight": 0.2
+      },
+      {
+        "name": "Risk Impact",
+        "weight": 0.15
+      }
+    ],
+    "scoring_bands": {
+      "95-100": {
+        "category": "CRITICAL",
+        "action": "Escalate immediately to Diego",
+        "response_time": "Same day"
+      },
+      "80-94": {
+        "category": "HIGH",
+        "action": "Assign to responsible owner",
+        "response_time": "24 hours"
+      },
+      "60-79": {
+        "category": "MEDIUM",
+        "action": "Route to responsible owner",
+        "response_time": "48 hours"
+      },
+      "0-59": {
+        "category": "LOW",
+        "action": "Operational handling",
+        "response_time": "Routine"
+      }
+    }
+  }
+}

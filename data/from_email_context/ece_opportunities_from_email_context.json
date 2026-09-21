@@ -1,0 +1,83 @@
+[
+  {
+    "opportunity_id": "IP_WATERLOO_001",
+    "name": "IP Waterloo - International Paper",
+    "status": "at_risk",
+    "stage": 2,
+    "probability": 0.3,
+    "value": 0.0,
+    "owner": "Diego Garcia",
+    "customer": "Scott M Smith",
+    "created_date": "2026-09-21T08:59:52.866777",
+    "last_update": "2026-09-21T08:59:52.866777",
+    "critical_items_count": 6,
+    "risk_level": "HIGH",
+    "tags": [
+      "CONFIDENCE_RECOVERY",
+      "CRITICAL"
+    ],
+    "description": "Email Context: Trident Equipment + Electrical & Communications Infrastructure",
+    "metadata": {
+      "source": "EmailContextAssistant",
+      "project_type": "Trident Equipment + Electrical & Communications Infrastructure",
+      "location": "Waterloo, Canada",
+      "communication_protocol": {
+        "single_interlocutor": "Diego Garcia / Mike Kocherga",
+        "approval_required": true,
+        "pre_review_mandatory": true,
+        "weekly_status": true,
+        "decision_log_tracking": true
+      }
+    }
+  },
+  {
+    "opportunity_id": "SIGMAQ_001",
+    "name": "SigmaQ - Paletizadores (Rapid Bond Guatemala)",
+    "status": "negotiation",
+    "stage": 3,
+    "probability": 0.5,
+    "value": 480000.0,
+    "owner": "Diego Garcia",
+    "customer": "Rafael",
+    "created_date": "2026-09-21T08:59:52.866777",
+    "last_update": "2026-09-21T08:59:52.866777",
+    "critical_items_count": 3,
+    "risk_level": null,
+    "tags": [
+      "COMMERCIAL_NEGOTIATION",
+      "HIGH"
+    ],
+    "description": "Email Context: Paletizadores Equipment Procurement",
+    "metadata": {
+      "source": "EmailContextAssistant",
+      "project_type": "Paletizadores Equipment Procurement",
+      "location": "Guatemala",
+      "communication_protocol": {}
+    }
+  },
+  {
+    "opportunity_id": "FFG_1228_001",
+    "name": "FFG 1228 - Handling Assistant (Dinglong)",
+    "status": "proposal_sent",
+    "stage": 4,
+    "probability": 0.8,
+    "value": 0.0,
+    "owner": "Gerard González",
+    "customer": "Unknown",
+    "created_date": "2026-09-21T08:59:52.866777",
+    "last_update": "2026-09-21T08:59:52.866777",
+    "critical_items_count": 0,
+    "risk_level": null,
+    "tags": [
+      "PENDING_FINAL_ACCEPTANCE",
+      "HIGH"
+    ],
+    "description": "Email Context: Folding & Gluing Equipment",
+    "metadata": {
+      "source": "EmailContextAssistant",
+      "project_type": "Folding & Gluing Equipment",
+      "location": null,
+      "communication_protocol": {}
+    }
+  }
+]
