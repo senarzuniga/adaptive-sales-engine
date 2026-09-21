@@ -1,11 +1,13 @@
-﻿import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { buildCommercialIntelligence, harmonizeCommercialRecords } from '@/lib/commercialIntelligence';
 import { dedupeOpportunities, dedupeOrders, isOpenOpportunityStatus, normalizeOpportunityStatus, parseFlexibleNumber } from '@/lib/salesData';
 import { inferProductCategory, parseProductComments, serializeProductComments, type ProductCategory, type ProductCompetitorBenchmark, type ProductCostPresetLine, type ProductTechnicalDossier } from '@/lib/productCatalog';
+import type { DatasetQualityReport, NormalizedEntityRegistries } from '@/agents/dataManagementAgent';
+import type { EnrichedCompanyProfile } from '@/agents/customerEnrichmentAgent';
 
-// â”€â”€â”€ Offline / localStorage mode when Supabase is not configured â”€â”€â”€
+// Offline / localStorage mode when Supabase is not configured
 export const isSupabaseConfigured =
   !!import.meta.env.VITE_SUPABASE_URL &&
   import.meta.env.VITE_SUPABASE_URL !== 'https://placeholder.supabase.co';
@@ -93,7 +95,7 @@ const writeLocalWorkspacePack = (companyId: string, workspace: WorkspacePack = {
   });
 };
 
-// â”€â”€â”€ Types â”€â”€â”€
+// Types
 export interface CompanyProfile {
   id?: string;
   company_name: string;
@@ -284,8 +286,8 @@ export interface AIActionRecord {
 }
 
 const formatCompactMoney = (value: number) => {
-  if (!Number.isFinite(value) || value <= 0) return '€0';
-  return value >= 1_000_000 ? `€${(value / 1_000_000).toFixed(1)}M` : value >= 1_000 ? `€${(value / 1_000).toFixed(0)}K` : `€${Math.round(value)}`;
+  if (!Number.isFinite(value) || value <= 0) return 'EUR0';
+  return value >= 1_000_000 ? `EUR${(value / 1_000_000).toFixed(1)}M` : value >= 1_000 ? `EUR${(value / 1_000).toFixed(0)}K` : `EUR${Math.round(value)}`;
 };
 
 const buildAiActionQueue = ({
@@ -308,7 +310,7 @@ const buildAiActionQueue = ({
   highRiskOpps.forEach((opp, index) => {
     actions.push({
       id: `ai-open-opp-${index}`,
-      title: `${opp.customerName || 'Customer'} — review ${opp.oppNumber || 'opportunity'}`,
+      title: `${opp.customerName || 'Customer'} - review ${opp.oppNumber || 'opportunity'}`,
       description: `${opp.productFamily || 'Scope'} with ${opp.contractProb || 0}% probability and ${formatCompactMoney(opp.estRevenue || 0)} value needs commercial intervention.`,
       priority: (opp.contractProb || 0) < 35 ? 'critical' : 'warning',
       account: opp.customerName || company.company_name || 'Account',
@@ -326,7 +328,7 @@ const buildAiActionQueue = ({
   overdueTasks.slice(0, 4).forEach((task, index) => {
     actions.push({
       id: `ai-task-${task.id || index}`,
-      title: `Task requires attention — ${task.title}`,
+      title: `Task requires attention - ${task.title}`,
       description: task.description || 'This action is overdue and should be escalated to the responsible owner.',
       priority: task.priority === 'critical' ? 'critical' : 'warning',
       account: company.company_name || 'Company',
@@ -343,7 +345,7 @@ const buildAiActionQueue = ({
   highValueLeads.forEach((lead, index) => {
     actions.push({
       id: `ai-lead-${index}`,
-      title: `${lead.companyName || lead.leadName} — qualify next opportunity`,
+      title: `${lead.companyName || lead.leadName} - qualify next opportunity`,
       description: `A high-value lead with ${formatCompactMoney(lead.estimatedValue || 0)} potential needs a qualification call and stakeholder mapping.`,
       priority: 'good',
       account: lead.companyName || lead.leadName || company.company_name || 'Account',
@@ -361,7 +363,7 @@ const buildAiActionQueue = ({
   customerWithoutRecentContact.forEach((contact, index) => {
     actions.push({
       id: `ai-contact-${index}`,
-      title: `Complete stakeholder coverage — ${contact.companyName || 'Account'}`,
+      title: `Complete stakeholder coverage - ${contact.companyName || 'Account'}`,
       description: 'This commercial account is missing the contact data needed for a reliable executive follow-up sequence.',
       priority: 'good',
       account: contact.companyName || company.company_name || 'Account',
@@ -381,7 +383,7 @@ const buildAiActionQueue = ({
   });
 };
 
-// ─── DB ↔ App mappers ───
+// DB to App mappers
 function dbToOrder(r: any): OrderRecord {
   return {
     id: r.id, truthSource: r.truth_source || 'sales_document', poDate: r.po_date || '', firstOfferDate: r.first_offer_date || '',
@@ -551,7 +553,7 @@ async function fetchWorkspacePack(companyId: string): Promise<WorkspacePack> {
   };
 }
 
-// â”€â”€â”€ State â”€â”€â”€
+// State
 interface DataState {
   orders: OrderRecord[];
   opportunities: OpportunityRecord[];
@@ -657,7 +659,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     tasks: data.tasks,
   }), [data.companyProfile, data.contacts, data.leads, data.opportunities, data.tasks]);
 
-  // â”€â”€â”€ Load companies list â”€â”€â”€
+  // Load companies list
   const loadCompanies = useCallback(async () => {
     if (!isSupabaseConfigured) {
       setCompanies(LS.get<CompanyProfile[]>('acs_companies', []));
@@ -682,7 +684,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // â”€â”€â”€ Load company data â”€â”€â”€
+  // Load company data
   const loadCompanyData = useCallback(async (companyId: string) => {
     setLoading(true);
     try {
@@ -699,9 +701,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
           tasks: LS.get(`acs_tasks_${companyId}`, []),
           uploadLog: LS.get(`acs_log_${companyId}`, []),
           companyProfile: profile,
-          entityRegistries: LS.get(`acs_registries_${companyId}`, emptyRegistries),
-          qualityReports: LS.get(`acs_quality_${companyId}`, []),
-          enrichedProfiles: LS.get(`acs_enriched_${companyId}`, []),
+        entityRegistries: emptyRegistries,
+        qualityReports: [],
+        enrichedProfiles: [],
         });
         return;
       }
@@ -728,9 +730,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
           rowCount: r.row_count || 0, status: r.status as 'validated' | 'error',
           errors: (r.errors as string[]) || [], timestamp: r.created_at,
         })),
-        entityRegistries: LS.get(`acs_registries_${companyId}`, emptyRegistries),
-        qualityReports: LS.get(`acs_quality_${companyId}`, []),
-        enrichedProfiles: LS.get(`acs_enriched_${companyId}`, []),
+        entityRegistries: emptyRegistries,
+        qualityReports: [],
+        enrichedProfiles: [],
         companyProfile: compRes.data ? {
           id: compRes.data.id, company_name: compRes.data.company_name,
           industry: compRes.data.industry || '', sub_sector: compRes.data.sub_sector || '',
@@ -753,7 +755,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // â”€â”€â”€ Set active company â”€â”€â”€
+  // Set active company
   const setActiveCompany = useCallback((id: string | null) => {
     setActiveCompanyIdState(id);
     if (id) {
@@ -771,14 +773,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
         companyProfile: emptyProfile,
         uploadLog: [],
         tasks: [],
-        entityRegistries: LS.get(`acs_registries_${companyId}`, emptyRegistries),
-        qualityReports: LS.get(`acs_quality_${companyId}`, []),
-        enrichedProfiles: LS.get(`acs_enriched_${companyId}`, []),
+        entityRegistries: emptyRegistries,
+        qualityReports: [],
+        enrichedProfiles: [],
       });
     }
   }, [loadCompanyData]);
 
-  // â”€â”€â”€ Create company â”€â”€â”€
+  // Create company
   const createCompany = useCallback(async (name: string, websiteUrl?: string, linkedinUrl?: string, businessDescription?: string): Promise<string | null> => {
     if (!isSupabaseConfigured) {
       const newId = `local_${Date.now()}`;
@@ -802,7 +804,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return row.id;
   }, [loadCompanies]);
 
-  // â”€â”€â”€ Trigger AI enrichment â”€â”€â”€
+  // Trigger AI enrichment
   const triggerEnrichment = useCallback(async (companyId: string) => {
     try {
       await supabase.from('companies').update({ enrichment_status: 'enriching' }).eq('id', companyId);
@@ -818,7 +820,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, [loadCompanyData, loadCompanies]);
 
-  // â”€â”€â”€ Delete company â”€â”€â”€
+  // Delete company
   const deleteCompany = useCallback(async (id: string) => {
     getLocalCompanyDataKeys(id).forEach((storageKey) => LS.del(storageKey));
     writeLocalWorkspacePack(id, {});
@@ -832,9 +834,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await supabase.from('companies').delete().eq('id', id);
     if (activeCompanyId === id) setActiveCompany(null);
     await loadCompanies();
-  }, [activeCompanyId, setActiveCompany, loadCompanies]);
-
-  // â”€â”€â”€ Export / Import â”€â”€â”€
+  }, [activeCompanyId, setActiveCompany, loadCompanies]);  // Export / Import
   const exportCompanyPack = useCallback(async (): Promise<string> => {
     const workspace = activeCompanyId ? await fetchWorkspacePack(activeCompanyId) : {};
     return JSON.stringify({
@@ -1091,7 +1091,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     toast({ title: 'Company pack imported successfully' });
   }, [createCompany, loadCompanies, setActiveCompany]);
 
-  // â”€â”€â”€ CRUD operations (persist to Supabase) â”€â”€â”€
+  // CRUD operations (persist to Supabase)
   const setOrders = useCallback(async (records: OrderRecord[]) => {
     if (!activeCompanyId) return;
     const harmonized = harmonizeCommercialRecords({ orders: records, opportunities: data.opportunities });
@@ -1113,7 +1113,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         scope: o.scope, product_family: o.productFamily, segment: o.segment,
         purchasing_year: o.purchasingYear, purchasing_quarter: o.purchasingQuarter,
         purchasing_month: o.purchasingMonth, selling_price: o.sellingPrice, margin: o.margin, kam: o.kam,
-        truth_source: o.truthSource || 'sales_document',
       })));
     }
 
@@ -1125,7 +1124,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         product_family: o.productFamily, segment: o.segment, est_purchasing_year: o.estPurchasingYear,
         est_purchasing_quarter: o.estPurchasingQuarter, est_revenue: o.estRevenue,
         contract_prob: o.contractProb, margin: o.margin, contact: o.contact, kam: o.kam,
-        truth_source: o.truthSource || 'sales_document',
       })));
     }
 
@@ -1150,7 +1148,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         product_family: o.productFamily, segment: o.segment, est_purchasing_year: o.estPurchasingYear,
         est_purchasing_quarter: o.estPurchasingQuarter, est_revenue: o.estRevenue,
         contract_prob: o.contractProb, margin: o.margin, contact: o.contact, kam: o.kam,
-        truth_source: o.truthSource || 'sales_document',
       })));
     }
     setData(prev => ({ ...prev, opportunities: cleanRecords }));
@@ -1410,7 +1407,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }));
   }, [activeCompanyId]);
 
-  // â”€â”€â”€ Initial load â”€â”€â”€
+  // Initial load
   useEffect(() => {
     loadCompanies().then(() => {
       const saved = localStorage.getItem('acs_active_company');

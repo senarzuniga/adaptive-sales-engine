@@ -9,13 +9,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { groupBy, fmt } from './AnalysisUtils';
 import { buildPipelineMetrics, getActivePipelineOpportunities } from '@/lib/salesData';
-import { buildFallbackExecutiveInsights, classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
+import { buildFallbackExecutiveInsights, classifyEdgeRuntimeError, invokeEdgeWithRetry, type FallbackExecutiveInsights } from '@/lib/edgeStability';
 import {
   Brain, Sparkles, AlertTriangle, TrendingUp, Shield, Lightbulb,
   Target, Zap, Clock, ArrowRight, ChevronDown, ChevronUp, Loader2
 } from 'lucide-react';
 
-interface InsightData {
+interface InsightData extends FallbackExecutiveInsights {
   executive_summary: string;
   health_score: number;
   health_label: string;
@@ -198,7 +198,7 @@ export const ExecutiveInsights = ({ orders, opportunities, products, strategy, c
           <Brain className="h-12 w-12 text-primary mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-foreground mb-2">AI Executive Insights</h3>
           <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-            Generate an AI-powered strategic analysis of your company's 360º data.
+            Generate an AI-powered strategic analysis of your company's 360 data.
             The AI will identify patterns, risks, opportunities, and provide prioritized recommendations.
           </p>
           <Button onClick={generateInsights} disabled={loading} className="gap-2" size="lg">
@@ -314,7 +314,7 @@ export const ExecutiveInsights = ({ orders, opportunities, products, strategy, c
                       </div>
                       <p className="text-xs text-muted-foreground">{insight.description}</p>
                       {insight.data_point && (
-                        <p className="text-xs text-primary font-medium mt-1">📊 {insight.data_point}</p>
+                        <p className="text-xs text-primary font-medium mt-1"> {insight.data_point}</p>
                       )}
                     </div>
                   </div>
@@ -340,7 +340,7 @@ export const ExecutiveInsights = ({ orders, opportunities, products, strategy, c
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <Badge variant={priorityColor(rec.priority)} className="text-[10px] capitalize">
-                          {rec.priority === 'immediate' ? '🔴 Immediate' : rec.priority === 'short_term' ? '🟡 Short-term' : '🟢 Medium-term'}
+                          {rec.priority === 'immediate' ? " Immediate" : rec.priority === 'short_term' ? " Short-term" : " Medium-term"}
                         </Badge>
                         {rec.effort && (
                           <Badge variant="outline" className="text-[10px]">Effort: {rec.effort}</Badge>
@@ -369,7 +369,7 @@ export const ExecutiveInsights = ({ orders, opportunities, products, strategy, c
                 <ul className="space-y-1.5">
                   {insights.key_risks.map((risk, i) => (
                     <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                      <span className="text-destructive mt-1">•</span> {risk}
+                      <span className="text-destructive mt-1"></span> {risk}
                     </li>
                   ))}
                 </ul>

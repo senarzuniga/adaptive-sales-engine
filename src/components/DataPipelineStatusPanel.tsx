@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useCallback, useMemo, useState } from 'react';
 import { useData } from '@/store/DataStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -38,12 +37,6 @@ interface ConflictRecord {
   extracted_at: string;
 }
 
-interface PipelineReport {
-  validation_report?: ValidationSectionSummary[];
-  enrichment_status?: EnrichmentAction[];
-  conflicts?: ConflictRecord[];
-}
-
 const actionLabels: Record<string, string> = {
   field_filled: 'Fields Completed',
   entity_merged: 'Duplicates Merged',
@@ -53,118 +46,115 @@ const actionLabels: Record<string, string> = {
   ai_inferred: 'AI Inferred',
 };
 
+const toSectionLabel = (value: string) => value.replace(/_/g, ' ');
+
 export function DataPipelineStatusPanel() {
-  const { activeCompanyId } = useData();
-  const [report, setReport] = useState<PipelineReport | null>(null);
+  const { activeCompanyId, data, triggerEnrichment } = useData();
   const [loading, setLoading] = useState(false);
   const [enriching, setEnriching] = useState(false);
   const [tab, setTab] = useState<'validation' | 'enrichment' | 'conflicts'>('validation');
 
-  const loadReport = useCallback(async () => {
-    if (!activeCompanyId) return;
-    setLoading(true);
-    try {
-      const { data: validationData } = await supabase
-        .from('entities_raw_extracted')
-        .select('upload_section, validation_status, confidence_score, completeness_score')
-        .eq('company_id', activeCompanyId);
-
-      const sectionMap: Record<string, { total: number; validated: number; rejected: number; flagged: number; conf: number[]; comp: number[] }> = {};
-      for (const row of validationData ?? []) {
-        const s = row.upload_section ?? 'unknown';
-        if (!sectionMap[s]) sectionMap[s] = { total: 0, validated: 0, rejected: 0, flagged: 0, conf: [], comp: [] };
-        sectionMap[s].total++;
-        if (row.validation_status === 'validated') sectionMap[s].validated++;
-        else if (row.validation_status === 'rejected') sectionMap[s].rejected++;
-        else sectionMap[s].flagged++;
-        sectionMap[s].conf.push(row.confidence_score ?? 0);
-        sectionMap[s].comp.push(row.completeness_score ?? 0);
+  const validation_report = useMemo<ValidationSectionSummary[]>(() => {
+    const uploadMap = new Map<string, { total: number; validated: number; rejected: number; flagged: number; lastIssues: number }>();
+    data.uploadLog.forEach((entry) => {
+      const section = entry.detectedType || 'unknown';
+      const current = uploadMap.get(section) || { total: 0, validated: 0, rejected: 0, flagged: 0, lastIssues: 0 };
+      current.total += Math.max(1, Number(entry.rowCount || 0));
+      current.lastIssues = entry.errors?.length || 0;
+      if (entry.status === 'validated') {
+        current.validated += Math.max(1, Number(entry.rowCount || 0));
+      } else {
+        current.rejected += Math.max(1, Number(entry.rowCount || 0));
       }
+      uploadMap.set(section, current);
+    });
 
-      const validation_report: ValidationSectionSummary[] = Object.entries(sectionMap).map(([section, d]) => ({
-        section,
-        total_records: d.total,
-        validated: d.validated,
-        rejected: d.rejected,
-        flagged: d.flagged,
-        acceptance_rate: d.total > 0 ? Number((d.validated / d.total).toFixed(4)) : 0,
-        avg_confidence: d.conf.length > 0 ? Number((d.conf.reduce((a, b) => a + b, 0) / d.conf.length).toFixed(4)) : 0,
-        avg_completeness: d.comp.length > 0 ? Number((d.comp.reduce((a, b) => a + b, 0) / d.comp.length).toFixed(4)) : 0,
-      }));
+    const qualityMap = new Map<string, (typeof data.qualityReports)[number]>(data.qualityReports.map((report) => [report.dataset, report]));
+    const sections = new Set<string>([...uploadMap.keys(), ...qualityMap.keys()]);
 
-      const { data: enrichmentData } = await supabase
-        .from('enrichment_logs')
-        .select('entity_table, action, is_ai_generated, created_at')
-        .eq('company_id', activeCompanyId)
-        .order('created_at', { ascending: false })
-        .limit(500);
+    return Array.from(sections).map((section) => {
+      const upload = uploadMap.get(section) || { total: 0, validated: 0, rejected: 0, flagged: 0, lastIssues: 0 };
+      const quality = qualityMap.get(section);
+      const total = Math.max(upload.total, quality?.rowCount || 0);
+      const flagged = quality?.issues?.length ? Math.min(total, quality.issues.length) : upload.flagged;
+      const validated = total > 0 ? Math.max(0, total - upload.rejected - flagged) : 0;
+      const completeness = quality ? Math.max(0, 1 - Number(quality.nullPercentage || 0) / 100) : validated > 0 ? 1 : 0;
+      return {
+        section: toSectionLabel(section),
+        total_records: total,
+        validated,
+        rejected: upload.rejected,
+        flagged,
+        acceptance_rate: total > 0 ? validated / total : 0,
+        avg_confidence: completeness,
+        avg_completeness: completeness,
+      };
+    }).sort((a, b) => b.total_records - a.total_records);
+  }, [data.qualityReports, data.uploadLog]);
 
-      const actionMap: Record<string, { count: number; last_at: string; ai_count: number }> = {};
-      for (const row of enrichmentData ?? []) {
-        const key = `${row.entity_table}::${row.action}`;
-        if (!actionMap[key]) actionMap[key] = { count: 0, last_at: row.created_at, ai_count: 0 };
-        actionMap[key].count++;
-        if (row.is_ai_generated) actionMap[key].ai_count++;
-        if (row.created_at > actionMap[key].last_at) actionMap[key].last_at = row.created_at;
-      }
+  const enrichment_status = useMemo<EnrichmentAction[]>(() => {
+    const now = new Date().toISOString();
+    const registryCounts = [
+      { entity_table: 'companies', count: Object.keys(data.entityRegistries.companies || {}).length },
+      { entity_table: 'customers', count: Object.keys(data.entityRegistries.customers || {}).length },
+      { entity_table: 'products', count: Object.keys(data.entityRegistries.products || {}).length },
+      { entity_table: 'contacts', count: Object.keys(data.entityRegistries.contacts || {}).length },
+    ].filter((row) => row.count > 0);
 
-      const enrichment_status: EnrichmentAction[] = Object.entries(actionMap).map(([key, d]) => {
-        const [entity_table, action] = key.split('::');
-        return { entity_table, action, count: d.count, ai_generated: d.ai_count, last_enriched: d.last_at };
+    const rows: EnrichmentAction[] = registryCounts.map((row) => ({
+      entity_table: row.entity_table,
+      action: 'entity_linked',
+      count: row.count,
+      ai_generated: 0,
+      last_enriched: now,
+    }));
+
+    if (data.enrichedProfiles.length > 0) {
+      rows.unshift({
+        entity_table: 'accounts',
+        action: 'ai_inferred',
+        count: data.enrichedProfiles.length,
+        ai_generated: data.enrichedProfiles.length,
+        last_enriched: now,
       });
-
-      const { data: conflictData } = await supabase
-        .from('entities_raw_extracted')
-        .select('id, upload_section, anomalies, confidence_score, validation_status, extraction_timestamp')
-        .eq('company_id', activeCompanyId)
-        .in('validation_status', ['flagged', 'rejected'])
-        .order('extraction_timestamp', { ascending: false })
-        .limit(50);
-
-      const conflicts: ConflictRecord[] = (conflictData ?? []).map((row: any) => ({
-        record_id: row.id,
-        section: row.upload_section,
-        validation_status: row.validation_status,
-        confidence_score: row.confidence_score ?? 0,
-        anomalies: row.anomalies ?? [],
-        extracted_at: row.extraction_timestamp,
-      }));
-
-      setReport({ validation_report, enrichment_status, conflicts });
-    } catch (err: any) {
-      console.error('Failed to load pipeline report:', err);
-    } finally {
-      setLoading(false);
     }
-  }, [activeCompanyId]);
 
-  useEffect(() => {
-    if (activeCompanyId) loadReport();
-  }, [activeCompanyId, loadReport]);
+    return rows;
+  }, [data.enrichedProfiles, data.entityRegistries]);
+
+  const conflicts = useMemo<ConflictRecord[]>(() => {
+    return data.qualityReports.flatMap((report) =>
+      (report.issues || []).map((issue, index) => ({
+        record_id: `${report.dataset}-${index}`,
+        section: toSectionLabel(report.dataset),
+        validation_status: 'flagged',
+        confidence_score: Math.max(0, 1 - Number(report.nullPercentage || 0) / 100),
+        anomalies: [issue],
+        extracted_at: new Date().toISOString(),
+      })),
+    );
+  }, [data.qualityReports]);
+
+  const loadReport = useCallback(async () => {
+    setLoading(true);
+    await Promise.resolve();
+    setLoading(false);
+    toast({ title: 'Pipeline report refreshed', description: 'The panel is now synchronized with the central data store.' });
+  }, []);
 
   const runEnrichment = async () => {
     if (!activeCompanyId) return;
     setEnriching(true);
     try {
-      const { data, error } = await supabase.functions.invoke('enrich-data', {
-        body: { companyId: activeCompanyId },
-      });
-      if (error) throw error;
-      toast({
-        title: '✅ Enrichment complete',
-        description: `${data?.total_actions ?? 0} actions applied across all entities.`,
-      });
-      await loadReport();
+      await triggerEnrichment(activeCompanyId);
     } catch (err: any) {
-      toast({ title: '❌ Enrichment failed', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Enrichment failed', description: err?.message || 'Unable to run enrichment.', variant: 'destructive' });
     } finally {
       setEnriching(false);
     }
   };
 
   if (!activeCompanyId) return null;
-
-  const { validation_report = [], enrichment_status = [], conflicts = [] } = report ?? {};
 
   const totalValidated = validation_report.reduce((s, r) => s + r.validated, 0);
   const totalRejected = validation_report.reduce((s, r) => s + r.rejected, 0);
@@ -173,7 +163,6 @@ export function DataPipelineStatusPanel() {
 
   return (
     <div className="space-y-4">
-      {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card>
           <CardContent className="pt-4 pb-3">
@@ -203,7 +192,7 @@ export function DataPipelineStatusPanel() {
               <AlertTriangle className="h-4 w-4 text-amber-500" />
               <div>
                 <p className="text-lg font-bold text-foreground">{totalFlagged}</p>
-                <p className="text-xs text-muted-foreground">Flagged Records</p>
+                <p className="text-xs text-muted-foreground">Flagged Issues</p>
               </div>
             </div>
           </CardContent>
@@ -221,7 +210,6 @@ export function DataPipelineStatusPanel() {
         </Card>
       </div>
 
-      {/* Controls */}
       <div className="flex items-center justify-between">
         <div className="flex gap-2">
           {(['validation', 'enrichment', 'conflicts'] as const).map((t) => (
@@ -253,7 +241,6 @@ export function DataPipelineStatusPanel() {
         </div>
       </div>
 
-      {/* Tab content */}
       {tab === 'validation' && (
         <Card>
           <CardHeader className="pb-2">

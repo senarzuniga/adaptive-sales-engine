@@ -349,7 +349,7 @@ export default function ProjectManagementPage() {
         return;
       }
 
-      const { data: offers } = await supabase.from('offers').select('*').eq('company_id', activeCompanyId).eq('status', 'won').order('created_at', { ascending: false }).limit(1);
+      const { data: offers } = await supabase.from('offers').select('id,title,customer_name,currency,project_description').eq('company_id', activeCompanyId).eq('status', 'won').order('created_at', { ascending: false }).limit(1);
       const sourceOffer = offers?.[0];
       const projectNumber = `PRJ-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 900) + 100)}`;
       const projectPayload = {
@@ -361,10 +361,10 @@ export default function ProjectManagementPage() {
         project_type: 'machine',
         complexity: 'medium',
         risk_level: 'medium',
-        contract_value: sourceOffer?.contract_value || 0,
+        contract_value: 0,
         currency: sourceOffer?.currency || 'EUR',
         status: 'planning',
-        total_budget: sourceOffer?.contract_value || 120000,
+        total_budget: 120000,
         margin_target: 20,
         scope_of_supply: sourceOffer?.project_description || 'Project created from commercial offer',
         notes: 'Project created from offer and initialized with end-to-end execution plan.',
@@ -461,7 +461,7 @@ export default function ProjectManagementPage() {
               </SelectTrigger>
               <SelectContent>
                 {projects.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>{project.project_number} · {project.title}</SelectItem>
+                  <SelectItem key={project.id} value={project.id}>{project.project_number}  {project.title}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -471,7 +471,7 @@ export default function ProjectManagementPage() {
 
       {loading ? (
         <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">Loading project data…</CardContent>
+          <CardContent className="py-10 text-center text-muted-foreground">Loading project data</CardContent>
         </Card>
       ) : !activeProject ? (
         <Card>
@@ -523,7 +523,7 @@ export default function ProjectManagementPage() {
                 <Card className="xl:col-span-2">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2"><Factory className="h-4 w-4 text-primary" /> Project summary</CardTitle>
-                    <CardDescription>{activeProject.title} · {activeProject.customer_name}</CardDescription>
+                    <CardDescription>{activeProject.title}  {activeProject.customer_name}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -613,7 +613,7 @@ export default function ProjectManagementPage() {
                       <Progress value={Number(phase.completion_pct || 0)} />
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                         <div><span className="text-muted-foreground">Responsible:</span> <strong>{phase.responsible || 'TBD'}</strong></div>
-                        <div><span className="text-muted-foreground">Planned:</span> <strong>{phase.planned_start || 'TBD'} → {phase.planned_end || 'TBD'}</strong></div>
+                        <div><span className="text-muted-foreground">Planned:</span> <strong>{phase.planned_start || 'TBD'}  {phase.planned_end || 'TBD'}</strong></div>
                         <div><span className="text-muted-foreground">Budget:</span> <strong>{fmtCurrency(Number(phase.budget || 0))}</strong></div>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
@@ -648,7 +648,7 @@ export default function ProjectManagementPage() {
                           <tr key={milestone.id} className="border-b">
                             <td className="py-3 pr-4">{milestone.title}</td>
                             <td className="py-3 pr-4">{milestone.planned_date || 'TBD'}</td>
-                            <td className="py-3 pr-4">{fmtCurrency(Number(milestone.payment_amount || 0))} · {milestone.payment_pct || 0}%</td>
+                            <td className="py-3 pr-4">{fmtCurrency(Number(milestone.payment_amount || 0))}  {milestone.payment_pct || 0}%</td>
                             <td className="py-3 pr-4"><Badge variant={milestone.is_paid ? 'default' : milestone.status === 'completed' ? 'secondary' : 'outline'}>{milestone.is_paid ? 'Paid' : milestone.status}</Badge></td>
                             <td className="py-3 pr-4">{milestone.responsible || 'TBD'}</td>
                           </tr>
@@ -698,11 +698,11 @@ export default function ProjectManagementPage() {
                     {activeGates.map((gate) => (
                       <div key={gate.id} className="rounded-md border p-3">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="font-medium">{gate.gate_number} · {gate.gate_name}</span>
+                          <span className="font-medium">{gate.gate_number}  {gate.gate_name}</span>
                           <Badge variant={gate.status === 'passed' ? 'default' : 'outline'}>{gate.status}</Badge>
                         </div>
                         <div className="text-sm text-muted-foreground mt-2">{gate.description}</div>
-                        <div className="text-xs mt-2">Planned: {gate.planned_date || 'TBD'} · Owner: {gate.responsible || 'TBD'}</div>
+                        <div className="text-xs mt-2">Planned: {gate.planned_date || 'TBD'}  Owner: {gate.responsible || 'TBD'}</div>
                       </div>
                     ))}
                   </CardContent>

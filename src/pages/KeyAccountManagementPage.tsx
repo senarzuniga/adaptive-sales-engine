@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useData } from '@/store/DataStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Building2, Network, Target, TrendingUp, Users, ShieldCheck, Lightbulb, FileText, Mail, Briefcase, Landmark, Factory, Sparkles, PencilLine } from 'lucide-react';
 import { fmt } from '@/components/analysis360/AnalysisUtils';
 import { isNeglectedStatus, isOpportunityCoveredByOrder, isOpenOpportunityStatus } from '@/lib/salesData';
+import { listOfferDocuments } from '@/lib/offerDocumentRegistry';
 
 type AccountRecord = {
   customer: string;
@@ -30,7 +31,7 @@ type AccountRecord = {
 const normalizeAccountName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '');
 
 const KeyAccountManagementPage = () => {
-  const { data } = useData();
+  const { activeCompanyId: selectedCompanyId, data } = useData();
   const { orders, opportunities, companyProfile, leads, contacts, enrichedProfiles } = data;
 
   const profileIndex = useMemo(
@@ -118,7 +119,7 @@ const KeyAccountManagementPage = () => {
           Math.min(10, (profile?.enrichmentScore || 0) / 10) -
           account.neglected * 5
         );
-        const tier = score >= 60 ? 'Strategic' : score >= 30 ? 'Growth' : 'Watchlist';
+        const tier: AccountRecord['tier'] = score >= 60 ? 'Strategic' : score >= 30 ? 'Growth' : 'Watchlist';
         return {
           ...account,
           avgProb: oppCount > 0 ? account.avgProb / oppCount : 0,
@@ -226,12 +227,24 @@ const KeyAccountManagementPage = () => {
 
   const selectedAccountDocs = useMemo(() => {
     if (!selectedAccount) return [] as Array<{ id: string; name: string; type: string; owner: string; updatedAt: string }>;
-    return documentsByAccount[selectedAccount.customer] || [
+    const manualDocs = documentsByAccount[selectedAccount.customer] || [
       { id: 'doc-1', name: 'Commercial proposal', type: 'PDF', owner: 'Sales', updatedAt: '2026-08-24' },
       { id: 'doc-2', name: 'Technical specification', type: 'DOCX', owner: 'Engineering', updatedAt: '2026-08-19' },
       { id: 'doc-3', name: 'Payment report', type: 'XLSX', owner: 'Finance', updatedAt: '2026-08-14' },
     ];
-  }, [documentsByAccount, selectedAccount]);
+    const registeredDocs = selectedCompanyId
+      ? listOfferDocuments(selectedCompanyId)
+          .filter((doc) => normalizeAccountName(doc.accountName) === normalizeAccountName(selectedAccount.customer))
+          .map((doc) => ({
+            id: doc.id,
+            name: `${doc.offerNumber ? `${doc.offerNumber} - ` : ''}${doc.fileName}`,
+            type: doc.fileType,
+            owner: doc.owner,
+            updatedAt: doc.updatedAt,
+          }))
+      : [];
+    return [...registeredDocs, ...manualDocs.filter((manualDoc) => !registeredDocs.some((registeredDoc) => registeredDoc.name === manualDoc.name))];
+  }, [documentsByAccount, selectedAccount, selectedCompanyId]);
 
   const selectedAccountMails = useMemo(() => {
     const base = selectedAccountContacts.map((contact) => ({

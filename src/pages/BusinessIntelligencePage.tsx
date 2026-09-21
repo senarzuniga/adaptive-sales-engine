@@ -22,6 +22,7 @@ import {
 import { buildFallbackIntelligenceReport } from '@/lib/businessIntelligenceFallback';
 import { buildProductIntelligence, buildSeedProductCatalog } from '@/lib/productKnowledge';
 import { isWorkspaceSupabaseConfigured, readWorkspaceRows, writeWorkspaceRows } from '@/lib/workspaceStorage';
+import { EXTERNAL_KNOWLEDGE_LIBRARY } from '@/lib/externalKnowledgeLibrary';
 
 type Report = {
   id: string;
@@ -88,6 +89,8 @@ export default function BusinessIntelligencePage() {
   const productIntelligenceCards = useMemo(() => {
     return buildSeedProductCatalog(workspaceData.products || []).map((product) => buildProductIntelligence(product, 0));
   }, [workspaceData.products]);
+
+  const externalMarketReferences = useMemo(() => EXTERNAL_KNOWLEDGE_LIBRARY.filter((entry) => entry.area === 'market-intelligence').slice(0, 14), []);
   const { data: reports = [], isLoading } = useQuery({
     queryKey: ['bi-reports', selectedCompanyId],
     queryFn: async () => {
@@ -110,7 +113,9 @@ export default function BusinessIntelligencePage() {
         return localReports;
       }
 
-      return (data as Report[]).length > 0 ? (data as Report[]) : localReports;
+      const remoteRows = (data as Report[]) || [];
+      const remoteIds = new Set(remoteRows.map((row) => row.id));
+      return [...remoteRows, ...localReports.filter((row) => !remoteIds.has(row.id))];
     },
     enabled: !!selectedCompanyId,
   });
@@ -285,6 +290,22 @@ export default function BusinessIntelligencePage() {
 
         {/* REPORTS LIST */}
         <TabsContent value="reports" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">External market intelligence library</CardTitle>
+              <CardDescription className="text-xs">Reports and intelligence references discovered in AI Factory V2 and Backoffice.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {externalMarketReferences.map((entry) => (
+                <div key={entry.id} className="rounded-lg border p-3">
+                  <p className="text-sm font-medium">{entry.title}</p>
+                  <p className="text-[11px] text-muted-foreground">{entry.source} ? {entry.extension.toUpperCase()}</p>
+                  <p className="text-[11px] text-muted-foreground break-all mt-1">{entry.path}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
           {isLoading ? (
             <div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
           ) : reports.length === 0 ? (
@@ -491,6 +512,7 @@ function ReportDetail({ report, language }: { report: Report; language: string }
   const sale = r.sale_propensity || {};
   const future = r.future_scenarios || {};
   const recs = Array.isArray(r.recommendations) ? r.recommendations : [];
+  const reportHtml = typeof r.data_sources?.html_body === 'string' ? r.data_sources.html_body : '';
 
   return (
     <div className="space-y-6">
@@ -506,6 +528,17 @@ function ReportDetail({ report, language }: { report: Report; language: string }
           <p className="text-sm leading-relaxed whitespace-pre-wrap">{r.executive_summary}</p>
         </CardContent>
       </Card>
+
+      {reportHtml ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Eye className="h-5 w-5 text-primary" /> HTML Executive Report</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="prose prose-sm max-w-none bg-muted/30 rounded-lg p-4 border overflow-auto" dangerouslySetInnerHTML={{ __html: reportHtml }} />
+          </CardContent>
+        </Card>
+      ) : null}
 
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

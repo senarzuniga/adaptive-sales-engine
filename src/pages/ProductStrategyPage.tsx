@@ -432,6 +432,12 @@ const ProductStrategyPage = () => {
         await updateTask(existingId, {
           priority: evaluation?.priority || action.priority,
           notes: [`Scenario: ${action.scenario}`, feedback ? `Feedback: ${feedback}` : 'Feedback: pending', evaluation?.evaluation || 'Evaluation not run yet.'],
+          actionContent: {
+            goal: action.goal,
+            callScript: action.script,
+            emailTemplate: action.supportContent,
+            presentationNotes: action.recommendedMove,
+          },
         });
         toast({ title: 'Monitoring task updated', description: `${action.title} has been reprioritized.` });
         return;
@@ -450,6 +456,12 @@ const ProductStrategyPage = () => {
         dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
         createdAt: new Date().toISOString(),
         notes: [`Scenario: ${action.scenario}`, `Recommended move: ${action.recommendedMove}`, feedback ? `Feedback: ${feedback}` : 'Feedback: pending'],
+        actionContent: {
+          goal: action.goal,
+          callScript: action.script,
+          emailTemplate: action.supportContent,
+          presentationNotes: action.recommendedMove,
+        },
       });
       setTaskIdsByAction((prev) => ({ ...prev, [action.id]: taskId }));
       toast({ title: 'Monitoring task created', description: `${action.title} is now part of the action plan.` });

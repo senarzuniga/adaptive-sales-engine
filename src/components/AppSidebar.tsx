@@ -114,6 +114,7 @@ export function AppSidebar() {
     {
       label: 'AI',
       items: [
+        { title: 'AI Assistant', url: '/ai-assistant', icon: Bot },
         { title: isEs ? 'Ventas aumentadas por IA' : 'AI-Augmented Sales', url: '/ai-sales', icon: Brain },
         { title: isEs ? 'Transformacion conductual' : 'Behavioral Transform', url: '/behavioral', icon: Heart },
         { title: isEs ? 'Informes ejecutivos' : 'Executive Reports', url: '/360-analysis', icon: FileText },

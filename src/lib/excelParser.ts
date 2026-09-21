@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import type { OrderRecord, OpportunityRecord, ProductRecord, StrategyRecord } from '@/store/DataStore';
+import type { ContactRecord, LeadRecord, OrderRecord, OpportunityRecord, ProductRecord, StrategyRecord } from '@/store/DataStore';
 import { normalizeOpportunityStatus, parseFlexibleNumber } from '@/lib/salesData';
 
 function normalizeHeader(h: string): string {
@@ -184,9 +184,9 @@ export function parseExcelFile(file: File): Promise<{
             leadName: findCol(headers, 'Lead Name', 'Nombre Lead', 'Nombre', 'Contacto'),
             companyName: findCol(headers, 'Company', 'Company Name', 'Empresa'),
             email: findCol(headers, 'Email', 'Correo'),
-            phone: findCol(headers, 'Phone', 'Telefono', 'Teléfono', 'Mobile'),
+            phone: findCol(headers, 'Phone', 'Telefono', "Telfono", 'Mobile'),
             region: findCol(headers, 'Region', 'Geographical Area', 'Zona', 'Area'),
-            country: findCol(headers, 'Country', 'Pais', 'País'),
+            country: findCol(headers, 'Country', 'Pais', "Pas"),
             sector: findCol(headers, 'Sector', 'Industry', 'Industria'),
             status: findCol(headers, 'Status', 'Estado'),
             source: findCol(headers, 'Source', 'Origen', 'Canal'),
@@ -213,12 +213,12 @@ export function parseExcelFile(file: File): Promise<{
           const cols = {
             name: findCol(headers, 'Contact Name', 'Name', 'Nombre'),
             email: findCol(headers, 'Email', 'Correo'),
-            phone: findCol(headers, 'Phone', 'Telefono', 'Teléfono', 'Mobile'),
+            phone: findCol(headers, 'Phone', 'Telefono', "Telfono", 'Mobile'),
             role: findCol(headers, 'Role', 'Cargo', 'Title'),
             department: findCol(headers, 'Department', 'Departamento', 'Area'),
             companyName: findCol(headers, 'Company', 'Company Name', 'Empresa'),
             region: findCol(headers, 'Region', 'Geographical Area', 'Zona'),
-            country: findCol(headers, 'Country', 'Pais', 'País'),
+            country: findCol(headers, 'Country', 'Pais', "Pas"),
             kam: findCol(headers, 'KAM', 'Owner', 'Account Manager'),
             notes: findCol(headers, 'Notes', 'Comentario', 'Comentarios'),
           };

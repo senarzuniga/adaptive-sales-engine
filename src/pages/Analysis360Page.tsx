@@ -1,4 +1,4 @@
-import { useLanguage } from '@/i18n/LanguageContext';
+﻿import { useLanguage } from '@/i18n/LanguageContext';
 import { useData } from '@/store/DataStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { ProductPortfolioAnalysis } from '@/components/analysis360/ProductPortfo
 import { BrandingVsStrategy } from '@/components/analysis360/BrandingVsStrategy';
 import { ExecutiveInsights } from '@/components/analysis360/ExecutiveInsights';
 import { CommercialIntelligencePanel } from '@/components/analysis360/CommercialIntelligencePanel';
+import { ForecastDashboard } from '@/components/analysis360/ForecastDashboard';
 import { buildPipelineMetrics, getProbabilityGuidance, isNeglectedStatus, isOpenOpportunityStatus, normalizeOpportunityStatus } from '@/lib/salesData';
 import { readWorkspaceRows, isWorkspaceSupabaseConfigured } from '@/lib/workspaceStorage';
 import { supabase } from '@/integrations/supabase/client';
@@ -61,7 +62,7 @@ interface WorkspaceReportRecord extends Record<string, any> {
   created_at?: string;
   updated_at?: string;
   target_company_name?: string;
-  recommendations?: string[];
+  recommendations?: unknown;
 }
 
 interface WorkspaceSnapshot {
@@ -339,21 +340,21 @@ const Analysis360Page = () => {
     const annualRev = company?.annual_revenue || '';
 
     // Parse "average revenue: X,X Million" pattern from additional_notes
-    const avgRevMatch = notes.match(/average\s+revenue[:\s]*([0-9.,]+)\s*(million|mln|m)\s*(euro|eur|€)?/i);
+    const avgRevMatch = notes.match(/average\s+revenue[:\s]*(?:EUR\s*)?([0-9.,]+)\s*(million|mln|m)/i);
     if (avgRevMatch) {
       const val = parseFloat(avgRevMatch[1].replace(',', '.'));
       return { value: val * 1_000_000, source: 'Company Profile (Additional Notes)', isAverage: true };
     }
 
-    // Parse from annual_revenue field (e.g., "€2.0M (current)")
-    const annualMatch = annualRev.match(/€?\s*([0-9.,]+)\s*(m|million|mln)/i);
+    // Parse from annual_revenue field (e.g., "2.0M (current)")
+    const annualMatch = annualRev.match(/(?:EUR\s*)?([0-9.,]+)\s*(m|million|mln)/i);
     if (annualMatch) {
       const val = parseFloat(annualMatch[1].replace(',', '.'));
       return { value: val * 1_000_000, source: 'Company Profile (Annual Revenue)', isAverage: false };
     }
 
-    // Parse from business_description (e.g., "Revenue: €2.0M")
-    const descMatch = desc.match(/revenue[:\s]*€?\s*([0-9.,]+)\s*(m|million|mln)/i);
+    // Parse from business_description (e.g., "Revenue: 2.0M")
+    const descMatch = desc.match(/revenue[:\s]*(?:EUR\s*)?([0-9.,]+)\s*(m|million|mln)/i);
     if (descMatch) {
       const val = parseFloat(descMatch[1].replace(',', '.'));
       return { value: val * 1_000_000, source: 'Company Profile (Description)', isAverage: false };
@@ -403,14 +404,14 @@ const Analysis360Page = () => {
 
   // Strategy achievement: use consultant target if available, deduplicate strategy rows
   const { strategyTarget, weightedPipeline, soldRevenue, strategyAchievement, strategySource } = useMemo(() => {
-    // Parse consultant's target from company profile (e.g. "targeting €3.5M within 3 years")
+    // Parse consultant's target from company profile (e.g. "targeting 3.5M within 3 years")
     const desc = company?.business_description || '';
     const annualRev = company?.annual_revenue || '';
     const notes = company?.additional_notes || '';
     
     let consultantTarget = 0;
-    // Try "targeting €X.XM" pattern
-    const targetMatch = (annualRev + ' ' + desc + ' ' + notes).match(/target(?:ing)?\s*[~€]?\s*([0-9.,]+)\s*(m|million|mln)/i);
+    // Try "targeting X.XM" pattern
+    const targetMatch = (annualRev + ' ' + desc + ' ' + notes).match(/target(?:ing)?\s*[~]?\s*([0-9.,]+)\s*(m|million|mln)/i);
     if (targetMatch) {
       consultantTarget = parseFloat(targetMatch[1].replace(',', '.')) * 1_000_000;
     }
@@ -443,7 +444,7 @@ const Analysis360Page = () => {
       strategyAchievement: achievement,
       strategySource: source,
     };
-  }, [strategy, opportunities, company]);
+  }, [strategy, opportunities, company, rawOrders]);
 
   // Task accomplishment KPIs
   const taskStats = useMemo(() => {
@@ -546,7 +547,7 @@ const Analysis360Page = () => {
       });
     }
 
-    // Pipeline quality risk — offers below 75% are considered weak and need actions
+    // Pipeline quality risk  offers below 75% are considered weak and need actions
     const weakDeals = opportunities.filter(o => isOpenOpportunityStatus(o.status) && getProbabilityGuidance(o.contractProb).band === 'weak');
     if (weakDeals.length > 0) {
       const weakOpenCount = opportunities.filter(o => isOpenOpportunityStatus(o.status)).length || 1;
@@ -641,7 +642,7 @@ const Analysis360Page = () => {
           <div className="flex items-center gap-3 mb-2">
             <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded">{t.dashboard.pillar} 0</span>
           </div>
-          <h2 className="text-2xl font-semibold text-foreground">360º Analysis</h2>
+          <h2 className="text-2xl font-semibold text-foreground">360 Analysis</h2>
           <p className="text-sm text-muted-foreground mt-1">Complete company overview with patterns, portfolio risk, and strategic alignment</p>
         </div>
         <Select value={periodFilter} onValueChange={setPeriodFilter}>
@@ -681,17 +682,17 @@ const Analysis360Page = () => {
         <Card><CardContent className="pt-6">
           <div className="flex items-center gap-2 mb-1"><Target className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Strategy Achievement</span></div>
           <p className={`text-2xl font-bold ${strategyAchievement >= 100 ? 'text-success' : strategyAchievement >= 70 ? 'text-warning' : 'text-destructive'}`}>
-            {strategyTarget > 0 ? `${strategyAchievement.toFixed(0)}%` : '—'}
+            {strategyTarget > 0 ? `${strategyAchievement.toFixed(0)}%` : ""}
           </p>
           <div className="mt-1">
             <Progress value={Math.min(strategyAchievement, 100)} className="h-1.5" />
-            <p className="text-xs text-muted-foreground mt-1">Target: {fmt(strategyTarget)} · {strategySource}</p>
+            <p className="text-xs text-muted-foreground mt-1">Target: {fmt(strategyTarget)}  {strategySource}</p>
           </div>
         </CardContent></Card>
         <Card><CardContent className="pt-6">
           <div className="flex items-center gap-2 mb-1"><Users className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Pipeline Overview</span></div>
           <p className="text-2xl font-bold text-foreground">{opportunities.length} deals</p>
-          <p className="text-xs text-muted-foreground mt-1">{byCustomer.length} customers · {filtered.length} {useOpportunitiesFallback ? 'opportunities' : 'orders'}</p>
+          <p className="text-xs text-muted-foreground mt-1">{byCustomer.length} customers  {filtered.length} {useOpportunitiesFallback ? 'opportunities' : 'orders'}</p>
         </CardContent></Card>
       </div>
 
@@ -700,14 +701,14 @@ const Analysis360Page = () => {
         <Card><CardContent className="pt-6">
           <div className="flex items-center gap-2 mb-1"><CheckCircle2 className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Action Completion</span></div>
           <p className={`text-2xl font-bold ${taskStats.completionRate >= 70 ? 'text-success' : taskStats.completionRate >= 40 ? 'text-warning' : taskStats.total === 0 ? 'text-muted-foreground' : 'text-destructive'}`}>
-            {taskStats.total > 0 ? `${taskStats.completionRate.toFixed(0)}%` : '—'}
+            {taskStats.total > 0 ? `${taskStats.completionRate.toFixed(0)}%` : ""}
           </p>
           <p className="text-xs text-muted-foreground mt-1">{taskStats.done}/{taskStats.total} actions completed</p>
         </CardContent></Card>
         <Card><CardContent className="pt-6">
           <div className="flex items-center gap-2 mb-1"><Activity className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Actions In Progress</span></div>
           <p className="text-2xl font-bold text-foreground">{taskStats.inProgress}</p>
-          <p className="text-xs text-muted-foreground mt-1">{taskStats.todo} pending · {taskStats.inProgress} active</p>
+          <p className="text-xs text-muted-foreground mt-1">{taskStats.todo} pending  {taskStats.inProgress} active</p>
         </CardContent></Card>
         <Card className={taskStats.overdue > 0 ? 'border-destructive/50' : ''}><CardContent className="pt-6">
           <div className="flex items-center gap-2 mb-1"><Clock className={`h-4 w-4 ${taskStats.overdue > 0 ? 'text-destructive' : 'text-muted-foreground'}`} /><span className="text-sm text-muted-foreground">Overdue Actions</span></div>
@@ -720,7 +721,7 @@ const Analysis360Page = () => {
             {performanceRisks.length}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            {performanceRisks.filter(r => r.level === 'critical').length} critical · {performanceRisks.filter(r => r.level === 'warning').length} warnings
+            {performanceRisks.filter(r => r.level === 'critical').length} critical  {performanceRisks.filter(r => r.level === 'warning').length} warnings
           </p>
         </CardContent></Card>
       </div>
@@ -736,7 +737,7 @@ const Analysis360Page = () => {
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-foreground text-sm">{risk.title}</p>
                     <Badge variant={risk.level === 'critical' ? 'destructive' : 'secondary'} className="text-[10px]">
-                      {risk.level === 'critical' ? '🔴 CRITICAL' : '🟡 WARNING'}
+                      {risk.level === 'critical' ? " CRITICAL" : " WARNING"}
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">{risk.description}</p>
@@ -783,6 +784,7 @@ const Analysis360Page = () => {
           <TabsTrigger value="product-analysis" className="gap-1 text-xs"><Layers className="h-3 w-3" /> Product Portfolio</TabsTrigger>
           <TabsTrigger value="branding" className="gap-1 text-xs"><Eye className="h-3 w-3" /> Branding vs Strategy</TabsTrigger>
           <TabsTrigger value="intelligence" className="gap-1 text-xs"><Activity className="h-3 w-3" /> Commercial Intelligence</TabsTrigger>
+           <TabsTrigger value="forecast" className="gap-1 text-xs"><Target className="h-3 w-3" /> Forecast 360</TabsTrigger>
         </TabsList>
 
         <TabsContent value="situation">
@@ -980,9 +982,27 @@ const Analysis360Page = () => {
             leads={leads}
           />
         </TabsContent>
+
+        <TabsContent value="forecast">
+          <ForecastDashboard
+            companyId={activeCompanyId}
+            company={company}
+            orders={rawOrders}
+            opportunities={opportunities}
+            offers={workspaceSnapshot.offers}
+            reports={workspaceSnapshot.reports}
+            leads={leads}
+            strategy={strategy}
+          />
+        </TabsContent>
       </Tabs>
     </div>
   );
 };
 
 export default Analysis360Page;
+
+
+
+
+

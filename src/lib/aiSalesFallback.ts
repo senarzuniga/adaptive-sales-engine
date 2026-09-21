@@ -73,7 +73,7 @@ export function buildFallbackActionPool(input: ActionPoolInput) {
       return acc;
     }, {} as Record<string, number>);
 
-  const bestCustomer = Object.entries(topCustomer).sort((a, b) => b[1] - a[1])[0];
+  const bestCustomer = Object.entries(topCustomer).sort((a, b) => Number(b[1]) - Number(a[1]))[0];
   if (bestCustomer) {
     actions.push({
       title: `Expand value with ${bestCustomer[0]}`,
@@ -84,7 +84,7 @@ export function buildFallbackActionPool(input: ActionPoolInput) {
       assignee: '',
       dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
       rationale: 'existing customers usually deliver the fastest and most profitable growth',
-      estimatedRevenue: bestCustomer[1] * 0.15,
+      estimatedRevenue: Number(bestCustomer[1]) * 0.15,
       riskIfNotDone: 'Share-of-wallet and retention will weaken over time.',
       actionContent: buildActionContent(bestCustomer[0], 'an expanded commercial plan', 'this customer already represents meaningful booked revenue'),
     });

@@ -6,6 +6,31 @@ const fmt = (value: number) =>
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+type ExecutiveInsightType = 'risk' | 'opportunity' | 'pattern' | 'warning' | 'strength';
+type ExecutiveInsightSeverity = 'high' | 'medium' | 'low';
+
+export interface FallbackExecutiveInsights {
+  executive_summary: string;
+  health_score: number;
+  health_label: string;
+  critical_insights: Array<{
+    title: string;
+    type: ExecutiveInsightType;
+    severity: ExecutiveInsightSeverity;
+    description: string;
+    data_point?: string;
+  }>;
+  recommendations: Array<{
+    priority: 'immediate' | 'short_term' | 'medium_term';
+    action: string;
+    expected_impact: string;
+    effort?: 'low' | 'medium' | 'high';
+  }>;
+  portfolio_diagnosis?: string;
+  growth_outlook?: string;
+  key_risks?: string[];
+}
+
 const day = (offset: number) => new Date(Date.now() + offset * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
 export interface EdgeRuntimeErrorDetails {
@@ -171,7 +196,7 @@ export function buildFallbackActionResultAnalysis(input: { task?: any; resultTex
   };
 }
 
-export function buildFallbackExecutiveInsights(input: { orders?: any[]; opportunities?: any[]; products?: any[]; strategy?: any[]; company?: any }) {
+export function buildFallbackExecutiveInsights(input: { orders?: any[]; opportunities?: any[]; products?: any[]; strategy?: any[]; company?: any }): FallbackExecutiveInsights {
   const orders = input.orders || [];
   const opportunities = input.opportunities || [];
   const products = input.products || [];
@@ -187,8 +212,9 @@ export function buildFallbackExecutiveInsights(input: { orders?: any[]; opportun
     const key = order.customerName || 'Unknown';
     acc[key] = (acc[key] || 0) + (order.sellingPrice || 0);
     return acc;
-  }, {});
-  const topCustomerShare = Object.values(topCustomerMap).sort((a, b) => b - a).slice(0, 3).reduce((sum, value) => sum + value, 0);
+  }, {} as Record<string, number>);
+  const topCustomerValues = Object.keys(topCustomerMap).map((key) => topCustomerMap[key]);
+  const topCustomerShare = topCustomerValues.sort((a, b) => b - a).slice(0, 3).reduce((sum, value) => sum + value, 0);
   const concentration = bookedRevenue > 0 ? (topCustomerShare / bookedRevenue) * 100 : 0;
   const healthScore = Math.max(35, Math.min(92, Math.round((achievement || 55) - weakDeals.length * 2 + (products.length > 0 ? 8 : 0))));
 

@@ -14,11 +14,11 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { getActivePipelineOpportunities } from '@/lib/salesData';
+import { getActivePipelineOpportunities, isOpenOpportunityStatus } from '@/lib/salesData';
 import { buildFallbackActionContent, buildFallbackWeeklyPlan, classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
 
 const PILLAR_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-  p0: { label: '360º Analysis', icon: BarChart3, color: 'text-blue-500' },
+  p0: { label: "360 Analysis", icon: BarChart3, color: 'text-blue-500' },
   p1: { label: 'Sales Architecture', icon: Building2, color: 'text-emerald-500' },
   p2: { label: 'KAM', icon: Users, color: 'text-purple-500' },
   p3: { label: 'After-Sales', icon: Wrench, color: 'text-orange-500' },
@@ -105,10 +105,10 @@ const WeeklyPlannerPage = () => {
 
     const allGaps = [...productGaps, ...regionGaps, ...kamGaps].filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmount - a.gapAmount);
 
-    const summary = `Overall: ${overallAchievement.toFixed(0)}% achieved (€${totalActual.toLocaleString()} of €${totalTarget.toLocaleString()}, gap: €${totalGap.toLocaleString()}).
-TOP GAPS BY PRODUCT: ${productGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmount - a.gapAmount).slice(0, 5).map(g => `${g.segment}: €${g.gapAmount.toLocaleString()} gap (${g.gapPct.toFixed(0)}%), pipeline coverage: €${g.pipelineCoverage.toLocaleString()}`).join('; ')}
-TOP GAPS BY REGION: ${regionGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmount - a.gapAmount).slice(0, 5).map(g => `${g.segment}: €${g.gapAmount.toLocaleString()} gap (${g.gapPct.toFixed(0)}%), pipeline coverage: €${g.pipelineCoverage.toLocaleString()}`).join('; ')}
-TOP GAPS BY KAM: ${kamGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmount - a.gapAmount).slice(0, 5).map(g => `${g.segment}: €${g.gapAmount.toLocaleString()} gap (${g.gapPct.toFixed(0)}%), pipeline coverage: €${g.pipelineCoverage.toLocaleString()}`).join('; ')}`;
+    const summary = `Overall: ${overallAchievement.toFixed(0)}% achieved (${totalActual.toLocaleString()} of ${totalTarget.toLocaleString()}, gap: ${totalGap.toLocaleString()}).
+TOP GAPS BY PRODUCT: ${productGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmount - a.gapAmount).slice(0, 5).map(g => `${g.segment}: ${g.gapAmount.toLocaleString()} gap (${g.gapPct.toFixed(0)}%), pipeline coverage: ${g.pipelineCoverage.toLocaleString()}`).join('; ')}
+TOP GAPS BY REGION: ${regionGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmount - a.gapAmount).slice(0, 5).map(g => `${g.segment}: ${g.gapAmount.toLocaleString()} gap (${g.gapPct.toFixed(0)}%), pipeline coverage: ${g.pipelineCoverage.toLocaleString()}`).join('; ')}
+TOP GAPS BY KAM: ${kamGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmount - a.gapAmount).slice(0, 5).map(g => `${g.segment}: ${g.gapAmount.toLocaleString()} gap (${g.gapPct.toFixed(0)}%), pipeline coverage: ${g.pipelineCoverage.toLocaleString()}`).join('; ')}`;
 
     return { gaps: allGaps, overallAchievement, totalTarget, totalActual, totalGap, summary };
   }, [data]);
@@ -121,7 +121,7 @@ TOP GAPS BY KAM: ${kamGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmou
           const custRev: Record<string, number> = {};
           data.orders.forEach(o => { custRev[o.customerName] = (custRev[o.customerName] || 0) + o.sellingPrice; });
           const topCust = Object.entries(custRev).sort((a, b) => b[1] - a[1]).slice(0, 10);
-          return `Total revenue: €${totalRev.toLocaleString()}, Avg margin: ${avgMargin.toFixed(1)}%, ${data.orders.length} orders. Top customers: ${topCust.map(([n, v]) => `${n}(€${v.toLocaleString()})`).join(', ')}`;
+          return `Total revenue: ${totalRev.toLocaleString()}, Avg margin: ${avgMargin.toFixed(1)}%, ${data.orders.length} orders. Top customers: ${topCust.map(([n, v]) => `${n}(${v.toLocaleString()})`).join(', ')}`;
         })()
       : null;
 
@@ -130,12 +130,12 @@ TOP GAPS BY KAM: ${kamGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmou
           const open = getActivePipelineOpportunities(data.opportunities, data.orders);
           const totalPipeline = open.reduce((s, o) => s + o.estRevenue, 0);
           const highProb = open.filter(o => o.contractProb >= 75);
-          return `Pipeline: €${totalPipeline.toLocaleString()}, ${open.length} open opps, ${highProb.length} strong-prob (≥75%). Stages: ${open.map(o => `${o.customerName}/${o.productFamily}/${o.status}`).slice(0, 10).join('; ')}`;
+          return `Pipeline: ${totalPipeline.toLocaleString()}, ${open.length} open opps, ${highProb.length} strong-prob (75%). Stages: ${open.map(o => `${o.customerName}/${o.productFamily}/${o.status}`).slice(0, 10).join('; ')}`;
         })()
       : null;
 
     const stratData = data.strategy.length > 0
-      ? `Target revenue: €${data.strategy.reduce((s, st) => s + st.estRevenue, 0).toLocaleString()}, ${data.strategy.length} entries. By region: ${[...new Set(data.strategy.map(s => s.region))].join(', ')}`
+      ? `Target revenue: ${data.strategy.reduce((s, st) => s + st.estRevenue, 0).toLocaleString()}, ${data.strategy.length} entries. By region: ${[...new Set(data.strategy.map(s => s.region))].join(', ')}`
       : null;
 
     const prodData = data.products.length > 0
@@ -227,12 +227,12 @@ TOP GAPS BY KAM: ${kamGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmou
                 ? (() => {
                     const custRev: Record<string, number> = {};
                     data.orders.forEach(o => { custRev[o.customerName] = (custRev[o.customerName] || 0) + o.sellingPrice; });
-                    return Object.entries(custRev).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([n, v]) => `${n}(€${v.toLocaleString()})`).join(', ');
+                    return Object.entries(custRev).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([n, v]) => `${n}(${v.toLocaleString()})`).join(', ');
                   })()
                 : null,
               topProducts: data.products.length > 0 ? data.products.slice(0, 5).map(p => `${p.name}(${p.type})`).join(', ') : null,
-              pipelineValue: data.opportunities.length > 0 ? `€${data.opportunities.filter(o => isOpenOpportunityStatus(o.status)).reduce((s, o) => s + o.estRevenue, 0).toLocaleString()}` : null,
-              strategyTargets: data.strategy.length > 0 ? `€${data.strategy.reduce((s, st) => s + st.estRevenue, 0).toLocaleString()} target` : null,
+              pipelineValue: data.opportunities.length > 0 ? `${data.opportunities.filter(o => isOpenOpportunityStatus(o.status)).reduce((s, o) => s + o.estRevenue, 0).toLocaleString()}` : null,
+              strategyTargets: data.strategy.length > 0 ? `${data.strategy.reduce((s, st) => s + st.estRevenue, 0).toLocaleString()} target` : null,
             },
           },
         });
@@ -250,7 +250,7 @@ TOP GAPS BY KAM: ${kamGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmou
       const newTask: MonitoringTask = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}-${i}`,
         title: t.title,
-        description: `${t.description}\n\n📋 Rationale: ${t.rationale}`,
+        description: `${t.description}\n\n Rationale: ${t.rationale}`,
         pillar: t.pillar as TaskPillar,
         status: 'todo',
         priority: t.priority as TaskPriority,
@@ -330,15 +330,15 @@ TOP GAPS BY KAM: ${kamGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmou
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                 <div>
                   <p className="text-xs text-muted-foreground">Target</p>
-                  <p className="text-lg font-bold text-foreground">€{gap.totalTarget.toLocaleString()}</p>
+                  <p className="text-lg font-bold text-foreground">{gap.totalTarget.toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Actual</p>
-                  <p className="text-lg font-bold text-foreground">€{gap.totalActual.toLocaleString()}</p>
+                  <p className="text-lg font-bold text-foreground">{gap.totalActual.toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Gap</p>
-                  <p className="text-lg font-bold text-destructive">€{gap.totalGap.toLocaleString()}</p>
+                  <p className="text-lg font-bold text-destructive">{gap.totalGap.toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Achievement</p>
@@ -356,7 +356,7 @@ TOP GAPS BY KAM: ${kamGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmou
                       {topProductGaps.map(g => (
                         <div key={g.segment} className="flex justify-between text-xs py-0.5">
                           <span className="text-foreground">{g.segment}</span>
-                          <span className="text-destructive font-medium">-€{g.gapAmount.toLocaleString()} ({g.gapPct.toFixed(0)}%)</span>
+                          <span className="text-destructive font-medium">-{g.gapAmount.toLocaleString()} ({g.gapPct.toFixed(0)}%)</span>
                         </div>
                       ))}
                     </div>
@@ -367,7 +367,7 @@ TOP GAPS BY KAM: ${kamGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmou
                       {topRegionGaps.map(g => (
                         <div key={g.segment} className="flex justify-between text-xs py-0.5">
                           <span className="text-foreground">{g.segment}</span>
-                          <span className="text-destructive font-medium">-€{g.gapAmount.toLocaleString()} ({g.gapPct.toFixed(0)}%)</span>
+                          <span className="text-destructive font-medium">-{g.gapAmount.toLocaleString()} ({g.gapPct.toFixed(0)}%)</span>
                         </div>
                       ))}
                     </div>
@@ -378,7 +378,7 @@ TOP GAPS BY KAM: ${kamGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmou
                       {topKamGaps.map(g => (
                         <div key={g.segment} className="flex justify-between text-xs py-0.5">
                           <span className="text-foreground">{g.segment}</span>
-                          <span className="text-destructive font-medium">-€{g.gapAmount.toLocaleString()} ({g.gapPct.toFixed(0)}%)</span>
+                          <span className="text-destructive font-medium">-{g.gapAmount.toLocaleString()} ({g.gapPct.toFixed(0)}%)</span>
                         </div>
                       ))}
                     </div>
@@ -498,8 +498,8 @@ TOP GAPS BY KAM: ${kamGaps.filter(g => g.gapAmount > 0).sort((a, b) => b.gapAmou
                         <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
                           <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" /> {task.dueDate}</span>
                           {task.targetSegment && <span className="flex items-center gap-1"><Target className="h-3 w-3" /> {task.targetSegment}</span>}
-                          {task.estimatedRevenueImpact > 0 && <span className="font-medium text-primary">€{task.estimatedRevenueImpact.toLocaleString()}</span>}
-                          <span>📋 {task.rationale}</span>
+                          {task.estimatedRevenueImpact > 0 && <span className="font-medium text-primary">{task.estimatedRevenueImpact.toLocaleString()}</span>}
+                          <span> {task.rationale}</span>
                         </div>
                       </div>
                     </div>

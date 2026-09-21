@@ -67,7 +67,7 @@ const DataUploadPage = () => {
           timestamp: new Date().toISOString(),
         });
         toast({
-          title: `⚠️ ${file.name}`,
+          title: ` ${file.name}`,
           description: `This box is for ${expectedType}. The uploaded file was detected as ${result.type}.`,
           variant: 'destructive',
         });
@@ -107,16 +107,16 @@ const DataUploadPage = () => {
       }
 
       if (result.type !== 'unknown') {
-        toast({ title: `✅ ${file.name}`, description: `Detected as ${result.type} — ${result.rowCount} rows loaded for ${activeCompanyLabel}.` });
+        toast({ title: ` ${file.name}`, description: `Detected as ${result.type}  ${result.rowCount} rows loaded for ${activeCompanyLabel}.` });
       } else {
-        toast({ title: `⚠️ ${file.name}`, description: result.errors.join('. '), variant: 'destructive' });
+        toast({ title: ` ${file.name}`, description: result.errors.join('. '), variant: 'destructive' });
       }
     } catch {
       addUploadLog({
         id: `${Date.now()}`, fileName: file.name, detectedType: 'unknown',
         rowCount: 0, status: 'error', errors: ['Failed to parse file'], timestamp: new Date().toISOString(),
       });
-      toast({ title: `❌ ${file.name}`, description: 'Failed to parse file.', variant: 'destructive' });
+      toast({ title: ` ${file.name}`, description: 'Failed to parse file.', variant: 'destructive' });
     } finally {
       setProcessing(prev => prev.filter(n => n !== file.name));
     }
@@ -125,11 +125,11 @@ const DataUploadPage = () => {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    Array.from(e.dataTransfer.files).forEach(processFile);
+    Array.from(e.dataTransfer.files).forEach((file) => { void processFile(file); });
   }, [processFile]);
 
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    Array.from(e.target.files || []).forEach(processFile);
+    Array.from(e.target.files || []).forEach((file) => { void processFile(file); });
     e.target.value = '';
   }, [processFile]);
 
@@ -217,17 +217,17 @@ const DataUploadPage = () => {
           </TabsTrigger>
         </TabsList>
 
-        {/* ── Document Library Tab ── */}
+        {/*  Document Library Tab  */}
         <TabsContent value="documents">
           <ConceptDocumentUpload />
         </TabsContent>
 
-        {/* ── Pipeline Status Tab ── */}
+        {/*  Pipeline Status Tab  */}
         <TabsContent value="pipeline">
           <DataPipelineStatusPanel />
         </TabsContent>
 
-        {/* ── Structured Data Tab ── */}
+        {/*  Structured Data Tab  */}
         <TabsContent value="structured" className="space-y-6">
           {/* Data Status */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -340,9 +340,9 @@ const DataUploadPage = () => {
                     <div key={report.dataset} className="text-xs border rounded-md p-2">
                       <div className="flex items-center justify-between">
                         <span className="font-medium uppercase">{report.dataset}</span>
-                        <span>{report.rowCount} rows · {report.nullPercentage}% nulls</span>
+                        <span>{report.rowCount} rows  {report.nullPercentage}% nulls</span>
                       </div>
-                      {report.issues.length > 0 && <p className="text-muted-foreground mt-1">{report.issues.join(' · ')}</p>}
+                      {report.issues.length > 0 && <p className="text-muted-foreground mt-1">{report.issues.join(" ")}</p>}
                     </div>
                   ))}
                 </CardContent>
@@ -352,7 +352,7 @@ const DataUploadPage = () => {
                 <CardContent className="pt-6 space-y-2">
                   <h3 className="font-semibold text-foreground">Entity Extraction & Enrichment</h3>
                   <p className="text-xs text-muted-foreground">
-                    Companies: {Object.keys(data.entityRegistries.companies).length} · Customers: {Object.keys(data.entityRegistries.customers).length} · Products: {Object.keys(data.entityRegistries.products).length} · Contacts: {Object.keys(data.entityRegistries.contacts).length}
+                    Companies: {Object.keys(data.entityRegistries.companies).length}  Customers: {Object.keys(data.entityRegistries.customers).length}  Products: {Object.keys(data.entityRegistries.products).length}  Contacts: {Object.keys(data.entityRegistries.contacts).length}
                   </p>
                   {data.enrichedProfiles.slice(0, 5).map((profile) => (
                     <div key={profile.id} className="text-xs border rounded-md p-2 flex items-center justify-between">
@@ -380,7 +380,7 @@ const DataUploadPage = () => {
                             <span className="text-sm font-medium text-foreground">{entry.fileName}</span>
                             {entry.detectedType !== 'unknown' && (
                               <span className="ml-2 text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                                {typeLabels[entry.detectedType] || entry.detectedType} — {entry.rowCount} rows
+                                {typeLabels[entry.detectedType] || entry.detectedType}  {entry.rowCount} rows
                               </span>
                             )}
                           </div>

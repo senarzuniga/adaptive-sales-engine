@@ -1,4 +1,4 @@
-﻿import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+﻿import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
@@ -63,12 +63,9 @@ describe('Offer pricing save flow without Supabase', () => {
     });
 
     // Add a material cost so the offer has value.
-    const qtyInputs = screen.getAllByRole('spinbutton');
-    // First item, Comercio category: quantity input is followed by unit cost input.
-    const comercioSection = screen.getAllByText('Comercio')[0].closest('div')?.parentElement as HTMLElement;
-    const inputs = within(comercioSection).getAllByRole('spinbutton');
-    fireEvent.change(inputs[1], { target: { value: '1000' } });
-    expect(qtyInputs.length).toBeGreaterThan(0);
+    const materialUnitCost = screen.getAllByLabelText(/unit cost materials/i)[0];
+    fireEvent.change(materialUnitCost, { target: { value: '1000' } });
+    expect(screen.getAllByRole('spinbutton').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
@@ -82,6 +79,43 @@ describe('Offer pricing save flow without Supabase', () => {
     }, { timeout: 15000 });
     const costRows = JSON.parse(localStorage.getItem(`acs_workspace_cost_breakdowns_${companyId}`) || '[]');
     expect(costRows.some((row: any) => row.category === 'materials' && row.total_cost === 1000)).toBe(true);
+  }, 30000);
+
+  it('restores the in-progress draft after reloading the page', async () => {
+    const firstRender = renderPage();
+    await waitFor(() => expect(screen.getByPlaceholderText('OFF-2026-001')).toBeTruthy());
+
+    fireEvent.change(screen.getByPlaceholderText('E.g: Assembly line'), { target: { value: 'Draft that must survive reload' } });
+    fireEvent.change(screen.getAllByLabelText(/unit cost materials/i)[0], { target: { value: '2450' } });
+
+    await waitFor(() => {
+      const draft = JSON.parse(localStorage.getItem('acs_offer_pricing_draft_' + companyId) || '{}');
+      expect(draft.offerTitle).toBe('Draft that must survive reload');
+      expect(draft.items?.[0]?.costLines?.some((line: any) => Number(line.unitCost || 0) === 2450)).toBe(true);
+    });
+
+    firstRender.unmount();
+    renderPage();
+
+    await waitFor(() => expect((screen.getByPlaceholderText('E.g: Assembly line') as HTMLInputElement).value).toBe('Draft that must survive reload'));
+    expect((screen.getAllByLabelText(/unit cost materials/i)[0] as HTMLInputElement).value).toBe('2450');
+  }, 30000);
+
+  it('recovers Sigmaq OFF-2026-138 in the Ingecart history and filters it from search', async () => {
+    localStorage.clear();
+    localStorage.setItem('acs_companies', JSON.stringify([{ id: 'ingecart-demo', company_name: 'Ingecart Demo', enrichment_status: 'validated' }]));
+    localStorage.setItem('acs_active_company', 'ingecart-demo');
+
+    renderPage();
+
+    const historyTab = await screen.findByRole('tab', { name: /history/i });
+    fireEvent.mouseDown(historyTab, { button: 0 });
+    fireEvent.click(historyTab);
+
+    await waitFor(() => expect(screen.getByText('OFF-2026-138')).toBeTruthy());
+    fireEvent.change(screen.getByLabelText('Search offers'), { target: { value: 'sigmaq guatemala' } });
+    expect(screen.getByText('OFF-2026-138')).toBeTruthy();
+    expect(screen.getByText('Sigmaq Guatemala FFG MID LINE PALLETIZER')).toBeTruthy();
   }, 30000);
 
   it('re-opens a saved offer in the builder and updates it in place', async () => {

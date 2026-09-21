@@ -52,6 +52,18 @@ const competitor = (name: string, offer: string, performance: string, marketFit:
   gainFitActions,
 });
 
+const INGECART_STANDARD_HOURLY_RATES = {
+  projectManagement: 70,
+  directorMechanical: 85,
+  directorElectrical: 85,
+  projectControl: 68,
+  workshopDirector: 60,
+  workshopOperator: 45,
+  electricalOperator: 45,
+  mechanicalOperator: 45,
+  mechanicalEngineer: 65,
+} as const;
+
 const SR1400_VARIABLE_LINES: ProductCostPresetLine[] = [
   unitLine('materials', 'CADENA', 160, 163.45, { scalesWithLength: true, unitsPerLengthM: 2 }),
   unitLine('materials', 'CHAPAS', 64, 75, { scalesWithLength: true, unitsPerLengthM: 0.8 }),
@@ -210,6 +222,32 @@ const PRODUCT_PROFILES: ProductProfile[] = [
       competitors: [competitor('KUKA partner integrators', 'Generic AMR logistics cells', 'Strong robotics know-how, often weaker in corrugated process context.', 79, 'Comparable robotics stack but less process-native positioning.', ['Highlight corrugated waste-flow know-how', 'Use turnkey safety and WiFi readiness as differentiators'])],
       marketFitNotes: ['Fit grows when waste movement and safety automation are critical pain points.'],
       fitImprovementActions: ['Quantify forklift reduction and safety gains.', 'Demonstrate integration with plant routing and KPIs.'],
+    },
+  },
+  {
+    aliases: ['amr corr area scrap mng std', 'amr corrugator area scrap management standard', 'amr corr area scrap management std'],
+    base: {
+      name: 'AMR Corr Area scrap Mng Std', averageValue: 330000, estimatedCost: 210136, type: 'innovation solution', category: 'product',
+      characteristics: ['Standard AMR scrap management package for corrugator area', 'Sifise subcontracted electrical scope', 'Lean engineering baseline using Ingecart standard hourly rates'], repositories: ['INGECART/PRODUCTO', 'ingesite solutions'], validated: true, source: 'manual', comments: 'Standard corrugator-area scrap AMR baseline using the provided Sifise subcontract and Ingecart hourly cost rates.'
+    },
+    meta: {
+      productInfoUrl: SOLUTIONS_URL, productVideoUrl: VIDEO_URL,
+      costPreset: [
+        unitLine('subcontracting', 'Syffise', 1, 190016),
+        engineeringLine('Gestion de proyecto', 0, INGECART_STANDARD_HOURLY_RATES.projectManagement, 'GESTION DE PROYECTO'),
+        engineeringLine('Director ing. mecanica', 40, INGECART_STANDARD_HOURLY_RATES.directorMechanical, 'DIRECTOR ING. MECANICA'),
+        engineeringLine('Director ing. electrica', 60, INGECART_STANDARD_HOURLY_RATES.directorElectrical, 'DIRECTOR ING. ELECTRICA'),
+        engineeringLine('Montaje', 0, INGECART_STANDARD_HOURLY_RATES.workshopOperator, 'MONTAJE'),
+        engineeringLine('Control proyecto', 40, INGECART_STANDARD_HOURLY_RATES.projectControl, 'CONTROL PROYECTO'),
+        engineeringLine('Director taller', 40, INGECART_STANDARD_HOURLY_RATES.workshopDirector, 'DIRECTOR TALLER'),
+        engineeringLine('Operario taller', 0, INGECART_STANDARD_HOURLY_RATES.workshopOperator, 'OPERARIO TALLER'),
+        engineeringLine('Operario electrico', 0, INGECART_STANDARD_HOURLY_RATES.electricalOperator, 'OPERARIO ELECTRICO'),
+        engineeringLine('Operario mecanico', 0, INGECART_STANDARD_HOURLY_RATES.mechanicalOperator, 'OPERARIO MECANICO'),
+        engineeringLine('Ing mecanico', 100, INGECART_STANDARD_HOURLY_RATES.mechanicalEngineer, 'ING MECANICO'),
+      ],
+      competitors: [competitor('KUKA partner integrators', 'Standard AMR scrap logistics cell', 'Strong AMR stack but usually less tuned to corrugator scrap-flow engineering.', 78, 'Comparable robotics capability, weaker corrugated-process adaptation and turnkey execution framing.', ['Differentiate with scrap-flow process know-how', 'Show standard package speed-to-quote and speed-to-deploy', 'Use customer-specific transport and safety logic as differentiators'])],
+      marketFitNotes: ['Good fit for standard corrugator scrap-management projects that need a faster baseline than a fully bespoke AMR concept.'],
+      fitImprovementActions: ['Attach the standard package scope matrix and electrical/subcontract boundary.', 'Quantify forklift reduction, safety gains and operator decoupling in the corrugator area.'],
     },
   },
   {

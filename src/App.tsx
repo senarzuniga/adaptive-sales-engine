@@ -32,6 +32,7 @@ import CostRatesPage from "./pages/CostRatesPage";
 import BusinessIntelligencePage from "./pages/BusinessIntelligencePage";
 import SavedCompaniesPage from "./pages/SavedCompaniesPage";
 import CommercialActionsRepositoryPage from "./pages/CommercialActionsRepositoryPage";
+import AIAssistantPage from "./pages/AIAssistantPage";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -71,6 +72,7 @@ const App = () => (
                 <Route path="/business-intelligence" element={<BusinessIntelligencePage />} />
                 <Route path="/commercial-actions-repository" element={<CommercialActionsRepositoryPage />} />
                 <Route path="/companies" element={<SavedCompaniesPage />} />
+                <Route path="/ai-assistant" element={<AIAssistantPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AppLayout>

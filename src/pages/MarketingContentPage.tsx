@@ -23,6 +23,7 @@ import { toast } from '@/hooks/use-toast';
 import { isOpenOpportunityStatus } from '@/lib/salesData';
 import { buildFallbackMarketingContent } from '@/lib/marketingContentFallback';
 import { isWorkspaceSupabaseConfigured, readWorkspaceRows, writeWorkspaceRows } from '@/lib/workspaceStorage';
+import { EXTERNAL_KNOWLEDGE_LIBRARY } from '@/lib/externalKnowledgeLibrary';
 
 interface ContentResponse {
   title: string;
@@ -118,8 +119,9 @@ const MarketingContentPage = () => {
   const loadSavedContent = useCallback(async () => {
     if (!activeCompanyId) return;
     setIsLoadingSaved(true);
+    const localRows = readWorkspaceRows<SavedContent>('marketing_content', activeCompanyId);
     if (!isWorkspaceSupabaseConfigured) {
-      setSavedContents(readWorkspaceRows('marketing_content', activeCompanyId));
+      setSavedContents(localRows);
       setIsLoadingSaved(false);
       return;
     }
@@ -128,7 +130,11 @@ const MarketingContentPage = () => {
       .select('*')
       .eq('company_id', activeCompanyId)
       .order('created_at', { ascending: false });
-    if (!error) setSavedContents((rows as any[]) || []);
+    if (!error) {
+      const remoteRows = (rows as SavedContent[]) || [];
+      const remoteIds = new Set(remoteRows.map((row) => row.id));
+      setSavedContents([...remoteRows, ...localRows.filter((row) => !remoteIds.has(row.id))]);
+    }
     setIsLoadingSaved(false);
   }, [activeCompanyId]);
 
@@ -415,6 +421,8 @@ const MarketingContentPage = () => {
     if (filterStatus === 'all') return savedContents;
     return savedContents.filter(c => c.status === filterStatus);
   }, [savedContents, filterStatus]);
+
+  const externalContentReferences = useMemo(() => EXTERNAL_KNOWLEDGE_LIBRARY.filter((entry) => ['marketing-content', 'product-content', 'account-content'].includes(entry.area)).slice(0, 14), []);
 
   if (!activeCompanyId) {
     return (
@@ -709,6 +717,25 @@ const MarketingContentPage = () => {
               ))}
             </div>
 
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">External knowledge library</CardTitle>
+                <CardDescription className="text-xs">Reports and product or account content discovered in AI Factory V2, Backoffice and Ingesite.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {externalContentReferences.map((entry) => (
+                  <div key={entry.id} className="rounded-lg border p-3 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium">{entry.title}</p>
+                      <p className="text-[11px] text-muted-foreground">{entry.source} ? {entry.area} ? {entry.extension.toUpperCase()}</p>
+                      <p className="text-[11px] text-muted-foreground break-all mt-1">{entry.path}</p>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => copyToClipboard(entry.path, 'Path')}><Copy className="h-3.5 w-3.5" /></Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
             {isLoadingSaved ? (
               <Card><CardContent className="py-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></CardContent></Card>
             ) : filteredContents.length === 0 ? (
@@ -764,7 +791,7 @@ const MarketingContentPage = () => {
                         <CardDescription className="text-xs">{viewingContent.summary}</CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-3">
-                        {viewingContent.platform === 'newsletter' ? (
+                        {viewingContent.platform === 'newsletter' || /^\s*<!doctype html>|^\s*<html/i.test(viewingContent.body || '') ? (
                           <div className="prose prose-sm max-w-none text-sm bg-muted/30 rounded-lg p-4 border" dangerouslySetInnerHTML={{ __html: viewingContent.body }} />
                         ) : (
                           <div className="text-sm bg-muted/30 rounded-lg p-4 border whitespace-pre-wrap">{viewingContent.body}</div>

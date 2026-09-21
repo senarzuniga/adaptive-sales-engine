@@ -65,6 +65,143 @@ export interface TriggerContext {
 
 export const STORAGE_KEY = 'acs_commercial_actions_repository';
 
+
+type PlanPostventaRow = {
+  machine: string;
+  customer: string;
+  number: string;
+  action: string;
+  billable: string;
+  priority: string;
+  status: string;
+  owner: string;
+  start: string;
+  end: string;
+  days: string;
+  comments: string;
+};
+
+const PLAN_POSTVENTA_IMPORT_ROWS: PlanPostventaRow[] = [
+  { machine: "Sistema carga camiones", customer: "Font", number: "1", action: "Poner deslidur en la l\u00ednea de carga cami\u00f3n para evitar problemas con los palets", billable: "S\u00ed", priority: "Alta", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Sistema carga camiones", customer: "Font", number: "2", action: "Realizar listado m\u00ednimo de recambios", billable: "No", priority: "Alta", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Sistema carga camiones", customer: "Font", number: "3", action: "Pintar el centrador de palets de la tijera hidr\u00e1ulica", billable: "S\u00ed", priority: "Media", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Sistema carga camiones", customer: "Font", number: "4", action: "Realizar presupuesto de poner puerta autom\u00e1tica al cami\u00f3n", billable: "S\u00ed", priority: "Baja", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Sistema carga camiones", customer: "Font", number: "5", action: "Realizar presupuesto de conexi\u00f3n el\u00e9ctrica r\u00e1pida del cami\u00f3n", billable: "S\u00ed", priority: "Media", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Paletizador Macarbox", customer: "Font", number: "1", action: "Finalizar normativa CE", billable: "No", priority: "Alta", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Paletizador Macarbox", customer: "Font", number: "2", action: "Modificar software a doble nivel piso", billable: "No", priority: "Alta", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Paletizador Macarbox", customer: "Font", number: "3", action: "Revisar velocidad de la mesa de reenv\u00edo a 90\u00ba, doble motor", billable: "No", priority: "Media", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Paletizador Macarbox", customer: "Font", number: "4", action: "Revisar el m\u00ednimo de pinza cerrada: debe dar 400 mm en mec\u00e1nica y digital", billable: "No", priority: "Media", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Paletizador Macarbox", customer: "Font", number: "5", action: "Aumento de velocidad", billable: "No", priority: "Media", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Paletizador Macarbox", customer: "Font", number: "6", action: "Manuales de recambio e informaci\u00f3n final completa: esquemas, manual de operaci\u00f3n, etc.", billable: "No", priority: "Alta", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Paletizador Macarbox", customer: "Font", number: "7", action: "Listado de recambios imprescindibles", billable: "No", priority: "Alta", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Paletizador Macarbox", customer: "Font", number: "8", action: "Estudio contrato de mantenimiento anual", billable: "S\u00ed", priority: "Media", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Ingetrans 280", customer: "Mastercorr", number: "1", action: "Finalizar CE y manuales", billable: "No", priority: "Alta", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Ingetrans 280", customer: "Mastercorr", number: "2", action: "Listado de recambios imprescindibles", billable: "No", priority: "Media", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Ingetrans 280", customer: "Mastercorr", number: "3", action: "Seguimiento de si los m\u00e1stiles se aflojan de nuevo", billable: "No", priority: "Alta", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Ingetrans 280", customer: "Mastercorr", number: "4", action: "Cambio de pantalla Siemens", billable: "S\u00ed", priority: "Alta", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Ingetrans 280", customer: "Mastercorr", number: "5", action: "Env\u00edo de etiquetas adhesivas el\u00e9ctricas para cuadro de Home", billable: "S\u00ed", priority: "Baja", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Ingetrans 280", customer: "Mastercorr", number: "6", action: "Decisi\u00f3n final de metacrilato transfer roto", billable: "No", priority: "Media", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Ingetrans 250", customer: "PCM", number: "1", action: "Env\u00edo oferta de recambios solicitada", billable: "S\u00ed", priority: "Alta", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Ingetrans 250", customer: "PCM", number: "2", action: "Env\u00edo de informaci\u00f3n de recambios del sistema conveyors", billable: "S\u00ed", priority: "Media", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Ingetrans 250", customer: "PCM", number: "3", action: "Preparar con Mast Ebre la disposici\u00f3n para conectarse remotamente y realizar diagn\u00f3stico", billable: "No", priority: "Alta", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Ingetrans 250", customer: "Trupal", number: "1.0", action: "Negociar con Mast Ebre la soluci\u00f3n y su colaboraci\u00f3n", billable: "No", priority: "Alta", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Ingetrans 250", customer: "Trupal", number: "2.0", action: "Responder al cliente con la soluci\u00f3n", billable: "No", priority: "Alta", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "Ingetrans 250", customer: "Trupal", number: "3.0", action: "Ejecuci\u00f3n de la soluci\u00f3n", billable: "No", priority: "Alta", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "SR 1400", customer: "Line Text (Kelly Box)", number: "1", action: "Preparar ofertas de recambios o plan de mantenimiento", billable: "S\u00ed", priority: "Media", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "SR 1400", customer: "Line Text (Kelly Box)", number: "2.0", action: "Preparar ofertas de recambios o plan de mantenimiento", billable: "S\u00ed", priority: "Media", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+];
+
+export const PLAN_POSTVENTA_ACTION_COUNT = PLAN_POSTVENTA_IMPORT_ROWS.length;
+
+const PLAN_POSTVENTA_PRIORITY_SCORE: Record<string, number> = {
+  alta: 88,
+  media: 74,
+  baja: 60,
+};
+
+const PLAN_POSTVENTA_PRIORITY_ALIGNMENT: Record<string, number> = {
+  alta: 92,
+  media: 80,
+  baja: 68,
+};
+
+function normalizePlanKey(value: string): string {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^A-Za-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .toUpperCase();
+}
+
+function estimatePlanPostventaHours(row: PlanPostventaRow): number {
+  const action = row.action.toLowerCase();
+  if (/(ejecucion|execution|diagnostico|diagnosis|finalizar|modify|modificar|revisar|study|estudio)/.test(action)) {
+    return row.priority.toLowerCase() === 'alta' ? 4 : 3;
+  }
+  if (/(presupuesto|oferta|offer|envio|send|manual|listado|recambios|mantenimiento)/.test(action)) {
+    return row.priority.toLowerCase() === 'alta' ? 2.5 : 2;
+  }
+  return row.priority.toLowerCase() === 'alta' ? 3 : row.priority.toLowerCase() === 'media' ? 2 : 1.5;
+}
+
+function buildPlanPostventaAction(row: PlanPostventaRow): CommercialAction & { stage: string } {
+  const priorityKey = row.priority.toLowerCase();
+  const billable = row.billable.toLowerCase().startsWith('s');
+  const pending = row.status.toLowerCase().includes('pend');
+  const importanceBase = PLAN_POSTVENTA_PRIORITY_SCORE[priorityKey] ?? 65;
+  const alignmentBase = PLAN_POSTVENTA_PRIORITY_ALIGNMENT[priorityKey] ?? 72;
+  const importance_score = Math.min(99, importanceBase + (billable ? 6 : 0) + (pending ? 3 : -4));
+  const strategy_alignment = Math.min(99, alignmentBase + (billable ? 4 : 2) + (/recambios|mantenimiento|ce|manuales/i.test(row.action) ? 3 : 0));
+  const id = `PLAN_POSTVENTA_${normalizePlanKey(row.customer)}_${normalizePlanKey(row.machine)}_${normalizePlanKey(row.number)}`;
+  const machineCustomer = `${row.customer} / ${row.machine}`;
+  const scopeNote = row.comments || `Plan Postventa imported from Excel for ${machineCustomer}.`;
+  const revenueFocus = billable ? 'Open a billable post-sales commercial motion.' : 'Protect installed-base performance and customer satisfaction.';
+  return {
+    stage: 'CUSTOMER_SUCCESS',
+    id,
+    name: `Plan Postventa - ${row.customer} - ${row.machine} #${row.number}`,
+    description: `${row.action} Context: ${machineCustomer}. Facturable: ${row.billable}. Prioridad: ${row.priority}. Estado: ${row.status}.`,
+    role: 'Customer Success Agent',
+    importance_score,
+    strategy_alignment,
+    estimated_hours: estimatePlanPostventaHours(row),
+    inputs: ['crm_data', 'historical_data'],
+    outputs: [`${id}_COMPLETED`],
+    triggers: [{ event: 'plan_postventa_review', logic: 'always' }],
+    kpis: [
+      billable
+        ? { name: 'Post-sales revenue activation', target: 1, unit: 'action' }
+        : { name: 'Installed base issue containment', target: 1, unit: 'action' },
+    ],
+    ai_tags: [
+      'customer_success',
+      'postventa',
+      'installed_base',
+      billable ? 'service_sales' : 'service_reliability',
+      priorityKey || 'media',
+    ],
+    goal: `${revenueFocus} Resolve: ${row.action}`,
+    supportive_content: {
+      call_script: `Review the open post-sales point with ${row.customer} for ${row.machine}, confirm impact, agree owner, and lock the next execution step for '${row.action}'.`,
+      email_template: `Subject: Post-sales plan update - ${row.customer} / ${row.machine}
+
+We are progressing the following action from the service plan: ${row.action}. Proposed next step: confirm scope, owner and target date so the action can be closed with full traceability.`,
+      presentation_notes: `Installed base review for ${machineCustomer}. Priority: ${row.priority}. Billable: ${row.billable}. Source: Plan Postventa sheet in 0. Listado Proyectos.xlsm. Notes: ${scopeNote}`,
+    },
+  };
+}
+
+export function buildPlanPostventaImportedActions(): Array<CommercialAction & { stage: string }> {
+  return PLAN_POSTVENTA_IMPORT_ROWS.map(buildPlanPostventaAction);
+}
+
+export function ensureSeededPlanPostventaActions(repository: ActionsRepository): ActionsRepository {
+  const existingIds = new Set(flattenActions(repository).map((action) => action.id));
+  const missing = buildPlanPostventaImportedActions().filter((action) => !existingIds.has(action.id));
+  return missing.length > 0 ? mergeRepository(repository, missing, 'system-plan-postventa-import') : repository;
+}
+
 export const DEFAULT_REPOSITORY: ActionsRepository = {
   version: 'v1.1',
   created_by: 'system',
@@ -92,7 +229,7 @@ export const DEFAULT_REPOSITORY: ActionsRepository = {
           goal: 'Create qualified opportunities in strategic segments.',
           supportive_content: {
             call_script: 'Opening + qualification script focused on business pain and urgency.',
-            email_template: 'Subject: Strategic fit conversation — {{company}}',
+            email_template: "Subject: Strategic fit conversation {{company}}",
             presentation_notes: 'ICP criteria, intent evidence, next-step CTA.',
           },
         },
@@ -279,7 +416,7 @@ export const DEFAULT_REPOSITORY: ActionsRepository = {
   ],
 };
 
-const REQUIRED_FIELDS = ['id', 'description', 'role', 'inputs', 'outputs', 'triggers', 'kpis', 'ai_tags'] as const;
+const REQUIRED_FIELDS: ReadonlyArray<keyof CommercialAction> = ['id', 'description', 'role', 'inputs', 'outputs', 'triggers', 'kpis', 'ai_tags'];
 
 export function cloneRepository(repository: ActionsRepository): ActionsRepository {
   return JSON.parse(JSON.stringify(repository));
@@ -300,7 +437,7 @@ export function validateRepository(repository: ActionsRepository): RepositoryVal
     if (!stageNode.stage?.trim()) issues.push('Lifecycle stage requires stage name');
     for (const action of stageNode.actions || []) {
       for (const field of REQUIRED_FIELDS) {
-        if ((action as Record<string, unknown>)[field] === undefined) {
+        if (action[field] === undefined) {
           issues.push(`Action ${action.id || '<unknown>'} missing ${field}`);
         }
       }
@@ -555,17 +692,17 @@ export function toMonitoringTask(action: CommercialAction, stage: string): Monit
 
 export function loadRepositoryFromStorage(): ActionsRepository {
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return cloneRepository(DEFAULT_REPOSITORY);
+  if (!raw) return ensureSeededPlanPostventaActions(cloneRepository(DEFAULT_REPOSITORY));
 
   try {
     const parsed = JSON.parse(raw) as ActionsRepository;
     const report = validateRepository(parsed);
     if (!report.valid || detectCircularTriggers(parsed).length > 0) {
-      return cloneRepository(DEFAULT_REPOSITORY);
+      return ensureSeededPlanPostventaActions(cloneRepository(DEFAULT_REPOSITORY));
     }
-    return parsed;
+    return ensureSeededPlanPostventaActions(parsed);
   } catch {
-    return cloneRepository(DEFAULT_REPOSITORY);
+    return ensureSeededPlanPostventaActions(cloneRepository(DEFAULT_REPOSITORY));
   }
 }
 

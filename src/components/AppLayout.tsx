@@ -2,8 +2,10 @@
 import { AppSidebar } from '@/components/AppSidebar';
 import { CompanySelector } from '@/components/CompanySelector';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useData } from '@/store/DataStore';
 import { Bell, Bot, UserRound } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 
 import type { ReactNode } from 'react';
 
@@ -13,6 +15,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const { companies, activeCompanyId, data } = useData();
+  const location = useLocation();
   const activeCompany = companies.find((company) => company.id === activeCompanyId);
   const alertCount = data.tasks.filter((task) => task.status !== 'done').length;
 
@@ -33,7 +36,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                 </Badge>
               )}
               <Badge variant="outline" className="gap-1"><Bell className="h-3 w-3" /> {alertCount}</Badge>
-              <Badge variant="outline" className="gap-1 hidden sm:inline-flex"><Bot className="h-3 w-3" /> AI Assistant</Badge>
+              <Button asChild variant={location.pathname === '/ai-assistant' ? 'default' : 'outline'} size="sm" className="gap-1 hidden sm:inline-flex"><Link to="/ai-assistant"><Bot className="h-3 w-3" /> AI Assistant</Link></Button>
               <Badge variant="outline" className="gap-1 hidden lg:inline-flex"><UserRound className="h-3 w-3" /> User</Badge>
             </div>
           </header>

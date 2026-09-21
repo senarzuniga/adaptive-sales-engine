@@ -95,6 +95,8 @@ export function buildProductStrategySnapshot(input: {
       (innovationSignal ? 5 : 0)
     ));
 
+    const positioning: ProductStrategyProductSnapshot['positioning'] = marketFitScore >= 65 ? 'Scale' : marketFitScore >= 35 ? 'Optimize' : 'Review';
+
     return {
       name,
       lifecycleLabel,
@@ -103,7 +105,7 @@ export function buildProductStrategySnapshot(input: {
       pipeline: openPipeline,
       weightedPipeline,
       avgMargin: margin,
-      positioning: marketFitScore >= 65 ? 'Scale' : marketFitScore >= 35 ? 'Optimize' : 'Review',
+      positioning,
       notes: product?.comments || '',
     };
   }).sort((a, b) => (b.revenue + b.pipeline) - (a.revenue + a.pipeline));
@@ -145,7 +147,7 @@ export function buildProductPositioningActions(products: ProductStrategyProductS
       scenario,
       goal: `Position ${product.name} in the right value-selling scenario for ${companyName}, improving commercial focus, conversion quality, and future portfolio value.`,
       supportContent: `Positioning support content: ${product.name} is currently classified as ${product.lifecycleLabel} with a ${product.marketFitScore.toFixed(0)}% market-fit score. Revenue is ${product.revenue.toFixed(0)} and pipeline is ${product.pipeline.toFixed(0)}. Recommended move: ${recommendedMove}`,
-      script: `Opening: “We are reviewing how ${product.name} creates value for customers beyond a transactional sale.”\nDiscovery: confirm if the buyer values performance, lifecycle cost, or price efficiency most.\nPositioning: explain why ${product.name} should be sold through a ${scenario.toLowerCase()} approach.\nClose: agree the next step, stakeholder owner, and decision criteria.`,
+      script: `Opening: We are reviewing how ${product.name} creates value for customers beyond a transactional sale.\nDiscovery: confirm if the buyer values performance, lifecycle cost, or price efficiency most.\nPositioning: explain why ${product.name} should be sold through a ${scenario.toLowerCase()} approach.\nClose: agree the next step, stakeholder owner, and decision criteria.`,
       recommendedMove,
     };
   });

@@ -9,6 +9,8 @@ export type WorkspaceTableName =
   | 'cost_breakdowns'
   | 'offer_scenarios'
   | 'offer_scores'
+  | 'offer_packages'
+  | 'offer_commercial_terms'
   | 'installed_base_assets'
   | 'service_contracts'
   | 'service_interventions'

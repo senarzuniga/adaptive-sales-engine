@@ -22,8 +22,8 @@ describe('product catalog agents', () => {
   it('generates catalog suggestions from commercial history', () => {
     const suggestions = runProductSearchAgent({
       products: [],
-      orders: [{ productFamily: 'Assembly Cell', sellingPrice: 250000, margin: 20, region: '' }],
-      opportunities: [{ productFamily: 'Lifecycle Service', estRevenue: 90000, contractProb: 60, status: 'open', region: '' }],
+      orders: [{ poDate: '', firstOfferDate: '', oppNumber: 'OFF-1', region: '', country: '', customerName: 'Customer', scope: '', productFamily: 'Assembly Cell', segment: '', purchasingYear: '', purchasingQuarter: '', purchasingMonth: '', sellingPrice: 250000, margin: 20, kam: '' }],
+      opportunities: [{ oppNumber: 'OPP-1', status: 'open', region: '', country: '', customerName: 'Customer', scope: '', productFamily: 'Lifecycle Service', segment: '', estPurchasingYear: '', estPurchasingQuarter: '', estRevenue: 90000, contractProb: 60, margin: 0, contact: '', kam: '' }],
     });
 
     expect(suggestions.length).toBeGreaterThan(0);

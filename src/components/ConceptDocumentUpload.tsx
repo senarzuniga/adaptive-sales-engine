@@ -1,4 +1,4 @@
-﻿import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useData } from '@/store/DataStore';
 import { Card, CardContent } from '@/components/ui/card';
@@ -138,11 +138,11 @@ export function ConceptDocumentUpload() {
                 ? `, ${semanticCounts.entities || 0} entities / ${semanticCounts.relationships || 0} relationships`
                 : '';
               toast({
-                title: `âœ… ${d.file_name} processed`,
+                title: ` ${d.file_name} processed`,
                 description: `${ext?.summary || 'Data extracted'} (${ext?.record_count || 0} records${semanticDetail}, confidence: ${ext?.confidence_score || 'N/A'}%)`,
               });
             } else {
-              toast({ title: `âŒ ${d.file_name} processing failed`, variant: 'destructive' });
+              toast({ title: ` ${d.file_name} processing failed`, variant: 'destructive' });
             }
           }
         });
@@ -258,7 +258,8 @@ export function ConceptDocumentUpload() {
         return items.findIndex((candidate) => JSON.stringify(candidate) === key) === index;
       });
 
-      const { error: insertError } = await supabase.from(targetTable).insert(uniquePayload as any);
+      const sb: any = supabase as any;
+      const { error: insertError } = await sb.from(targetTable).insert(uniquePayload as any);
       if (insertError) {
         console.error('Local fallback insert failed:', insertError.message);
       }
@@ -285,7 +286,7 @@ export function ConceptDocumentUpload() {
           if (data?.success) {
             toast({
               title: 'AI Data Extraction Complete',
-              description: `${data.summary} â€” ${data.recordCount} records saved (confidence: ${data.confidence}%)`,
+              description: `${data.summary}  ${data.recordCount} records saved (confidence: ${data.confidence}%)`,
             });
           }
           return;
@@ -370,7 +371,7 @@ export function ConceptDocumentUpload() {
 
       if (!inserted && lastError) throw lastError;
 
-      toast({ title: `ðŸ“„ ${file.name}`, description: `Uploaded â†’ AI agent will now process it...` });
+      toast({ title: ` ${file.name}`, description: "Uploaded AI agent will now process it..." });
       await loadDocuments();
 
       if (inserted) {
@@ -398,7 +399,7 @@ export function ConceptDocumentUpload() {
       }
 
       toast({
-        title: uploadSaved ? 'File uploaded â€” refresh delayed' : isNetworkError ? 'Connection issue during upload' : 'Upload failed',
+        title: uploadSaved ? "File uploaded refresh delayed" : isNetworkError ? 'Connection issue during upload' : 'Upload failed',
         description: uploadSaved
           ? 'The file appears to be saved already. Refresh the page and check the document list in a moment.'
           : isNetworkError
@@ -531,7 +532,7 @@ export function ConceptDocumentUpload() {
                               className="text-[9px] px-1 py-0 h-4"
                               aria-label={`${validatedCount} validated${rejectedCount !== null && rejectedCount > 0 ? `, ${rejectedCount} rejected` : ''}`}
                             >
-                              {validatedCount}✓{rejectedCount !== null && rejectedCount > 0 ? ` ${rejectedCount}✗` : ''}
+                              {validatedCount}{rejectedCount !== null && rejectedCount > 0 ? ` ${rejectedCount}` : ''}
                             </Badge>
                           )}
                           {doc.processing_status === 'completed' && validatedCount === null && recordCount > 0 && (

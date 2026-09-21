@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,8 +12,25 @@ import { useData } from '@/store/DataStore';
 import { Activity, AlertTriangle, ArrowRight, BarChart3, Bot, Brain, Building2, Calculator, CircleDollarSign, ClipboardList, FileText, FolderKanban, Layers, SearchCheck, ShieldAlert, Target, Upload, Users, Wrench } from 'lucide-react';
 
 type Row = Record<string, any>;
+interface WorkspaceOfferRow extends Row {
+  offer_number?: string;
+  title?: string;
+  customer_name?: string;
+  contract_value?: number;
+  probability?: number;
+  status?: string;
+  region?: string;
+  country?: string;
+  kam?: string;
+  decision_date?: string;
+  submitted_at?: string;
+  next_action?: string;
+  context?: string;
+  document_paths?: string[];
+  project_description?: string;
+}
 interface WorkspaceSnapshot {
-  offers: Row[];
+  offers: WorkspaceOfferRow[];
   projects: Row[];
   milestones: Row[];
   risks: Row[];
@@ -28,7 +45,7 @@ const asNumber = (value: unknown) => parseFlexibleNumber(value);
 const now = new Date();
 const currentYear = String(now.getFullYear());
 const currentQuarter = `Q${Math.ceil((now.getMonth() + 1) / 3)}`;
-const compactEuro = (value: number) => !Number.isFinite(value) || value <= 0 ? '€0' : value >= 1_000_000 ? `€${(value / 1_000_000).toFixed(1)}M` : value >= 1_000 ? `€${(value / 1_000).toFixed(0)}K` : `€${Math.round(value)}`;
+const compactEuro = (value: number) => !Number.isFinite(value) || value <= 0 ? "0" : value >= 1_000_000 ? `${(value / 1_000_000).toFixed(1)}M` : value >= 1_000 ? `${(value / 1_000).toFixed(0)}K` : `${Math.round(value)}`;
 const mergeUniqueRows = <T extends Row,>(rows: T[], identity: (row: T) => string) => {
   const seen = new Set<string>();
   return rows.filter((row) => {
@@ -138,12 +155,12 @@ const DashboardPage = () => {
     };
   }, [activeCompany.company_name, activeCompanyId]);
 
-  const derivedOffers = useMemo(() => mergeUniqueRows([
+  const derivedOffers = useMemo<WorkspaceOfferRow[]>(() => mergeUniqueRows<WorkspaceOfferRow>([
     ...data.orders.map((order) => ({ offer_number: order.oppNumber, title: `${order.customerName} - ${order.productFamily}`, customer_name: order.customerName, contract_value: order.sellingPrice, probability: 100, status: 'won', region: order.region, country: order.country, kam: order.kam, decision_date: order.poDate, submitted_at: order.firstOfferDate, next_action: 'Move the sold opportunity into project execution governance.', context: 'Derived from confirmed sales data.', document_paths: [] })),
     ...data.opportunities.map((opportunity) => ({ offer_number: opportunity.oppNumber, title: `${opportunity.customerName} - ${opportunity.productFamily}`, customer_name: opportunity.customerName, contract_value: opportunity.estRevenue, probability: opportunity.contractProb, status: normalizeOpportunityStatus(opportunity.status) === 'won' ? 'won' : normalizeOpportunityStatus(opportunity.status) === 'lost' ? 'lost' : 'open', region: opportunity.region, country: opportunity.country, kam: opportunity.kam, next_action: 'Protect the next commercial step and update the opportunity truth state.', context: 'Derived from the opportunity register.', document_paths: [] })),
   ], (row) => String(row.offer_number || `${row.customer_name}|${row.title}`)), [data.opportunities, data.orders]);
 
-  const offerRows = useMemo(() => workspaceSnapshot.offers.length > 0 ? workspaceSnapshot.offers : derivedOffers, [derivedOffers, workspaceSnapshot.offers]);
+  const offerRows = useMemo<WorkspaceOfferRow[]>(() => workspaceSnapshot.offers.length > 0 ? workspaceSnapshot.offers : derivedOffers, [derivedOffers, workspaceSnapshot.offers]);
   const openOffers = useMemo(() => offerRows.filter((offer) => normalizeOfferBucket(offer.status) === 'open'), [offerRows]);
   const soldOffers = useMemo(() => offerRows.filter((offer) => normalizeOfferBucket(offer.status) === 'won'), [offerRows]);
   const lostOffers = useMemo(() => offerRows.filter((offer) => normalizeOfferBucket(offer.status) === 'lost'), [offerRows]);
@@ -236,7 +253,7 @@ const DashboardPage = () => {
         id: action.id,
         priority: action.priority,
         title: action.title,
-        subtitle: action.account ? `${action.account}${action.impact ? ` — ${compactEuro(action.impact)}` : ''}` : action.description,
+        subtitle: action.account ? `${action.account}${action.impact ? `  ${compactEuro(action.impact)}` : ''}` : action.description,
         recommendation: action.suggestedAction,
         route: action.route,
         secondaryRoute: action.secondaryRoute,
@@ -275,7 +292,7 @@ const DashboardPage = () => {
     data.orders.forEach((order) => { const row = ensure(String(order.customerName || '')); if (row) row.revenue += asNumber(order.sellingPrice); });
     openOffers.forEach((offer) => { const row = ensure(String(offer.customer_name || '')); if (row) { row.pipeline += asNumber(offer.contract_value); row.offers += 1; } });
     activeProjects.forEach((project) => { const row = ensure(String(project.customer_name || '')); if (row) row.projects += 1; });
-    nextBestActions.forEach((action) => { const row = ensure(String(action.title.split('·')[0] || '').trim()); if (row) row.actions += 1; });
+    nextBestActions.forEach((action) => { const row = ensure(String(action.title.split("")[0] || '').trim()); if (row) row.actions += 1; });
     return Array.from(customers.entries()).map(([name, stats]) => ({ name, ...stats })).sort((left, right) => (right.revenue + right.pipeline + right.projects * 100000) - (left.revenue + left.pipeline + left.projects * 100000)).slice(0, 6);
   }, [activeProjects, data.orders, nextBestActions, openOffers]);
 
