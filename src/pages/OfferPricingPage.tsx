@@ -34,10 +34,12 @@ import { OfferPackagePlanner } from '@/components/offers/OfferPackagePlanner';
 import { buildDefaultCommercialTerms, buildPaymentTermsText, hydrateCommercialTerms, hydrateOfferPackage, summarizePackageCostWithPolicy, type OfferCommercialTerms, type OfferPackageDraft } from '@/lib/offerPackages';
 import {
   SMART_PLANT_ANNUAL_OFFER_REFERENCES,
+  buildServiceOfferContent,
   getServiceOfferDraftStorageKey,
   isServiceOfferNumber,
   type OfferKind,
   type ServiceOfferDraftSeed,
+  type ServiceOfferContent,
 } from '@/lib/serviceOfferFlow';
 
 type CostLine = {
@@ -174,6 +176,7 @@ type OfferDraftSnapshot = {
   offerKind: OfferKind;
   linkedOpportunityId: string | null;
   linkedOpportunityTitle: string;
+  serviceContent: ServiceOfferContent | null;
 };
 
 const hasMeaningfulDraftSnapshot = (snapshot: OfferDraftSnapshot) =>
@@ -238,6 +241,7 @@ export default function OfferPricingPage() {
   const [documentLanguage, setDocumentLanguage] = useState<OfferDocumentLanguage>('en');
   const [linkedOpportunityId, setLinkedOpportunityId] = useState<string | null>(null);
   const [linkedOpportunityTitle, setLinkedOpportunityTitle] = useState('');
+  const [serviceContent, setServiceContent] = useState<ServiceOfferContent | null>(null);
 
   const [items, setItems] = useState<OfferItem[]>([buildEmptyOfferItem()]);
 
@@ -474,6 +478,7 @@ export default function OfferPricingPage() {
       setDocumentLanguage(draft.documentLanguage === 'en' ? 'en' : 'es');
       setLinkedOpportunityId(draft.linkedOpportunityId || null);
       setLinkedOpportunityTitle(draft.linkedOpportunityTitle || draft.title || '');
+      setServiceContent(draft.serviceContent || null);
       setAnalysis(null);
       if (draft.items?.length) {
         setItems(draft.items as OfferItem[]);
@@ -514,6 +519,7 @@ export default function OfferPricingPage() {
       offerKind,
       linkedOpportunityId,
       linkedOpportunityTitle,
+      serviceContent,
     };
     const key = getOfferDraftStorageKey(selectedCompanyId);
     if (!hasMeaningfulDraftSnapshot(snapshot)) {
@@ -521,7 +527,7 @@ export default function OfferPricingPage() {
       return;
     }
     localStorage.setItem(key, JSON.stringify(snapshot));
-  }, [selectedCompanyId, editingOfferId, offerTitle, offerNumber, customerName, customerMode, newCustomer, projectDesc, currency, targetMargin, pricingPolicy, commercialTerms, offerPackages, principalPackagePriceOverride, offerTotalPriceOverride, items, documentLanguage, offerKind, linkedOpportunityId, linkedOpportunityTitle]);
+  }, [selectedCompanyId, editingOfferId, offerTitle, offerNumber, customerName, customerMode, newCustomer, projectDesc, currency, targetMargin, pricingPolicy, commercialTerms, offerPackages, principalPackagePriceOverride, offerTotalPriceOverride, items, documentLanguage, offerKind, linkedOpportunityId, linkedOpportunityTitle, serviceContent]);
 
   const toggleItem = (id: string) => {
     setExpandedItems(prev => {
@@ -1113,6 +1119,7 @@ export default function OfferPricingPage() {
       target_margin: targetMargin,
       cost_policy: pricingPolicy,
       document_language: documentLanguage,
+      service_content: serviceContent,
       principal_package_price: Math.round(packagePricingOverview.principalPrice),
       principal_package_price_override: principalPackagePriceOverride,
       package_price_sum: Math.round(packagePricingOverview.packagePriceSum),
@@ -1180,6 +1187,7 @@ export default function OfferPricingPage() {
     setDocumentLanguage('en');
     setLinkedOpportunityId(null);
     setLinkedOpportunityTitle('');
+    setServiceContent(null);
     setAnalysis(null);
     const firstItem: OfferItem = buildEmptyOfferItem('standard');
     setItems([firstItem]);
@@ -1288,6 +1296,7 @@ export default function OfferPricingPage() {
     setOfferTotalPriceOverride(parseOptionalNumber(offer.offer_total_price_override));
     setLinkedOpportunityId((offer.linked_opportunity_id as string | null) || null);
     setLinkedOpportunityTitle(String(offer.linked_opportunity_title || ''));
+    setServiceContent((offer.service_content as ServiceOfferContent | null) || null);
     setAnalysis(null);
     setItems(nextItems);
     setExpandedItems(new Set(nextItems.map((item) => item.id)));
@@ -1312,6 +1321,7 @@ export default function OfferPricingPage() {
         packages: bundle.offerPackages || [],
         commercialTerms: bundle.commercialTerms || buildDefaultCommercialTerms(),
         language: exportLanguage,
+        serviceContent: (offer.service_content as ServiceOfferContent | null) || null,
       });
       registerOfferDocument(offer, exportLanguage, fileName.fileName, 'generated', undefined, 'DOCX');
       toast({
@@ -1450,6 +1460,7 @@ export default function OfferPricingPage() {
         target_margin: targetMargin,
         cost_policy: pricingPolicy,
         document_language: documentLanguage,
+        service_content: serviceContent,
         principal_package_price: Math.round(packagePricingOverview.principalPrice),
         principal_package_price_override: principalPackagePriceOverride,
         package_price_sum: Math.round(packagePricingOverview.packagePriceSum),
@@ -1798,6 +1809,85 @@ export default function OfferPricingPage() {
               ) : null}
             </CardContent>
           </Card>
+
+          {offerKind === 'service' && serviceContent ? (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">{isEs ? 'Contenido estndar de servicio' : 'Standard service content'}</CardTitle>
+                <CardDescription>{isEs ? 'Texto preestructurado que se imprime en la oferta Word. Editable antes de exportar.' : 'Pre-structured text printed in the Word offer. Editable before export.'}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-foreground">{isEs ? 'Resumen del alcance' : 'Scope summary'}</label>
+                  <Textarea value={serviceContent.scopeSummary} onChange={(e) => setServiceContent((prev) => prev ? { ...prev, scopeSummary: e.target.value } : prev)} rows={2} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground">{isEs ? 'Descripcin del servicio' : 'Service description'}</label>
+                  <Textarea value={serviceContent.serviceDescription} onChange={(e) => setServiceContent((prev) => prev ? { ...prev, serviceDescription: e.target.value } : prev)} rows={2} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground">{isEs ? 'Propuesta de valor' : 'Value proposition'}</label>
+                  <Textarea value={serviceContent.valueProposition} onChange={(e) => setServiceContent((prev) => prev ? { ...prev, valueProposition: e.target.value } : prev)} rows={2} />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-foreground">{isEs ? 'Entregables' : 'Deliverables'}</label>
+                    <Textarea value={serviceContent.deliverables.join('\n')} onChange={(e) => setServiceContent((prev) => prev ? { ...prev, deliverables: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean) } : prev)} rows={6} />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground">{isEs ? 'Exclusiones' : 'Exclusions'}</label>
+                    <Textarea value={serviceContent.exclusions.join('\n')} onChange={(e) => setServiceContent((prev) => prev ? { ...prev, exclusions: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean) } : prev)} rows={6} />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground">{isEs ? 'Supuestos' : 'Assumptions'}</label>
+                  <Textarea value={serviceContent.assumptions.join('\n')} onChange={(e) => setServiceContent((prev) => prev ? { ...prev, assumptions: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean) } : prev)} rows={4} />
+                </div>
+                {serviceContent.sections.includes('tpm-preventive') ? (
+                  <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
+                    <p className="font-medium text-sm">{serviceContent.tpmProgramme.title}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      {(['daily', 'weekly', 'monthly', 'quarterly'] as const).map((freq) => (
+                        <div key={freq}>
+                          <p className="text-xs font-semibold uppercase text-muted-foreground">{isEs ? (freq === 'daily' ? 'Diario' : freq === 'weekly' ? 'Semanal' : freq === 'monthly' ? 'Mensual' : 'Trimestral') : freq}</p>
+                          <ul className="list-disc list-inside text-muted-foreground">
+                            {serviceContent.tpmProgramme[freq].map((line, i) => (
+                              <li key={i}>{line}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="font-medium mb-1">{isEs ? 'Por qu INGECART' : 'Why INGECART'}</p>
+                    <ul className="list-disc list-inside text-muted-foreground">
+                      {serviceContent.whyIngecart.map((line, i) => <li key={i}>{line}</li>)}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-medium mb-1">{isEs ? 'Equipo cubierto' : 'Covered equipment'}</p>
+                    <ul className="list-disc list-inside text-muted-foreground">
+                      {serviceContent.coveredMachines.map((line, i) => <li key={i}>{line}</li>)}
+                    </ul>
+                  </div>
+                </div>
+                <div>
+                  <p className="font-medium mb-1">{isEs ? 'SLA de respuesta' : 'Response SLA'}</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {serviceContent.responseSla.map((sla, i) => (
+                      <div key={i} className="rounded-md border bg-muted/20 p-2">
+                        <p className="text-xs text-muted-foreground">{sla.label}</p>
+                        <Input className="h-7 text-xs" value={sla.value} onChange={(e) => setServiceContent((prev) => prev ? { ...prev, responseSla: prev.responseSla.map((s, idx) => idx === i ? { ...s, value: e.target.value } : s) } : prev)} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Card>
             <CardHeader className="pb-3">

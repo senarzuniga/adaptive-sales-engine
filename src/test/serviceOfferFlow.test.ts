@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildServiceOfferDraftSeed,
+  buildServiceOfferContent,
   buildServiceTopOpportunities,
   isServiceOfferNumber,
   getServiceOfferDraftStorageKey,
@@ -130,5 +131,27 @@ describe('service offer numbering and draft seed', () => {
     expect(seed.items.length).toBe(1);
     expect(seed.items[0].type).toBe('service');
     expect(seed.items[0].costLines.length).toBe(4);
+    expect(seed.serviceContent).toBeDefined();
+    expect(seed.serviceContent.sections.length).toBeGreaterThan(0);
+    expect(seed.serviceContent.deliverables.length).toBeGreaterThan(0);
+    expect(seed.serviceContent.responseSla.length).toBeGreaterThan(0);
+  });
+
+  it('builds service content with TPM programme for maintenance type', () => {
+    const content = buildServiceOfferContent('maintenance');
+    expect(content.sections.includes('tpm-preventive')).toBe(true);
+    expect(content.tpmProgramme.daily.length).toBeGreaterThan(0);
+    expect(content.tpmProgramme.weekly.length).toBeGreaterThan(0);
+    expect(content.tpmProgramme.monthly.length).toBeGreaterThan(0);
+    expect(content.tpmProgramme.quarterly.length).toBeGreaterThan(0);
+    expect(content.whyIngecart.some((line) => line.includes('1,200 m'))).toBe(true);
+    expect(content.coveredMachines.some((line) => line.toLowerCase().includes('corrug'))).toBe(true);
+  });
+
+  it('builds service content without TPM for digital type', () => {
+    const content = buildServiceOfferContent('digital');
+    expect(content.sections.includes('tpm-preventive')).toBe(false);
+    expect(content.scopeSummary.toLowerCase()).toContain('smart plant');
+    expect(content.deliverables.length).toBeGreaterThan(0);
   });
 });
