@@ -22,6 +22,8 @@ export type WorkspaceTableName =
   | 'project_risks'
   | 'project_gates'
   | 'project_costs'
+  | 'project_pending_points'
+  | 'project_management_points'
   | 'change_orders';
 
 export const isWorkspaceSupabaseConfigured =

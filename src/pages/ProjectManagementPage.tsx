@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useData } from '@/store/DataStore';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -7,9 +7,11 @@ import { getIngecartBundledProjectWorkspace } from '@/lib/ingecartProjectSeed';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import {
   AlertTriangle,
   ArrowRight,
@@ -28,6 +30,19 @@ import {
   Wrench,
   Zap,
 } from 'lucide-react';
+import {
+  buildCustomerPendingPoints,
+  buildProjectManagementPoints,
+  createManualProjectPoint,
+  downloadProjectDecisionWorkbook,
+  normalizeProjectPoints,
+  PROJECT_POINT_PRIORITIES,
+  PROJECT_POINT_STATUSES,
+  type ProjectPointPanel,
+  type ProjectPointPriority,
+  type ProjectPointRecord,
+  type ProjectPointStatus,
+} from '@/lib/projectDecisionLog';
 
 type ProjectRow = any;
 type PhaseRow = any;
@@ -35,6 +50,11 @@ type MilestoneRow = any;
 type RiskRow = any;
 type GateRow = any;
 type CostRow = any;
+
+const PROJECT_POINT_TABLES = {
+  customer_pending: 'project_pending_points',
+  project_management: 'project_management_points',
+} as const;
 
 const buildPhaseTemplate = (projectName: string) => [
   {
@@ -159,9 +179,11 @@ export default function ProjectManagementPage() {
   const [risks, setRisks] = useState<RiskRow[]>([]);
   const [gates, setGates] = useState<GateRow[]>([]);
   const [costs, setCosts] = useState<CostRow[]>([]);
+  const [customerPendingPoints, setCustomerPendingPoints] = useState<ProjectPointRecord[]>([]);
+  const [projectManagementPoints, setProjectManagementPoints] = useState<ProjectPointRecord[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
 
-  const syncBundledProjectSeed = async (companyId: string) => {
+  const syncBundledProjectSeed = useCallback(async (companyId: string) => {
     if (!String(data.companyProfile.company_name || '').toLowerCase().includes('ingecart')) return;
     const bundled = getIngecartBundledProjectWorkspace();
     const incomingProjects = bundled.projects || [];
@@ -182,9 +204,9 @@ export default function ProjectManagementPage() {
         ...incomingRows,
       ]);
     });
-  };
+  }, [data.companyProfile.company_name]);
 
-  const loadProjectData = async () => {
+  const loadProjectData = useCallback(async () => {
 
     if (!activeCompanyId) return;
     setLoading(true);
@@ -201,6 +223,8 @@ export default function ProjectManagementPage() {
         setRisks(readWorkspaceRows('project_risks', activeCompanyId));
         setGates(readWorkspaceRows('project_gates', activeCompanyId));
         setCosts(readWorkspaceRows('project_costs', activeCompanyId));
+        setCustomerPendingPoints(readWorkspaceRows('project_pending_points', activeCompanyId));
+        setProjectManagementPoints(readWorkspaceRows('project_management_points', activeCompanyId));
         return;
       }
 
@@ -212,7 +236,7 @@ export default function ProjectManagementPage() {
       }
 
       if (normalizedProjects.length === 0) {
-        setPhases([]); setMilestones([]); setRisks([]); setGates([]); setCosts([]); return;
+        setPhases([]); setMilestones([]); setRisks([]); setGates([]); setCosts([]); setCustomerPendingPoints([]); setProjectManagementPoints([]); return;
       }
 
       const ids = normalizedProjects.map((project) => project.id);
@@ -229,6 +253,8 @@ export default function ProjectManagementPage() {
       setRisks(risksRes.data || []);
       setGates(gatesRes.data || []);
       setCosts(costsRes.data || []);
+      setCustomerPendingPoints(readWorkspaceRows('project_pending_points', activeCompanyId));
+      setProjectManagementPoints(readWorkspaceRows('project_management_points', activeCompanyId));
     } catch (error: any) {
       if (activeCompanyId) {
         setProjects(readWorkspaceRows('projects', activeCompanyId));
@@ -237,19 +263,21 @@ export default function ProjectManagementPage() {
         setRisks(readWorkspaceRows('project_risks', activeCompanyId));
         setGates(readWorkspaceRows('project_gates', activeCompanyId));
         setCosts(readWorkspaceRows('project_costs', activeCompanyId));
+        setCustomerPendingPoints(readWorkspaceRows('project_pending_points', activeCompanyId));
+        setProjectManagementPoints(readWorkspaceRows('project_management_points', activeCompanyId));
       } else {
         toast({ title: 'Error', description: error.message || 'Unable to load project data', variant: 'destructive' });
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeCompanyId, selectedProjectId, syncBundledProjectSeed]);
 
   useEffect(() => {
     if (activeCompanyId) {
       loadProjectData();
     }
-  }, [activeCompanyId]);
+  }, [activeCompanyId, loadProjectData]);
 
   useEffect(() => {
     if (!selectedProjectId && projects.length > 0) {
@@ -274,6 +302,218 @@ export default function ProjectManagementPage() {
     const pendingPayments = activeMilestones.filter((m) => m.is_paid === false && m.payment_amount > 0).length;
     return { projectBudget, projectContract, totalPaid, totalInvoiced, completion, openIssues, pendingPayments };
   }, [activeProject, activePhases, activeRisks, activeMilestones]);
+
+  const activeCustomerPendingPoints = useMemo(() => normalizeProjectPoints(customerPendingPoints.filter((point) => point.project_id === activeProject?.id)), [customerPendingPoints, activeProject]);
+  const activeProjectManagementPoints = useMemo(() => normalizeProjectPoints(projectManagementPoints.filter((point) => point.project_id === activeProject?.id)), [projectManagementPoints, activeProject]);
+
+  const persistProjectPoints = useCallback((panel: ProjectPointPanel, rows: ProjectPointRecord[]) => {
+    if (!activeCompanyId) return;
+    const normalizedRows = normalizeProjectPoints(rows.map((row) => ({
+      ...row,
+      panel,
+      updated_at: new Date().toISOString(),
+    })));
+    writeWorkspaceRows(PROJECT_POINT_TABLES[panel], activeCompanyId, normalizedRows);
+    if (panel === 'customer_pending') {
+      setCustomerPendingPoints(normalizedRows);
+      return;
+    }
+    setProjectManagementPoints(normalizedRows);
+  }, [activeCompanyId]);
+
+  const updateProjectPointCollection = (panel: ProjectPointPanel, updater: (rows: ProjectPointRecord[]) => ProjectPointRecord[]) => {
+    const currentRows = panel === 'customer_pending' ? customerPendingPoints : projectManagementPoints;
+    persistProjectPoints(panel, updater(currentRows));
+  };
+
+  const buildGeneratedProjectPoints = (panel: ProjectPointPanel) => {
+    if (!activeProject) return [] as ProjectPointRecord[];
+    return panel === 'customer_pending'
+      ? buildCustomerPendingPoints(activeProject, activeMilestones, activeRisks, activeGates)
+      : buildProjectManagementPoints(activeProject, activePhases, activeMilestones, activeRisks, activeGates, activeCosts);
+  };
+
+  useEffect(() => {
+    if (!activeCompanyId || !activeProject) return;
+    if (activeCustomerPendingPoints.length === 0) {
+      const generated = buildCustomerPendingPoints(activeProject, activeMilestones, activeRisks, activeGates);
+      if (generated.length > 0) {
+        persistProjectPoints('customer_pending', [
+          ...customerPendingPoints.filter((point) => point.project_id !== activeProject.id),
+          ...generated,
+        ]);
+      }
+    }
+    if (activeProjectManagementPoints.length === 0) {
+      const generated = buildProjectManagementPoints(activeProject, activePhases, activeMilestones, activeRisks, activeGates, activeCosts);
+      if (generated.length > 0) {
+        persistProjectPoints('project_management', [
+          ...projectManagementPoints.filter((point) => point.project_id !== activeProject.id),
+          ...generated,
+        ]);
+      }
+    }
+  }, [
+    activeCompanyId,
+    activeProject,
+    activePhases,
+    activeMilestones,
+    activeRisks,
+    activeGates,
+    activeCosts,
+    activeCustomerPendingPoints.length,
+    activeProjectManagementPoints.length,
+    customerPendingPoints,
+    projectManagementPoints,
+    persistProjectPoints,
+  ]);
+
+  const handleProjectPointChange = (panel: ProjectPointPanel, pointId: string, patch: Partial<ProjectPointRecord>) => {
+    updateProjectPointCollection(panel, (rows) => rows.map((row) => row.id === pointId ? { ...row, ...patch, updated_at: new Date().toISOString() } : row));
+  };
+
+  const handleAddProjectPoint = (panel: ProjectPointPanel) => {
+    if (!activeProject) return;
+    updateProjectPointCollection(panel, (rows) => [
+      ...rows,
+      createManualProjectPoint(activeProject.id, panel),
+    ]);
+  };
+
+  const handleRegenerateProjectPoints = (panel: ProjectPointPanel) => {
+    if (!activeProject) return;
+    const generated = buildGeneratedProjectPoints(panel);
+    updateProjectPointCollection(panel, (rows) => {
+      const untouched = rows.filter((row) => row.project_id !== activeProject.id);
+      const manualRows = rows.filter((row) => row.project_id === activeProject.id && !row.ai_generated);
+      return [...untouched, ...manualRows, ...generated];
+    });
+    toast({ title: 'Baseline updated', description: 'AI baseline points were recalculated for the active project.' });
+  };
+
+  const handleExportProjectPoints = async (panel: ProjectPointPanel, language: 'es' | 'en' = 'es') => {
+    if (!activeProject) return;
+    const points = panel === 'customer_pending' ? activeCustomerPendingPoints : activeProjectManagementPoints;
+    const { fileName } = await downloadProjectDecisionWorkbook({ project: activeProject, points, panel, language });
+    toast({ title: 'Excel generated', description: `${fileName} downloaded successfully.` });
+  };
+
+  const renderProjectPointPanel = (panel: ProjectPointPanel, title: string, description: string, points: ProjectPointRecord[]) => {
+    const openCount = points.filter((point) => !['confirmed', 'closed'].includes(point.status)).length;
+    const blockedCount = points.filter((point) => point.status === 'blocked').length;
+    const criticalCount = points.filter((point) => !['confirmed', 'closed'].includes(point.status) && point.priority === 'critical').length;
+    const avgScore = points.length > 0 ? Math.round(points.reduce((sum, point) => sum + Number(point.score || 0), 0) / points.length) : 0;
+
+    return (
+      <div className="space-y-4">
+        <Card>
+          <CardHeader className="gap-3">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+              <div>
+                <CardTitle>{title}</CardTitle>
+                <CardDescription>{description}</CardDescription>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" onClick={() => handleRegenerateProjectPoints(panel)}>
+                  <Zap className="mr-2 h-4 w-4" />
+                  Rebuild AI baseline
+                </Button>
+                <Button variant="outline" onClick={() => handleExportProjectPoints(panel, 'es')}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Export Excel
+                </Button>
+                <Button onClick={() => handleAddProjectPoint(panel)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add point
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="rounded-lg border bg-muted/20 p-3"><div className="text-xs uppercase text-muted-foreground">Open</div><div className="mt-1 text-2xl font-semibold">{openCount}</div></div>
+              <div className="rounded-lg border bg-muted/20 p-3"><div className="text-xs uppercase text-muted-foreground">Blocked</div><div className="mt-1 text-2xl font-semibold">{blockedCount}</div></div>
+              <div className="rounded-lg border bg-muted/20 p-3"><div className="text-xs uppercase text-muted-foreground">Critical</div><div className="mt-1 text-2xl font-semibold">{criticalCount}</div></div>
+              <div className="rounded-lg border bg-muted/20 p-3"><div className="text-xs uppercase text-muted-foreground">Average score</div><div className="mt-1 text-2xl font-semibold">{avgScore}</div></div>
+            </div>
+
+            {points.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                No control points yet. Rebuild the AI baseline or add a manual point.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-[1280px] w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left">
+                      <th className="py-2 pr-3">#</th>
+                      <th className="py-2 pr-3">Point</th>
+                      <th className="py-2 pr-3">Responsible / due</th>
+                      <th className="py-2 pr-3">Status / priority</th>
+                      <th className="py-2 pr-3">Prepared action</th>
+                      <th className="py-2">Tracking notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {points.map((point) => (
+                      <tr key={point.id} className="align-top border-b">
+                        <td className="py-3 pr-3 font-medium">
+                          <div>{point.number}</div>
+                          <Badge variant={point.score >= 85 ? 'destructive' : point.score >= 65 ? 'secondary' : 'outline'} className="mt-2">Score {point.score}</Badge>
+                        </td>
+                        <td className="py-3 pr-3">
+                          <div className="space-y-2">
+                            <Input value={point.title} onChange={(event) => handleProjectPointChange(panel, point.id, { title: event.target.value })} />
+                            <Textarea value={point.description} onChange={(event) => handleProjectPointChange(panel, point.id, { description: event.target.value })} className="min-h-[96px]" />
+                            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                              <Badge variant="outline">{point.ai_generated ? 'AI baseline' : 'Manual'}</Badge>
+                              <Badge variant="outline">{point.source_type || 'manual'}</Badge>
+                              {point.source_ref ? <Badge variant="outline">{point.source_ref}</Badge> : null}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 pr-3">
+                          <div className="space-y-2">
+                            <Input value={point.owner} onChange={(event) => handleProjectPointChange(panel, point.id, { owner: event.target.value })} placeholder="Owner" />
+                            <Input type="date" value={point.due_date || ''} onChange={(event) => handleProjectPointChange(panel, point.id, { due_date: event.target.value })} />
+                          </div>
+                        </td>
+                        <td className="py-3 pr-3">
+                          <div className="space-y-2">
+                            <Select value={point.status} onValueChange={(value) => handleProjectPointChange(panel, point.id, { status: value as ProjectPointStatus })}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {PROJECT_POINT_STATUSES.map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            <Select value={point.priority} onValueChange={(value) => handleProjectPointChange(panel, point.id, { priority: value as ProjectPointPriority })}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {PROJECT_POINT_PRIORITIES.map((priority) => <SelectItem key={priority} value={priority}>{priority}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </td>
+                        <td className="py-3 pr-3">
+                          <div className="space-y-2 rounded-md border bg-muted/20 p-3">
+                            <div className="font-medium">{point.suggested_action}</div>
+                            <div className="whitespace-pre-wrap text-muted-foreground">{point.suggested_content}</div>
+                          </div>
+                        </td>
+                        <td className="py-3">
+                          <Textarea value={point.action_taken} onChange={(event) => handleProjectPointChange(panel, point.id, { action_taken: event.target.value })} className="min-h-[160px]" />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
 
   const createProjectFromOffer = async () => {
     if (!activeCompanyId) return;
@@ -510,10 +750,12 @@ export default function ProjectManagementPage() {
           </div>
 
           <Tabs defaultValue="overview" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="execution">Execution</TabsTrigger>
               <TabsTrigger value="milestones">Milestones</TabsTrigger>
+              <TabsTrigger value="customer-points">Customer points</TabsTrigger>
+              <TabsTrigger value="project-points">Project control</TabsTrigger>
               <TabsTrigger value="issues">Pending issues</TabsTrigger>
               <TabsTrigger value="docs">Documents & gates</TabsTrigger>
             </TabsList>
@@ -658,6 +900,24 @@ export default function ProjectManagementPage() {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="customer-points" className="space-y-4">
+              {renderProjectPointPanel(
+                'customer_pending',
+                'Customer-Ingecart pending points',
+                'Follow-up list between customer and Ingecart with editable status, score, prepared action and ready-to-use management content.',
+                activeCustomerPendingPoints,
+              )}
+            </TabsContent>
+
+            <TabsContent value="project-points" className="space-y-4">
+              {renderProjectPointPanel(
+                'project_management',
+                'Project management control points',
+                'Internal control board for execution, dependencies, key dates, commissioning readiness and corrective actions.',
+                activeProjectManagementPoints,
+              )}
             </TabsContent>
 
             <TabsContent value="issues" className="space-y-4">

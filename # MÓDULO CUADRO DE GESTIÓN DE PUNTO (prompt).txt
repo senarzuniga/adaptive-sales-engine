@@ -1,0 +1,147 @@
+# MÓDULO: CUADRO DE GESTIÓN DE PUNTOS DE PROYECTO (DECISION LOG) — PLANTILLA INGECART
+
+## OBJETIVO
+Generar y mantener el registro de decisiones y puntos abiertos de cada proyecto.
+Entregable: archivo Excel (.xlsx) con formato INGECART, nunca solo texto en el chat.
+Nombre de archivo:
+- ES: Registro_Decisiones_[Proyecto]_INGECART_ES.xlsx
+- EN: Decision_Log_[Proyecto]_INGECART_EN.xlsx
+
+## FUENTES DE INFORMACIÓN
+1. Buscar en los chats del proyecto todo lo relacionado: decisiones, cálculos, BOM, RFQ, correos, layouts.
+2. Recoger solo el alcance propio (eléctrico y automatización), salvo que se indique otra cosa.
+3. No inventar cantidades ni datos. Si un punto está confirmado pero la cifra no aparece en ninguna fuente, describir el punto sin cifra y sin marcadores de relleno.
+4. Si hay dudas sobre si una información pertenece al proyecto, o hay datos contradictorios entre chats, no incluirla sin más: avisar al usuario indicando el chat de origen y la fecha.
+
+## CABECERA (filas 1–10)
+- Fila 1: franja negra #111111. Fila 2: franja naranja #FF6600 (fina).
+- Logo "ingecart · Engineering & Auditing" arriba a la izquierda, con línea naranja debajo.
+- Título a la derecha, 18 pt negrita: "Registro de Decisiones" / "Decision Log".
+- Subtítulo a la derecha, 11 pt naranja: "[Cliente] · [descripción corta de la máquina o instalación] · [tensión] · [concepto]".
+
+## TABLA DE DATOS DEL PROYECTO (4 filas, fondo #F2F2F2, borde izquierdo naranja)
+| Etiqueta | Valor | Etiqueta | Valor |
+|---|---|---|---|
+| Proyecto | [nombre] | Cliente | [cliente] o "—" |
+| Documento | Registro de decisiones del proyecto | Fecha | =HOY() |
+| Responsable | [equipo / persona] | Rev. | [nº] |
+| Resumen | fórmula: "X confirmados · Y pendientes · Z bloqueados" | Abiertos | fórmula: "N abiertos · M críticos" |
+
+- Abiertos = Estado distinto de CONFIRMADO y de CERRADO.
+- Críticos = abiertos con Prioridad CRÍTICA.
+- Las fórmulas cubren toda la tabla más 30 filas de reserva.
+
+## COLUMNAS DE LA TABLA (cabecera negra, texto blanco en negrita)
+| # | Columna ES | Columna EN | Ancho | Alineación |
+|---|---|---|---|---|
+| A | # | # | 6 | centro |
+| B | Punto de decisión | Decision point | 38 | izquierda |
+| C | Descripción | Description | 62 | izquierda, ajuste de texto |
+| D | Responsable | Owner | 20 | izquierda |
+| E | Fecha límite / confirmación | Due / confirmation date | 17–19 | centro |
+| F | Estado | Status | 15 | centro |
+| G | Prioridad | Priority | 13 | centro |
+| H | Acción realizada | Action taken | 44 | izquierda |
+
+## VALORES PERMITIDOS (listas desplegables)
+- Estado: PENDIENTE · EN CURSO · CONFIRMADO · BLOQUEADO · CERRADO
+  (EN: PENDING · IN PROGRESS · CONFIRMED · BLOCKED · CLOSED)
+- Prioridad: CRÍTICA · ALTA · MEDIA · BAJA · N/A
+  (EN: CRITICAL · HIGH · MEDIUM · LOW · N/A)
+- Los puntos confirmados llevan siempre Prioridad N/A.
+
+## BLOQUES (cabecera naranja #FF6600, texto blanco en negrita), en este orden
+1. CONFIRMADAS (EN: CONFIRMED)
+2. PENDIENTES · PRIORIDAD CRÍTICA (EN: PENDING · CRITICAL PRIORITY). Incluye los puntos en BLOQUEADO.
+3. PENDIENTES · PRIORIDAD ALTA / MEDIA (EN: PENDING · HIGH / MEDIUM PRIORITY). Incluye BAJA.
+
+## ORDEN DENTRO DE CADA BLOQUE
+- Por fecha, de la más antigua a la más reciente.
+- A igual fecha, BLOQUEADO va después de PENDIENTE.
+- "Por definir" / "TBD" va al final del bloque.
+- En pendientes, un punto con fecha real va antes que uno sin fecha.
+
+## NUMERACIÓN
+- Secuencial 1…N sin saltos, de arriba abajo, sin tener en cuenta los bloques.
+- Al reordenar o añadir puntos, renumerar todo.
+- Actualizar las referencias entre puntos (ej. "A ESPERA DE LOS PUNTOS 9–13").
+- Avisar al usuario de que la numeración ha cambiado respecto a versiones ya enviadas.
+
+## FECHAS
+| Caso | ES | EN | Formato de celda |
+|---|---|---|---|
+| Fecha real | 24/09/2026 | 24-Sep-2026 | fecha Excel |
+| Fecha reconstruida | aprox. 15/05/2026 | approx. 15-May-2026 | texto cursiva gris #595959 |
+| Sin fecha | Por definir | TBD | texto |
+
+- En confirmados, la fecha es la de confirmación. En pendientes, la fecha límite.
+- Las fechas aproximadas se reparten de forma lógica dentro del periodo que indique el usuario.
+
+## COLUMNA "ACCIÓN REALIZADA"
+- Siempre en MAYÚSCULAS.
+- Frases tipo:
+  - CONFIRMADO EN REUNIÓN (FECHA APROX.)
+  - CONFIRMADO SOBRE LAYOUT (FECHA APROX.)
+  - DEFINIDO EN INGENIERÍA (FECHA APROX.)
+  - E-MAIL [PERSONA / EQUIPO] PARA CONFIRMACIÓN
+  - A ESPERA DE CONFIRMACIÓN DE LOS PUNTOS: X–Y
+  - A DEFINIR CON EL CLIENTE
+  - A ESPERA DE RESPUESTA DE PROVEEDORES
+- Puede quedar vacía en pendientes sin acción iniciada.
+
+## FORMATO CONDICIONAL
+| Condición | Formato |
+|---|---|
+| CONFIRMADO / CERRADO | texto verde #2E7D32 en negrita |
+| PENDIENTE | texto naranja #FF6600 en negrita |
+| EN CURSO | texto azul #1F4E78 en negrita |
+| BLOQUEADO | fondo rojo #C00000, texto blanco en negrita |
+| CRÍTICA | texto rojo #C00000 en negrita |
+| ALTA | texto naranja #FF6600 en negrita |
+| MEDIA | texto gris #595959 en negrita |
+| Fecha real vencida y punto no confirmado ni cerrado | fecha en rojo #C00000 en negrita |
+
+## ESTILO GENERAL
+- Fuente Arial 10 pt, texto #222222, sin líneas de cuadrícula.
+- Filas alternas blanco / #F2F2F2 dentro de cada bloque. Bordes finos #D0D0D0.
+- Paneles inmovilizados bajo la cabecera de la tabla.
+- 30 filas de reserva con validaciones y formato condicional ya aplicados.
+
+## PIE
+- Línea naranja y el texto: "INGECART · Engineering & Auditing — Registro de decisiones del proyecto."
+- Si hay fechas reconstruidas, añadir una nota en cursiva: "Nota: las fechas marcadas 'aprox.' están reconstruidas a posteriori ([origen / periodo]). 'Por definir' = fecha límite aún sin fijar."
+
+## IMPRESIÓN
+- A4 apaisado, ajustado a 1 página de ancho.
+- Cabecera de la tabla repetida en cada página.
+- Pie de página con el texto INGECART a la izquierda y "Página X de Y" a la derecha.
+
+## IDIOMAS
+- Generar versión ES y, si el cliente es extranjero, versión EN con la misma numeración y el mismo orden.
+- En EN se traducen también los desplegables, el formato condicional y las fórmulas de resumen.
+
+## FLUJO DE ACTUALIZACIÓN
+1. Recibir puntos nuevos o cambios de estado.
+2. Reclasificar en su bloque, reordenar y renumerar.
+3. Actualizar las referencias cruzadas entre puntos.
+4. Regenerar ES y EN.
+5. Informar al usuario de:
+   - puntos añadidos o cambiados,
+   - cambios de numeración,
+   - datos dudosos o contradictorios con su fuente.
+
+## CORREO DE ENVÍO (opcional)
+- Correo interno para el responsable del proyecto con el Excel adjunto.
+- Indicar que el registro cubre solo el alcance propio.
+- Resumir lo confirmado y lo pendiente crítico.
+- Indicar con quién hay que contrastarlo (ej. mecánica: José María y Jordi).
+- Firma de Gerard González, Electrical & Automation Director.
+
+## AUDITORÍA ANTES DE ENTREGAR
+- [ ] Numeración continua y referencias cruzadas correctas.
+- [ ] Cada punto en su bloque y en orden de fecha.
+- [ ] Ninguna cifra inventada ni marcador de relleno.
+- [ ] Fechas "aprox." marcadas y explicadas en la nota.
+- [ ] Fórmulas de resumen sin errores.
+- [ ] Versiones ES y EN coherentes entre sí.
+- [ ] Cabecera, colores, pie e impresión según esta plantilla.

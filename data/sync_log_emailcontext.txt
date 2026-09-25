@@ -1,0 +1,15 @@
+[2026-09-21T09:04:50.710133] [INFO] Starting continuous sync watcher (interval: 300s)
+[2026-09-21T09:04:50.711131] [INFO] Starting sync cycle...
+[2026-09-21T09:04:50.721126] [INFO] Loaded ECA data: 3 projects
+[2026-09-21T09:04:50.722126] [INFO] Loaded ASE data: 0 opportunities
+[2026-09-21T09:04:50.735118] [INFO] Opportunities: 3 added, 0 updated
+[2026-09-21T09:04:50.736116] [INFO] Tasks: 9 added, 0 updated
+[2026-09-21T09:04:50.737115] [INFO] Leads: 9 added, 0 updated
+[2026-09-21T09:04:50.742113] [INFO] Sync completed: 21 total changes (sync #1)
+[2026-09-21T09:05:26.026467] [INFO] Starting sync cycle...
+[2026-09-21T09:05:26.028464] [INFO] Loaded ECA data: 3 projects
+[2026-09-21T09:05:26.060483] [INFO] Loaded ASE data: 3 opportunities
+[2026-09-21T09:05:26.063481] [INFO] Opportunities: 0 added, 3 updated
+[2026-09-21T09:05:26.064481] [INFO] Tasks: 0 added, 9 updated
+[2026-09-21T09:05:26.066479] [INFO] Leads: 0 added, 9 updated
+[2026-09-21T09:05:26.070478] [INFO] Sync completed: 21 total changes (sync #1)

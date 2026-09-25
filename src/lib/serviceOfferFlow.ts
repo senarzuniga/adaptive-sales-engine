@@ -149,7 +149,6 @@ const opportunityTypeLabel: Record<ServiceOpportunityType, string> = {
 };
 
 export type ServiceOfferSection = 'scope' | 'tpm-preventive' | 'service-deliverables' | 'why-ingecart' | 'covered-machines' | 'commercial' | 'response-sla';
-
 export type ServiceOfferContent = {
   sections: ServiceOfferSection[];
   scopeSummary: string;
@@ -171,6 +170,8 @@ export type ServiceOfferContent = {
     label: string;
     value: string;
   }[];
+  documentLanguage?: 'en' | 'es';
+  linkedOpportunityId?: string;
 };
 
 const serviceOfferContentByType: Record<ServiceOpportunityType, ServiceOfferContent> = {
@@ -564,7 +565,7 @@ function normalizeWorkspaceOpportunity(row: Row): ServiceOpportunityCandidate {
     urgency,
     score: computeScore(estimatedValue || estimateValueByType[opportunityType], probability, urgency, text(row.ai_generated) === 'true' || Boolean(row.ai_generated), 'workspace'),
     aiGenerated: Boolean(row.ai_generated),
-    status: text(row.status) || 'identified',
+    status: 'identified',
     knownOfferNumber: text(row.offer_number),
     referenceDocuments: Array.isArray(row.document_paths) ? row.document_paths.map((value) => text(value)).filter(Boolean) : [],
   };
@@ -760,6 +761,14 @@ export function getServiceOfferDraftStorageKey(companyId?: string | null) {
 }
 
 export function buildServiceOfferDraftSeed(candidate: ServiceOpportunityCandidate): ServiceOfferDraftSeed {
+  const baseContent = buildServiceOfferContent(candidate.opportunityType);
+  const opportunityId = candidate.id;
+  const language: 'en' | 'es' = 'en';
+  const serviceContent: ServiceOfferContent = {
+    ...baseContent,
+    documentLanguage: language,
+    linkedOpportunityId: opportunityId,
+  };
   return {
     offerKind: 'service',
     title: candidate.title,
@@ -767,8 +776,8 @@ export function buildServiceOfferDraftSeed(candidate: ServiceOpportunityCandidat
     projectDescription: `${candidate.recommendedAction} Scope: ${candidate.recommendedScope}`,
     currency: 'EUR',
     targetMargin: targetMarginByType[candidate.opportunityType] || 32,
-    documentLanguage: 'en',
-    linkedOpportunityId: candidate.id,
+    documentLanguage: language,
+    linkedOpportunityId: opportunityId,
     linkedOpportunityTitle: candidate.title,
     items: [{
       id: `svc-${slug(candidate.title)}-${Date.now()}`,
@@ -783,6 +792,6 @@ export function buildServiceOfferDraftSeed(candidate: ServiceOpportunityCandidat
         buildServiceCostLine(`cl-${Date.now()}-parts`, 'parts', 'Spare parts / consumables provision', 'Recommended spare parts and consumables within the service scope.'),
       ],
     }],
-    serviceContent: buildServiceOfferContent(candidate.opportunityType),
+    serviceContent,
   };
 }

@@ -103,6 +103,13 @@ const SR1400_FIXED_LINES: ProductCostPresetLine[] = [
   engineeringLine('MONTAJE EN TALLER', 65, 50, 'OPERARIO TALLER'),
 ];
 
+const SR1400_FIXED_BASE_COST = 19079.3;
+const SR1400_VARIABLE_COST_PER_M = 456.17;
+const SR1400_DEFAULT_LENGTH_M = 80;
+const SR1400_AVERAGE_LENGTH_M = 75;
+const SR1400_AVERAGE_TOTAL_COST_50_100 = 53292.05;
+const SR1400_INFO_URL = 'https://senarzuniga.github.io/ingesite.github.io/solutions/sr1400.html';
+
 const PRODUCT_PROFILES: ProductProfile[] = [
   {
     aliases: ['ingetran', 'ingetrans'],
@@ -320,13 +327,30 @@ const PRODUCT_PROFILES: ProductProfile[] = [
   },
   {
     aliases: ['sr1400', 'sr 1400'],
-    base: { name: 'SR1400', averageValue: 95000, estimatedCost: 55111, type: 'equipment line', category: 'product', characteristics: ['Length-configurable scrap conveyor', '80 meter standard cost model', 'Installation can be toggled per offer'], repositories: ['INGECART/PRODUCTO'], validated: true, source: 'manual', comments: 'Length-based cost logic derived from 30m, 50m and 80m reference scenarios.' },
+    base: { name: 'SR1400', averageValue: 95000, estimatedCost: 55572.9, type: 'equipment line', category: 'product', characteristics: ['Length-configurable scrap conveyor', 'Validated direct-cost model before site installation', 'Installation can be toggled per offer'], repositories: ['INGECART/PRODUCTO/SISTEMA RETAL', 'AI-FACTORY-v2/data', 'ingesite solutions'], validated: true, source: 'manual', comments: 'Validated against COSTES RETAL PARA IA.xlsx with direct-cost model 19,079.30 EUR + 456.17 EUR per meter before optional site installation.' },
     meta: {
-      productInfoUrl: SOLUTIONS_URL, productVideoUrl: VIDEO_URL, configurableByLength: true, defaultLengthM: 80,
+      productInfoUrl: SR1400_INFO_URL, productVideoUrl: VIDEO_URL, configurableByLength: true, defaultLengthM: SR1400_DEFAULT_LENGTH_M,
       costPreset: [...SR1400_VARIABLE_LINES, ...SR1400_FIXED_LINES, installationLine('SR1400 installation', 8, 2, 550, { optional: true })],
+      linkedReports: ['COSTES RETAL PARA IA.xlsx', 'Engineered Waste Logistics System.txt', 'sr1400_product_dossier.md'],
       competitors: [competitor('Runtech', 'Trim conveying systems', 'Strong paper and board waste handling references.', 78, 'Comparable performance in standard scrap evacuation.', ['Lead with modular length-based configurability', 'Quantify easier integration into Ingecart lines']), competitor('QIPC-EAE', 'Waste extraction and trim systems', 'Good automation references in printing and corrugated.', 74, 'Broad automation brand may win on perception.', ['Show lower integration friction and tailored corrugated engineering'])],
       marketFitNotes: ['Fit depends on conveyor length, layout constraints, and maintenance simplicity.'],
       fitImprovementActions: ['Tune the proposal by exact meter count and layout.', 'Use maintenance and cleaning simplicity as a sales argument.'],
+    },
+  },
+  {
+    aliases: ['sr1400 por metro', 'sr 1400 por metro', 'sr1400 per meter'],
+    base: { name: 'SR1400 por metro', averageValue: 95000, estimatedCost: SR1400_AVERAGE_TOTAL_COST_50_100, type: 'equipment line', category: 'product', characteristics: ['Normalized SR1400 costing helper', 'Average direct cost per meter = 721.10 EUR between 50 m and 100 m', 'Uses validated fixed + variable cost model'], repositories: ['INGECART/PRODUCTO/SISTEMA RETAL', 'AI-FACTORY-v2/data', 'ingesite solutions'], validated: true, source: 'manual', comments: 'Reference helper product for commercial sizing. Average direct cost per meter across 50-100 m is 721.10 EUR/m and the mean total direct cost is 53,292.05 EUR at the 75 m midpoint, before optional site installation.' },
+    meta: {
+      productInfoUrl: SR1400_INFO_URL, productVideoUrl: VIDEO_URL, configurableByLength: true, defaultLengthM: SR1400_AVERAGE_LENGTH_M,
+      costPreset: [
+        unitLine('materials', 'BASE FIJA SR1400', 1, SR1400_FIXED_BASE_COST),
+        unitLine('materials', 'COSTE VARIABLE SR1400 / m', SR1400_AVERAGE_LENGTH_M, SR1400_VARIABLE_COST_PER_M, { scalesWithLength: true, unitsPerLengthM: 1 }),
+        installationLine('SR1400 installation', 8, 2, 550, { optional: true }),
+      ],
+      linkedReports: ['COSTES RETAL PARA IA.xlsx', 'Engineered Waste Logistics System.txt', 'sr1400_product_dossier.md'],
+      competitors: [competitor('Runtech', 'Trim conveying systems', 'Strong paper and board waste handling references.', 78, 'Comparable performance in standard scrap evacuation.', ['Lead with meter-by-meter commercial configurability', 'Use the validated cost curve to defend scope changes']), competitor('QIPC-EAE', 'Waste extraction and trim systems', 'Good automation references in printing and corrugated.', 74, 'Broad automation brand may win on perception.', ['Differentiate with transparent cost-per-meter logic', 'Tie the commercial defense to the validated direct-cost workbook'])],
+      marketFitNotes: ['Useful when early commercial sizing requires a direct-cost estimate per meter before the final layout is frozen.'],
+      fitImprovementActions: ['Adjust the final offer with the exact meter count and layout.', 'Separate direct system cost from optional site installation in the pricing review.'],
     },
   },
   {

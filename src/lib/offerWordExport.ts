@@ -158,6 +158,10 @@ const gridTable = (headers: string[], rows: string[][], widths: number[], highli
 
 const coverTable = (input: OfferWordExportInput, language: OfferWordLanguage = 'en') => {
   const isEs = language === 'es';
+  const serviceOffer = isServiceOffer(input);
+  const basisText = serviceOffer
+    ? (isEs ? 'Servicio postventa segun el alcance, niveles de servicio y condiciones comerciales configuradas.' : 'After-sales service according to the configured scope, service levels and commercial conditions.')
+    : (isEs ? 'Suministro de equipos y servicios segun el alcance y las condiciones comerciales configuradas.' : 'Equipment and services according to the configured scope and commercial conditions.');
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
@@ -165,7 +169,7 @@ const coverTable = (input: OfferWordExportInput, language: OfferWordLanguage = '
       [isEs ? 'Proyecto' : 'Project', text(input.offer.title) || (isEs ? 'Propuesta comercial' : 'Commercial proposal')],
       [isEs ? 'Referencia de oferta' : 'Proposal reference', text(input.offer.offer_number) || (isEs ? 'Borrador de oferta' : 'Offer draft')],
       [isEs ? 'Fecha' : 'Date', fmtDate(input.offer.updated_at || input.offer.created_at, language)],
-      [isEs ? 'Base comercial' : 'Commercial basis', `${text(input.offer.currency) || 'EUR'} | ${isEs ? 'Suministro de equipos y servicios segun el alcance y las condiciones comerciales configuradas.' : 'Equipment and services according to the configured scope and commercial conditions.'}`],
+      [isEs ? 'Base comercial' : 'Commercial basis', `${text(input.offer.currency) || 'EUR'} | ${basisText}`],
     ].map(([label, value]) => new TableRow({
       children: [
         cell(label, { fill: DARK, color: WHITE, bold: true, borderColor: WHITE, borderSize: 4 }),
@@ -494,10 +498,17 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
       new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, shading: { fill: ORANGE, type: ShadingType.CLEAR, color: 'auto' }, children: [new TextRun({ text: buildCoverRibbon(input), font: 'Arial', size: 18, bold: true, color: WHITE })] }),
       ...(templateAssets.coverImage ? [imageParagraph(templateAssets.coverImage, COVER_IMAGE_SIZE), imageCaption(coverCaptionText)] : []),
       coverTable(input, language),
+      ...(serviceOffer && serviceContent && serviceContent.valueProposition ? [
+        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 120, after: 200 }, children: [new TextRun({ text: serviceContent.valueProposition, font: 'Arial', size: 19, italics: true, color: MID_GREY })] }),
+      ] : []),
       heading(1, isEs ? 'CONTENIDOS' : 'CONTENTS'),
       new Paragraph({ children: [new TableOfContents(' ', { hyperlink: true, headingStyleRange: '1-2' })] }),
       heading(1, isEs ? '1  CARTA DE OFERTA' : '1  OFFER LETTER'),
       normal(isEs ? `Estimado equipo de ${customer},` : `Dear ${customer} Team,`),
+      ...(serviceOffer && serviceContent ? [
+        normal(serviceContent.scopeSummary),
+        normal(serviceContent.serviceDescription),
+      ] : []),
       normal(serviceOffer && serviceContent
         ? (isEs
           ? `INGECART presenta la propuesta de servicio ${offerRef} para ${text(input.offer.title) || 'el alcance de postventa definido'}. La oferta consolida alcance, entregables, niveles de servicio y condiciones comerciales en un formato ejecutivo listo para validacion interna y aprobacion.`
@@ -630,8 +641,6 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
       ...(serviceOffer && serviceContent
         ? serviceContent.deliverables.map(bullet)
         : scopeRows.map((row) => bullet(`${row.label}: ${row.scope || (isEs ? 'Alcance configurado' : 'Configured scope')} - ${fmtCurrency(row.proposalPrice, currency, language)}.`))),
-      ...(serviceOffer && serviceContent ? serviceContent.exclusions.map(bullet) : []),
-      ...(installationRows.length > 0 ? [normal(getAssociatedCostsText(language))] : []),
       heading(2, sectionLabels[4]),
       ...(serviceOffer && serviceContent
         ? serviceContent.exclusions.map(bullet)
@@ -658,6 +667,9 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
           isEs ? 'Prestaciones, capacidades e interfaces quedan sujetas a validacion final de ingenieria sobre el layout y matriz de cargas aprobados por cliente.' : 'Performance, capacities and interfaces are subject to final engineering validation on the approved customer layout and load matrix.',
         ]).map(bullet)),
       heading(1, sectionLabels[7]),
+      ...(serviceOffer && serviceContent ? [
+        normal(isEs ? 'La aceptacion de esta propuesta de servicio confirma el alcance, el calendario anual acordado, los niveles de servicio y las condiciones comerciales aqui recogidas. Cualquier modificacion al alcance sera gestionada como una variacion comercial por escrito.' : 'Acceptance of this service proposal confirms the scope, agreed annual calendar, service levels and commercial conditions set out herein. Any scope change will be handled as a written commercial variation.'),
+      ] : []),
       new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [
         new TableRow({ children: [cell(isEs ? 'Aceptado por el cliente' : 'Accepted by customer', { fill: LIGHT, bold: true }), cell(isEs ? 'Fecha' : 'Date', { fill: LIGHT, bold: true })] }),
         new TableRow({ children: [cell('\n\n'), cell('\n\n')] }),
@@ -668,7 +680,9 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
   return new Document({
     creator: 'ASE Offer Builder',
     title: `${offerRef} ${text(input.offer.title)}`.trim(),
-    description: 'Commercial proposal generated from ASE using the Sterner / Paige executive proposal structure (' + (input.language === 'es' ? 'Spanish' : 'English') + ' version).',
+    description: serviceOffer && serviceContent
+      ? 'INGECART after-sales service proposal generated from ASE (' + (input.language === 'es' ? 'Spanish' : 'English') + ' version).'
+      : 'Commercial proposal generated from ASE using the Sterner / Paige executive proposal structure (' + (input.language === 'es' ? 'Spanish' : 'English') + ' version).',
     styles: {
       paragraphStyles: [
         { id: 'Normal', name: 'Normal', run: { font: 'Arial', size: 19, color: DARK }, paragraph: { spacing: { after: 90, line: 276 } } },
@@ -696,20 +710,25 @@ const loadTemplateAsset = async (relativePath: string) => {
 
   const baseUrl = new URL(import.meta.env.BASE_URL || '/', window.location.origin);
   const response = await fetch(new URL(relativePath, baseUrl));
-  if (!response.ok) throw new Error(`Failed to load offer template asset: ${relativePath}`);
+  if (!response.ok) throw new Error(`Failed to load offer template asset: ${relativePath} (${response.status})`);
   const type = relativePath.toLowerCase().endsWith('.png') ? 'png' : 'jpg';
   return { data: new Uint8Array(await response.arrayBuffer()), type } as const;
 };
 
 async function resolveOfferWordTemplateAssets(input: OfferWordExportInput): Promise<OfferWordTemplateAssets> {
-  if (!isIngecartTemplate(input)) return {};
+  const useIngecartAssets = isIngecartTemplate(input) || isServiceOffer(input);
+  if (!useIngecartAssets) return {};
 
-  const [headerLogo, coverImage] = await Promise.all([
-    loadTemplateAsset(INGECART_TEMPLATE_ASSETS.headerLogo),
-    loadTemplateAsset(INGECART_TEMPLATE_ASSETS.coverImage),
-  ]);
-
-  return { headerLogo, coverImage };
+  try {
+    const [headerLogo, coverImage] = await Promise.all([
+      loadTemplateAsset(INGECART_TEMPLATE_ASSETS.headerLogo),
+      loadTemplateAsset(INGECART_TEMPLATE_ASSETS.coverImage),
+    ]);
+    return { headerLogo, coverImage };
+  } catch (error) {
+    console.warn('[offerWordExport] Failed to load Ingecart template assets; exporting without cover image and logo.', error);
+    return {};
+  }
 }
 
 export type OfferWordDownloadResult = {

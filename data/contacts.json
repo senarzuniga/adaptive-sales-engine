@@ -1,0 +1,164 @@
+[
+  {
+    "lead_id": "IP_WATERLOO_001_primary",
+    "name": "Scott M Smith",
+    "company": "International Paper",
+    "email": "Scott.Smith@ipaper.com",
+    "role": "Director - Decision Maker",
+    "phone": "",
+    "engagement_score": 40.0,
+    "sentiment": "FRUSTRATED",
+    "sensitivity_level": "CRITICAL",
+    "related_project": "IP_WATERLOO_001",
+    "last_contact": "2026-09-18",
+    "tags": [
+      "IP_WATERLOO_001",
+      "critical",
+      "frustrated"
+    ]
+  },
+  {
+    "lead_id": "IP_WATERLOO_001_partner",
+    "name": "Mike Kocherga",
+    "company": "Rapid Bond",
+    "email": "mishka@line-text.com",
+    "role": "Strategic Partner - Relationship Manager",
+    "phone": "",
+    "engagement_score": 80.0,
+    "sentiment": "CONCERNED",
+    "sensitivity_level": "STRATEGIC",
+    "related_project": "IP_WATERLOO_001",
+    "last_contact": "2026-09-18",
+    "tags": [
+      "IP_WATERLOO_001",
+      "strategic",
+      "concerned"
+    ]
+  },
+  {
+    "lead_id": "IP_WATERLOO_001_internal_lead",
+    "name": "Diego Garcia",
+    "company": "Ingecart",
+    "email": null,
+    "role": "Sales Director",
+    "phone": "",
+    "engagement_score": 50.0,
+    "sentiment": null,
+    "sensitivity_level": null,
+    "related_project": "IP_WATERLOO_001",
+    "last_contact": null,
+    "tags": [
+      "IP_WATERLOO_001",
+      "",
+      ""
+    ]
+  },
+  {
+    "lead_id": "IP_WATERLOO_001_technical_lead",
+    "name": "Gerard González",
+    "company": "Ingecart",
+    "email": null,
+    "role": "Electrical & Automation Director",
+    "phone": "",
+    "engagement_score": 50.0,
+    "sentiment": null,
+    "sensitivity_level": null,
+    "related_project": "IP_WATERLOO_001",
+    "last_contact": null,
+    "tags": [
+      "IP_WATERLOO_001",
+      "",
+      ""
+    ]
+  },
+  {
+    "lead_id": "SIGMAQ_001_primary",
+    "name": "Rafael",
+    "company": "SigmaQ",
+    "email": "[sourcing contact]",
+    "role": "Sourcing Director",
+    "phone": "",
+    "engagement_score": 89.99999999999999,
+    "sentiment": "NEGOTIATING",
+    "sensitivity_level": "HIGH",
+    "related_project": "SIGMAQ_001",
+    "last_contact": "2026-09-18",
+    "tags": [
+      "SIGMAQ_001",
+      "high",
+      "negotiating"
+    ]
+  },
+  {
+    "lead_id": "SIGMAQ_001_partner",
+    "name": "Mike Kocherga",
+    "company": "Rapid Bond",
+    "email": "mishka@line-text.com",
+    "role": "Commercial Partner - Deal Navigator",
+    "phone": "",
+    "engagement_score": 100.0,
+    "sentiment": null,
+    "sensitivity_level": "STRATEGIC",
+    "related_project": "SIGMAQ_001",
+    "last_contact": null,
+    "tags": [
+      "SIGMAQ_001",
+      "strategic",
+      ""
+    ]
+  },
+  {
+    "lead_id": "SIGMAQ_001_internal_lead",
+    "name": "Diego Garcia",
+    "company": "Ingecart",
+    "email": null,
+    "role": "Sales Director",
+    "phone": "",
+    "engagement_score": 50.0,
+    "sentiment": null,
+    "sensitivity_level": null,
+    "related_project": "SIGMAQ_001",
+    "last_contact": null,
+    "tags": [
+      "SIGMAQ_001",
+      "",
+      ""
+    ]
+  },
+  {
+    "lead_id": "FFG_1228_001_supplier",
+    "name": "Steven Shi",
+    "company": "Dinglong Machinery Co",
+    "email": "steven.shi@shdljx.com",
+    "role": "Technical Director",
+    "phone": "",
+    "engagement_score": 75.0,
+    "sentiment": null,
+    "sensitivity_level": "HIGH",
+    "related_project": "FFG_1228_001",
+    "last_contact": null,
+    "tags": [
+      "FFG_1228_001",
+      "high",
+      ""
+    ]
+  },
+  {
+    "lead_id": "FFG_1228_001_internal_lead",
+    "name": "Gerard González",
+    "company": "Ingecart",
+    "email": null,
+    "role": "Technical Support Lead",
+    "phone": "",
+    "engagement_score": 50.0,
+    "sentiment": null,
+    "sensitivity_level": null,
+    "related_project": "FFG_1228_001",
+    "last_contact": null,
+    "tags": [
+      "FFG_1228_001",
+      "",
+      ""
+    ]
+  }
+]

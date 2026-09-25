@@ -8,7 +8,7 @@ export interface OfferDocumentRecord {
   offerNumber: string;
   accountName: string;
   fileName: string;
-  fileType: 'DOCX';
+  fileType: 'DOCX' | 'XLSX';
   owner: string;
   updatedAt: string;
   language: OfferDocumentLanguage;

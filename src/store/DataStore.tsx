@@ -45,6 +45,8 @@ type WorkspaceTableName =
   | 'project_risks'
   | 'project_gates'
   | 'project_costs'
+  | 'project_pending_points'
+  | 'project_management_points'
   | 'change_orders';
 
 type WorkspacePack = Partial<Record<WorkspaceTableName, any[]>>;
@@ -71,6 +73,8 @@ const WORKSPACE_TABLES: WorkspaceTableName[] = [
   'project_risks',
   'project_gates',
   'project_costs',
+  'project_pending_points',
+  'project_management_points',
   'change_orders',
 ];
 

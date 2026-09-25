@@ -475,10 +475,13 @@ export default function OfferPricingPage() {
       setOfferPackages([]);
       setPrincipalPackagePriceOverride(null);
       setOfferTotalPriceOverride(null);
-      setDocumentLanguage(draft.documentLanguage === 'en' ? 'en' : 'es');
+      setDocumentLanguage(draft.documentLanguage === 'es' ? 'es' : 'en');
       setLinkedOpportunityId(draft.linkedOpportunityId || null);
       setLinkedOpportunityTitle(draft.linkedOpportunityTitle || draft.title || '');
       setServiceContent(draft.serviceContent || null);
+      if (draft.serviceContent?.linkedOpportunityId) {
+        setLinkedOpportunityId(draft.serviceContent.linkedOpportunityId);
+      }
       setAnalysis(null);
       if (draft.items?.length) {
         setItems(draft.items as OfferItem[]);
@@ -1731,7 +1734,7 @@ export default function OfferPricingPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="md:col-span-2">
                 <label className="text-sm font-medium text-foreground">{isEs ? "N Oferta" : 'Offer #'}</label>
                 <div className="flex gap-1">
                   <Input value={offerNumber} onChange={e => editOfferNumber(e.target.value)} placeholder={offerKind === 'service' ? 'OFF-2026-S001' : 'OFF-2026-001'} />
@@ -2561,10 +2564,17 @@ export default function OfferPricingPage() {
                     {filteredSavedOffers.map(o => (
                       <TableRow key={o.id}>
                         <TableCell className="font-mono text-sm">{o.offer_number || '-'}</TableCell>
-                        <TableCell>{o.title}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {o.offer_kind === 'service' || isServiceOfferNumber(o.offer_number) ? (
+                              <Badge variant="secondary" className="text-xs">S</Badge>
+                            ) : null}
+                            <span>{o.title}</span>
+                          </div>
+                        </TableCell>
                         <TableCell>{o.customer_name}</TableCell>
                         <TableCell>
-                          <Select value={o.status} onValueChange={(v) => updateOfferStatus(o.id, v)}>
+                          <Select value={o.status || 'draft'} onValueChange={(v) => updateOfferStatus(o.id, v)}>
                             <SelectTrigger className="w-28 h-8">
                               <SelectValue />
                             </SelectTrigger>

@@ -8,8 +8,8 @@
     "value": 0.0,
     "owner": "Diego Garcia",
     "customer": "Scott M Smith",
-    "created_date": "2026-09-21T09:02:09.434033",
-    "last_update": "2026-09-21T09:02:09.434033",
+    "created_date": "2026-09-21T09:05:26.063481",
+    "last_update": "2026-09-21T09:05:26.063481",
     "critical_items_count": 6,
     "risk_level": "HIGH",
     "tags": [
@@ -39,8 +39,8 @@
     "value": 480000.0,
     "owner": "Diego Garcia",
     "customer": "Rafael",
-    "created_date": "2026-09-21T09:02:09.434033",
-    "last_update": "2026-09-21T09:02:09.434033",
+    "created_date": "2026-09-21T09:05:26.063481",
+    "last_update": "2026-09-21T09:05:26.063481",
     "critical_items_count": 3,
     "risk_level": null,
     "tags": [
@@ -64,8 +64,8 @@
     "value": 0.0,
     "owner": "Gerard González",
     "customer": "Unknown",
-    "created_date": "2026-09-21T09:02:09.434033",
-    "last_update": "2026-09-21T09:02:09.434033",
+    "created_date": "2026-09-21T09:05:26.063481",
+    "last_update": "2026-09-21T09:05:26.063481",
     "critical_items_count": 0,
     "risk_level": null,
     "tags": [

@@ -180,6 +180,7 @@ export default function AfterSalesEnginePage() {
       setContracts(next);
       toast({ title: isEs ? 'Contrato guardado' : 'Contract saved' });
       setShowContractForm(false);
+      setContractForm({ contract_type: 'basic', contract_name: '', customer_name: '', annual_value: 0, recurring_revenue_type: 'subscription', status: 'active', sla_response_hours: 24, includes_parts: false, includes_remote: false, includes_predictive: false, notes: '', asset_id: '' });
       return;
     }
     const { error } = await supabase.from('service_contracts').insert(payload);
@@ -193,6 +194,15 @@ export default function AfterSalesEnginePage() {
     if (!activeCompanyId) return;
     const payload: any = { ...interventionForm, company_id: activeCompanyId };
     if (!payload.asset_id) delete payload.asset_id;
+    if (!isWorkspaceSupabaseConfigured) {
+      const next = [{ ...payload, id: crypto.randomUUID(), created_at: new Date().toISOString() }, ...interventions];
+      writeWorkspaceRows('service_interventions', activeCompanyId, next);
+      setInterventions(next);
+      toast({ title: isEs ? 'Intervención registrada' : 'Intervention recorded' });
+      setShowInterventionForm(false);
+      setInterventionForm({ intervention_type: 'reactive', description: '', technician: '', duration_hours: 0, cost: 0, resolution: '', was_remote: false, notes: '', asset_id: '' });
+      return;
+    }
     const { error } = await supabase.from('service_interventions').insert(payload);
     if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); return; }
     toast({ title: isEs ? 'Intervención registrada' : 'Intervention recorded' });

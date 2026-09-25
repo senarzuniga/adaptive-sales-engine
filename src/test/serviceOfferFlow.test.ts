@@ -134,6 +134,8 @@ describe('service offer numbering and draft seed', () => {
     expect(seed.serviceContent).toBeDefined();
     expect(seed.serviceContent.sections.length).toBeGreaterThan(0);
     expect(seed.serviceContent.deliverables.length).toBeGreaterThan(0);
+    expect(seed.serviceContent.exclusions.length).toBeGreaterThan(0);
+    expect(seed.serviceContent.assumptions.length).toBeGreaterThan(0);
     expect(seed.serviceContent.responseSla.length).toBeGreaterThan(0);
   });
 

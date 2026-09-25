@@ -230,6 +230,9 @@ const DOSSIERS: Record<string, ProductTechnicalDossier> = {
 const aliases: Record<string, keyof typeof DOSSIERS> = {
   'ingetran': 'ingetrans',
   'sr 1400': 'sr1400',
+  'sr1400 por metro': 'sr1400',
+  'sr 1400 por metro': 'sr1400',
+  'sr1400 per meter': 'sr1400',
   'amr waste management': 'amr gestion desperdicio area corrugado',
   'amr gestion desperdico area corrugado': 'amr gestion desperdicio area corrugado',
   'hd palletizer': 'heavy duty palletizer',
