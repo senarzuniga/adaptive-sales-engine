@@ -27,10 +27,18 @@ import { InstallationPlanner } from '@/components/costs/InstallationPlanner';
 import { computeInstallationCost, createInstallationPlan, describeInstallationPlan, type InstallationPlan } from '@/lib/installationCost';
 import { isWorkspaceSupabaseConfigured, readWorkspaceRows, writeWorkspaceRows } from '@/lib/workspaceStorage';
 import { downloadOfferWordDocument } from '@/lib/offerWordExport';
+import { downloadOfferCostWorkbook } from '@/lib/offerCostExport';
 import { buildOfferDocumentPath, buildSuggestedOfferProjectFolder, upsertOfferDocument } from '@/lib/offerDocumentRegistry';
 import { OfferCommercialTermsEditor } from '@/components/offers/OfferCommercialTermsEditor';
 import { OfferPackagePlanner } from '@/components/offers/OfferPackagePlanner';
 import { buildDefaultCommercialTerms, buildPaymentTermsText, hydrateCommercialTerms, hydrateOfferPackage, summarizePackageCostWithPolicy, type OfferCommercialTerms, type OfferPackageDraft } from '@/lib/offerPackages';
+import {
+  SMART_PLANT_ANNUAL_OFFER_REFERENCES,
+  getServiceOfferDraftStorageKey,
+  isServiceOfferNumber,
+  type OfferKind,
+  type ServiceOfferDraftSeed,
+} from '@/lib/serviceOfferFlow';
 
 type CostLine = {
   id: string;
@@ -118,6 +126,15 @@ const newCostLine = (category: string): CostLine => ({
   notes: '',
 });
 
+const buildEmptyOfferItem = (kind: OfferKind = 'standard'): OfferItem => ({
+  id: crypto.randomUUID(),
+  name: '',
+  type: kind === 'service' ? 'service' : 'product',
+  quantity: 1,
+  description: '',
+  costLines: CATEGORIES.map(c => newCostLine(c.value)),
+});
+
 // Line total = base + surcharge % + internal structure overhead %.
 const lineTotal = (base: number, surchargePct: number, structurePct: number) =>
   base + base * (Number(surchargePct) || 0) / 100 + base * (Number(structurePct) || 0) / 100;
@@ -154,6 +171,9 @@ type OfferDraftSnapshot = {
   offerTotalPriceOverride: number | null;
   items: OfferItem[];
   documentLanguage: OfferDocumentLanguage;
+  offerKind: OfferKind;
+  linkedOpportunityId: string | null;
+  linkedOpportunityTitle: string;
 };
 
 const hasMeaningfulDraftSnapshot = (snapshot: OfferDraftSnapshot) =>
@@ -201,6 +221,7 @@ export default function OfferPricingPage() {
   const isEs = language === 'es';
   const isIngecartWorkspace = /ingecart/i.test([selectedCompanyId, data.companyProfile.company_name].join(' '));
 
+  const [offerKind, setOfferKind] = useState<OfferKind>('standard');
   const [offerTitle, setOfferTitle] = useState('');
   const [offerNumber, setOfferNumber] = useState('');
   const [customerName, setCustomerName] = useState('');
@@ -215,11 +236,10 @@ export default function OfferPricingPage() {
   const [principalPackagePriceOverride, setPrincipalPackagePriceOverride] = useState<number | null>(null);
   const [offerTotalPriceOverride, setOfferTotalPriceOverride] = useState<number | null>(null);
   const [documentLanguage, setDocumentLanguage] = useState<OfferDocumentLanguage>('en');
+  const [linkedOpportunityId, setLinkedOpportunityId] = useState<string | null>(null);
+  const [linkedOpportunityTitle, setLinkedOpportunityTitle] = useState('');
 
-  const [items, setItems] = useState<OfferItem[]>([{
-    id: crypto.randomUUID(), name: '', type: 'product', quantity: 1, description: '',
-    costLines: CATEGORIES.map(c => newCostLine(c.value)),
-  }]);
+  const [items, setItems] = useState<OfferItem[]>([buildEmptyOfferItem()]);
 
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set([items[0].id]));
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
@@ -235,6 +255,7 @@ export default function OfferPricingPage() {
   const [catalogLengthM, setCatalogLengthM] = useState(80);
   const [catalogIncludeInstallation, setCatalogIncludeInstallation] = useState(true);
   const restoredDraftCompanyId = React.useRef<string | null>(null);
+  const restoredServiceDraftCompanyId = React.useRef<string | null>(null);
 
   useEffect(() => {
     if (selectedCompanyId) {
@@ -249,7 +270,7 @@ export default function OfferPricingPage() {
     if (data) setCompanyRates(data);
   };
 
-  const registerOfferDocument = (offer: any, language: OfferDocumentLanguage, fileName: string, source: 'generated' | 'external-reference', explicitPath?: string) => {
+  const registerOfferDocument = (offer: any, language: OfferDocumentLanguage, fileName: string, source: 'generated' | 'external-reference', explicitPath?: string, fileType: 'DOCX' | 'XLSX' = 'DOCX') => {
     if (!selectedCompanyId) return;
     const projectFolder = explicitPath ? explicitPath.split(/[/\\]/).slice(0, -1).join('\\') : String(offer.project_folder || buildSuggestedOfferProjectFolder(data.companyProfile, String(offer.customer_name || customerName || 'Customer')));
     const documentPath = explicitPath || buildOfferDocumentPath(projectFolder, fileName);
@@ -263,12 +284,12 @@ export default function OfferPricingPage() {
     writeWorkspaceRows('offers', selectedCompanyId, [updatedOffer, ...localOffers.filter((row) => row.id !== offer.id)]);
     setSavedOffers((current) => sortOffersByRecent([updatedOffer, ...current.filter((row) => row.id !== offer.id)]));
     upsertOfferDocument(selectedCompanyId, {
-      id: `${offer.id || offer.offer_number}-${language}`,
+      id: `${offer.id || offer.offer_number}-${language}-${fileType.toLowerCase()}`,
       offerId: offer.id,
       offerNumber: String(offer.offer_number || ''),
       accountName: String(offer.customer_name || customerName || 'Customer'),
       fileName,
-      fileType: 'DOCX',
+      fileType,
       owner: 'Offer Builder',
       updatedAt: new Date().toISOString().slice(0, 10),
       language,
@@ -400,6 +421,7 @@ export default function OfferPricingPage() {
       const draft = JSON.parse(raw) as OfferDraftSnapshot;
       if (!hasMeaningfulDraftSnapshot(draft)) return;
       setEditingOfferId(draft.editingOfferId);
+      setOfferKind(draft.offerKind || (isServiceOfferNumber(draft.offerNumber) ? 'service' : 'standard'));
       setOfferTitle(draft.offerTitle || '');
       offerNumberIsAuto.current = Boolean(draft.offerNumberIsAuto);
       setOfferNumber(draft.offerNumber || '');
@@ -419,11 +441,55 @@ export default function OfferPricingPage() {
         setExpandedItems(new Set(draft.items.map((item) => item.id)));
       }
       setDocumentLanguage(draft.documentLanguage === 'es' ? 'es' : 'en');
+      setLinkedOpportunityId(draft.linkedOpportunityId || null);
+      setLinkedOpportunityTitle(draft.linkedOpportunityTitle || '');
       toast({ title: isEs ? 'Borrador restaurado' : 'Draft restored', description: draft.offerNumber || draft.offerTitle || 'Latest draft' });
     } catch (error) {
       console.warn('[offers] failed to restore local draft', error);
     }
   }, [isEs, selectedCompanyId]);
+
+  useEffect(() => {
+    if (!selectedCompanyId || restoredServiceDraftCompanyId.current === selectedCompanyId) return;
+    restoredServiceDraftCompanyId.current = selectedCompanyId;
+    const raw = localStorage.getItem(getServiceOfferDraftStorageKey(selectedCompanyId));
+    if (!raw) return;
+    try {
+      const draft = JSON.parse(raw) as ServiceOfferDraftSeed;
+      setEditingOfferId(null);
+      setOfferKind('service');
+      setOfferTitle(draft.title || '');
+      offerNumberIsAuto.current = true;
+      setOfferNumber(generateOfferNumber(savedOffers, 'service'));
+      setCustomerName(draft.customerName || '');
+      setCustomerMode('existing');
+      setProjectDesc(draft.projectDescription || '');
+      setCurrency(draft.currency || 'EUR');
+      setTargetMargin(Number(draft.targetMargin || 35));
+      setPricingPolicy(DEFAULT_INGECART_POLICY);
+      setCommercialTerms(buildDefaultCommercialTerms());
+      setOfferPackages([]);
+      setPrincipalPackagePriceOverride(null);
+      setOfferTotalPriceOverride(null);
+      setDocumentLanguage(draft.documentLanguage === 'en' ? 'en' : 'es');
+      setLinkedOpportunityId(draft.linkedOpportunityId || null);
+      setLinkedOpportunityTitle(draft.linkedOpportunityTitle || draft.title || '');
+      setAnalysis(null);
+      if (draft.items?.length) {
+        setItems(draft.items as OfferItem[]);
+        setExpandedItems(new Set(draft.items.map((item) => item.id)));
+      } else {
+        const fallback = buildEmptyOfferItem('service');
+        setItems([fallback]);
+        setExpandedItems(new Set([fallback.id]));
+      }
+      setActiveTab('builder');
+      localStorage.removeItem(getServiceOfferDraftStorageKey(selectedCompanyId));
+      toast({ title: isEs ? 'Borrador de servicio activado' : 'Service draft activated', description: draft.title || draft.linkedOpportunityTitle || 'After-sales opportunity' });
+    } catch (error) {
+      console.warn('[offers] failed to restore service draft', error);
+    }
+  }, [isEs, savedOffers, selectedCompanyId]);
 
   useEffect(() => {
     if (!selectedCompanyId) return;
@@ -445,6 +511,9 @@ export default function OfferPricingPage() {
       offerTotalPriceOverride,
       items,
       documentLanguage,
+      offerKind,
+      linkedOpportunityId,
+      linkedOpportunityTitle,
     };
     const key = getOfferDraftStorageKey(selectedCompanyId);
     if (!hasMeaningfulDraftSnapshot(snapshot)) {
@@ -452,7 +521,7 @@ export default function OfferPricingPage() {
       return;
     }
     localStorage.setItem(key, JSON.stringify(snapshot));
-  }, [selectedCompanyId, editingOfferId, offerTitle, offerNumber, customerName, customerMode, newCustomer, projectDesc, currency, targetMargin, pricingPolicy, commercialTerms, offerPackages, principalPackagePriceOverride, offerTotalPriceOverride, items, documentLanguage]);
+  }, [selectedCompanyId, editingOfferId, offerTitle, offerNumber, customerName, customerMode, newCustomer, projectDesc, currency, targetMargin, pricingPolicy, commercialTerms, offerPackages, principalPackagePriceOverride, offerTotalPriceOverride, items, documentLanguage, offerKind, linkedOpportunityId, linkedOpportunityTitle]);
 
   const toggleItem = (id: string) => {
     setExpandedItems(prev => {
@@ -463,10 +532,7 @@ export default function OfferPricingPage() {
   };
 
   const addItem = () => {
-    const item: OfferItem = {
-      id: crypto.randomUUID(), name: '', type: 'product', quantity: 1, description: '',
-      costLines: CATEGORIES.map(c => newCostLine(c.value)),
-    };
+    const item: OfferItem = buildEmptyOfferItem(offerKind);
     setItems(prev => [...prev, item]);
     setExpandedItems(prev => new Set(prev).add(item.id));
   };
@@ -715,17 +781,21 @@ export default function OfferPricingPage() {
     return { byCat, direct, policyCharges, total, sellingPrice: total * (1 + targetMargin / 100), margin: total * targetMargin / 100 };
   }, [items, targetMargin, pricingPolicy]);
 
-  // Offer numbers follow OFF-YYYY-NNN and continue the highest sequence already used this year.
-  const generateOfferNumber = (existing: any[]) => {
+  // Offer numbers follow OFF-YYYY-NNN and service offers use OFF-YYYY-SNNN.
+  const generateOfferNumber = (existing: any[], kind: OfferKind = offerKind) => {
     const year = new Date().getFullYear();
-    const prefix = `OFF-${year}-`;
+    const prefix = kind === 'service' ? `OFF-${year}-S` : `OFF-${year}-`;
     const known = [
+      ...SMART_PLANT_ANNUAL_OFFER_REFERENCES.map((reference) => reference.offerNumber),
       ...existing.map((offer) => String(offer?.offer_number || '')),
       ...data.opportunities.map((opportunity) => String(opportunity.oppNumber || '')),
       ...data.orders.map((order) => String(order.oppNumber || '')),
     ];
+    const pattern = kind === 'service'
+      ? new RegExp(`^OFF-${year}-S(\\d+)$`, 'i')
+      : new RegExp(`^OFF-${year}-(?!S)(\\d+)$`, 'i');
     const maxSeq = known.reduce((max, value) => {
-      const match = value.toUpperCase().match(new RegExp(`^${prefix}(\\d+)`));
+      const match = value.toUpperCase().match(pattern);
       return match ? Math.max(max, Number(match[1])) : max;
     }, 0);
     return `${prefix}${String(maxSeq + 1).padStart(3, '0')}`;
@@ -735,14 +805,22 @@ export default function OfferPricingPage() {
   const offerNumberIsAuto = React.useRef(true);
   useEffect(() => {
     if (offerNumberIsAuto.current) {
-      const next = generateOfferNumber(savedOffers);
+      const next = generateOfferNumber(savedOffers, offerKind);
       if (next !== offerNumber) setOfferNumber(next);
     }
-  }, [savedOffers, data.opportunities, data.orders]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [savedOffers, data.opportunities, data.orders, offerKind]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const editOfferNumber = (value: string) => {
-    offerNumberIsAuto.current = value.trim() === '';
+    const trimmed = value.trim();
+    offerNumberIsAuto.current = trimmed === '';
+    if (trimmed) setOfferKind(isServiceOfferNumber(trimmed) ? 'service' : 'standard');
     setOfferNumber(value);
+  };
+
+  const updateOfferKind = (value: OfferKind) => {
+    setOfferKind(value);
+    setItems((current) => current.map((item, index) => index === 0 && !item.name.trim() && !item.description.trim() ? { ...item, type: value === 'service' ? 'service' : 'product' } : item));
+    if (offerNumberIsAuto.current) setOfferNumber(generateOfferNumber(savedOffers, value));
   };
 
   const updatePolicyPct = (field: 'warrantyPct' | 'financialPct' | 'commercialMgmtPct' | 'materialStructurePct', value: string) =>
@@ -1020,6 +1098,9 @@ export default function OfferPricingPage() {
     const offer = {
       id: previous?.id || crypto.randomUUID(),
       company_id: companyId,
+      offer_kind: offerKind,
+      linked_opportunity_id: linkedOpportunityId,
+      linked_opportunity_title: linkedOpportunityTitle,
       offer_number: header.number,
       title: header.title,
       customer_name: customerName,
@@ -1085,6 +1166,7 @@ export default function OfferPricingPage() {
 
   const resetBuilder = () => {
     setEditingOfferId(null);
+    setOfferKind('standard');
     setOfferTitle('');
     setCustomerName('');
     setProjectDesc('');
@@ -1096,14 +1178,19 @@ export default function OfferPricingPage() {
     setPrincipalPackagePriceOverride(null);
     setOfferTotalPriceOverride(null);
     setDocumentLanguage('en');
+    setLinkedOpportunityId(null);
+    setLinkedOpportunityTitle('');
     setAnalysis(null);
-    const firstItem: OfferItem = { id: crypto.randomUUID(), name: '', type: 'product', quantity: 1, description: '', costLines: CATEGORIES.map(c => newCostLine(c.value)) };
+    const firstItem: OfferItem = buildEmptyOfferItem('standard');
     setItems([firstItem]);
     setExpandedItems(new Set([firstItem.id]));
     offerNumberIsAuto.current = true;
-    setOfferNumber(generateOfferNumber(savedOffers));
+    setOfferNumber(generateOfferNumber(savedOffers, 'standard'));
     setActiveTab('builder');
-    if (selectedCompanyId) localStorage.removeItem(getOfferDraftStorageKey(selectedCompanyId));
+    if (selectedCompanyId) {
+      localStorage.removeItem(getOfferDraftStorageKey(selectedCompanyId));
+      localStorage.removeItem(getServiceOfferDraftStorageKey(selectedCompanyId));
+    }
   };
 
   // Rebuilds a builder cost line from a persisted cost_breakdowns row.
@@ -1181,9 +1268,10 @@ export default function OfferPricingPage() {
         costLines: [...lines, ...CATEGORIES.filter((c) => !present.has(c.value)).map((c) => newCostLine(c.value))],
       };
     });
-    const fallbackItem: OfferItem = { id: crypto.randomUUID(), name: '', type: 'product', quantity: 1, description: '', costLines: CATEGORIES.map(c => newCostLine(c.value)) };
+    const fallbackItem: OfferItem = buildEmptyOfferItem(offerKind);
     const nextItems = builtItems.length > 0 ? builtItems : [fallbackItem];
     setEditingOfferId(offer.id);
+    setOfferKind(offer.offer_kind === 'service' || isServiceOfferNumber(offer.offer_number) || nextItems.every((item) => item.type === 'service') ? 'service' : 'standard');
     setOfferTitle(offer.title || '');
     offerNumberIsAuto.current = false;
     setOfferNumber(offer.offer_number || '');
@@ -1198,6 +1286,8 @@ export default function OfferPricingPage() {
     setOfferPackages(bundle.offerPackages || []);
     setPrincipalPackagePriceOverride(parseOptionalNumber(offer.principal_package_price_override));
     setOfferTotalPriceOverride(parseOptionalNumber(offer.offer_total_price_override));
+    setLinkedOpportunityId((offer.linked_opportunity_id as string | null) || null);
+    setLinkedOpportunityTitle(String(offer.linked_opportunity_title || ''));
     setAnalysis(null);
     setItems(nextItems);
     setExpandedItems(new Set(nextItems.map((item) => item.id)));
@@ -1223,10 +1313,36 @@ export default function OfferPricingPage() {
         commercialTerms: bundle.commercialTerms || buildDefaultCommercialTerms(),
         language: exportLanguage,
       });
-      registerOfferDocument(offer, exportLanguage, fileName, 'generated');
+      registerOfferDocument(offer, exportLanguage, fileName.fileName, 'generated', undefined, 'DOCX');
       toast({
         title: isEs ? 'Word generado' : 'Word generated',
         description: [offer.offer_number || '', offer.title || ''].join(' ').trim() + ' - ' + (exportLanguage === 'es' ? (isEs ? 'castellano' : 'Spanish') : (isEs ? 'ingles' : 'English')),
+      });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error?.message || String(error), variant: 'destructive' });
+    } finally {
+      setExportingOfferId(null);
+    }
+  };
+
+  const exportOfferToCostWorkbook = async (offer: any, languageOverride?: OfferDocumentLanguage) => {
+    setExportingOfferId(offer.id);
+    try {
+      const bundle = await getOfferBundle(offer);
+      const exportLanguage = languageOverride || (offer.document_language === 'es' ? 'es' : offer.document_language === 'en' ? 'en' : documentLanguage);
+      const file = await downloadOfferCostWorkbook({
+        offer,
+        items: bundle.offerItems,
+        costRows: bundle.costRows,
+        pricingPolicy: offer.cost_policy || pricingPolicy,
+        packages: bundle.offerPackages || [],
+        commercialTerms: bundle.commercialTerms || buildDefaultCommercialTerms(),
+        language: exportLanguage,
+      });
+      registerOfferDocument(offer, exportLanguage, file.fileName, 'generated', undefined, 'XLSX');
+      toast({
+        title: isEs ? 'Excel de costes generado' : 'Cost workbook generated',
+        description: [offer.offer_number || '', offer.title || ''].join(' ').trim() + ' - XLSX',
       });
     } catch (error: any) {
       toast({ title: 'Error', description: error?.message || String(error), variant: 'destructive' });
@@ -1264,7 +1380,7 @@ export default function OfferPricingPage() {
     }
     const firstItem = items.find((item) => item.name.trim())?.name;
     const resolvedTitle = offerTitle.trim() || `${customerName} - ${firstItem || (isEs ? 'Oferta' : 'Offer')}`;
-    const resolvedNumber = offerNumber.trim() || generateOfferNumber(savedOffers);
+    const resolvedNumber = offerNumber.trim() || generateOfferNumber(savedOffers, offerKind);
     if (resolvedTitle !== offerTitle) setOfferTitle(resolvedTitle);
     if (resolvedNumber !== offerNumber) setOfferNumber(resolvedNumber);
     const header = { title: resolvedTitle, number: resolvedNumber };
@@ -1318,6 +1434,9 @@ export default function OfferPricingPage() {
 
       const cachedWorkspaceOffer = {
         ...offer,
+        offer_kind: offerKind,
+        linked_opportunity_id: linkedOpportunityId,
+        linked_opportunity_title: linkedOpportunityTitle,
         company_id: selectedCompanyId,
         offer_number: header.number,
         title: header.title,
@@ -1586,20 +1705,30 @@ export default function OfferPricingPage() {
                 </div>
               ) : null}
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <CardContent className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div>
                 <label className="text-sm font-medium text-foreground">{isEs ? "Ttulo" : 'Title'}</label>
                 <Input value={offerTitle} onChange={e => setOfferTitle(e.target.value)} placeholder={isEs ? "Ej: Lnea de ensamblaje" : 'E.g: Assembly line'} />
               </div>
               <div>
+                <label className="text-sm font-medium text-foreground">{isEs ? 'Tipo de oferta' : 'Offer type'}</label>
+                <Select value={offerKind} onValueChange={(value) => updateOfferKind(value as OfferKind)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="standard">{isEs ? 'Equipos / proyecto' : 'Equipment / project'}</SelectItem>
+                    <SelectItem value="service">{isEs ? 'Servicio / postventa' : 'Service / after-sales'}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <label className="text-sm font-medium text-foreground">{isEs ? "N Oferta" : 'Offer #'}</label>
                 <div className="flex gap-1">
-                  <Input value={offerNumber} onChange={e => editOfferNumber(e.target.value)} placeholder="OFF-2026-001" />
-                  <Button variant="outline" size="icon" title={isEs ? "Generar siguiente nmero" : 'Generate next number'} onClick={() => { offerNumberIsAuto.current = true; setOfferNumber(generateOfferNumber(savedOffers)); }}>
+                  <Input value={offerNumber} onChange={e => editOfferNumber(e.target.value)} placeholder={offerKind === 'service' ? 'OFF-2026-S001' : 'OFF-2026-001'} />
+                  <Button variant="outline" size="icon" title={isEs ? "Generar siguiente nmero" : 'Generate next number'} onClick={() => { offerNumberIsAuto.current = true; setOfferNumber(generateOfferNumber(savedOffers, offerKind)); }}>
                     <Settings2 className="h-4 w-4" />
                   </Button>
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1">{isEs ? "Generado automticamente; editable." : 'Auto-generated; editable.'}</p>
+                <p className="text-[11px] text-muted-foreground mt-1">{offerKind === 'service' ? (isEs ? 'Las ofertas de servicio usan la serie OFF-AAAA-SNNN.' : 'Service offers use the OFF-YYYY-SNNN series.') : (isEs ? "Generado automticamente; editable." : 'Auto-generated; editable.')}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-foreground">{isEs ? 'Cliente' : 'Customer'}</label>
@@ -1662,6 +1791,11 @@ export default function OfferPricingPage() {
                   </SelectContent>
                 </Select>
               </div>
+              {linkedOpportunityTitle ? (
+                <div className="md:col-span-5 rounded-md border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                  {isEs ? 'Origen postventa activado:' : 'Activated after-sales source:'} <span className="font-medium text-foreground">{linkedOpportunityTitle}</span>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
 
@@ -2387,6 +2521,20 @@ export default function OfferPricingPage() {
                               <FileText className="h-3 w-3 mr-1" />
                             )}
                             Word ES
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={exportingOfferId === o.id}
+                            onClick={() => void exportOfferToCostWorkbook(o, 'es')}
+                            aria-label={`Export offer ${o.offer_number || o.id} costs to Excel in Spanish`}
+                          >
+                            {exportingOfferId === o.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                            ) : (
+                              <FileText className="h-3 w-3 mr-1" />
+                            )}
+                            {isEs ? 'Costes XLSX' : 'Costs XLSX'}
                           </Button>
                           {o.status !== 'won' ? (
                             <Button

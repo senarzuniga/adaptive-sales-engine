@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useData } from '@/store/DataStore';
@@ -24,6 +24,12 @@ import {
   Calendar, Users, Activity, Target, Zap, Eye, ArrowUpRight, RefreshCw,
   ShoppingCart, TrendingDown, AlertCircle, RotateCcw, Box, Tag
 } from 'lucide-react';
+import {
+  buildServiceOfferDraftSeed,
+  buildServiceTopOpportunities,
+  getServiceOfferDraftStorageKey,
+  type ServiceOpportunityCandidate,
+} from '@/lib/serviceOfferFlow';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
@@ -332,7 +338,6 @@ export default function AfterSalesEnginePage() {
   const predictiveInterventions = interventions.filter(i => ['predictive', 'remote'].includes(i.intervention_type)).length;
   const totalInterventions = interventions.length;
   const predictiveRatio = totalInterventions > 0 ? (predictiveInterventions / totalInterventions) * 100 : 0;
-  const totalOppValue = opportunities.reduce((s, o) => s + (o.estimated_value || 0), 0);
 
   const lifecycleCounts = LIFECYCLE_STAGES.map(s => ({ stage: s, count: assets.filter(a => a.lifecycle_stage === s).length }));
   const riskCounts = RISK_LEVELS.map(r => ({ level: r, count: assets.filter(a => a.risk_level === r).length }));
@@ -346,6 +351,48 @@ export default function AfterSalesEnginePage() {
     : partFilter === 'low-stock' ? lowStockParts
     : partFilter === 'critical' ? criticalParts
     : spareParts.filter(p => p.category === partFilter);
+
+  const topOpportunities = useMemo(() => buildServiceTopOpportunities({
+    opportunities,
+    assets,
+    contracts,
+    interventions,
+    spareParts,
+  }), [opportunities, assets, contracts, interventions, spareParts]);
+
+  const totalTopOppValue = topOpportunities.reduce((sum, opportunity) => sum + (opportunity.estimatedValue || 0), 0);
+
+  const activateServiceOfferDraft = async (opportunity: ServiceOpportunityCandidate) => {
+    if (!activeCompanyId) return;
+    const now = new Date().toISOString();
+    const nextRow = {
+      id: opportunity.id,
+      company_id: activeCompanyId,
+      opportunity_type: opportunity.opportunityType,
+      title: opportunity.title,
+      customer_name: opportunity.customerName,
+      description: opportunity.description,
+      estimated_value: opportunity.estimatedValue,
+      probability: opportunity.probability,
+      trigger_signal: opportunity.triggerSignal,
+      recommended_action: opportunity.recommendedAction,
+      recommended_scope: opportunity.recommendedScope,
+      urgency: opportunity.urgency,
+      status: 'drafting',
+      ai_generated: true,
+      document_paths: opportunity.referenceDocuments,
+      offer_number: opportunity.knownOfferNumber || null,
+      updated_at: now,
+      created_at: now,
+    };
+    const current = readWorkspaceRows<any>('after_sales_opportunities', activeCompanyId).filter((row) => row.id !== opportunity.id);
+    const next = [nextRow, ...current];
+    writeWorkspaceRows('after_sales_opportunities', activeCompanyId, next);
+    setOpportunities(next);
+    localStorage.setItem(getServiceOfferDraftStorageKey(activeCompanyId), JSON.stringify(buildServiceOfferDraftSeed(opportunity)));
+    toast({ title: isEs ? 'Borrador de servicio preparado' : 'Service draft prepared', description: `${opportunity.title} -> ${isEs ? 'constructor de ofertas' : 'offer builder'}` });
+    navigate('/offer-pricing');
+  };
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -414,9 +461,9 @@ export default function AfterSalesEnginePage() {
             <Card>
               <CardContent className="pt-6 text-center">
                 <Target className="h-8 w-8 text-primary mx-auto mb-2" />
-                <p className="text-2xl font-bold text-foreground">{fmt(totalOppValue)}</p>
+                <p className="text-2xl font-bold text-foreground">{fmt(totalTopOppValue)}</p>
                 <p className="text-xs text-muted-foreground">{isEs ? 'Pipeline Oportunidades' : 'Opportunity Pipeline'}</p>
-                <p className="text-xs text-primary mt-1">{opportunities.length} {isEs ? 'oportunidades' : 'opportunities'}</p>
+                <p className="text-xs text-primary mt-1">{topOpportunities.length} {isEs ? 'oportunidades' : 'opportunities'}</p>
               </CardContent>
             </Card>
             <Card>
@@ -466,25 +513,39 @@ export default function AfterSalesEnginePage() {
           </div>
 
           {/* Top Opportunities */}
-          {opportunities.length > 0 && (
+          {topOpportunities.length > 0 && (
             <Card>
-              <CardHeader><CardTitle className="text-base flex items-center gap-2"><ArrowUpRight className="h-4 w-4 text-primary" />{isEs ? 'Oportunidades Principales' : 'Top Opportunities'}</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2"><ArrowUpRight className="h-4 w-4 text-primary" />{isEs ? 'Oportunidades Principales' : 'Top Opportunities'}</CardTitle>
+                <CardDescription>{isEs ? 'Detectadas desde base instalada, historial de servicio, email context, referencias Smart Plant y senales del ecosistema digital.' : 'Detected from installed base, service history, email context, Smart Plant references and digital ecosystem signals.'}</CardDescription>
+              </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  {opportunities.slice(0, 5).map(o => (
-                    <div key={o.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                      <div className="flex items-center gap-3">
-                        <Badge variant={o.urgency === 'high' || o.ai_generated ? 'default' : 'outline'} className="text-xs">
-                          {o.opportunity_type}
-                        </Badge>
+                <div className="space-y-3">
+                  {topOpportunities.slice(0, 6).map((o) => (
+                    <div key={o.id} className="rounded-lg border bg-muted/30 p-4">
+                      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                         <div>
-                          <p className="text-sm font-medium">{o.title}</p>
-                          <p className="text-xs text-muted-foreground">{o.customer_name || o.trigger_signal}</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant={o.urgency === 'high' ? 'destructive' : o.aiGenerated ? 'secondary' : 'outline'} className="text-xs">{o.opportunityType}</Badge>
+                            <Badge variant="outline" className="text-xs">{o.sourceLabel}</Badge>
+                            <Badge variant="outline" className="text-xs">Score {o.score}</Badge>
+                            {o.knownOfferNumber ? <Badge variant="outline" className="text-xs">{o.knownOfferNumber}</Badge> : null}
+                          </div>
+                          <p className="mt-2 text-sm font-semibold">{o.title}</p>
+                          <p className="text-xs text-muted-foreground">{o.customerName} - {o.triggerSignal}</p>
+                          <p className="mt-2 text-sm text-muted-foreground">{o.recommendedScope}</p>
+                          <p className="mt-2 text-xs font-medium text-foreground">{isEs ? 'Accion preparada:' : 'Prepared action:'} <span className="font-normal text-muted-foreground">{o.recommendedAction}</span></p>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-bold">{fmt(o.estimated_value)}</p>
-                        {o.ai_generated && <Badge variant="secondary" className="text-xs"><Brain className="h-3 w-3 mr-1" />AI</Badge>}
+                        <div className="flex min-w-[220px] flex-col items-end gap-2">
+                          <div className="text-right">
+                            <p className="text-sm font-bold">{fmt(o.estimatedValue)}</p>
+                            <p className="text-xs text-muted-foreground">{o.probability}% {isEs ? 'probabilidad' : 'probability'}</p>
+                          </div>
+                          <Button size="sm" onClick={() => activateServiceOfferDraft(o)}>
+                            <ArrowUpRight className="mr-2 h-4 w-4" />
+                            {isEs ? 'Activar borrador de oferta' : 'Activate offer draft'}
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}

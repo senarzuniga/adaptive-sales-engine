@@ -55,7 +55,7 @@ const INGECART_TEMPLATE_ASSETS = {
   coverImage: 'offer-assets/ingecart/cover-reference.jpeg',
 } as const;
 
-type Row = Record<string, any>;
+type Row = Record<string, unknown>;
 type ItemRow = Row & { id: string };
 type CostRow = Row & { offer_item_id?: string };
 type BorderColor = typeof WHITE | typeof DULL_BORDER;
@@ -96,6 +96,7 @@ const fmtDate = (value: string | undefined, language: OfferWordLanguage = 'en') 
 const text = (value: unknown) => String(value || '').trim();
 const bullets = (values: Array<string | undefined | null>) => values.map((value) => text(value)).filter(Boolean);
 const isIngecartTemplate = (input: OfferWordExportInput) => /ingecart/i.test([input.company.company_name, input.offer.company_name, input.offer.company].map((value) => text(value)).join(' '));
+const isServiceOffer = (input: OfferWordExportInput) => /service/i.test(text(input.offer.offer_kind)) || /-S\d+$/i.test(text(input.offer.offer_number)) || input.items.every((item) => text(item.item_type || item.type || 'service') === 'service');
 
 const heading = (level: 1 | 2, label: string) => new Paragraph({
   text: label,
@@ -173,13 +174,20 @@ const coverTable = (input: OfferWordExportInput, language: OfferWordLanguage = '
   });
 };
 
-const buildCoverTitle = (input: OfferWordExportInput) => {
+const buildCoverTitle = (input: OfferWordExportInput, language: OfferWordLanguage = 'en') => {
+  const serviceOffer = isServiceOffer(input);
   const primary = text(input.offer.title) || input.items.map((item) => text(item.item_name || item.name)).filter(Boolean).join(' / ') || 'COMMERCIAL PROPOSAL';
-  const secondary = text(input.offer.project_description) || 'AUTOMATION PROPOSAL';
+  const secondary = text(input.offer.project_description) || (serviceOffer ? (language === 'es' ? 'PROPUESTA DE SERVICIO Y POSTVENTA' : 'AFTER-SALES SERVICE PROPOSAL') : 'AUTOMATION PROPOSAL');
   return { primary: primary.toUpperCase(), secondary: secondary.toUpperCase() };
 };
 
-const buildCoverRibbon = (input: OfferWordExportInput) => input.items.map((item) => text(item.item_name || item.name)).filter(Boolean).join('  |  ') || 'INGETRANS  |  REEL CONVEYORS  |  RFID  |  AMR SCRAP LOGISTICS';
+const buildCoverRibbon = (input: OfferWordExportInput) => {
+  const configured = input.items.map((item) => text(item.item_name || item.name)).filter(Boolean).join('  |  ');
+  if (configured) return configured;
+  return isServiceOffer(input)
+    ? 'ANNUAL MAINTENANCE  |  RELIABILITY SUPPORT  |  SMART PLANT  |  SPARE PARTS'
+    : 'INGETRANS  |  REEL CONVEYORS  |  RFID  |  AMR SCRAP LOGISTICS';
+};
 
 const getAssociatedCostsText = (language: OfferWordLanguage) => language === 'es'
   ? 'Los costes asociados incluyen hotel, vuelos, transporte local y dietas segun la base de alcance aprobada. Las duraciones indicadas se entienden como dias laborables y asumen acceso continuo a planta preparada, medios de elevacion disponibles y apoyo puntual del cliente.'
@@ -436,10 +444,13 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
     const found = input.products.find((product) => product.name === item.item_name || product.name === item.name);
     return found ? mergeProductWithKnowledge(found) : null;
   });
-  const coverTitle = buildCoverTitle(input);
-  const coverCaptionText = isIngecartTemplate(input)
-    ? (isEs ? 'Plataforma integrada de logistica de bobinas INGECART - imagen de referencia' : 'INGECART integrated reel logistics platform - reference image')
-    : (isEs ? 'Imagen de referencia de la solucion configurada' : 'Configured solution reference image');
+  const coverTitle = buildCoverTitle(input, language);
+  const serviceOffer = isServiceOffer(input);
+  const coverCaptionText = serviceOffer
+    ? (isEs ? 'Servicio postventa INGECART - propuesta anual de mantenimiento y fiabilidad' : 'INGECART after-sales service - annual maintenance and reliability proposal')
+    : isIngecartTemplate(input)
+      ? (isEs ? 'Plataforma integrada de logistica de bobinas INGECART - imagen de referencia' : 'INGECART integrated reel logistics platform - reference image')
+      : (isEs ? 'Imagen de referencia de la solucion configurada' : 'Configured solution reference image');
 
   sections.push({
     properties: {},
@@ -579,7 +590,7 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
 export const buildOfferWordFileName = (offer: Row, language: OfferWordLanguage = 'en') => {
   const safe = [text(offer.offer_number) || 'OFFER', text(offer.customer_name) || '', text(offer.title) || '']
     .join(' ')
-    .replace(/[\/:*?"<>|]+/g, ' ')
+    .replace(/[/:*?"<>|]+/g, ' ')
     .replace(/\s+/g, '_')
     .trim();
   return (safe || 'offer') + '_' + language.toUpperCase() + '.docx';
