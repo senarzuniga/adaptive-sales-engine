@@ -172,21 +172,242 @@ export type ServiceOfferContent = {
   }[];
   documentLanguage?: 'en' | 'es';
   linkedOpportunityId?: string;
+  installedBase?: string[];
+  optionalServices?: string[];
 };
+
+type Localized<T> = Record<'en' | 'es', T>;
+
+export type ServiceCatalogModule = {
+  id: string;
+  core: boolean;
+  // Annual EUR price validated in OFF-2026-S137; 0 = quoted on request.
+  referencePrice: number;
+  name: Localized<string>;
+  frequency: Localized<string>;
+  coverage: Localized<string>;
+  description: Localized<string>;
+  activities: Localized<string[]>;
+  aliases?: string[];
+};
+
+export const SERVICE_COST_CATEGORY = 'service';
+export const SERVICE_REFERENCE_MARGIN = 0.35;
+
+export const SERVICE_OFFER_CATALOG: ServiceCatalogModule[] = [
+  {
+    id: 'preventive',
+    core: true,
+    referencePrice: 33984,
+    name: { en: 'Annual Preventive Maintenance Programme', es: 'Programa Anual de Mantenimiento Preventivo' },
+    frequency: { en: '4 on-site visits + monthly remote follow-up', es: '4 visitas presenciales + seguimiento mensual remoto' },
+    coverage: { en: 'All {customer} equipment', es: 'Todos los equipos de {customer}' },
+    description: {
+      en: 'Maintenance programme per installed base, based on the INGECART TPM templates for Ingetrans lines: weekly condition inspection, monthly backlog review, planned quarterly stops and annual reliability audit.',
+      es: 'Programa de mantenimiento por parque instalado, basado en las plantillas TPM de INGECART para líneas Ingetrans: inspección semanal de condición, revisión mensual de backlog, paradas trimestrales planificadas y auditoría anual de confiabilidad.',
+    },
+    activities: {
+      en: [
+        '4 on-site preventive visits planned in the annual calendar and aligned with production stops.',
+        'Daily operator checks: pneumatic pressures (6-8 bar), hydraulic oil level, visual inspection of rollers and belts, work-area cleaning.',
+        'Weekly maintenance checks: lubrication of critical points, belt tension, roller alignment, compressed-air filter cleaning.',
+        'Monthly technician checks: calibration of measuring systems, blade and counter-blade condition, safety systems, main motor vibration analysis.',
+        'Quarterly checks: hydraulic oil change, complete electrical revision, critical-part wear verification, control software update.',
+        'Monthly remote follow-up of the maintenance backlog and annual reliability audit.',
+        'Visit report with condition status, wear trend and prioritised corrective actions.',
+      ],
+      es: [
+        '4 visitas preventivas presenciales planificadas en el calendario anual y alineadas con las paradas de producción.',
+        'Verificación diaria (operario): presiones neumáticas (6-8 bar), nivel de aceite hidráulico, inspección visual de rodillos y correas, limpieza de la zona de trabajo.',
+        'Verificación semanal (mantenimiento): lubricación de puntos críticos, tensión de correas, alineación de rodillos, limpieza de filtros de aire comprimido.',
+        'Verificación mensual (técnico): calibración de sistemas de medida, estado de cuchillas y contracuchillas, sistemas de seguridad, análisis de vibraciones del motor principal.',
+        'Verificación trimestral: cambio de aceite hidráulico, revisión eléctrica completa, desgaste de piezas críticas, actualización del software de control.',
+        'Seguimiento mensual remoto del backlog de mantenimiento y auditoría anual de confiabilidad.',
+        'Informe de visita con estado de condición, tendencia de desgaste y acciones correctivas priorizadas.',
+      ],
+    },
+    aliases: ['preventivo', 'preventive', 'field service visits', 'field_service', 'engineering / project management'],
+  },
+  {
+    id: 'ingepro',
+    core: true,
+    referencePrice: 18000,
+    name: { en: 'INGEPRO Monitoring + Predictive AI', es: 'INGEPRO Monitoring + Predictibilidad AI' },
+    frequency: { en: '24/7 continuous', es: '24/7 continuo' },
+    coverage: { en: 'Alerting, predictive analytics, recommendations and OEE/LPI follow-up', es: 'Alerting, analítica predictiva, recomendaciones y seguimiento de OEE/LPI' },
+    description: {
+      en: 'INGEPRO enables 24/7 monitoring, criticality-based alerts and predictive recommendations for Operators, Maintenance and Management, with actionable playbooks per role.',
+      es: 'INGEPRO habilita monitorización 24/7, alertas por criticidad y recomendaciones predictivas para Operarios, Mantenimiento y Management con playbooks accionables por rol.',
+    },
+    activities: {
+      en: [
+        '24/7 monitoring of status, alarms and KPIs of the critical assets defined in the Smart Plant Dashboard.',
+        'Alerts classified by criticality with agreed escalation protocol.',
+        'Predictive analytics and early failure detection.',
+        'Actionable playbooks per role: Operators, Maintenance and Management.',
+        'Follow-up of OEE/LPI, availability, risk and PM compliance.',
+        'Remote technical support included.',
+      ],
+      es: [
+        'Monitorización 24/7 de estado, alarmas y KPIs de los activos críticos definidos en Smart Plant Dashboard.',
+        'Alertas clasificadas por criticidad con protocolo de escalado acordado.',
+        'Analítica predictiva y detección anticipada de fallos.',
+        'Playbooks accionables por rol: Operarios, Mantenimiento y Management.',
+        'Seguimiento de OEE/LPI, disponibilidad, riesgo y cumplimiento PM.',
+        'Soporte técnico remoto incluido.',
+      ],
+    },
+    aliases: ['ingepro', 'monitoring', 'monitorizacion', 'monitorización', 'remote support', 'remote_service'],
+  },
+  {
+    id: 'training',
+    core: true,
+    referencePrice: 11150,
+    name: { en: 'Operational + Maintenance + Management Training', es: 'Training Operativo + Mantenimiento + Management' },
+    frequency: { en: '12 sessions/year (onsite and remote)', es: '12 sesiones/año (onsite y remoto)' },
+    coverage: { en: 'Operators, maintenance technicians and plant managers', es: 'Operarios, técnicos de mantenimiento y responsables de planta' },
+    description: {
+      en: 'Continuous training programme including AI applied to the plant, early failure detection and data governance for intervention and improvement decisions.',
+      es: 'Programa de formación continua que incluye entrenamiento en AI aplicada a planta, detección anticipada de fallos y gobierno de datos para decisiones de intervención y mejora.',
+    },
+    activities: {
+      en: [
+        'Operator training: normal cycle, alarms, recovery and daily TPM checks.',
+        'Maintenance training: TPM routines, diagnosis and component replacement.',
+        'Management sessions: KPIs, OEE, risk and improvement prioritisation.',
+        'AI applied to the plant, early failure detection and data governance.',
+      ],
+      es: [
+        'Formación de operarios: ciclo normal, alarmas, recuperación y verificaciones TPM diarias.',
+        'Formación de mantenimiento: rutinas TPM, diagnóstico y sustitución de componentes.',
+        'Sesiones de management: KPIs, OEE, riesgo y priorización de mejoras.',
+        'AI aplicada a planta, detección anticipada de fallos y gobierno de datos.',
+      ],
+    },
+    aliases: ['training', 'formacion', 'formación'],
+  },
+  {
+    id: 'parts-channel',
+    core: true,
+    referencePrice: 4818,
+    name: { en: 'INGEPRO Wholesale Industrial Purchasing Channel', es: 'Canal INGEPRO de Compras Industriales al por Mayor' },
+    frequency: { en: 'Continuous supply service', es: 'Servicio continuo de aprovisionamiento' },
+    coverage: { en: 'Multi-OEM spare parts with Tetrace-type cost/lead-time benchmark', es: 'Recambios multi-OEM con benchmark de coste/plazo tipo Tetrace' },
+    description: {
+      en: 'The INGEPRO channel includes direct requests for spare parts for any equipment, with volume negotiation and supply traceability to improve lead time and price. Equivalent functional service reference: https://www.tetrace.com/en/spare-parts.',
+      es: 'El canal INGEPRO incorpora solicitud directa de recambios y piezas de cualquier equipo, con negociación de volumen y trazabilidad de suministro para mejorar plazo y precio. Referencia funcional de servicio equivalente: https://www.tetrace.com/en/spare-parts.',
+    },
+    activities: {
+      en: [
+        'Direct multi-OEM spare parts requests through INGEPRO.',
+        'Volume negotiation and cost/lead-time benchmark.',
+        'End-to-end supply traceability.',
+        'Access to the INGECART permanent stock of critical parts and original Ingetrans spare parts.',
+      ],
+      es: [
+        'Solicitud directa de recambios multi-OEM a través de INGEPRO.',
+        'Negociación de volumen y benchmark de coste/plazo.',
+        'Trazabilidad completa del suministro.',
+        'Acceso al stock permanente de recambios críticos de INGECART y a recambios originales Ingetrans.',
+      ],
+    },
+    aliases: ['parts', 'recambios', 'spare parts', 'compras', 'purchasing'],
+  },
+  {
+    id: 'emergency',
+    core: false,
+    referencePrice: 0,
+    name: { en: 'Urgent on-site technical assistance', es: 'Asistencia técnica urgente in situ' },
+    frequency: { en: 'On demand, 24-48 h in peninsula', es: 'Bajo demanda, 24-48 h en península' },
+    coverage: { en: 'Critical breakdowns on covered equipment', es: 'Averías críticas en los equipos cubiertos' },
+    description: {
+      en: 'Dispatch of the multidisciplinary INGECART team (mechanical, electrical, automation) to recover production after critical breakdowns.',
+      es: 'Desplazamiento del equipo técnico multidisciplinar de INGECART (mecánica, electricidad, automatización) para recuperar la producción ante averías críticas.',
+    },
+    activities: { en: ['Remote pre-diagnosis before dispatch.', 'On-site repair and restart.', 'Intervention report with root cause and preventive recommendation.'], es: ['Prediagnóstico remoto previo al desplazamiento.', 'Reparación y rearranque en planta.', 'Informe de intervención con causa raíz y recomendación preventiva.'] },
+  },
+  {
+    id: 'workshop',
+    core: false,
+    referencePrice: 0,
+    name: { en: 'Repair and reconditioning in own workshop', es: 'Reparación y reacondicionamiento en taller propio' },
+    frequency: { en: 'On demand', es: 'Bajo demanda' },
+    coverage: { en: 'Rollers, knives, correcting groups, gearboxes and mechanical assemblies', es: 'Rodillos, cuchillas, grupos correctores, reductoras y conjuntos mecánicos' },
+    description: {
+      en: 'Own 1,200 m² workshop with specialized machinery, complete plans and original technical documentation of Ingetrans equipment.',
+      es: 'Taller propio de 1.200 m² con maquinaria especializada, planos completos y documentación técnica original de los equipos Ingetrans.',
+    },
+    activities: { en: ['Inspection and repair quotation.', 'Reconditioning to original specifications.', 'Functional test before return.'], es: ['Inspección y presupuesto de reparación.', 'Reacondicionamiento según especificación original.', 'Prueba funcional antes de la devolución.'] },
+  },
+  {
+    id: 'critical-spares-kit',
+    core: false,
+    referencePrice: 0,
+    name: { en: 'Critical spare parts kit on site', es: 'Kit de recambios críticos en planta' },
+    frequency: { en: 'Annual review', es: 'Revisión anual' },
+    coverage: { en: 'Critical parts per machine and risk level', es: 'Recambios críticos por máquina y nivel de riesgo' },
+    description: {
+      en: 'Recommended on-site stock of critical parts to minimise downtime, defined from the installed base and failure history.',
+      es: 'Stock recomendado de recambios críticos en planta para minimizar paradas, definido a partir del parque instalado y el histórico de averías.',
+    },
+    activities: { en: ['Critical parts list by machine and risk.', 'Recommended quantities and reorder points.', 'Annual list update.'], es: ['Lista de recambios críticos por máquina y riesgo.', 'Cantidades recomendadas y puntos de pedido.', 'Actualización anual de la lista.'] },
+  },
+  {
+    id: 'software',
+    core: false,
+    referencePrice: 0,
+    name: { en: 'Control software update and backups', es: 'Actualización de software de control y copias de seguridad' },
+    frequency: { en: 'Quarterly / per release', es: 'Trimestral / según release' },
+    coverage: { en: 'PLCs, HMI, frequency drives and control systems', es: 'PLCs, HMI, variadores de frecuencia y sistemas de control' },
+    description: {
+      en: 'Controlled update of control software with previous backup, change log and functional validation.',
+      es: 'Actualización controlada del software de control con copia de seguridad previa, registro de cambios y validación funcional.',
+    },
+    activities: { en: ['Backup of PLC/HMI programs.', 'Update and change log.', 'Functional validation with the customer.'], es: ['Copia de seguridad de programas PLC/HMI.', 'Actualización y registro de cambios.', 'Validación funcional con el cliente.'] },
+  },
+  {
+    id: 'retrofit',
+    core: false,
+    referencePrice: 0,
+    name: { en: 'Retrofit and modernization study', es: 'Estudio de retrofit y modernización' },
+    frequency: { en: 'On request', es: 'Bajo pedido' },
+    coverage: { en: 'End-of-life equipment or equipment with performance gaps', es: 'Equipos al final de su ciclo de vida o con gaps de rendimiento' },
+    description: {
+      en: 'Technical and economic study to extend equipment life, close performance gaps and integrate new control or safety functionality.',
+      es: 'Estudio técnico-económico para extender la vida del equipo, cerrar gaps de rendimiento e integrar nueva funcionalidad de control o seguridad.',
+    },
+    activities: { en: ['Current-state audit.', 'Modernization roadmap with priorities.', 'Budget and execution plan.'], es: ['Auditoría del estado actual.', 'Hoja de ruta de modernización priorizada.', 'Presupuesto y plan de ejecución.'] },
+  },
+];
+
+const normalizeKey = (value: string) => text(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+export function findServiceCatalogModule(lineItem: unknown, category?: unknown): ServiceCatalogModule | undefined {
+  const key = normalizeKey(String(lineItem || ''));
+  const cat = normalizeKey(String(category || ''));
+  const exact = SERVICE_OFFER_CATALOG.find((module) => [module.id, module.name.en, module.name.es].some((value) => normalizeKey(value) === key));
+  if (exact) return exact;
+  return SERVICE_OFFER_CATALOG.find((module) => (module.aliases || []).some((alias) => {
+    const normalized = normalizeKey(alias);
+    return (key && key.includes(normalized)) || cat === normalized;
+  }));
+}
+
+export const DEFAULT_OPTIONAL_SERVICE_IDS = SERVICE_OFFER_CATALOG.filter((module) => !module.core).map((module) => module.id);
 
 const serviceOfferContentByType: Record<ServiceOpportunityType, ServiceOfferContent> = {
   maintenance: {
     sections: ['scope', 'tpm-preventive', 'service-deliverables', 'why-ingecart', 'covered-machines', 'commercial', 'response-sla'],
-    scopeSummary: 'Annual preventive maintenance programme for corrugated cardboard production and converting equipment, covering mechanical, electrical, automation and control layers.',
-    serviceDescription: 'The programme combines scheduled Total Productive Maintenance (TPM) routines, condition monitoring, remote support via INGEPRO and a spare-parts policy to maximize equipment availability and reduce unplanned downtime.',
+    scopeSummary: 'This annual proposal consolidates preventive maintenance, INGEPRO monitoring and the adoption of predictive AI to secure availability and operational continuity of the critical assets defined in the Smart Plant Dashboard.',
+    serviceDescription: 'The programme combines scheduled Total Productive Maintenance (TPM) routines based on the INGECART templates for Ingetrans lines, 24/7 INGEPRO monitoring with predictive AI, continuous training by role and an industrial spare-parts purchasing channel.',
     valueProposition: 'Move from reactive repair to predictable asset performance: longer component life, stable output, fewer emergency interventions and a clear annual service budget.',
     deliverables: [
+      'Operational dashboard per role with availability, OEE, risk and PM compliance KPIs.',
+      'Monthly technical report + quarterly executive review.',
+      'Prioritised list of improvements, spare parts and downtime-reduction actions.',
       'Annual maintenance calendar aligned to production stops.',
       'Operator, maintenance and technician-level TPM checklists.',
-      'Condition reports with wear trending and corrective recommendations.',
-      'Remote monitoring via INGEPRO dashboard and alarm follow-up.',
-      'Spare-parts advisory and critical-stock recommendations.',
-      'Service report and KPI review after each visit.',
+      'Visit report with condition status and corrective recommendations after each visit.',
     ],
     exclusions: [
       'Major repairs or rebuilds outside the agreed TPM scope.',
@@ -488,8 +709,107 @@ const serviceOfferContentByType: Record<ServiceOpportunityType, ServiceOfferCont
   },
 };
 
+const serviceOfferContentEsByType: Partial<Record<ServiceOpportunityType, ServiceOfferContent>> = {
+  maintenance: {
+    sections: serviceOfferContentByType.maintenance.sections,
+    scopeSummary: 'Esta propuesta anual consolida mantenimiento preventivo, monitorización INGEPRO y adopción de AI predictiva para asegurar disponibilidad y continuidad operativa de los activos críticos definidos en Smart Plant Dashboard.',
+    serviceDescription: 'El programa combina rutinas programadas de Mantenimiento Productivo Total (TPM) basadas en las plantillas INGECART para líneas Ingetrans, monitorización INGEPRO 24/7 con AI predictiva, formación continua por rol y un canal industrial de compras de recambios.',
+    valueProposition: 'Pasar de la reparación reactiva a un rendimiento predecible de los activos: mayor vida de componentes, producción estable, menos intervenciones de urgencia y un presupuesto anual de servicio claro.',
+    deliverables: [
+      'Panel operativo por rol con KPIs de disponibilidad, OEE, riesgo y cumplimiento PM.',
+      'Informe técnico mensual + revisión ejecutiva trimestral.',
+      'Lista priorizada de mejoras, repuestos y acciones de reducción de parada.',
+      'Calendario anual de mantenimiento alineado con las paradas de producción.',
+      'Checklists TPM por nivel: operario, mantenimiento y técnico.',
+      'Informe de visita con estado de condición y recomendaciones correctivas tras cada visita.',
+    ],
+    exclusions: [
+      'Reparaciones mayores o reconstrucciones fuera del alcance TPM acordado.',
+      'Consumibles, cuchillas, correas y piezas de desgaste no incluidos en el acuerdo.',
+      'Obra civil, cimentaciones, utilidades del cliente e interfaces de terceros.',
+      'Pérdidas de producción por retrasos del cliente o falta de acceso a los equipos.',
+    ],
+    assumptions: [
+      'El cliente facilita acceso seguro y preparado en las ventanas programadas.',
+      'Los equipos son accesibles con medios de elevación estándar.',
+      'La documentación técnica y las copias de seguridad de software están disponibles.',
+      'El cliente notifica las alarmas críticas dentro de la ventana de escalado acordada.',
+    ],
+    tpmProgramme: {
+      title: 'Plantilla TPM específica INGETRANS',
+      daily: [
+        'Verificar presiones neumáticas (6-8 bar).',
+        'Comprobar nivel de aceite hidráulico.',
+        'Inspección visual de rodillos y correas.',
+        'Limpieza general de la zona de trabajo.',
+      ],
+      weekly: [
+        'Lubricación de puntos críticos (rodamientos, guías).',
+        'Comprobación de tensión de correas.',
+        'Verificación de alineación de rodillos.',
+        'Limpieza de filtros de aire comprimido.',
+      ],
+      monthly: [
+        'Calibración de sistemas de medida.',
+        'Revisión del estado de cuchillas y contracuchillas.',
+        'Verificación de sistemas de seguridad.',
+        'Análisis de vibraciones del motor principal.',
+      ],
+      quarterly: [
+        'Cambio de aceite hidráulico.',
+        'Revisión completa del sistema eléctrico.',
+        'Verificación de desgaste de piezas críticas.',
+        'Actualización del software de control.',
+      ],
+    },
+    whyIngecart: [
+      'Más de 30 años de experiencia en el sector del cartón ondulado.',
+      'Taller propio de 1.200 m² con maquinaria especializada.',
+      'Stock permanente de recambios críticos.',
+      'Equipo técnico multidisciplinar (mecánica, electricidad, automatización).',
+      'Tiempo de respuesta de 24-48 h en península.',
+      'Conocimiento profundo de los equipos Ingetrans (fabricación y montaje propios).',
+      'Planos completos, documentación técnica y recambios originales disponibles.',
+      'Formación continua a operarios del cliente y soporte remoto incluido.',
+    ],
+    coveredMachines: [
+      'Línea de ondulado: single facer, double facer, precalentadores, puente de encolado, grupo humectador.',
+      'Línea de transformación: cortadora-hendedora (rotary shear), rotativa contrarrotativa, impresora flexográfica, troqueladora rotativa, troqueladora plana.',
+      'Manipulación y acabado: apilador automático, contador de planchas, paletizado automático, flejadora automática, cintas transportadoras.',
+      'Equipos auxiliares: grupos correctores, sistemas de alimentación de papel, compresores de aire, centrales hidráulicas, hornos de secado / curado de cola.',
+      'Sistemas de control: PLCs y automatismos, sensores y encoders, variadores de frecuencia, paneles de operador / HMI.',
+    ],
+    responseSla: [
+      { label: 'Respuesta remota', value: 'En 4 horas laborables' },
+      { label: 'Desplazamiento urgente a planta', value: '24-48 h en península' },
+      { label: 'Visita preventiva programada', value: 'Según calendario anual acordado' },
+      { label: 'Entrega de informe de servicio', value: 'En 5 días laborables' },
+    ],
+  },
+};
+
 export function buildServiceOfferContent(opportunityType: ServiceOpportunityType): ServiceOfferContent {
   return serviceOfferContentByType[opportunityType] || serviceOfferContentByType.maintenance;
+}
+
+export function inferServiceOpportunityType(value: string): ServiceOpportunityType {
+  const source = text(value).toLowerCase();
+  if (/(spare|recambio|repuesto|parts)/.test(source)) return 'spares';
+  if (/(retrofit|moderniz)/.test(source)) return 'retrofit';
+  if (/(reliability|fiabilidad|recovery|root.?cause)/.test(source)) return 'reliability';
+  if (/(expansion|amendment|ampliacion)/.test(source)) return 'contract-expansion';
+  if (/(maintenance|mantenimiento|tpm|preventiv)/.test(source)) return 'maintenance';
+  if (/(ingepro|digital|dashboard|connectivity|monitori)/.test(source)) return 'digital';
+  return 'maintenance';
+}
+
+// Only unedited base content is swapped, so user edits are never overwritten.
+export function localizeServiceOfferContent(content: ServiceOfferContent, language: 'en' | 'es'): ServiceOfferContent {
+  if (language !== 'es') return content;
+  const type = (Object.keys(serviceOfferContentByType) as ServiceOpportunityType[])
+    .find((key) => serviceOfferContentByType[key].scopeSummary === content.scopeSummary);
+  const localized = type ? serviceOfferContentEsByType[type] : undefined;
+  return localized ? { ...localized, documentLanguage: 'es', linkedOpportunityId: content.linkedOpportunityId, installedBase: content.installedBase, optionalServices: content.optionalServices } : content;
 }
 
 const targetMarginByType: Record<ServiceOpportunityType, number> = {
@@ -760,37 +1080,49 @@ export function getServiceOfferDraftStorageKey(companyId?: string | null) {
   return `${SERVICE_DRAFT_KEY_PREFIX}${companyId || 'default'}`;
 }
 
-export function buildServiceOfferDraftSeed(candidate: ServiceOpportunityCandidate): ServiceOfferDraftSeed {
+export function buildServiceOfferDraftSeed(candidate: ServiceOpportunityCandidate, assets: Row[] = []): ServiceOfferDraftSeed {
   const baseContent = buildServiceOfferContent(candidate.opportunityType);
   const opportunityId = candidate.id;
   const language: 'en' | 'es' = 'en';
+  const customerKey = normalizeKey(candidate.customerName);
+  const installedBase = assets
+    .filter((asset) => customerKey && normalizeKey(String(asset.customer_name || '')) === customerKey)
+    .map((asset) => [text(asset.asset_name), text(asset.serial_number)].filter(Boolean))
+    .filter((parts) => parts.length > 0)
+    .map(([name, serial]) => (serial ? `${name} (${serial})` : name));
   const serviceContent: ServiceOfferContent = {
     ...baseContent,
     documentLanguage: language,
     linkedOpportunityId: opportunityId,
+    installedBase,
+    optionalServices: [...DEFAULT_OPTIONAL_SERVICE_IDS],
   };
+  const stamp = Date.now();
+  const coreModules = SERVICE_OFFER_CATALOG.filter((module) => module.core);
   return {
     offerKind: 'service',
     title: candidate.title,
     customerName: candidate.customerName,
-    projectDescription: `${candidate.recommendedAction} Scope: ${candidate.recommendedScope}`,
+    projectDescription: candidate.recommendedScope,
     currency: 'EUR',
     targetMargin: targetMarginByType[candidate.opportunityType] || 32,
     documentLanguage: language,
     linkedOpportunityId: opportunityId,
     linkedOpportunityTitle: candidate.title,
     items: [{
-      id: `svc-${slug(candidate.title)}-${Date.now()}`,
+      id: `svc-${slug(candidate.title)}-${stamp}`,
       name: candidate.title,
       type: 'service',
       quantity: 1,
       description: candidate.recommendedScope,
-      costLines: [
-        buildServiceCostLine(`cl-${Date.now()}-eng`, 'engineering', 'Engineering / project management', 'Project management, scope definition and service governance.'),
-        buildServiceCostLine(`cl-${Date.now()}-field`, 'field_service', 'Field service visits', 'On-site service visits according to the agreed calendar.'),
-        buildServiceCostLine(`cl-${Date.now()}-remote`, 'remote_service', 'Remote support / INGEPRO monitoring', 'Remote assistance, dashboard monitoring and alarm follow-up.'),
-        buildServiceCostLine(`cl-${Date.now()}-parts`, 'parts', 'Spare parts / consumables provision', 'Recommended spare parts and consumables within the service scope.'),
-      ],
+      costLines: coreModules.map((module) => {
+        const unitCost = Math.round(module.referencePrice * (1 - SERVICE_REFERENCE_MARGIN));
+        return {
+          ...buildServiceCostLine(`cl-${stamp}-${module.id}`, SERVICE_COST_CATEGORY, module.name.en, `${module.frequency.en}. Reference OFF-2026-S137.`),
+          unitCost,
+          totalCost: unitCost,
+        };
+      }),
     }],
     serviceContent,
   };

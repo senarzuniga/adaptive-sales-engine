@@ -3,6 +3,7 @@ import {
   buildServiceOfferDraftSeed,
   buildServiceOfferContent,
   buildServiceTopOpportunities,
+  findServiceCatalogModule,
   isServiceOfferNumber,
   getServiceOfferDraftStorageKey,
   SMART_PLANT_ANNUAL_OFFER_REFERENCES,
@@ -137,6 +138,22 @@ describe('service offer numbering and draft seed', () => {
     expect(seed.serviceContent.exclusions.length).toBeGreaterThan(0);
     expect(seed.serviceContent.assumptions.length).toBeGreaterThan(0);
     expect(seed.serviceContent.responseSla.length).toBeGreaterThan(0);
+    seed.items[0].costLines.forEach((line) => {
+      expect(line.category).toBe('service');
+      expect(findServiceCatalogModule(line.lineItem, line.category)?.core).toBe(true);
+      expect(line.totalCost).toBeGreaterThan(0);
+    });
+  });
+
+  it('adds the customer installed base to the service draft', () => {
+    const [candidate] = buildServiceTopOpportunities({ opportunities: [], assets: [], contracts: [], interventions: [], spareParts: [] })
+      .filter((item) => item.customerName === 'Sterner Global-Mastercorr');
+    const seed = buildServiceOfferDraftSeed(candidate, [
+      { customer_name: 'Sterner Global-Mastercorr', asset_name: 'Ingetrans Rail Transfer', serial_number: 'site5_ingetrans_01' },
+      { customer_name: 'Other', asset_name: 'Ignored', serial_number: 'x' },
+    ]);
+    expect(seed.serviceContent.installedBase).toEqual(['Ingetrans Rail Transfer (site5_ingetrans_01)']);
+    expect(seed.serviceContent.optionalServices?.length).toBeGreaterThan(0);
   });
 
   it('builds service content with TPM programme for maintenance type', () => {

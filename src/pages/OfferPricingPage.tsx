@@ -101,6 +101,7 @@ const CATEGORIES = [
   { value: 'installation', label: 'Installation' },
   { value: 'transport', label: 'Transport & Logistics' },
   { value: 'indirect', label: 'Otros' },
+  { value: 'service', label: 'After-sales services' },
 ];
 
 const CATEGORIES_ES: Record<string, string> = {
@@ -110,6 +111,7 @@ const CATEGORIES_ES: Record<string, string> = {
   installation: "Instalacin",
   transport: "Transporte y Logstica",
   indirect: 'Otros',
+  service: 'Servicios postventa',
 };
 
 const newCostLine = (category: string): CostLine => ({
@@ -2020,7 +2022,7 @@ export default function OfferPricingPage() {
                     </div>
                   </div>
 
-                  {CATEGORIES.map(cat => {
+                  {CATEGORIES.filter(cat => cat.value !== 'service' || offerKind === 'service').map(cat => {
                     const lines = item.costLines.filter(cl => cl.category === cat.value);
                     return (
                       <div key={cat.value} className="space-y-2">

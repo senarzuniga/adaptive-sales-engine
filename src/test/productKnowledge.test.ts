@@ -13,6 +13,19 @@ describe('product knowledge catalog', () => {
     expect(estimateProductPresetCost(product!)).toBe(210136);
   });
 
+  it('adds the partial AMR WIP product from its workbook cost basis', () => {
+    const products = buildSeedProductCatalog([]);
+    const product = products.find((item) => item.name === 'AMR WIP Parcial');
+
+    expect(product).toBeTruthy();
+    expect(product?.estimatedCost).toBe(352331);
+    expect(product?.technicalDossier?.dossierId).toBe('ING-P12');
+    expect(product?.costPreset?.find((line) => line.lineItem === 'KUKA AMR unit')?.quantity).toBe(4);
+    expect(product?.costPreset?.find((line) => line.lineItem === 'Trident station fabrication - materials (4 units)')?.quantity).toBe(4);
+    expect(estimateProductPresetCost(product!)).toBe(352331);
+    expect(estimateProductPresetCost(product!, undefined, false)).toBe(330231);
+  });
+
   it('adds the validated SR1400 per-meter profile from the workbook model', () => {
     const products = buildSeedProductCatalog([]);
     const sr1400 = products.find((item) => item.name === 'SR1400');

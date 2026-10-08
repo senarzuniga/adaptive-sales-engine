@@ -399,7 +399,7 @@ export default function AfterSalesEnginePage() {
     const next = [nextRow, ...current];
     writeWorkspaceRows('after_sales_opportunities', activeCompanyId, next);
     setOpportunities(next);
-    localStorage.setItem(getServiceOfferDraftStorageKey(activeCompanyId), JSON.stringify(buildServiceOfferDraftSeed(opportunity)));
+    localStorage.setItem(getServiceOfferDraftStorageKey(activeCompanyId), JSON.stringify(buildServiceOfferDraftSeed(opportunity, assets)));
     toast({ title: isEs ? 'Borrador de servicio preparado' : 'Service draft prepared', description: `${opportunity.title} -> ${isEs ? 'constructor de ofertas' : 'offer builder'}` });
     navigate('/offer-pricing');
   };

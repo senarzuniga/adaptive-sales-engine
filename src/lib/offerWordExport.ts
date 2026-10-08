@@ -40,7 +40,16 @@ import {
   type OfferPackageDraft,
 } from '@/lib/offerPackages';
 import type { CompanyProfile, ProductRecord } from '@/store/DataStore';
-import type { ServiceOfferContent } from '@/lib/serviceOfferFlow';
+import type { OfferCostPolicy } from '@/lib/utils';
+import {
+  SERVICE_OFFER_CATALOG,
+  buildServiceOfferContent,
+  findServiceCatalogModule,
+  inferServiceOpportunityType,
+  localizeServiceOfferContent,
+  type ServiceCatalogModule,
+  type ServiceOfferContent,
+} from '@/lib/serviceOfferFlow';
 
 const ORANGE = 'F36B21';
 const DARK = '171717';
@@ -98,7 +107,108 @@ const fmtDate = (value: string | undefined, language: OfferWordLanguage = 'en') 
 const text = (value: unknown) => String(value || '').trim();
 const bullets = (values: Array<string | undefined | null>) => values.map((value) => text(value)).filter(Boolean);
 const isIngecartTemplate = (input: OfferWordExportInput) => /ingecart/i.test([input.company.company_name, input.offer.company_name, input.offer.company].map((value) => text(value)).join(' '));
-const isServiceOffer = (input: OfferWordExportInput) => /service/i.test(text(input.offer.offer_kind)) || /-S\d+$/i.test(text(input.offer.offer_number)) || input.items.every((item) => text(item.item_type || item.type || 'service') === 'service') || Boolean(input.serviceContent);
+const isServiceOffer = (input: OfferWordExportInput) => /service/i.test(text(input.offer.offer_kind))
+  || /-S\d+$/i.test(text(input.offer.offer_number))
+  || Boolean(input.serviceContent || input.offer.service_content)
+  || (input.items.length > 0 && input.items.every((item) => text(item.item_type || item.type) === 'service'));
+
+const resolveServiceContent = (input: OfferWordExportInput, language: OfferWordLanguage): ServiceOfferContent | null => {
+  if (!isServiceOffer(input)) return null;
+  const stored = input.serviceContent || (input.offer.service_content as ServiceOfferContent | null | undefined) || null;
+  const base = stored && Array.isArray(stored.deliverables)
+    ? stored
+    : buildServiceOfferContent(inferServiceOpportunityType([input.offer.title, input.offer.project_description].map(text).join(' ')));
+  const localized = localizeServiceOfferContent(base, language);
+  return {
+    ...localized,
+    sections: localized.sections || [],
+    deliverables: localized.deliverables || [],
+    exclusions: localized.exclusions || [],
+    assumptions: localized.assumptions || [],
+    whyIngecart: localized.whyIngecart || [],
+    coveredMachines: localized.coveredMachines || [],
+    responseSla: localized.responseSla || [],
+    tpmProgramme: {
+      title: localized.tpmProgramme?.title || '',
+      daily: localized.tpmProgramme?.daily || [],
+      weekly: localized.tpmProgramme?.weekly || [],
+      monthly: localized.tpmProgramme?.monthly || [],
+      quarterly: localized.tpmProgramme?.quarterly || [],
+    },
+  };
+};
+
+type ServiceLineRow = { service: string; frequency: string; coverage: string; annualPrice: number; module?: ServiceCatalogModule };
+
+const withCustomer = (value: string, customer: string) => value.replace(/\{customer\}/g, customer || 'el cliente');
+
+const cleanServiceNotes = (value: unknown) => text(value)
+  .split('|')
+  .map((part) => part.trim())
+  .filter((part) => part && !/structure overhead|cost|coste|eur\b|reference off-|referencia off-/i.test(part))
+  .join('; ');
+
+const buildServiceLineRows = (input: OfferWordExportInput, scopePriceTotal: number, language: OfferWordLanguage): ServiceLineRow[] => {
+  const isEs = language === 'es';
+  const customer = text(input.offer.customer_name) || text(input.company.company_name);
+  const itemIds = new Set((input.items as ItemRow[]).map((item) => item.id));
+  const lines = (input.costRows as CostRow[]).filter((row) => (!row.offer_item_id || itemIds.has(row.offer_item_id)) && Number(row.total_cost || 0) > 0);
+  const fromModule = (module: ServiceCatalogModule, annualPrice: number): ServiceLineRow => ({
+    service: module.name[language],
+    frequency: module.frequency[language],
+    coverage: withCustomer(module.coverage[language], customer),
+    annualPrice,
+    module,
+  });
+  if (lines.length === 0) {
+    const core = SERVICE_OFFER_CATALOG.filter((module) => module.core);
+    const referenceTotal = core.reduce((sum, module) => sum + module.referencePrice, 0);
+    return core.map((module) => fromModule(module, scopePriceTotal * (module.referencePrice / referenceTotal)));
+  }
+  const totalCost = lines.reduce((sum, row) => sum + Number(row.total_cost || 0), 0);
+  return lines.map((row) => {
+    const annualPrice = scopePriceTotal * (Number(row.total_cost || 0) / totalCost);
+    const module = findServiceCatalogModule(row.line_item, row.category);
+    if (module) return fromModule(module, annualPrice);
+    const days = Number(row.days || 0);
+    const hours = Number(row.hours || 0);
+    return {
+      service: text(row.line_item) || (isEs ? 'Servicio' : 'Service'),
+      frequency: days > 0
+        ? (isEs ? `${days} días${row.resources ? ` x ${row.resources} técnico(s)` : ''}` : `${days} days${row.resources ? ` x ${row.resources} technician(s)` : ''}`)
+        : hours > 0 ? `${hours} h` : (isEs ? 'Anual' : 'Annual'),
+      coverage: cleanServiceNotes(row.notes) || (isEs ? `Equipos de ${customer}` : `${customer} equipment`),
+      annualPrice,
+    };
+  });
+};
+
+// Whole-euro prices; the rounding remainder goes to the largest row so the total is preserved.
+const roundServiceRows = (rows: ServiceLineRow[], total: number): ServiceLineRow[] => {
+  if (rows.length === 0) return rows;
+  const rounded = rows.map((row) => ({ ...row, annualPrice: Math.round(row.annualPrice) }));
+  const largest = rounded.reduce((best, row, index) => (row.annualPrice > rounded[best].annualPrice ? index : best), 0);
+  rounded[largest].annualPrice += Math.round(total) - rounded.reduce((sum, row) => sum + row.annualPrice, 0);
+  return rounded;
+};
+
+const buildOfferedServicesSection = (rows: ServiceLineRow[], language: OfferWordLanguage) => {
+  const isEs = language === 'es';
+  return rows.flatMap((row, index) => [
+    heading(2, `3.1.${index + 1}  ${row.service}`),
+    ...(row.module ? [normal(row.module.description[language])] : []),
+    new Paragraph({
+      spacing: { after: 60 },
+      children: [
+        new TextRun({ text: `${isEs ? 'Frecuencia' : 'Frequency'}: `, font: 'Arial', size: 19, bold: true, color: DARK }),
+        new TextRun({ text: row.frequency, font: 'Arial', size: 19, color: DARK }),
+        new TextRun({ text: `   |   ${isEs ? 'Cobertura' : 'Coverage'}: `, font: 'Arial', size: 19, bold: true, color: DARK }),
+        new TextRun({ text: row.coverage, font: 'Arial', size: 19, color: DARK }),
+      ],
+    }),
+    ...(row.module ? row.module.activities[language].map(bullet) : []),
+  ]);
+};
 
 const heading = (level: 1 | 2, label: string) => new Paragraph({
   text: label,
@@ -160,7 +270,7 @@ const coverTable = (input: OfferWordExportInput, language: OfferWordLanguage = '
   const isEs = language === 'es';
   const serviceOffer = isServiceOffer(input);
   const basisText = serviceOffer
-    ? (isEs ? 'Servicio postventa segun el alcance, niveles de servicio y condiciones comerciales configuradas.' : 'After-sales service according to the configured scope, service levels and commercial conditions.')
+    ? (isEs ? 'Servicio postventa según el alcance, niveles de servicio y condiciones comerciales configuradas.' : 'After-sales service according to the configured scope, service levels and commercial conditions.')
     : (isEs ? 'Suministro de equipos y servicios segun el alcance y las condiciones comerciales configuradas.' : 'Equipment and services according to the configured scope and commercial conditions.');
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
@@ -168,7 +278,8 @@ const coverTable = (input: OfferWordExportInput, language: OfferWordLanguage = '
       [isEs ? 'Cliente' : 'Customer', text(input.offer.customer_name) || text(input.company.company_name)],
       [isEs ? 'Proyecto' : 'Project', text(input.offer.title) || (isEs ? 'Propuesta comercial' : 'Commercial proposal')],
       [isEs ? 'Referencia de oferta' : 'Proposal reference', text(input.offer.offer_number) || (isEs ? 'Borrador de oferta' : 'Offer draft')],
-      [isEs ? 'Fecha' : 'Date', fmtDate(input.offer.updated_at || input.offer.created_at, language)],
+      [isEs ? 'Fecha' : 'Date', fmtDate(text(input.offer.updated_at || input.offer.created_at) || undefined, language)],
+      ...(serviceOffer ? [[isEs ? 'Duración' : 'Duration', isEs ? '12 meses' : '12 months']] : []),
       [isEs ? 'Base comercial' : 'Commercial basis', `${text(input.offer.currency) || 'EUR'} | ${basisText}`],
     ].map(([label, value]) => new TableRow({
       children: [
@@ -183,16 +294,25 @@ const coverTable = (input: OfferWordExportInput, language: OfferWordLanguage = '
 const buildCoverTitle = (input: OfferWordExportInput, language: OfferWordLanguage = 'en') => {
   const serviceOffer = isServiceOffer(input);
   const primary = text(input.offer.title) || input.items.map((item) => text(item.item_name || item.name)).filter(Boolean).join(' / ') || 'COMMERCIAL PROPOSAL';
-  const secondary = text(input.offer.project_description) || (serviceOffer ? (language === 'es' ? 'PROPUESTA DE SERVICIO Y POSTVENTA' : 'AFTER-SALES SERVICE PROPOSAL') : 'AUTOMATION PROPOSAL');
+  if (serviceOffer) {
+    const customer = text(input.offer.customer_name) || text(input.company.company_name);
+    return {
+      primary: (language === 'es' ? 'OFERTA ANUAL DE SERVICIO' : 'ANNUAL SERVICE PROPOSAL').toUpperCase(),
+      secondary: customer.toUpperCase(),
+    };
+  }
+  const secondary = text(input.offer.project_description) || 'AUTOMATION PROPOSAL';
   return { primary: primary.toUpperCase(), secondary: secondary.toUpperCase() };
 };
 
-const buildCoverRibbon = (input: OfferWordExportInput) => {
+const buildCoverRibbon = (input: OfferWordExportInput, language: OfferWordLanguage = 'en') => {
+  if (isServiceOffer(input)) {
+    return language === 'es'
+      ? 'MANTENIMIENTO PREVENTIVO  ·  INGEPRO MONITORIZACION  ·  AI PREDICTIVA  ·  CANAL INDUSTRIAL DE RECAMBIOS'
+      : 'PREVENTIVE MAINTENANCE  ·  INGEPRO MONITORING  ·  PREDICTIVE AI  ·  INDUSTRIAL SPARE PARTS CHANNEL';
+  }
   const configured = input.items.map((item) => text(item.item_name || item.name)).filter(Boolean).join('  |  ');
-  if (configured) return configured;
-  return isServiceOffer(input)
-    ? 'ANNUAL MAINTENANCE  |  RELIABILITY SUPPORT  |  SMART PLANT  |  SPARE PARTS'
-    : 'INGETRANS  |  REEL CONVEYORS  |  RFID  |  AMR SCRAP LOGISTICS';
+  return configured || 'INGETRANS  |  REEL CONVEYORS  |  RFID  |  AMR SCRAP LOGISTICS';
 };
 
 const getAssociatedCostsText = (language: OfferWordLanguage) => language === 'es'
@@ -240,6 +360,7 @@ const buildExecutiveSummaryPoints = ({
   installationRows,
   language,
   serviceContent,
+  annualTotal,
 }: {
   customer: string;
   offerTitle: string;
@@ -249,6 +370,7 @@ const buildExecutiveSummaryPoints = ({
   installationRows: CostRow[];
   language: OfferWordLanguage;
   serviceContent?: ServiceOfferContent | null;
+  annualTotal?: string;
 }) => {
   const isEs = language === 'es';
   const firstRows = scopeRows.slice(0, 3).map((row) => `${row.label}: ${row.scope || (isEs ? 'alcance configurado' : 'configured scope')}`);
@@ -256,8 +378,9 @@ const buildExecutiveSummaryPoints = ({
     return bullets([
       isEs ? `Cliente: ${customer}. Propuesta: ${offerTitle || 'Propuesta de servicio'}.` : `Customer: ${customer}. Proposal: ${offerTitle || 'Service proposal'}.`,
       serviceContent.scopeSummary,
+      annualTotal ? (isEs ? `Inversión anual recomendada: ${annualTotal}.` : `Recommended annual investment: ${annualTotal}.`) : undefined,
       serviceContent.valueProposition,
-      serviceContent.deliverables.length > 0 ? (isEs ? `Entregables principales: ${serviceContent.deliverables.slice(0, 4).join(' | ')}.` : `Main deliverables: ${serviceContent.deliverables.slice(0, 4).join(' | ')}.`) : undefined,
+      serviceContent.deliverables.length > 0 ? (isEs ? `Entregables principales: ${serviceContent.deliverables.slice(0, 4).map((value) => value.replace(/\.$/, '')).join(' | ')}.` : `Main deliverables: ${serviceContent.deliverables.slice(0, 4).map((value) => value.replace(/\.$/, '')).join(' | ')}.`) : undefined,
       serviceContent.responseSla.length > 0 ? (isEs ? `Compromiso de respuesta: ${serviceContent.responseSla.map((s) => `${s.label} (${s.value})`).join(' | ')}.` : `Response commitment: ${serviceContent.responseSla.map((s) => `${s.label} (${s.value})`).join(' | ')}.`) : undefined,
     ]);
   }
@@ -363,6 +486,31 @@ const buildCommercialConditionsTable = (currency: string, terms: OfferCommercial
   });
 };
 
+const buildServiceCommercialConditionsTable = (currency: string, terms: OfferCommercialTerms, language: OfferWordLanguage = 'en') => {
+  const isEs = language === 'es';
+  const rows: Array<[string, string]> = isEs ? [
+    ['Moneda', currency],
+    ['Duración', '12 meses desde la activación del servicio.'],
+    ['Inicio', 'Arranque en menos de 30 días desde la aprobación de la oferta.'],
+    ['Facturación y pago', 'Según las condiciones acordadas en el contrato de servicio.'],
+    ['Validez', buildValidityTermsText(terms, language)],
+  ] : [
+    ['Currency', currency],
+    ['Duration', '12 months from service activation.'],
+    ['Start-up', 'Start-up in less than 30 days from offer approval.'],
+    ['Invoicing and payment', 'As agreed in the service contract.'],
+    ['Validity', buildValidityTermsText(terms, language)],
+  ];
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({ children: [cell(isEs ? 'Elemento comercial' : 'Commercial item', { fill: DARK, color: WHITE, bold: true, borderColor: WHITE }), cell(isEs ? 'Condición' : 'Condition', { fill: DARK, color: WHITE, bold: true, borderColor: WHITE })] }),
+      ...rows.map(([label, value]) => new TableRow({ children: [cell(label, { bold: true }), cell(value)] })),
+    ],
+    columnWidths: [2600, 6755],
+  });
+};
+
 const buildScopeRows = (input: OfferWordExportInput, scopePriceTotal: number): ScopeRow[] => {
   const isEs = input.language === 'es';
   const items = input.items as ItemRow[];
@@ -440,25 +588,23 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
   const commercialTerms = input.commercialTerms || buildDefaultCommercialTerms();
   const language: OfferWordLanguage = input.language === 'es' ? 'es' : 'en';
   const isEs = language === 'es';
+  const serviceOffer = isServiceOffer(input);
+  const serviceContent = resolveServiceContent(input, language);
   const sectionLabels = serviceOffer && serviceContent
     ? (isEs ? [
-      '11  EJECUCION DEL SERVICIO Y ACEPTACION',
-      '11.1 NIVELES DE SERVICIO Y COMPROMISO DE RESPUESTA',
-      '12  CONDICIONES COMERCIALES',
-      '12.1 Alcance incluido',
-      '12.2 Exclusiones',
-      '12.3 Responsabilidades del cliente',
-      '13  GARANTIA Y CONDICIONES GENERALES DE VENTA',
-      '14  ACEPTACION DE OFERTA',
+      '4  EJECUCIÓN DEL SERVICIO Y ACEPTACIÓN',
+      '4.1 NIVELES DE SERVICIO Y COMPROMISO DE RESPUESTA',
+      '5  CONDICIONES COMERCIALES',
+      '', '', '',
+      '6  GARANTÍA Y CONDICIONES GENERALES',
+      '7  ACEPTACIÓN DE OFERTA',
     ] : [
-      '11  SERVICE EXECUTION AND ACCEPTANCE',
-      '11.1 SERVICE LEVELS AND RESPONSE COMMITMENT',
-      '12  COMMERCIAL CONDITIONS',
-      '12.1 Included scope',
-      '12.2 Exclusions',
-      '12.3 Customer responsibilities',
-      '13  WARRANTY AND GENERAL TERMS',
-      '14  OFFER ACCEPTANCE',
+      '4  SERVICE EXECUTION AND ACCEPTANCE',
+      '4.1 SERVICE LEVELS AND RESPONSE COMMITMENT',
+      '5  COMMERCIAL CONDITIONS',
+      '', '', '',
+      '6  WARRANTY AND GENERAL TERMS',
+      '7  OFFER ACCEPTANCE',
     ])
     : (isEs ? [
       '11  EJECUCION DEL PROYECTO Y ACEPTACION',
@@ -475,14 +621,19 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
   const score = input.offerScore || null;
   const installationRows = allCostRows.filter((row) => row.category === 'installation' || row.category === 'transport');
   const scenario = (input.scenarios || []).find((item) => item.scenario_type === 'base') || (input.scenarios || [])[0];
-  const scopePriceTotal = Number(scenario?.selling_price || input.offer.contract_value || 0);
+  const scopePriceTotal = Number(scenario?.selling_price || input.offer.offer_total_price || input.offer.contract_value || 0);
   const scopeRows = buildScopeRows(input, scopePriceTotal);
   const linkedProducts = items.map((item) => {
     const found = input.products.find((product) => product.name === item.item_name || product.name === item.name);
     return found ? mergeProductWithKnowledge(found) : null;
   });
   const coverTitle = buildCoverTitle(input, language);
-  const serviceOffer = isServiceOffer(input);
+  const serviceLineRows = serviceContent ? roundServiceRows(buildServiceLineRows(input, scopePriceTotal, language), scopePriceTotal) : [];
+  const serviceAnnualTotal = serviceLineRows.reduce((sum, row) => sum + row.annualPrice, 0);
+  const pricedModuleIds = new Set(serviceLineRows.map((row) => row.module?.id).filter(Boolean));
+  const optionalModules = serviceContent
+    ? SERVICE_OFFER_CATALOG.filter((module) => !pricedModuleIds.has(module.id) && (serviceContent.optionalServices || SERVICE_OFFER_CATALOG.filter((entry) => !entry.core).map((entry) => entry.id)).includes(module.id))
+    : [];
   const coverCaptionText = serviceOffer
     ? (isEs ? 'Servicio postventa INGECART - propuesta anual de mantenimiento y fiabilidad' : 'INGECART after-sales service - annual maintenance and reliability proposal')
     : isIngecartTemplate(input)
@@ -495,9 +646,18 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
     footers: { default: buildFooter(customer, text(input.offer.title) || 'Commercial proposal') },
     children: [
       new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, shading: { fill: DARK, type: ShadingType.CLEAR, color: 'auto' }, children: [new TextRun({ text: `\n${coverTitle.primary}\n${coverTitle.secondary}\n`, font: 'Arial', size: 34, bold: true, color: WHITE })] }),
-      new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, shading: { fill: ORANGE, type: ShadingType.CLEAR, color: 'auto' }, children: [new TextRun({ text: buildCoverRibbon(input), font: 'Arial', size: 18, bold: true, color: WHITE })] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, shading: { fill: ORANGE, type: ShadingType.CLEAR, color: 'auto' }, children: [new TextRun({ text: buildCoverRibbon(input, language), font: 'Arial', size: 18, bold: true, color: WHITE })] }),
       ...(templateAssets.coverImage ? [imageParagraph(templateAssets.coverImage, COVER_IMAGE_SIZE), imageCaption(coverCaptionText)] : []),
       coverTable(input, language),
+      ...(serviceContent && serviceLineRows.length > 0 ? [
+        heading(2, isEs ? 'Servicios anuales incluidos' : 'Included annual services'),
+        gridTable(
+          [isEs ? 'Servicio' : 'Service', isEs ? 'Frecuencia' : 'Frequency', isEs ? 'Cobertura' : 'Coverage', isEs ? 'Importe anual' : 'Annual amount'],
+          [...serviceLineRows.map((row) => [row.service, row.frequency, row.coverage, fmtCurrency(row.annualPrice, currency, language)]), [isEs ? 'TOTAL ANUAL RECOMENDADO' : 'RECOMMENDED ANNUAL TOTAL', '', '', fmtCurrency(serviceAnnualTotal, currency, language)]],
+          [2600, 2000, 3200, 1800],
+          true,
+        ),
+      ] : []),
       ...(serviceOffer && serviceContent && serviceContent.valueProposition ? [
         new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 120, after: 200 }, children: [new TextRun({ text: serviceContent.valueProposition, font: 'Arial', size: 19, italics: true, color: MID_GREY })] }),
       ] : []),
@@ -505,20 +665,16 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
       new Paragraph({ children: [new TableOfContents(' ', { hyperlink: true, headingStyleRange: '1-2' })] }),
       heading(1, isEs ? '1  CARTA DE OFERTA' : '1  OFFER LETTER'),
       normal(isEs ? `Estimado equipo de ${customer},` : `Dear ${customer} Team,`),
-      ...(serviceOffer && serviceContent ? [
-        normal(serviceContent.scopeSummary),
-        normal(serviceContent.serviceDescription),
-      ] : []),
       normal(serviceOffer && serviceContent
         ? (isEs
-          ? `INGECART presenta la propuesta de servicio ${offerRef} para ${text(input.offer.title) || 'el alcance de postventa definido'}. La oferta consolida alcance, entregables, niveles de servicio y condiciones comerciales en un formato ejecutivo listo para validacion interna y aprobacion.`
+          ? `INGECART presenta la propuesta de servicio ${offerRef} para ${text(input.offer.title) || 'el alcance de postventa definido'}. La oferta consolida alcance, servicios ofrecidos, entregables, niveles de servicio y condiciones comerciales en un formato ejecutivo listo para validación interna y aprobación.`
           : `INGECART is pleased to submit the service proposal ${offerRef} for ${text(input.offer.title) || 'the defined after-sales scope'}. The proposal consolidates scope, deliverables, service levels and commercial conditions in an executive format ready for internal validation and approval.`)
         : (isEs
           ? `INGECART presenta la propuesta ${offerRef} para ${text(input.offer.title) || 'el alcance definido del proyecto'}. La oferta consolida alcance, integracion y condiciones comerciales en un formato ejecutivo listo para validacion interna y negociacion final.`
           : `INGECART is pleased to submit proposal ${offerRef} for ${text(input.offer.title) || 'the defined project scope'}. The proposal consolidates scope, integration logic and commercial conditions in an executive format ready for internal validation and final negotiation.`)),
       normal(serviceOffer && serviceContent
         ? (isEs
-          ? 'El objetivo de esta emision es ofrecer un programa de servicio tecnicamente consistente, comercialmente trazable y preparado para minimizar paradas no planificadas y garantizar la disponibilidad del equipo.'
+          ? 'El objetivo de esta emisión es ofrecer un programa de servicio técnicamente consistente, comercialmente trazable y preparado para minimizar paradas no planificadas y garantizar la disponibilidad del equipo.'
           : 'The objective of this release is to provide a technically consistent, commercially traceable service programme that minimizes unplanned downtime and secures equipment availability.')
         : (isEs
           ? 'El objetivo de esta emision es ofrecer una propuesta tecnicamente consistente, comercialmente trazable y preparada para minimizar aclaraciones posteriores durante la fase de ingenieria y adjudicacion.'
@@ -533,34 +689,52 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
         installationRows,
         language,
         serviceContent,
+        annualTotal: serviceLineRows.length > 0 ? fmtCurrency(serviceAnnualTotal, currency, language) : undefined,
       }).map(bullet),
       ...(serviceOffer && serviceContent
         ? [
-          heading(1, isEs ? '3  ALCANCE Y DESCRIPCION DEL SERVICIO' : '3  SCOPE AND SERVICE DESCRIPTION'),
+          heading(1, isEs ? '3  ALCANCE Y DESCRIPCIÓN DEL SERVICIO' : '3  SCOPE AND SERVICE DESCRIPTION'),
           normal(serviceContent.scopeSummary),
           normal(serviceContent.serviceDescription),
-          heading(2, isEs ? '3.1  Entregables incluidos' : '3.1  Included deliverables'),
-          ...serviceContent.deliverables.map(bullet),
-          heading(2, isEs ? '3.2  Exclusiones' : '3.2  Exclusions'),
-          ...serviceContent.exclusions.map(bullet),
-          heading(2, isEs ? '3.3  Supuestos y condiciones de ejecucion' : '3.3  Assumptions and execution conditions'),
-          ...serviceContent.assumptions.map(bullet),
+          heading(2, isEs ? '3.1  Servicios ofrecidos' : '3.1  Offered services'),
+          normal(isEs ? 'La propuesta incluye los siguientes servicios anuales, con su frecuencia, cobertura y actividades incluidas:' : 'The proposal includes the following annual services, with their frequency, coverage and included activities:'),
+          ...buildOfferedServicesSection(serviceLineRows, language),
+          heading(2, isEs ? '3.2  Programa de mantenimiento por parque instalado' : '3.2  Maintenance programme per installed base'),
+          ...((serviceContent.installedBase || []).length > 0
+            ? (serviceContent.installedBase || []).map(bullet)
+            : [normal(isEs ? `Parque instalado de ${customer} según inventario validado en Smart Plant Dashboard. Familias de equipos cubiertas:` : `${customer} installed base according to the inventory validated in the Smart Plant Dashboard. Covered equipment families:`)]),
+          ...serviceContent.coveredMachines.map(bullet),
+          normal(isEs ? 'Frecuencias: inspección semanal de condición, revisión mensual de backlog, paradas trimestrales planificadas y auditoría anual de confiabilidad.' : 'Frequencies: weekly condition inspection, monthly backlog review, planned quarterly stops and annual reliability audit.'),
           ...(serviceContent.sections.includes('tpm-preventive') ? [
-            heading(2, serviceContent.tpmProgramme.title),
-            heading(2, isEs ? '3.4.1  Verificaciones diarias (operario)' : '3.4.1  Daily checks (operator)'),
+            heading(2, `3.3  ${serviceContent.tpmProgramme.title || (isEs ? 'Programa TPM preventivo' : 'Preventive TPM programme')}`),
+            heading(2, isEs ? '3.3.1  Verificación diaria (operario)' : '3.3.1  Daily check (operator)'),
             ...serviceContent.tpmProgramme.daily.map(bullet),
-            heading(2, isEs ? '3.4.2  Verificaciones semanales (mantenimiento)' : '3.4.2  Weekly checks (maintenance)'),
+            heading(2, isEs ? '3.3.2  Verificación semanal (mantenimiento)' : '3.3.2  Weekly check (maintenance)'),
             ...serviceContent.tpmProgramme.weekly.map(bullet),
-            heading(2, isEs ? '3.4.3  Verificaciones mensuales (tcnico)' : '3.4.3  Monthly checks (technician)'),
+            heading(2, isEs ? '3.3.3  Verificación mensual (técnico)' : '3.3.3  Monthly check (technician)'),
             ...serviceContent.tpmProgramme.monthly.map(bullet),
-            heading(2, isEs ? '3.4.4  Verificaciones trimestrales' : '3.4.4  Quarterly checks'),
+            heading(2, isEs ? '3.3.4  Verificación trimestral' : '3.3.4  Quarterly check'),
             ...serviceContent.tpmProgramme.quarterly.map(bullet),
           ] : []),
-          heading(2, isEs ? '3.5  Por qu INGECART' : '3.5  Why INGECART'),
+          heading(2, isEs ? '3.4  Entregables' : '3.4  Deliverables'),
+          ...serviceContent.deliverables.map(bullet),
+          ...(optionalModules.length > 0 ? [
+            heading(2, isEs ? '3.5  Servicios adicionales opcionales' : '3.5  Optional additional services'),
+            normal(isEs ? 'Servicios disponibles bajo pedido, presupuestados por separado y activables en cualquier momento del contrato:' : 'Services available on request, quoted separately and activatable at any time during the contract:'),
+            gridTable(
+              [isEs ? 'Servicio' : 'Service', isEs ? 'Frecuencia' : 'Frequency', isEs ? 'Cobertura' : 'Coverage'],
+              optionalModules.map((module) => [module.name[language], module.frequency[language], withCustomer(module.coverage[language], customer)]),
+              [3200, 2600, 3800],
+            ),
+            ...optionalModules.map((module) => bullet(`${module.name[language]}: ${module.description[language]}`)),
+          ] : []),
+          heading(2, isEs ? '3.6  Exclusiones' : '3.6  Exclusions'),
+          ...serviceContent.exclusions.map(bullet),
+          heading(2, isEs ? '3.7  Supuestos y condiciones de ejecución' : '3.7  Assumptions and execution conditions'),
+          ...serviceContent.assumptions.map(bullet),
+          heading(2, isEs ? '3.8  Por qué INGECART' : '3.8  Why INGECART'),
           ...serviceContent.whyIngecart.map(bullet),
-          heading(2, isEs ? '3.6  Equipo cubierto' : '3.6  Covered equipment'),
-          ...serviceContent.coveredMachines.map(bullet),
-          heading(2, isEs ? '3.7  Compromiso de respuesta' : '3.7  Response commitment'),
+          heading(2, isEs ? '3.9  Compromiso de respuesta' : '3.9  Response commitment'),
           ...serviceContent.responseSla.map((sla) => bullet(`${sla.label}: ${sla.value}`)),
         ]
         : [
@@ -625,7 +799,7 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
       ] : []),
       heading(1, sectionLabels[0]),
       normal(serviceOffer && serviceContent
-        ? (isEs ? 'La ejecucion del servicio seguira el calendario anual acordado, los informes de cada visita y la revision trimestral de KPIs. El punto de aceptacion sera la firma del informe de servicio y el cumplimiento de los SLA definidos.' : 'Service execution will follow the agreed annual calendar, each visit report and the quarterly KPI review. Acceptance will be the service report sign-off and fulfilment of the defined SLAs.')
+        ? (isEs ? 'La ejecución del servicio seguirá el calendario anual acordado, los informes de cada visita y la revisión trimestral de KPIs. El punto de aceptación será la firma del informe de servicio y el cumplimiento de los SLA definidos.' : 'Service execution will follow the agreed annual calendar, each visit report and the quarterly KPI review. Acceptance will be the service report sign-off and fulfilment of the defined SLAs.')
         : (isEs ? 'La planificacion de ejecucion, el cierre de KPI y el metodo de aceptacion final se confirmaran en el kick-off de ingenieria, con base en el alcance aprobado, layout, interfaces y preparacion de planta.' : 'Project execution planning, KPI lock and final acceptance method will be confirmed during engineering kick-off, taking the approved scope, layout, interfaces and site readiness into account.')),
       heading(2, sectionLabels[1]),
       ...(serviceOffer && serviceContent
@@ -635,32 +809,40 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
           isEs ? 'Cliente e INGECART cerraran la matriz de responsabilidades, matriz de utilidades y ruta de cierre de punch-list antes de la ejecucion en planta.' : 'Customer and INGECART will freeze the responsibility matrix, utilities matrix and punch-list closure route before site execution.',
         ]).map(bullet)),
       heading(1, sectionLabels[2]),
-      normal(isEs ? 'La oferta aplica las condiciones comerciales definidas para la empresa activa.' : 'The offer applies the commercial conditions configured for the active company.'),
-      buildCommercialConditionsTable(currency, commercialTerms, language),
+      ...(serviceOffer && serviceContent ? [
+        normal(isEs ? 'Condiciones comerciales aplicables al programa anual de servicio.' : 'Commercial conditions applicable to the annual service programme.'),
+        buildServiceCommercialConditionsTable(currency, commercialTerms, language),
+        ...(!pricedModuleIds.has('parts-channel') ? [normal(isEs ? 'El canal INGEPRO incorpora solicitud directa de recambios y piezas de cualquier equipo, con negociación de volumen y trazabilidad de suministro para mejorar plazo y precio.' : 'The INGEPRO channel includes direct requests for spare parts for any equipment, with volume negotiation and supply traceability to improve lead time and price.')] : []),
+      ] : [
+        normal(isEs ? 'La oferta aplica las condiciones comerciales definidas para la empresa activa.' : 'The offer applies the commercial conditions configured for the active company.'),
+        buildCommercialConditionsTable(currency, commercialTerms, language),
+      ]),
+      ...(serviceContent && serviceLineRows.length > 0 ? [
+        heading(2, isEs ? '5.1 Resumen económico' : '5.1 Economic summary'),
+        ...serviceLineRows.map((row) => bullet(`${row.service}: ${fmtCurrency(row.annualPrice, currency, language)} / ${isEs ? 'a\u00f1o' : 'year'}`)),
+        new Paragraph({ spacing: { before: 60, after: 90 }, children: [new TextRun({ text: `${isEs ? 'Total recomendado' : 'Recommended total'}: ${fmtCurrency(serviceAnnualTotal, currency, language)} / ${isEs ? 'a\u00f1o' : 'year'}`, font: 'Arial', size: 20, bold: true, color: ORANGE })] }),
+      ] : []),
+      ...(!(serviceOffer && serviceContent) ? [
       heading(2, sectionLabels[3]),
-      ...(serviceOffer && serviceContent
-        ? serviceContent.deliverables.map(bullet)
-        : scopeRows.map((row) => bullet(`${row.label}: ${row.scope || (isEs ? 'Alcance configurado' : 'Configured scope')} - ${fmtCurrency(row.proposalPrice, currency, language)}.`))),
+      ...scopeRows.map((row) => bullet(`${row.label}: ${row.scope || (isEs ? 'Alcance configurado' : 'Configured scope')} - ${fmtCurrency(row.proposalPrice, currency, language)}.`)),
       heading(2, sectionLabels[4]),
-      ...(serviceOffer && serviceContent
-        ? serviceContent.exclusions.map(bullet)
-        : bullets([
+      ...bullets([
           isEs ? 'Obra civil, cimentaciones, permisos, utilidades del cliente e interfaces de terceros quedan excluidos salvo inclusion explicita en el alcance del paquete.' : 'Civil works, foundations, permits, customer-side utilities and third-party interfaces are excluded unless explicitly listed in the package scope.',
           isEs ? 'Cualquier crecimiento de alcance por cambios de layout, retrasos de aprobacion, redefinicion de interfaces o restricciones de planta sera tratado como variacion comercial.' : 'Any scope growth derived from layout changes, delayed approvals, interface redefinition or site restrictions will be reviewed as a commercial variation.',
-        ]).map(bullet)),
+        ]).map(bullet),
       heading(2, sectionLabels[5]),
-      ...(serviceOffer && serviceContent
-        ? serviceContent.assumptions.map(bullet)
-        : bullets([
+      ...bullets([
           getCustomerSupportText(language),
           isEs ? 'El cliente facilitara acceso continuo a planta preparada, decisiones tecnicas en plazo, utilidades, permisos de seguridad y datos de interfaz requeridos para la ejecucion.' : 'Customer to provide continuous access to the ready site, timely technical decisions, utilities, safety permits and interface data required for execution.',
-        ]).map(bullet)),
+        ]).map(bullet),
+      ] : []),
       heading(1, sectionLabels[6]),
       ...(serviceOffer && serviceContent
-        ? [
-          normal(serviceContent.valueProposition),
-          ...serviceContent.whyIngecart.map(bullet),
-        ]
+        ? bullets([
+          isEs ? 'Los trabajos de servicio se ejecutan conforme a las condiciones generales de venta de INGECART vigentes en la fecha de aceptación.' : 'Service work is performed under the INGECART general terms of sale in force at the acceptance date.',
+          isEs ? 'Los recambios suministrados mantienen la garantía del fabricante de origen.' : 'Supplied spare parts keep the original manufacturer warranty.',
+          isEs ? 'Reparaciones, piezas o trabajos fuera del alcance descrito se presupuestarán por separado antes de su ejecución.' : 'Repairs, parts or work outside the described scope will be quoted separately before execution.',
+        ]).map(bullet)
         : bullets([
           buildWarrantyTermsText(commercialTerms, language),
           isEs ? 'Exclusiones finales, utilidades, obra civil y responsabilidades del cliente deben adjuntarse a la version comercial aprobada antes de la entrada de pedido.' : 'Final exclusions, utilities, civil works and customer-side responsibilities must be attached to the approved commercial version before order intake.',
@@ -668,7 +850,8 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
         ]).map(bullet)),
       heading(1, sectionLabels[7]),
       ...(serviceOffer && serviceContent ? [
-        normal(isEs ? 'La aceptacion de esta propuesta de servicio confirma el alcance, el calendario anual acordado, los niveles de servicio y las condiciones comerciales aqui recogidas. Cualquier modificacion al alcance sera gestionada como una variacion comercial por escrito.' : 'Acceptance of this service proposal confirms the scope, agreed annual calendar, service levels and commercial conditions set out herein. Any scope change will be handled as a written commercial variation.'),
+        normal(isEs ? 'La aceptación de esta propuesta de servicio confirma el alcance, el calendario anual acordado, los niveles de servicio y las condiciones comerciales aquí recogidas. Cualquier modificación al alcance será gestionada como una variación comercial por escrito.' : 'Acceptance of this service proposal confirms the scope, agreed annual calendar, service levels and commercial conditions set out herein. Any scope change will be handled as a written commercial variation.'),
+        normal(isEs ? 'Esta propuesta puede activarse por planta con arranque en menos de 30 días desde su aprobación.' : 'This proposal can be activated per plant with start-up in less than 30 days from approval.'),
       ] : []),
       new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [
         new TableRow({ children: [cell(isEs ? 'Aceptado por el cliente' : 'Accepted by customer', { fill: LIGHT, bold: true }), cell(isEs ? 'Fecha' : 'Date', { fill: LIGHT, bold: true })] }),

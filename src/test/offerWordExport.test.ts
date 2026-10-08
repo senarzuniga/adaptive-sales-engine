@@ -141,4 +141,32 @@ describe('offer Word export', () => {
     expect(serialized).not.toContain('Unit cost');
     expect(serialized).not.toContain('Applied internal policy charges');
   });
+
+  it('builds a Spanish service offer with annual services table and economic summary', async () => {
+    const serviceInput = {
+      ...exportInput,
+      language: 'es' as const,
+      offer: { ...exportInput.offer, offer_number: 'OFF-2026-S140', offer_kind: 'service', title: 'Smart Plant Annual Maintenance Programme + INGEPRO' },
+      items: [{ id: 'svc-1', item_name: 'Annual maintenance', item_type: 'service', quantity: 1 }],
+      costRows: [
+        { id: 's1', offer_item_id: 'svc-1', category: 'field_service', line_item: 'Field service visits', total_cost: 20000, notes: 'Structure overhead 10%' },
+        { id: 's2', offer_item_id: 'svc-1', category: 'remote_service', line_item: 'Remote support / INGEPRO monitoring', total_cost: 10000 },
+      ],
+      scenarios: [{ scenario_type: 'base', selling_price: 60000 }],
+    };
+    const document = buildOfferWordDocument(serviceInput);
+    const serialized = JSON.stringify(document);
+    expect(serialized).toContain('OFERTA ANUAL DE SERVICIO');
+    expect(serialized).toContain('Servicios anuales incluidos');
+    expect(serialized).toContain('TOTAL ANUAL RECOMENDADO');
+    expect(serialized).toContain('Resumen económico');
+    expect(serialized).toContain('Programa Anual de Mantenimiento Preventivo');
+    expect(serialized).toContain('INGEPRO Monitoring + Predictibilidad AI');
+    expect(serialized).toContain('Servicios ofrecidos');
+    expect(serialized).toContain('Servicios adicionales opcionales');
+    expect(serialized).toContain('Plantilla TPM específica INGETRANS');
+    expect(serialized).not.toContain('Structure overhead');
+    const buffer = await Packer.toBuffer(document);
+    expect(buffer.byteLength).toBeGreaterThan(1000);
+  });
 });
