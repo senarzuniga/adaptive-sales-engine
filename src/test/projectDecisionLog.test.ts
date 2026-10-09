@@ -78,7 +78,8 @@ describe('project decision log', () => {
   });
 
   it('keeps bilingual delivery text normalized and accent-safe', () => {
-    expect(normalizeDeliveryText('  confirmar  la  línea  de  carga  del  camión  y  la  conexión  rápida  ', 'es')).toBe('confirmar la línea de carga del camión y la conexión rápida');
-    expect(normalizeDeliveryText('  final verification for the truck loading line  ', 'en')).toBe('Final Verification for the Truck Loading Line');
+    expect(normalizeDeliveryText('  confirmar  la  línea  de  carga  del  camión  y  la  conexión  rápida  ', 'es')).toBe('Confirmar la línea de carga del camión y la conexión rápida');
+    expect(normalizeDeliveryText('  final verification for the truck loading line  ', 'en')).toBe('Final verification for the truck loading line');
+    expect(normalizeDeliveryText('  poner  deslizamiento  en  la  línea  de  carga  del  camión  para  evitar  problemas  con  los  palets  ', 'es')).toBe('Poner deslizamiento en la línea de carga del camión para evitar problemas con los palets');
   });
 });

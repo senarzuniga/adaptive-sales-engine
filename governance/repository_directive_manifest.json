@@ -1,0 +1,40 @@
+{
+  "version": "1.0.0",
+  "canonical_source": "governance/global_operational_directive.md",
+  "instruction_files": [
+    "AGENTS.md",
+    ".github/copilot-instructions.md"
+  ],
+  "target_repositories": [
+    {
+      "name": "ingesite.github.io",
+      "path": null,
+      "status": "pending_rollout"
+    },
+    {
+      "name": "IS-BACKOFFICE",
+      "path": null,
+      "status": "pending_rollout"
+    },
+    {
+      "name": "adaptive-sales-engine",
+      "path": ".",
+      "status": "active"
+    },
+    {
+      "name": "AI-FACTORY-v2",
+      "path": null,
+      "status": "pending_rollout"
+    },
+    {
+      "name": "Digital-Ecosystem-Platform",
+      "path": null,
+      "status": "pending_rollout"
+    },
+    {
+      "name": "Factoty-Simulator",
+      "path": null,
+      "status": "pending_rollout"
+    }
+  ]
+}

@@ -40,26 +40,30 @@ const safeFile = (value: string) => value.replace(/[<>:"/|?*]+/g, '_').replace(/
 const safeSheet = (value: string) => value.replace(/[/?*:]/g, ' ').replaceAll('[', ' ').replaceAll(']', ' ').replace(/\s+/g, ' ').trim().slice(0, 31) || 'Hoja';
 
 export function normalizeDeliveryText(value: string, language: DeliveryLanguage = 'es') {
-  const textValue = String(value ?? '').replace(/\s+/g, ' ').trim();
-  if (!textValue) return '';
-
-  const normalized = textValue
+  const textValue = String(value ?? '')
+    .normalize('NFKC')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/\u00A0/g, ' ')
+    .replace(/\s+/g, ' ')
     .replace(/\s*([.,;:!?])\s*/g, '$1 ')
-    .replace(/\s{2,}/g, ' ')
+    .replace(/\s*[-–—]\s*/g, ' - ')
     .trim();
 
-  if (!normalized) return '';
+  if (!textValue) return '';
+
   if (language === 'en') {
-    return normalized.replace(/\b\w+/g, (chunk) => {
-      const lower = chunk.toLowerCase();
-      if (['and', 'or', 'the', 'a', 'an', 'for', 'to', 'of', 'in', 'on', 'by', 'with', 'at', 'as', 'via'].includes(lower)) {
-        return lower;
-      }
-      return chunk.charAt(0).toUpperCase() + chunk.slice(1).toLowerCase();
-    });
+    return textValue
+      .toLowerCase()
+      .replace(/(^\w|[.!?]\s+\w)/g, (match) => match.toUpperCase())
+      .replace(/\s+([,.;:!?])/g, '$1');
   }
 
-  return normalized.replace(/\s+/g, ' ').trim();
+  return textValue
+    .replace(/\s+([,.;:!?])/g, '$1')
+    .replace(/([.!?]\s+)([a-záéíóúüñ])/g, (_, sep, letter) => `${sep}${letter.toUpperCase()}`)
+    .replace(/^([a-záéíóúüñ])/g, (_, letter) => letter.toUpperCase())
+    .normalize('NFC');
 }
 
 const dateValue = (value: unknown) => {
