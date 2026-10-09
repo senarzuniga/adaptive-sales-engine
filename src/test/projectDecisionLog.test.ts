@@ -5,6 +5,7 @@ import {
   buildProjectDecisionWorkbook,
   buildProjectDecisionWorkbookFileName,
   buildProjectManagementPoints,
+  normalizeDeliveryText,
 } from '@/lib/projectDecisionLog';
 
 describe('project decision log', () => {
@@ -74,5 +75,10 @@ describe('project decision log', () => {
 
     const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
     expect(buffer.byteLength).toBeGreaterThan(1500);
+  });
+
+  it('keeps bilingual delivery text normalized and accent-safe', () => {
+    expect(normalizeDeliveryText('  confirmar  la  línea  de  carga  del  camión  y  la  conexión  rápida  ', 'es')).toBe('confirmar la línea de carga del camión y la conexión rápida');
+    expect(normalizeDeliveryText('  final verification for the truck loading line  ', 'en')).toBe('Final Verification for the Truck Loading Line');
   });
 });

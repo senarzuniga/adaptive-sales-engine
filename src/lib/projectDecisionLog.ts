@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 export type ProjectPointPanel = 'customer_pending' | 'project_management';
 export type ProjectPointStatus = 'pending' | 'in_progress' | 'confirmed' | 'blocked' | 'closed';
 export type ProjectPointPriority = 'critical' | 'high' | 'medium' | 'low' | 'na';
+export type DeliveryLanguage = 'es' | 'en';
 
 export interface ProjectPointRecord {
   id: string;
@@ -37,6 +38,30 @@ const today = () => new Date().toISOString().slice(0, 10);
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, Math.round(value)));
 const safeFile = (value: string) => value.replace(/[<>:"/|?*]+/g, '_').replace(/\s+/g, '_').trim() || 'project';
 const safeSheet = (value: string) => value.replace(/[/?*:]/g, ' ').replaceAll('[', ' ').replaceAll(']', ' ').replace(/\s+/g, ' ').trim().slice(0, 31) || 'Hoja';
+
+export function normalizeDeliveryText(value: string, language: DeliveryLanguage = 'es') {
+  const textValue = String(value ?? '').replace(/\s+/g, ' ').trim();
+  if (!textValue) return '';
+
+  const normalized = textValue
+    .replace(/\s*([.,;:!?])\s*/g, '$1 ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  if (!normalized) return '';
+  if (language === 'en') {
+    return normalized.replace(/\b\w+/g, (chunk) => {
+      const lower = chunk.toLowerCase();
+      if (['and', 'or', 'the', 'a', 'an', 'for', 'to', 'of', 'in', 'on', 'by', 'with', 'at', 'as', 'via'].includes(lower)) {
+        return lower;
+      }
+      return chunk.charAt(0).toUpperCase() + chunk.slice(1).toLowerCase();
+    });
+  }
+
+  return normalized.replace(/\s+/g, ' ').trim();
+}
+
 const dateValue = (value: unknown) => {
   const normalized = text(value);
   if (!normalized) return '';
@@ -371,12 +396,19 @@ export function createManualProjectPoint(projectId: string, panel: ProjectPointP
 }
 
 function setCell(sheet: XLSX.WorkSheet, ref: string, value: string | number, format?: string) {
-  const cell: XLSX.CellObject = typeof value === 'number' ? { t: 'n', v: value } : { t: 's', v: value };
+  const cell: XLSX.CellObject = typeof value === 'number' ? { t: 'n', v: value } : { t: 's', v: String(value) };
   if (format) cell.z = format;
   sheet[ref] = cell;
 }
 
-export function buildProjectDecisionWorkbook(input: { project: GenericRow; points: ProjectPointRecord[]; panel: ProjectPointPanel; language?: 'es' | 'en' }) {
+function setStyledCell(sheet: XLSX.WorkSheet, ref: string, value: string | number, style: Partial<XLSX.Style> = {}, format?: string) {
+  setCell(sheet, ref, value, format);
+  if (sheet[ref]) {
+    (sheet[ref] as XLSX.CellObject).s = style;
+  }
+}
+
+export function buildProjectDecisionWorkbook(input: { project: GenericRow; points: ProjectPointRecord[]; panel: ProjectPointPanel; language?: DeliveryLanguage }) {
   const language = input.language || 'es';
   const workbook = XLSX.utils.book_new();
   const sheet: XLSX.WorkSheet = {};
@@ -387,47 +419,56 @@ export function buildProjectDecisionWorkbook(input: { project: GenericRow; point
   const critical = points.filter((point) => !['confirmed', 'closed'].includes(point.status) && point.priority === 'critical').length;
   const title = input.panel === 'customer_pending'
     ? (language === 'es' ? 'Registro de Decisiones' : 'Decision Log')
-    : (language === 'es' ? 'Registro de Gestion de Proyecto' : 'Project Management Log');
+    : (language === 'es' ? 'Registro de Gestión de Proyecto' : 'Project Management Log');
   const docLabel = input.panel === 'customer_pending'
     ? (language === 'es' ? 'Registro de decisiones del proyecto' : 'Project decision log')
-    : (language === 'es' ? 'Registro de gestion del proyecto' : 'Project management log');
+    : (language === 'es' ? 'Registro de gestión del proyecto' : 'Project management log');
 
-  setCell(sheet, 'A1', title);
+  setStyledCell(sheet, 'A1', title, { font: { bold: true, color: { rgb: 'FFFFFFFF' } }, fill: { fgColor: { rgb: 'FF111111' } } });
+  setStyledCell(sheet, 'A2', language === 'es' ? 'INGECART · Engineering & Auditing' : 'INGECART · Engineering & Auditing', { font: { bold: true, color: { rgb: 'FF111111' } } });
   setCell(sheet, 'A3', language === 'es' ? 'Proyecto' : 'Project');
-  setCell(sheet, 'B3', text(input.project.title || input.project.project_number));
+  setCell(sheet, 'B3', normalizeDeliveryText(text(input.project.title || input.project.project_number), language) || '—');
   setCell(sheet, 'C3', language === 'es' ? 'Cliente' : 'Customer');
-  setCell(sheet, 'D3', text(input.project.customer_name || '?'));
+  setCell(sheet, 'D3', normalizeDeliveryText(text(input.project.customer_name || '?'), language) || '—');
   setCell(sheet, 'A4', language === 'es' ? 'Documento' : 'Document');
-  setCell(sheet, 'B4', docLabel);
+  setCell(sheet, 'B4', normalizeDeliveryText(docLabel, language));
   setCell(sheet, 'C4', language === 'es' ? 'Fecha' : 'Date');
   setCell(sheet, 'D4', today());
   setCell(sheet, 'A5', language === 'es' ? 'Responsable' : 'Owner');
-  setCell(sheet, 'B5', text(input.project.project_manager || input.project.owner || 'Project team'));
+  setCell(sheet, 'B5', normalizeDeliveryText(text(input.project.project_manager || input.project.owner || 'Project team'), language));
   setCell(sheet, 'C5', 'Rev.');
   setCell(sheet, 'D5', '1');
   setCell(sheet, 'A6', language === 'es' ? 'Resumen' : 'Summary');
   setCell(sheet, 'B6', `${confirmed} ${language === 'es' ? 'confirmados' : 'confirmed'} | ${open} ${language === 'es' ? 'pendientes' : 'pending'} | ${blocked} ${language === 'es' ? 'bloqueados' : 'blocked'}`);
   setCell(sheet, 'C6', language === 'es' ? 'Abiertos' : 'Open');
-  setCell(sheet, 'D6', `${open} ${language === 'es' ? 'abiertos' : 'open'} | ${critical} ${language === 'es' ? 'criticos' : 'critical'}`);
+  setCell(sheet, 'D6', `${open} ${language === 'es' ? 'abiertos' : 'open'} | ${critical} ${language === 'es' ? 'críticos' : 'critical'}`);
 
   const headers = language === 'es'
-    ? ['#', 'Punto de decision', 'Descripcion', 'Responsable', 'Fecha limite / confirmacion', 'Estado', 'Prioridad', 'Accion realizada', 'Score', 'Accion preparada', 'Contenido preparado']
+    ? ['#', 'Punto de decisión', 'Descripción', 'Responsable', 'Fecha límite / confirmación', 'Estado', 'Prioridad', 'Acción realizada', 'Score', 'Acción preparada', 'Contenido preparado']
     : ['#', 'Decision point', 'Description', 'Owner', 'Due / confirmation date', 'Status', 'Priority', 'Action taken', 'Score', 'Prepared action', 'Prepared content'];
-  headers.forEach((header, index) => setCell(sheet, `${XLSX.utils.encode_col(index)}8`, header));
+  headers.forEach((header, index) => setStyledCell(sheet, `${XLSX.utils.encode_col(index)}8`, header, { font: { bold: true, color: { rgb: 'FFFFFFFF' } }, fill: { fgColor: { rgb: 'FF111111' } } }));
+
   points.forEach((point, index) => {
     const row = index + 9;
+    const normalizedTitle = normalizeDeliveryText(point.title, language);
+    const normalizedDescription = normalizeDeliveryText(point.description, language);
+    const normalizedOwner = normalizeDeliveryText(point.owner, language);
+    const normalizedAction = normalizeDeliveryText(point.action_taken, language).toUpperCase();
+    const normalizedPreparedAction = normalizeDeliveryText(point.suggested_action, language);
+    const normalizedPreparedContent = normalizeDeliveryText(point.suggested_content, language);
     setCell(sheet, `A${row}`, point.number);
-    setCell(sheet, `B${row}`, point.title);
-    setCell(sheet, `C${row}`, point.description);
-    setCell(sheet, `D${row}`, point.owner);
+    setCell(sheet, `B${row}`, normalizedTitle);
+    setCell(sheet, `C${row}`, normalizedDescription);
+    setCell(sheet, `D${row}`, normalizedOwner);
     setCell(sheet, `E${row}`, point.due_date || (language === 'es' ? 'Por definir' : 'TBD'));
     setCell(sheet, `F${row}`, statusLabel(point.status, language));
     setCell(sheet, `G${row}`, priorityLabel(point.priority, language));
-    setCell(sheet, `H${row}`, point.action_taken.toUpperCase());
+    setCell(sheet, `H${row}`, normalizedAction);
     setCell(sheet, `I${row}`, point.score, '0');
-    setCell(sheet, `J${row}`, point.suggested_action);
-    setCell(sheet, `K${row}`, point.suggested_content);
+    setCell(sheet, `J${row}`, normalizedPreparedAction);
+    setCell(sheet, `K${row}`, normalizedPreparedContent);
   });
+
   const lastRow = Math.max(points.length + 8, 9);
   sheet['!cols'] = [
     { wch: 6 }, { wch: 30 }, { wch: 50 }, { wch: 18 }, { wch: 18 }, { wch: 15 }, { wch: 13 }, { wch: 34 }, { wch: 8 }, { wch: 42 }, { wch: 46 },
@@ -437,7 +478,7 @@ export function buildProjectDecisionWorkbook(input: { project: GenericRow; point
   return workbook;
 }
 
-export function buildProjectDecisionWorkbookFileName(project: GenericRow, panel: ProjectPointPanel, language: 'es' | 'en' = 'es') {
+export function buildProjectDecisionWorkbookFileName(project: GenericRow, panel: ProjectPointPanel, language: DeliveryLanguage = 'es') {
   const projectName = safeFile(text(project.title || project.project_number || 'Proyecto'));
   if (panel === 'customer_pending') {
     return language === 'es'
@@ -449,7 +490,7 @@ export function buildProjectDecisionWorkbookFileName(project: GenericRow, panel:
     : `Project_Management_Log_${projectName}_INGECART_EN.xlsx`;
 }
 
-export async function downloadProjectDecisionWorkbook(input: { project: GenericRow; points: ProjectPointRecord[]; panel: ProjectPointPanel; language?: 'es' | 'en' }) {
+export async function downloadProjectDecisionWorkbook(input: { project: GenericRow; points: ProjectPointRecord[]; panel: ProjectPointPanel; language?: DeliveryLanguage }) {
   const language = input.language || 'es';
   const workbook = buildProjectDecisionWorkbook({ ...input, language });
   const fileName = buildProjectDecisionWorkbookFileName(input.project, input.panel, language);

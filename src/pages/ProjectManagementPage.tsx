@@ -395,7 +395,9 @@ export default function ProjectManagementPage() {
     if (!activeProject) return;
     const points = panel === 'customer_pending' ? activeCustomerPendingPoints : activeProjectManagementPoints;
     const { fileName } = await downloadProjectDecisionWorkbook({ project: activeProject, points, panel, language });
-    toast({ title: 'Excel generated', description: `${fileName} downloaded successfully.` });
+    const title = language === 'es' ? 'Registro generado' : 'Decision log generated';
+    const description = language === 'es' ? `${fileName} descargado correctamente.` : `${fileName} downloaded successfully.`;
+    toast({ title, description });
   };
 
   const renderProjectPointPanel = (panel: ProjectPointPanel, title: string, description: string, points: ProjectPointRecord[]) => {
@@ -420,7 +422,11 @@ export default function ProjectManagementPage() {
                 </Button>
                 <Button variant="outline" onClick={() => handleExportProjectPoints(panel, 'es')}>
                   <FileText className="mr-2 h-4 w-4" />
-                  Export Excel
+                  Export ES
+                </Button>
+                <Button variant="outline" onClick={() => handleExportProjectPoints(panel, 'en')}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Export EN
                 </Button>
                 <Button onClick={() => handleAddProjectPoint(panel)}>
                   <Plus className="mr-2 h-4 w-4" />
