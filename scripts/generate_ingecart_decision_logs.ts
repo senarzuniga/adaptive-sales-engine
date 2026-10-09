@@ -110,7 +110,7 @@ const projectBundles: ProjectBundle[] = [
         makePoint('mb-3', 'Revisar velocidad de la mesa de reenvío a 90 doble motor', 'Debe revisarse la velocidad nominal de la mesa de reenvío para el doble motor y ajustar la lógica si procede.', 'INGECART TEAM', '2026-10-20', 'pending', 'high', 'REALIZAR VALIDACIÓN TÉCNICA Y AJUSTE'),
         makePoint('mb-4', 'Revisar el mínimo de pinza cerrada: debe dar 400 mm en mecánica y digital', 'Se debe comprobar el mínimo de pinza cerrada, tanto en mecánica como en versión digital, con el valor objetivo de 400 mm.', 'INGECART TEAM', '2026-10-21', 'pending', 'critical', 'VALIDAR MÍNIMO DE PINZA CERRADA'),
         makePoint('mb-5', 'Aumento de velocidad', 'Debe analizarse y validarse el aumento de velocidad del paletizador dentro de los límites seguros.', 'INGECART TEAM', '2026-10-24', 'pending', 'high', 'VALIDAR CAPACIDAD DE VELOCIDAD'),
-        makePoint('mb-6', 'Manuales de recambio e información final completa', 'Falta la información final del equipo: esquemas, manual de operación, manuales de recambio y otros documentos.', 'INGECART TEAM', '2026-10-26', 'pending', 'high', 'CONTRATARY REVISAR DOCUMENTACIÓN FINAL'),
+        makePoint('mb-6', 'Manuales de recambio e información final completa', 'Falta la información final del equipo: esquemas, manual de operación, manuales de recambio y otros documentos.', 'INGECART TEAM', '2026-10-26', 'pending', 'high', 'REVISAR DOCUMENTACIÓN FINAL COMPLETA'),
         makePoint('mb-7', 'Listado de recambios imprescindibles', 'Debe prepararse el listado mínimo de recambios imprescindibles para soporte y mantenimiento.', 'INGECART TEAM', '2026-10-28', 'pending', 'high', 'PREPARAR LISTADO DE RECAMBIO IMPRESCINDIBLE'),
         makePoint('mb-8', 'Estudio contrato de mantenimiento anual', 'Hay que revisar el contrato de mantenimiento anual y su alcance técnico y económico.', 'INGECART TEAM', '2026-10-30', 'pending', 'medium', 'REVISAR ALCANCE Y PRESUPUESTO DEL MANTENIMIENTO'),
       ],
@@ -129,7 +129,7 @@ const projectBundles: ProjectBundle[] = [
   {
     folder: 'CARTONAJES FONT',
     subfolder: 'LINEA POTENCIA VAHLEY',
-    title: 'Cartonajes Font · Línea Potencia Valley',
+    title: 'Cartonajes Font · Línea Potencia Vahley',
     customer_name: 'Cartonajes Font',
     project_manager: 'INGECART TEAM / Gerard',
     project_number: 'CF-VALEY-2026',

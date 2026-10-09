@@ -45,9 +45,10 @@ export function normalizeDeliveryText(value: string, language: DeliveryLanguage 
     .replace(/[\u2018\u2019]/g, "'")
     .replace(/[\u201C\u201D]/g, '"')
     .replace(/\u00A0/g, ' ')
+    .replace(/[–—]/g, '-')
     .replace(/\s+/g, ' ')
     .replace(/\s*([.,;:!?])\s*/g, '$1 ')
-    .replace(/\s*[-–—]\s*/g, ' - ')
+    .replace(/\s+-\s+/g, ' - ')
     .trim();
 
   if (!textValue) return '';
@@ -421,64 +422,83 @@ export function buildProjectDecisionWorkbook(input: { project: GenericRow; point
   const blocked = points.filter((point) => point.status === 'blocked').length;
   const open = points.filter((point) => !['confirmed', 'closed'].includes(point.status)).length;
   const critical = points.filter((point) => !['confirmed', 'closed'].includes(point.status) && point.priority === 'critical').length;
-  const title = input.panel === 'customer_pending'
-    ? (language === 'es' ? 'Registro de Decisiones' : 'Decision Log')
-    : (language === 'es' ? 'Registro de Gestión de Proyecto' : 'Project Management Log');
-  const docLabel = input.panel === 'customer_pending'
-    ? (language === 'es' ? 'Registro de decisiones del proyecto' : 'Project decision log')
-    : (language === 'es' ? 'Registro de gestión del proyecto' : 'Project management log');
+  const workbookTitle = language === 'es' ? 'Registro de Decisiones' : 'Decision Log';
+  const docLabel = language === 'es' ? 'Registro de decisiones del proyecto' : 'Project decision log';
 
-  setStyledCell(sheet, 'A1', title, { font: { bold: true, color: { rgb: 'FFFFFFFF' } }, fill: { fgColor: { rgb: 'FF111111' } } });
-  setStyledCell(sheet, 'A2', language === 'es' ? 'INGECART · Engineering & Auditing' : 'INGECART · Engineering & Auditing', { font: { bold: true, color: { rgb: 'FF111111' } } });
-  setCell(sheet, 'A3', language === 'es' ? 'Proyecto' : 'Project');
-  setCell(sheet, 'B3', normalizeDeliveryText(text(input.project.title || input.project.project_number), language) || '—');
-  setCell(sheet, 'C3', language === 'es' ? 'Cliente' : 'Customer');
-  setCell(sheet, 'D3', normalizeDeliveryText(text(input.project.customer_name || '?'), language) || '—');
-  setCell(sheet, 'A4', language === 'es' ? 'Documento' : 'Document');
-  setCell(sheet, 'B4', normalizeDeliveryText(docLabel, language));
-  setCell(sheet, 'C4', language === 'es' ? 'Fecha' : 'Date');
-  setCell(sheet, 'D4', today());
-  setCell(sheet, 'A5', language === 'es' ? 'Responsable' : 'Owner');
-  setCell(sheet, 'B5', normalizeDeliveryText(text(input.project.project_manager || input.project.owner || 'Project team'), language));
-  setCell(sheet, 'C5', 'Rev.');
-  setCell(sheet, 'D5', '1');
-  setCell(sheet, 'A6', language === 'es' ? 'Resumen' : 'Summary');
-  setCell(sheet, 'B6', `${confirmed} ${language === 'es' ? 'confirmados' : 'confirmed'} | ${open} ${language === 'es' ? 'pendientes' : 'pending'} | ${blocked} ${language === 'es' ? 'bloqueados' : 'blocked'}`);
-  setCell(sheet, 'C6', language === 'es' ? 'Abiertos' : 'Open');
-  setCell(sheet, 'D6', `${open} ${language === 'es' ? 'abiertos' : 'open'} | ${critical} ${language === 'es' ? 'críticos' : 'critical'}`);
+  const sectionForPoint = (point: ProjectPointRecord) => {
+    if (['confirmed', 'closed'].includes(point.status)) return 'confirmed' as const;
+    if (point.status === 'blocked' || point.priority === 'critical') return 'critical' as const;
+    return 'normal' as const;
+  };
+  const sectionRows = {
+    confirmed: language === 'es' ? 'CONFIRMADAS' : 'CONFIRMED',
+    critical: language === 'es' ? 'PENDIENTES · PRIORIDAD CRÍTICA' : 'PENDING · CRITICAL PRIORITY',
+    normal: language === 'es' ? 'PENDIENTES · PRIORIDAD ALTA / MEDIA' : 'PENDING · HIGH / MEDIUM PRIORITY',
+  } as const;
+
+  setStyledCell(sheet, 'A1', '', { fill: { fgColor: { rgb: 'FF111111' } } });
+  setStyledCell(sheet, 'A2', '', { fill: { fgColor: { rgb: 'FFFF6600' } } });
+  setCell(sheet, 'A4', 'ingecart · Engineering & Auditing');
+  setStyledCell(sheet, 'E4', workbookTitle, { font: { bold: true } });
+  setCell(sheet, 'E5', normalizeDeliveryText(text(input.project.customer_name || 'Cliente') + ' · ' + text(input.project.title || input.project.project_number || ''), language));
+
+  setCell(sheet, 'B12', language === 'es' ? 'Proyecto' : 'Project');
+  setCell(sheet, 'C12', normalizeDeliveryText(text(input.project.title || input.project.project_number), language) || '—');
+  setCell(sheet, 'E12', language === 'es' ? 'Cliente' : 'Customer');
+  setCell(sheet, 'F12', normalizeDeliveryText(text(input.project.customer_name || '—'), language) || '—');
+  setCell(sheet, 'B13', language === 'es' ? 'Documento' : 'Document');
+  setCell(sheet, 'C13', docLabel);
+  setCell(sheet, 'E13', language === 'es' ? 'Fecha' : 'Date');
+  setCell(sheet, 'F13', today());
+  setCell(sheet, 'B14', language === 'es' ? 'Responsable' : 'Owner');
+  setCell(sheet, 'C14', normalizeDeliveryText(text(input.project.project_manager || input.project.owner || 'INGECART TEAM'), language));
+  setCell(sheet, 'E14', 'Rev.');
+  setCell(sheet, 'F14', '1');
+  setCell(sheet, 'B15', language === 'es' ? 'Resumen' : 'Summary');
+  setCell(sheet, 'C15', `${confirmed} ${language === 'es' ? 'confirmados' : 'confirmed'} · ${open} ${language === 'es' ? 'pendientes' : 'pending'} · ${blocked} ${language === 'es' ? 'bloqueados' : 'blocked'}`);
+  setCell(sheet, 'E15', language === 'es' ? 'Abiertos' : 'Open');
+  setCell(sheet, 'F15', `${open} ${language === 'es' ? 'abiertos' : 'open'} · ${critical} ${language === 'es' ? 'críticos' : 'critical'}`);
 
   const headers = language === 'es'
-    ? ['#', 'Punto de decisión', 'Descripción', 'Responsable', 'Fecha límite / confirmación', 'Estado', 'Prioridad', 'Acción realizada', 'Score', 'Acción preparada', 'Contenido preparado']
-    : ['#', 'Decision point', 'Description', 'Owner', 'Due / confirmation date', 'Status', 'Priority', 'Action taken', 'Score', 'Prepared action', 'Prepared content'];
-  headers.forEach((header, index) => setStyledCell(sheet, `${XLSX.utils.encode_col(index)}8`, header, { font: { bold: true, color: { rgb: 'FFFFFFFF' } }, fill: { fgColor: { rgb: 'FF111111' } } }));
+    ? ['#', 'Punto de decisión', 'Descripción', 'Responsable', 'Fecha límite / confirmación', 'Estado', 'Prioridad', 'Acción realizada']
+    : ['#', 'Decision point', 'Description', 'Owner', 'Due / confirmation date', 'Status', 'Priority', 'Action taken'];
+  headers.forEach((header, index) => setStyledCell(sheet, `${XLSX.utils.encode_col(index)}17`, header, { font: { bold: true, color: { rgb: 'FFFFFFFF' } }, fill: { fgColor: { rgb: 'FF111111' } } }));
 
-  points.forEach((point, index) => {
-    const row = index + 9;
-    const normalizedTitle = normalizeDeliveryText(point.title, language);
-    const normalizedDescription = normalizeDeliveryText(point.description, language);
-    const normalizedOwner = normalizeDeliveryText(point.owner, language);
-    const normalizedAction = normalizeDeliveryText(point.action_taken, language).toUpperCase();
-    const normalizedPreparedAction = normalizeDeliveryText(point.suggested_action, language);
-    const normalizedPreparedContent = normalizeDeliveryText(point.suggested_content, language);
-    setCell(sheet, `A${row}`, point.number);
-    setCell(sheet, `B${row}`, normalizedTitle);
-    setCell(sheet, `C${row}`, normalizedDescription);
-    setCell(sheet, `D${row}`, normalizedOwner);
-    setCell(sheet, `E${row}`, point.due_date || (language === 'es' ? 'Por definir' : 'TBD'));
-    setCell(sheet, `F${row}`, statusLabel(point.status, language));
-    setCell(sheet, `G${row}`, priorityLabel(point.priority, language));
-    setCell(sheet, `H${row}`, normalizedAction);
-    setCell(sheet, `I${row}`, point.score, '0');
-    setCell(sheet, `J${row}`, normalizedPreparedAction);
-    setCell(sheet, `K${row}`, normalizedPreparedContent);
+  const orderedSections = ['confirmed', 'critical', 'normal'] as const;
+  let row = 18;
+  orderedSections.forEach((section) => {
+    const rows = points.filter((point) => sectionForPoint(point) === section);
+    setStyledCell(sheet, `A${row}`, sectionRows[section], { font: { bold: true, color: { rgb: 'FFFFFFFF' } }, fill: { fgColor: { rgb: 'FFFF6600' } } });
+    row += 1;
+    rows.forEach((point) => {
+      const normalizedAction = normalizeDeliveryText(point.action_taken, language).toUpperCase();
+      setCell(sheet, `A${row}`, point.number);
+      setCell(sheet, `B${row}`, normalizeDeliveryText(point.title, language));
+      setCell(sheet, `C${row}`, normalizeDeliveryText(point.description, language));
+      setCell(sheet, `D${row}`, normalizeDeliveryText(point.owner, language));
+      setCell(sheet, `E${row}`, point.due_date || (language === 'es' ? 'Por definir' : 'TBD'));
+      setCell(sheet, `F${row}`, statusLabel(point.status, language));
+      setCell(sheet, `G${row}`, priorityLabel(point.priority, language));
+      setCell(sheet, `H${row}`, normalizedAction);
+      row += 1;
+    });
   });
 
-  const lastRow = Math.max(points.length + 8, 9);
+  const reserveRows = 30;
+  row += reserveRows;
+  setCell(sheet, `A${row + 1}`, language === 'es'
+    ? 'INGECART · Engineering & Auditing — Registro de decisiones del proyecto.'
+    : 'INGECART · Engineering & Auditing — Project decision log.');
+  setCell(sheet, `A${row + 2}`, language === 'es'
+    ? 'Nota: las fechas marcadas "aprox." están reconstruidas a posteriori. "Por definir" = fecha límite aún sin fijar.'
+    : 'Note: dates marked "approx." were reconstructed afterwards. "TBD" = due date still not defined.');
+
+  const lastRow = row + 2;
   sheet['!cols'] = [
-    { wch: 6 }, { wch: 30 }, { wch: 50 }, { wch: 18 }, { wch: 18 }, { wch: 15 }, { wch: 13 }, { wch: 34 }, { wch: 8 }, { wch: 42 }, { wch: 46 },
+    { wch: 6 }, { wch: 38 }, { wch: 62 }, { wch: 20 }, { wch: 19 }, { wch: 15 }, { wch: 13 }, { wch: 44 },
   ];
-  sheet['!ref'] = `A1:K${lastRow}`;
-  XLSX.utils.book_append_sheet(workbook, sheet, safeSheet(language === 'es' ? 'Registro' : 'Decision Log'));
+  sheet['!ref'] = `A1:H${lastRow}`;
+  XLSX.utils.book_append_sheet(workbook, sheet, safeSheet(language === 'es' ? 'Registro de decisiones' : 'Decision Log'));
   return workbook;
 }
 

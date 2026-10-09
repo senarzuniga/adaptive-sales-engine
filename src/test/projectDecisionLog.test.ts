@@ -63,10 +63,11 @@ describe('project decision log', () => {
       language: 'es',
     });
 
-    expect(workbook.SheetNames).toEqual(['Registro']);
-    expect(workbook.Sheets.Registro.A1.v).toBe('Registro de Decisiones');
-    expect(workbook.Sheets.Registro.B3.v).toBe('Auxiliar conveyor upgrade');
-    expect(workbook.Sheets.Registro.A8.v).toBe('#');
+    expect(workbook.SheetNames).toEqual(['Registro de decisiones']);
+    expect(workbook.Sheets['Registro de decisiones'].E4.v).toBe('Registro de Decisiones');
+    expect(workbook.Sheets['Registro de decisiones'].C12.v).toBe('Auxiliar conveyor upgrade');
+    expect(workbook.Sheets['Registro de decisiones'].A17.v).toBe('#');
+    expect(workbook.Sheets['Registro de decisiones'].A18.v).toBe('CONFIRMADAS');
 
     const fileName = buildProjectDecisionWorkbookFileName({
       title: 'Auxiliar / Site Upgrade',
