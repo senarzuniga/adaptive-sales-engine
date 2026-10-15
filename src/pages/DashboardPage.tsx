@@ -3,13 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { buildPipelineMetrics, getProbabilityGuidance, isOpenOpportunityStatus, normalizeOpportunityStatus, parseFlexibleNumber } from '@/lib/salesData';
 import { isWorkspaceSupabaseConfigured, readWorkspaceRows } from '@/lib/workspaceStorage';
 import { useData } from '@/store/DataStore';
-import { Activity, AlertTriangle, ArrowRight, BarChart3, Bot, Brain, Building2, Calculator, CircleDollarSign, ClipboardList, FileText, FolderKanban, Layers, SearchCheck, ShieldAlert, Target, Upload, Users, Wrench } from 'lucide-react';
+import { Activity, AlertTriangle, ArrowRight, BarChart3, Bot, Brain, Building2, Calculator, CircleDollarSign, ClipboardList, FileText, FolderKanban, Layers, SearchCheck, Settings2, ShieldAlert, Target, Upload, Users, Wrench } from 'lucide-react';
 
 type Row = Record<string, any>;
 interface WorkspaceOfferRow extends Row {
@@ -38,6 +41,27 @@ interface WorkspaceSnapshot {
   afterSalesOpportunities: Row[];
   serviceContracts: Row[];
 }
+
+type OfferStatusFilter = 'all' | 'open' | 'won' | 'lost';
+
+type ForecastHypothesis = {
+  id: string;
+  statement: string;
+  impactPct: number;
+  projectedQuarter: number;
+  projectedYear: number;
+  createdAt: string;
+};
+
+type StrategyHypothesis = {
+  id: string;
+  statement: string;
+  winRateDelta: number;
+  pipelineDelta: number;
+  projectedWinRate: number;
+  projectedWeightedPipeline: number;
+  createdAt: string;
+};
 
 const EMPTY_SNAPSHOT: WorkspaceSnapshot = { offers: [], projects: [], milestones: [], risks: [], costs: [], afterSalesOpportunities: [], serviceContracts: [] };
 const isIsoDate = (value: unknown) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
@@ -92,8 +116,17 @@ const loadBundledWorkspaceSnapshot = async (companyName: string): Promise<Worksp
 const DashboardPage = () => {
   const navigate = useNavigate();
   const { language } = useLanguage();
+  const isEs = language === 'es';
   const { data, hasData, activeCompanyId, companies, commercialSnapshot, aiActionQueue } = useData();
   const [workspaceSnapshot, setWorkspaceSnapshot] = useState<WorkspaceSnapshot>(EMPTY_SNAPSHOT);
+  const [offerStatusFilter, setOfferStatusFilter] = useState<OfferStatusFilter>('all');
+  const [forecastHypothesisText, setForecastHypothesisText] = useState('');
+  const [forecastImpactPct, setForecastImpactPct] = useState(0);
+  const [forecastHypotheses, setForecastHypotheses] = useState<ForecastHypothesis[]>([]);
+  const [strategyHypothesisText, setStrategyHypothesisText] = useState('');
+  const [strategyWinRateDelta, setStrategyWinRateDelta] = useState(0);
+  const [strategyPipelineDelta, setStrategyPipelineDelta] = useState(0);
+  const [strategyHypotheses, setStrategyHypotheses] = useState<StrategyHypothesis[]>([]);
   const activeCompany = useMemo(() => companies.find((company) => company.id === activeCompanyId) || data.companyProfile, [activeCompanyId, companies, data.companyProfile]);
   const labels = useMemo(() => language === 'es' ? {
     title: 'Daily Execution Console', subtitle: 'Cuadro de mando operativo para dirigir la empresa y conectar CRM, ofertas, proyectos y finanzas.', controlTitle: 'Commercial & Project Control', nextActions: 'Next Best Actions', offerControl: 'Offer Control Tower', projectControl: 'Project Portfolio', finance: 'Finance Control', aiBrief: 'AI Executive Brief', funnel: 'Customer Journey Funnel', workContexts: 'Work Contexts', noCompany: 'Selecciona una empresa para activar el cuadro de mando.', noData: 'Todavia no hay suficientes datos operativos para construir el cuadro de mando.', uploadData: 'Cargar datos', openOffers: 'Abrir ofertas', openProjects: 'Abrir proyectos', active: 'Activa', pipeline: 'Pipeline', weightedPipeline: 'Weighted pipeline', forecastQuarter: 'Forecast trimestre', forecastYear: 'Forecast ano', activeProjects: 'Proyectos activos', criticalProjects: 'Proyectos criticos', marginForecast: 'Margen previsto', riskAccumulated: 'Riesgo acumulado', pendingBilling: 'Facturacion pendiente', pendingCollections: 'Cobros pendientes', cashExposure: 'Cash exposure', maxFinancingNeed: 'Necesidad maxima de financiacion', revenueAtRisk: 'Revenue at Risk', offersAtRisk: 'Offers at risk', offersExpiring: 'Offers expiring', winRate: 'Win rate', viewContext: 'Ver contexto', prepareAction: 'Preparar accion', accountHealth: 'Customer Context', noActions: 'No hay acciones criticas detectadas.', noOffers: 'No hay ofertas vivas visibles.', noProjects: 'No hay proyectos activos visibles.'
@@ -161,6 +194,7 @@ const DashboardPage = () => {
   ], (row) => String(row.offer_number || `${row.customer_name}|${row.title}`)), [data.opportunities, data.orders]);
 
   const offerRows = useMemo<WorkspaceOfferRow[]>(() => workspaceSnapshot.offers.length > 0 ? workspaceSnapshot.offers : derivedOffers, [derivedOffers, workspaceSnapshot.offers]);
+  const allVisibleOffers = useMemo(() => offerStatusFilter === 'all' ? offerRows : offerRows.filter((offer) => normalizeOfferBucket(offer.status) === offerStatusFilter), [offerRows, offerStatusFilter]);
   const openOffers = useMemo(() => offerRows.filter((offer) => normalizeOfferBucket(offer.status) === 'open'), [offerRows]);
   const soldOffers = useMemo(() => offerRows.filter((offer) => normalizeOfferBucket(offer.status) === 'won'), [offerRows]);
   const lostOffers = useMemo(() => offerRows.filter((offer) => normalizeOfferBucket(offer.status) === 'lost'), [offerRows]);
@@ -296,6 +330,48 @@ const DashboardPage = () => {
     return Array.from(customers.entries()).map(([name, stats]) => ({ name, ...stats })).sort((left, right) => (right.revenue + right.pipeline + right.projects * 100000) - (left.revenue + left.pipeline + left.projects * 100000)).slice(0, 6);
   }, [activeProjects, data.orders, nextBestActions, openOffers]);
 
+  const saveForecastHypothesis = () => {
+    if (!forecastHypothesisText.trim()) return;
+    const impactFactor = 1 + forecastImpactPct / 100;
+    setForecastHypotheses((current) => [{
+      id: crypto.randomUUID(),
+      statement: forecastHypothesisText.trim(),
+      impactPct: forecastImpactPct,
+      projectedQuarter: Math.max(0, forecastQuarter * impactFactor),
+      projectedYear: Math.max(0, forecastYear * impactFactor),
+      createdAt: new Date().toISOString(),
+    }, ...current]);
+    setForecastHypothesisText('');
+    setForecastImpactPct(0);
+  };
+
+  const saveStrategyHypothesis = () => {
+    if (!strategyHypothesisText.trim()) return;
+    const weightedBaseline = weightedPipelineValue || pipelineMetrics.weightedOpenRevenue;
+    const projectedWinRate = Math.max(0, Math.min(100, winRate + strategyWinRateDelta));
+    setStrategyHypotheses((current) => [{
+      id: crypto.randomUUID(),
+      statement: strategyHypothesisText.trim(),
+      winRateDelta: strategyWinRateDelta,
+      pipelineDelta: strategyPipelineDelta,
+      projectedWinRate,
+      projectedWeightedPipeline: Math.max(0, weightedBaseline * (1 + strategyPipelineDelta / 100)),
+      createdAt: new Date().toISOString(),
+    }, ...current]);
+    setStrategyHypothesisText('');
+    setStrategyWinRateDelta(0);
+    setStrategyPipelineDelta(0);
+  };
+
+  const openOfferForEditing = (offer: WorkspaceOfferRow) => {
+    navigate('/offer-pricing', {
+      state: {
+        openTab: 'history',
+        openOfferId: offer.id ? String(offer.id) : undefined,
+        focusOfferNumber: String(offer.offer_number || ''),
+      },
+    });
+  };
   const workContexts = useMemo(() => [
     { label: 'CRM', detail: `${accountRows.length} accounts`, route: '/commercial-actions-repository', icon: Users },
     { label: 'Sales', detail: `${compactEuro(weightedPipelineValue || pipelineMetrics.weightedOpenRevenue)} weighted`, route: '/360-analysis', icon: BarChart3 },
@@ -464,23 +540,86 @@ const DashboardPage = () => {
           <div className="grid grid-cols-1 2xl:grid-cols-3 gap-6">
             <Card className="2xl:col-span-2">
               <CardHeader><CardTitle className="text-base">{labels.offerControl}</CardTitle></CardHeader>
-              <CardContent>
-                {openOffers.length === 0 ? <p className="text-sm text-muted-foreground">{labels.noOffers}</p> : (
-                  <div className="overflow-x-auto">
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                  <div className="rounded-lg border p-4 space-y-3">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{isEs ? 'Panel de hipotesis de forecast' : 'Forecast hypothesis panel'}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{isEs ? 'Prueba escenarios y estima impacto en el forecast trimestral y anual.' : 'Test assumptions and estimate impact on quarter and year forecast.'}</p>
+                    </div>
+                    <Textarea value={forecastHypothesisText} onChange={(event) => setForecastHypothesisText(event.target.value)} placeholder={isEs ? 'Ej: Acelerar seguimiento en ofertas >200K para aumentar cierre en Q4.' : 'E.g., Accelerate follow-up on >200K offers to increase Q4 close rate.'} />
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Input type="number" value={forecastImpactPct} onChange={(event) => setForecastImpactPct(Number(event.target.value || 0))} placeholder={isEs ? 'Impacto %' : 'Impact %'} />
+                      <Button onClick={saveForecastHypothesis} disabled={!forecastHypothesisText.trim()}>{isEs ? 'Guardar hipotesis' : 'Save hypothesis'}</Button>
+                    </div>
+                    <div className="space-y-2 max-h-44 overflow-y-auto">
+                      {forecastHypotheses.length === 0 ? <p className="text-xs text-muted-foreground">{isEs ? 'Sin hipotesis todavia.' : 'No hypotheses yet.'}</p> : forecastHypotheses.map((hypothesis) => (
+                        <div key={hypothesis.id} className="rounded-md border p-2 text-xs">
+                          <p className="font-medium text-foreground">{hypothesis.statement}</p>
+                          <p className="text-muted-foreground mt-1">{isEs ? 'Impacto' : 'Impact'}: {hypothesis.impactPct.toFixed(1)}%  {labels.forecastQuarter}: {compactEuro(hypothesis.projectedQuarter)}  {labels.forecastYear}: {compactEuro(hypothesis.projectedYear)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border p-4 space-y-3">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{isEs ? 'Panel de hipotesis de estrategia' : 'Strategy hypothesis panel'}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{isEs ? 'Modela cambios de estrategia comercial y su efecto esperado.' : 'Model sales strategy changes and their expected effect.'}</p>
+                    </div>
+                    <Textarea value={strategyHypothesisText} onChange={(event) => setStrategyHypothesisText(event.target.value)} placeholder={isEs ? 'Ej: Priorizar cuentas Tier A y renegociar margen minimo.' : 'E.g., Prioritize Tier A accounts and renegotiate minimum margin.'} />
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <Input type="number" value={strategyWinRateDelta} onChange={(event) => setStrategyWinRateDelta(Number(event.target.value || 0))} placeholder={isEs ? 'Delta win rate %' : 'Win-rate delta %'} />
+                      <Input type="number" value={strategyPipelineDelta} onChange={(event) => setStrategyPipelineDelta(Number(event.target.value || 0))} placeholder={isEs ? 'Delta pipeline %' : 'Pipeline delta %'} />
+                      <Button onClick={saveStrategyHypothesis} disabled={!strategyHypothesisText.trim()}>{isEs ? 'Guardar hipotesis' : 'Save hypothesis'}</Button>
+                    </div>
+                    <div className="space-y-2 max-h-44 overflow-y-auto">
+                      {strategyHypotheses.length === 0 ? <p className="text-xs text-muted-foreground">{isEs ? 'Sin hipotesis todavia.' : 'No hypotheses yet.'}</p> : strategyHypotheses.map((hypothesis) => (
+                        <div key={hypothesis.id} className="rounded-md border p-2 text-xs">
+                          <p className="font-medium text-foreground">{hypothesis.statement}</p>
+                          <p className="text-muted-foreground mt-1">{labels.winRate}: {hypothesis.projectedWinRate.toFixed(1)}%  {labels.weightedPipeline}: {compactEuro(hypothesis.projectedWeightedPipeline)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Select value={offerStatusFilter} onValueChange={(value) => setOfferStatusFilter(value as OfferStatusFilter)}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{isEs ? 'Todas las ofertas' : 'All offers'}</SelectItem>
+                        <SelectItem value="open">{isEs ? 'Abiertas' : 'Open'}</SelectItem>
+                        <SelectItem value="won">{isEs ? 'Ganadas' : 'Won'}</SelectItem>
+                        <SelectItem value="lost">{isEs ? 'Perdidas' : 'Lost'}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Badge variant="outline">{allVisibleOffers.length} {isEs ? 'ofertas' : 'offers'}</Badge>
+                  </div>
+                  <Button variant="outline" onClick={() => navigate('/offer-pricing', { state: { openTab: 'history' } })}>{isEs ? 'Abrir historial de ofertas' : 'Open offers history'}</Button>
+                </div>
+
+                {allVisibleOffers.length === 0 ? <p className="text-sm text-muted-foreground">{labels.noOffers}</p> : (
+                  <div className="overflow-x-auto max-h-[420px] rounded-lg border">
                     <table className="w-full text-sm">
-                      <thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="py-2 pr-3">Customer</th><th className="py-2 pr-3">Offer</th><th className="py-2 pr-3 text-right">Value</th><th className="py-2 pr-3 text-right">Prob.</th><th className="py-2 pr-3">Status</th></tr></thead>
+                      <thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="py-2 px-3">Customer</th><th className="py-2 px-3">Offer</th><th className="py-2 px-3 text-right">Value</th><th className="py-2 px-3 text-right">Prob.</th><th className="py-2 px-3">Status</th><th className="py-2 px-3">Actions</th></tr></thead>
                       <tbody>
-                        {[...openOffers].sort((left, right) => asNumber(right.contract_value) - asNumber(left.contract_value)).slice(0, 8).map((offer) => {
+                        {[...allVisibleOffers].sort((left, right) => asNumber(right.contract_value) - asNumber(left.contract_value)).map((offer) => {
                           const probability = Math.max(0, Math.min(100, asNumber(offer.probability)));
                           const expiry = daysUntil(offer.decision_date);
                           const level: 'critical' | 'warning' | 'good' = probability < 60 || (expiry !== null && expiry <= 7) ? 'critical' : probability < 80 || (expiry !== null && expiry <= 14) ? 'warning' : 'good';
+                          const bucket = normalizeOfferBucket(offer.status);
                           return (
                             <tr key={`${offer.offer_number}-${offer.customer_name}-${offer.title}`} className="border-b align-top last:border-0">
-                              <td className="py-3 pr-3"><p className="font-medium text-foreground">{offer.customer_name || 'Customer'}</p><p className="text-xs text-muted-foreground mt-1">{offer.kam || offer.country || offer.region || 'ASE'}</p></td>
-                              <td className="py-3 pr-3"><p className="text-foreground">{offer.offer_number || 'Offer'}</p><p className="text-xs text-muted-foreground mt-1">{offer.title || offer.project_description || 'Untitled offer'}</p></td>
-                              <td className="py-3 pr-3 text-right tabular-nums">{compactEuro(asNumber(offer.contract_value))}</td>
-                              <td className="py-3 pr-3 text-right tabular-nums">{probability.toFixed(0)}%</td>
-                              <td className="py-3 pr-3"><Badge variant="outline" className={toneClass(level)}>{level.toUpperCase()}</Badge></td>
+                              <td className="py-3 px-3"><p className="font-medium text-foreground">{offer.customer_name || 'Customer'}</p><p className="text-xs text-muted-foreground mt-1">{offer.kam || offer.country || offer.region || 'ASE'}</p></td>
+                              <td className="py-3 px-3"><p className="text-foreground">{offer.offer_number || 'Offer'}</p><p className="text-xs text-muted-foreground mt-1">{offer.title || offer.project_description || 'Untitled offer'}</p></td>
+                              <td className="py-3 px-3 text-right tabular-nums">{compactEuro(asNumber(offer.contract_value))}</td>
+                              <td className="py-3 px-3 text-right tabular-nums">{probability.toFixed(0)}%</td>
+                              <td className="py-3 px-3"><div className="space-y-1"><Badge variant="outline">{String(offer.status || bucket).toUpperCase()}</Badge><Badge variant="outline" className={toneClass(level)}>{level.toUpperCase()}</Badge></div></td>
+                              <td className="py-3 px-3"><Button size="sm" variant="outline" onClick={() => openOfferForEditing(offer)}><Settings2 className="h-3 w-3 mr-1" />{isEs ? 'Editar oferta' : 'Edit offer'}</Button></td>
                             </tr>
                           );
                         })}
@@ -551,4 +690,5 @@ const DashboardPage = () => {
 };
 
 export default DashboardPage;
+
 

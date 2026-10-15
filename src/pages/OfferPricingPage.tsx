@@ -1,5 +1,5 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useData } from '@/store/DataStore';
 import { supabase } from '@/integrations/supabase/client';
@@ -181,6 +181,13 @@ type OfferDraftSnapshot = {
   serviceContent: ServiceOfferContent | null;
 };
 
+type OfferHistorySortKey = 'offer_number' | 'title' | 'customer_name' | 'status' | 'contract_value' | 'probability' | 'updated_at';
+type OfferPricingNavigationState = {
+  openTab?: 'builder' | 'analysis' | 'history' | 'summary';
+  openOfferId?: string;
+  focusOfferNumber?: string;
+};
+
 const hasMeaningfulDraftSnapshot = (snapshot: OfferDraftSnapshot) =>
   Boolean(
     snapshot.offerTitle.trim() ||
@@ -221,6 +228,7 @@ const isMissingRelationError = (error: any) => {
 
 export default function OfferPricingPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { language } = useLanguage();
   const { activeCompanyId: selectedCompanyId, data, setContacts } = useData();
   const isEs = language === 'es';
@@ -255,6 +263,9 @@ export default function OfferPricingPage() {
   const [exportingOfferId, setExportingOfferId] = useState<string | null>(null);
   const [savedOffers, setSavedOffers] = useState<any[]>([]);
   const [historySearch, setHistorySearch] = useState('');
+  const [historyStatusFilter, setHistoryStatusFilter] = useState('all');
+  const [historySortKey, setHistorySortKey] = useState<OfferHistorySortKey>('updated_at');
+  const [historySortDirection, setHistorySortDirection] = useState<'asc' | 'desc'>('desc');
   const [activeTab, setActiveTab] = useState('builder');
   const [companyRates, setCompanyRates] = useState<any[]>([]);
   const [catalogSelection, setCatalogSelection] = useState('');
@@ -890,11 +901,63 @@ export default function OfferPricingPage() {
     };
   }, [packageSummaryRows, totals.direct, totals.total, targetMargin, principalPackagePriceOverride, offerTotalPriceOverride]);
 
+  const historyStatusOptions = useMemo(() => {
+    const statuses = new Set<string>();
+    savedOffers.forEach((offer) => {
+      const status = String(offer.status || '').trim().toLowerCase();
+      if (status) statuses.add(status);
+    });
+    return Array.from(statuses).sort((left, right) => left.localeCompare(right));
+  }, [savedOffers]);
+
   const filteredSavedOffers = useMemo(() => {
     const needle = historySearch.trim().toLowerCase();
-    if (!needle) return savedOffers;
-    return savedOffers.filter((offer) => [offer.offer_number, offer.title, offer.customer_name, offer.status].some((value) => String(value || '').toLowerCase().includes(needle)));
-  }, [historySearch, savedOffers]);
+    const filtered = savedOffers.filter((offer) => {
+      if (historyStatusFilter !== 'all' && String(offer.status || '').trim().toLowerCase() !== historyStatusFilter) {
+        return false;
+      }
+      if (!needle) return true;
+      return [offer.offer_number, offer.title, offer.customer_name, offer.status, offer.contract_value, offer.probability]
+        .some((value) => String(value || '').toLowerCase().includes(needle));
+    });
+
+    const direction = historySortDirection === 'asc' ? 1 : -1;
+    return filtered.slice().sort((left, right) => {
+      if (historySortKey === 'contract_value' || historySortKey === 'probability') {
+        const leftValue = Number(left[historySortKey] || 0);
+        const rightValue = Number(right[historySortKey] || 0);
+        return (leftValue - rightValue) * direction;
+      }
+      if (historySortKey === 'updated_at') {
+        const leftValue = new Date(String(left.updated_at || left.created_at || 0)).getTime();
+        const rightValue = new Date(String(right.updated_at || right.created_at || 0)).getTime();
+        return (leftValue - rightValue) * direction;
+      }
+      const leftValue = String(left[historySortKey] || '').toLowerCase();
+      const rightValue = String(right[historySortKey] || '').toLowerCase();
+      return leftValue.localeCompare(rightValue) * direction;
+    });
+  }, [historySearch, historySortDirection, historySortKey, historyStatusFilter, savedOffers]);
+
+  useEffect(() => {
+    const navigationState = location.state as OfferPricingNavigationState | null;
+    if (!navigationState) return;
+
+    if (navigationState.openTab) setActiveTab(navigationState.openTab);
+    if (navigationState.focusOfferNumber) setHistorySearch(String(navigationState.focusOfferNumber));
+
+    if (navigationState.openOfferId) {
+      if (savedOffers.length === 0) return;
+      const target = savedOffers.find((offer) => offer.id === navigationState.openOfferId);
+      if (target) {
+        void loadOfferForEditing(target);
+      } else {
+        setActiveTab('history');
+      }
+    }
+
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate, savedOffers]);
 
   // Known customers come from the central store (orders, opportunities, leads, contacts) plus saved offers.
   const knownCustomers = useMemo(() => {
@@ -2544,7 +2607,45 @@ export default function OfferPricingPage() {
             <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />{isEs ? 'Ofertas Guardadas' : 'Saved Offers'}</CardTitle></CardHeader>
             <CardContent>
               <div className="mb-4">
-                <Input value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} placeholder={isEs ? 'Buscar por numero, titulo, cliente o estado' : 'Search by offer #, title, customer or status'} aria-label={isEs ? 'Buscar ofertas' : 'Search offers'} />
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                  <Input value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} placeholder={isEs ? 'Buscar por numero, titulo, cliente, estado o valor' : 'Search by offer #, title, customer, status, or value'} aria-label={isEs ? 'Buscar ofertas' : 'Search offers'} className="md:col-span-2" />
+                  <Select value={historyStatusFilter} onValueChange={setHistoryStatusFilter}>
+                    <SelectTrigger aria-label={isEs ? 'Filtrar por estado' : 'Filter by status'}>
+                      <SelectValue placeholder={isEs ? 'Estado' : 'Status'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{isEs ? 'Todos los estados' : 'All statuses'}</SelectItem>
+                      {historyStatusOptions.map((status) => (
+                        <SelectItem key={status} value={status}>{status}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex gap-2">
+                    <Select value={historySortKey} onValueChange={(value) => setHistorySortKey(value as OfferHistorySortKey)}>
+                      <SelectTrigger aria-label={isEs ? 'Ordenar por' : 'Sort by'}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="updated_at">{isEs ? 'Fecha' : 'Date'}</SelectItem>
+                        <SelectItem value="offer_number">{isEs ? 'N Oferta' : 'Offer #'}</SelectItem>
+                        <SelectItem value="title">{isEs ? 'Titulo' : 'Title'}</SelectItem>
+                        <SelectItem value="customer_name">{isEs ? 'Cliente' : 'Customer'}</SelectItem>
+                        <SelectItem value="status">{isEs ? 'Estado' : 'Status'}</SelectItem>
+                        <SelectItem value="contract_value">{isEs ? 'Valor' : 'Value'}</SelectItem>
+                        <SelectItem value="probability">{isEs ? 'Probabilidad' : 'Probability'}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={historySortDirection} onValueChange={(value) => setHistorySortDirection(value as 'asc' | 'desc')}>
+                      <SelectTrigger aria-label={isEs ? 'Direccion del orden' : 'Sort direction'} className="w-28">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="desc">{isEs ? 'Desc' : 'Desc'}</SelectItem>
+                        <SelectItem value="asc">{isEs ? 'Asc' : 'Asc'}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
               {savedOffers.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">{isEs ? 'Sin ofertas guardadas' : 'No saved offers'}</p>
@@ -2558,6 +2659,8 @@ export default function OfferPricingPage() {
                       <TableHead>{isEs ? "Ttulo" : 'Title'}</TableHead>
                       <TableHead>{isEs ? 'Cliente' : 'Customer'}</TableHead>
                       <TableHead>{isEs ? 'Estado' : 'Status'}</TableHead>
+                      <TableHead className="text-right">{isEs ? 'Valor' : 'Value'}</TableHead>
+                      <TableHead className="text-right">{isEs ? 'Prob.' : 'Prob.'}</TableHead>
                       <TableHead>{isEs ? 'Fecha' : 'Date'}</TableHead>
                       <TableHead>{isEs ? 'Acciones' : 'Actions'}</TableHead>
                     </TableRow>
@@ -2589,6 +2692,8 @@ export default function OfferPricingPage() {
                             </SelectContent>
                           </Select>
                         </TableCell>
+                        <TableCell className="text-right tabular-nums">{fmt(Number(o.contract_value || 0))}</TableCell>
+                        <TableCell className="text-right tabular-nums">{Number(o.probability || 0).toFixed(0)}%</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{new Date(o.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
@@ -2820,6 +2925,7 @@ export default function OfferPricingPage() {
     </div>
   );
 }
+
 
 
 
