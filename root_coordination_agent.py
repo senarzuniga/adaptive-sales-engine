@@ -168,6 +168,28 @@ class RootCoordinationAgent:
         """Mantiene la repo de mejora continua actualizada."""
         return self.continuous_improvement.refresh(state=state, mission_event=event)
 
+    def _normalize_context(self, context: dict[str, Any] | str | None) -> dict[str, Any]:
+        if context is None:
+            return {}
+        if isinstance(context, dict):
+            return context
+        parsed = json.loads(context)
+        if not isinstance(parsed, dict):
+            raise ValueError("El contexto debe ser un objeto JSON (dict).")
+        return parsed
+
+    def run_from_chatbox(
+        self,
+        prompt: str,
+        context: dict[str, Any] | str | None = None,
+    ) -> dict[str, Any]:
+        """Entrada amigable para chatbox usando un único prompt."""
+        mission = prompt.strip() if prompt else "Gobernanza del ecosistema"
+        objective = (
+            "Coordinar, priorizar y ejecutar la misión con trazabilidad y mejora continua"
+        )
+        return self.run(mission=mission, objective=objective, context=self._normalize_context(context))
+
     def run(
         self,
         mission: str,
@@ -216,12 +238,15 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Agente raíz de coordinación y mejora continua.")
+    parser.add_argument("--prompt", default="", help="Prompt directo para uso desde chatbox")
     parser.add_argument("--mission", default="Gobernanza del ecosistema", help="Nombre de la misión")
     parser.add_argument("--objective", default="Asegurar coordinación y mejora continua del repositorio", help="Objetivo principal")
     parser.add_argument("--context", default="{}", help="Contexto JSON opcional")
     args = parser.parse_args()
 
-    context = json.loads(args.context) if args.context else {}
     agent = RootCoordinationAgent()
-    result = agent.run(args.mission, args.objective, context=context)
+    if args.prompt:
+        result = agent.run_from_chatbox(prompt=args.prompt, context=args.context)
+    else:
+        result = agent.run(args.mission, args.objective, context=agent._normalize_context(args.context))
     print(json.dumps(result, ensure_ascii=False, indent=2))
