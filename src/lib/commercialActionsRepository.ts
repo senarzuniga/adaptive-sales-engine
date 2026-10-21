@@ -1,4 +1,4 @@
-﻿import type { MonitoringTask, TaskCategory, TaskPillar, TaskPriority } from '@/store/DataStore';
+import type { MonitoringTask, TaskCategory, TaskPillar, TaskPriority } from '@/store/DataStore';
 
 export interface ActionTrigger {
   event: string;
@@ -107,8 +107,8 @@ const PLAN_POSTVENTA_IMPORT_ROWS: PlanPostventaRow[] = [
   { machine: "Ingetrans 250", customer: "Trupal", number: "1.0", action: "Negociar con Mast Ebre la soluci\u00f3n y su colaboraci\u00f3n", billable: "No", priority: "Alta", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
   { machine: "Ingetrans 250", customer: "Trupal", number: "2.0", action: "Responder al cliente con la soluci\u00f3n", billable: "No", priority: "Alta", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
   { machine: "Ingetrans 250", customer: "Trupal", number: "3.0", action: "Ejecuci\u00f3n de la soluci\u00f3n", billable: "No", priority: "Alta", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
-  { machine: "SR 1400", customer: "Line Text (Kelly Box)", number: "1", action: "Preparar ofertas de recambios o plan de mantenimiento", billable: "S\u00ed", priority: "Media", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
-  { machine: "SR 1400", customer: "Line Text (Kelly Box)", number: "2.0", action: "Preparar ofertas de recambios o plan de mantenimiento", billable: "S\u00ed", priority: "Media", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "SR 1400", customer: "Linetex (Kelly Box)", number: "1", action: "Preparar ofertas de recambios o plan de mantenimiento", billable: "S\u00ed", priority: "Media", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
+  { machine: "SR 1400", customer: "Linetex (Kelly Box)", number: "2.0", action: "Preparar ofertas de recambios o plan de mantenimiento", billable: "S\u00ed", priority: "Media", status: "Pendiente", owner: "", start: "", end: "", days: "", comments: "" },
 ];
 
 export const PLAN_POSTVENTA_ACTION_COUNT = PLAN_POSTVENTA_IMPORT_ROWS.length;
@@ -811,5 +811,6 @@ export function generateActionByRule(context: Partial<TriggerContext>): { stage:
 
   return generated;
 }
+
 
 

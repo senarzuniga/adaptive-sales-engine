@@ -9,6 +9,7 @@ import { Building2, Network, Target, TrendingUp, Users, ShieldCheck, Lightbulb, 
 import { fmt } from '@/components/analysis360/AnalysisUtils';
 import { isNeglectedStatus, isOpportunityCoveredByOrder, isOpenOpportunityStatus } from '@/lib/salesData';
 import { listOfferDocuments } from '@/lib/offerDocumentRegistry';
+import { inferKamOwner } from '@/lib/kamNormalization';
 
 type AccountRecord = {
   customer: string;
@@ -69,7 +70,8 @@ const KeyAccountManagementPage = () => {
       const name = order.customerName || 'Unknown account';
       const record = ensure(name);
       record.revenue += order.sellingPrice || 0;
-      if (order.kam && !record.kamOwner) record.kamOwner = order.kam;
+      const orderKam = inferKamOwner({ existingKam: order.kam, customerName: order.customerName, country: order.country, region: order.region, fallbackKam: 'Ingecart' });
+      if (!record.kamOwner && orderKam) record.kamOwner = orderKam;
       if (order.region && !record.regions.includes(order.region)) record.regions.push(order.region);
       if (order.productFamily && !record.products.includes(order.productFamily)) record.products.push(order.productFamily);
     });
@@ -82,7 +84,8 @@ const KeyAccountManagementPage = () => {
         record.weightedPipeline += (opp.estRevenue || 0) * ((opp.contractProb || 0) / 100);
       }
       if (isNeglectedStatus(opp.status)) record.neglected += 1;
-      if (opp.kam && !record.kamOwner) record.kamOwner = opp.kam;
+      const opportunityKam = inferKamOwner({ existingKam: opp.kam, customerName: opp.customerName, country: opp.country, region: opp.region, fallbackKam: 'Ingecart' });
+      if (!record.kamOwner && opportunityKam) record.kamOwner = opportunityKam;
       if (opp.region && !record.regions.includes(opp.region)) record.regions.push(opp.region);
       if (opp.productFamily && !record.products.includes(opp.productFamily)) record.products.push(opp.productFamily);
       record.avgProb += opp.contractProb || 0;
@@ -92,7 +95,8 @@ const KeyAccountManagementPage = () => {
       const name = lead.companyName || lead.leadName || 'Unknown account';
       const record = ensure(name);
       record.leadCount += 1;
-      if (lead.owner && !record.kamOwner) record.kamOwner = lead.owner;
+      const leadKam = inferKamOwner({ existingKam: lead.owner, customerName: lead.companyName, country: lead.country, region: lead.region, fallbackKam: 'Ingecart' });
+      if (!record.kamOwner && leadKam) record.kamOwner = leadKam;
       if (lead.region && !record.regions.includes(lead.region)) record.regions.push(lead.region);
       if (lead.sector && !record.sector) record.sector = lead.sector;
     });
@@ -101,7 +105,8 @@ const KeyAccountManagementPage = () => {
       const name = contact.companyName || contact.name || 'Unknown account';
       const record = ensure(name);
       record.contactCount += 1;
-      if (contact.kam && !record.kamOwner) record.kamOwner = contact.kam;
+      const contactKam = inferKamOwner({ existingKam: contact.kam, customerName: contact.companyName, country: contact.country, region: contact.region, fallbackKam: 'Ingecart' });
+      if (!record.kamOwner && contactKam) record.kamOwner = contactKam;
       if (contact.region && !record.regions.includes(contact.region)) record.regions.push(contact.region);
       if (contact.department && !record.sector) record.sector = contact.department;
     });
@@ -364,9 +369,9 @@ const KeyAccountManagementPage = () => {
         accountName: 'Saica',
         sender: 'cgo@ingecart.es',
         recipient: 'saica.procurement@saica.com',
-        subject: 'Auditoría de servicios',
+        subject: 'AuditorÃ­a de servicios',
         receivedAt: '2026-08-26',
-        summary: 'Revisión del alcance del proyecto de auditoría y coordinación de servicios técnicos.',
+        summary: 'RevisiÃ³n del alcance del proyecto de auditorÃ­a y coordinaciÃ³n de servicios tÃ©cnicos.',
         direction: 'outbound',
       },
     ];
@@ -459,7 +464,7 @@ const KeyAccountManagementPage = () => {
       id: order.id || `${order.customerName}-${order.oppNumber}`,
       title: order.customerName || 'Pedido',
       value: order.sellingPrice || 0,
-      summary: `${order.productFamily || 'Product'} · ${order.scope || 'Scope pending'} · ${order.poDate || 'Date pending'}`,
+      summary: `${order.productFamily || 'Product'} Â· ${order.scope || 'Scope pending'} Â· ${order.poDate || 'Date pending'}`,
       meta: {
         amount: order.sellingPrice || 0,
         margin: order.margin || 0,
@@ -473,7 +478,7 @@ const KeyAccountManagementPage = () => {
       id: opp.oppNumber || `${opp.customerName}-${opp.status}`,
       title: opp.customerName || 'Opportunity',
       value: opp.estRevenue || 0,
-      summary: `${opp.productFamily || 'Product'} · ${opp.status} · ${opp.contractProb || 0}%`,
+      summary: `${opp.productFamily || 'Product'} Â· ${opp.status} Â· ${opp.contractProb || 0}%`,
       meta: {
         amount: opp.estRevenue || 0,
         margin: opp.margin || 0,
@@ -488,14 +493,14 @@ const KeyAccountManagementPage = () => {
         id: `${contact.email}-${contact.name}`,
         title: contact.name || 'Contacto',
         value: 1,
-        summary: `${contact.role || 'Stakeholder'} · ${contact.email || 'Email pending'}`,
+        summary: `${contact.role || 'Stakeholder'} Â· ${contact.email || 'Email pending'}`,
         meta: { amount: 1, margin: 0, kam: contact.kam || 'Unassigned', status: 'Active', product: 'Stakeholder', region: contact.region || 'Not assigned' },
       })),
       ...selectedAccountLeads.map((lead) => ({
         id: `${lead.leadName}-${lead.companyName}`,
         title: lead.leadName || lead.companyName || 'Lead',
         value: 1,
-        summary: `${lead.status || 'Open'} · ${lead.email || 'Email pending'}`,
+        summary: `${lead.status || 'Open'} Â· ${lead.email || 'Email pending'}`,
         meta: { amount: 1, margin: 0, kam: lead.owner || 'Unassigned', status: lead.status || 'Open', product: 'Lead', region: lead.region || 'Not assigned' },
       })),
     ],
@@ -760,7 +765,7 @@ const KeyAccountManagementPage = () => {
                     <CardHeader className="flex flex-row items-center justify-between gap-2">
                       <div>
                         <CardTitle className="text-base">{selectedAccount.customer}</CardTitle>
-                        <p className="text-xs text-muted-foreground mt-1">{selectedAccount.regions.join(', ') || selectedAccount.sector || 'Portfolio account'} · {selectedAccount.kamOwner || 'Owner pending'}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{selectedAccount.regions.join(', ') || selectedAccount.sector || 'Portfolio account'} Â· {selectedAccount.kamOwner || 'Owner pending'}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <Button type="button" variant={selectedAccountStrategic ? 'default' : 'outline'} size="sm" onClick={() => toggleStrategicStatus(selectedAccount.customer)}>{selectedAccountStrategic ? 'Strategic ON' : 'Set as strategic'}</Button>
@@ -838,7 +843,7 @@ const KeyAccountManagementPage = () => {
                             </div>
                           </div>
                         ))}</div></div>
-                        <div className="rounded-md border p-3"><div className="flex items-center justify-between gap-2 text-sm font-medium"><div className="flex items-center gap-2"><Factory className="h-4 w-4 text-primary" /> Active plants</div><Button type="button" variant="outline" size="sm" onClick={addPlantToAccount}>Add plant</Button></div><div className="mt-2 space-y-2 text-xs text-muted-foreground">{selectedAccountPlantList.map((plant) => (<div key={plant.id} className="border-b pb-1 last:border-b-0 last:pb-0"><p className="font-medium text-foreground">{plant.plantName}</p><p>{plant.region} · {plant.status}</p><p>{plant.contact}</p></div>))}</div></div>
+                        <div className="rounded-md border p-3"><div className="flex items-center justify-between gap-2 text-sm font-medium"><div className="flex items-center gap-2"><Factory className="h-4 w-4 text-primary" /> Active plants</div><Button type="button" variant="outline" size="sm" onClick={addPlantToAccount}>Add plant</Button></div><div className="mt-2 space-y-2 text-xs text-muted-foreground">{selectedAccountPlantList.map((plant) => (<div key={plant.id} className="border-b pb-1 last:border-b-0 last:pb-0"><p className="font-medium text-foreground">{plant.plantName}</p><p>{plant.region} Â· {plant.status}</p><p>{plant.contact}</p></div>))}</div></div>
                         <div className="rounded-md border p-3"><div className="flex items-center gap-2 text-sm font-medium"><Briefcase className="h-4 w-4 text-primary" /> Active project signals</div><div className="mt-2 space-y-2 text-xs text-muted-foreground">{selectedAccountProjects.length === 0 ? <p>No mapped projects</p> : selectedAccountProjects.map((project) => (<div key={project.name} className="border-b pb-1 last:border-b-0 last:pb-0"><p className="font-medium text-foreground">{project.name}</p><p>{project.status}</p><p>{fmt(project.value)}</p></div>))}</div></div>
                       </div>
 
@@ -850,7 +855,7 @@ const KeyAccountManagementPage = () => {
                               <div key={record.id} className="flex items-center justify-between border rounded-md p-2">
                                 <div>
                                   <p className="font-medium text-foreground">{record.name}</p>
-                                  <p className="text-muted-foreground">{record.type} · {record.product}</p>
+                                  <p className="text-muted-foreground">{record.type} Â· {record.product}</p>
                                 </div>
                                 <div className="text-right">
                                   <p className="font-medium text-foreground">{fmt(record.value)}</p>
@@ -883,7 +888,7 @@ const KeyAccountManagementPage = () => {
                               <div key={doc.id} className="flex items-center justify-between border rounded-md p-2">
                                 <div>
                                   <p className="font-medium text-foreground">{doc.name}</p>
-                                  <p className="text-muted-foreground">{doc.type} · {doc.owner}</p>
+                                  <p className="text-muted-foreground">{doc.type} Â· {doc.owner}</p>
                                 </div>
                                 <span className="text-muted-foreground">{doc.updatedAt}</span>
                               </div>
@@ -955,7 +960,7 @@ const KeyAccountManagementPage = () => {
                     ) : knownContacts.map((contact) => (
                       <div key={`${contact.email}-${contact.name}`} className="border rounded-md p-2">
                         <p className="font-medium">{contact.name || contact.email}</p>
-                        <p className="text-muted-foreground">{contact.role || 'Commercial contact'} · {contact.email || 'email pending'}</p>
+                        <p className="text-muted-foreground">{contact.role || 'Commercial contact'} Â· {contact.email || 'email pending'}</p>
                       </div>
                     ))}
                   </div>
@@ -970,7 +975,7 @@ const KeyAccountManagementPage = () => {
                 <Card key={account.customer}>
                   <CardHeader><CardTitle className="text-base">{account.customer}</CardTitle></CardHeader>
                   <CardContent className="space-y-2">
-                    {account.plan.map((item) => <p key={item} className="text-xs text-muted-foreground">• {item}</p>)}
+                    {account.plan.map((item) => <p key={item} className="text-xs text-muted-foreground">â€¢ {item}</p>)}
                     <div className="pt-2 text-xs text-foreground font-medium">Horizon: {account.horizon}</div>
                   </CardContent>
                 </Card>
@@ -1011,3 +1016,4 @@ const KeyAccountManagementPage = () => {
 };
 
 export default KeyAccountManagementPage;
+

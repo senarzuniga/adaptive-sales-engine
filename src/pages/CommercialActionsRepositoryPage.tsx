@@ -34,6 +34,7 @@ import {
 } from '@/lib/commercialActionsRepository';
 import { Layers, Play, Plus, Rocket, Save, Target, Timer, Wand2 } from 'lucide-react';
 import { isWorkspaceSupabaseConfigured, readWorkspaceRows } from '@/lib/workspaceStorage';
+import { canonicalizeKamOwner, inferKamOwner } from '@/lib/kamNormalization';
 
 const getPathLabel = (value: string) => value.split(/[\\/]/).pop() || value;
 
@@ -125,6 +126,8 @@ const ACCOUNT_KAM_MAP: Record<string, string> = {
   pmp: 'Linetex',
   torsacor: 'Linetex',
   sigmaq: 'Linetex',
+  rapidbond: 'Linetex',
+  'rapid bond': 'Linetex',
   'smurfit westrock': 'Heriberto',
   'smurfit westrock mexico': 'Heriberto',
   'pcm mexico': 'Heriberto',
@@ -182,11 +185,18 @@ const inferProductType = (text: string): 'service' | 'equipment' => {
   return 'equipment';
 };
 
-const inferKam = (customerName: string, existingKam: string) => {
-  if (existingKam) return existingKam;
+const inferKam = (customerName: string, existingKam: string, country = '', region = '') => {
+  const normalizedExisting = canonicalizeKamOwner(existingKam);
+  if (normalizedExisting) return normalizedExisting;
   const normalized = normalizeText(customerName || '');
-  const match = Object.entries(ACCOUNT_KAM_MAP).find(([account]) => normalized.includes(account));
-  return match ? match[1] : 'Ingecart';
+  const mapped = Object.entries(ACCOUNT_KAM_MAP).find(([account]) => normalized.includes(account));
+  return inferKamOwner({
+    existingKam: mapped ? mapped[1] : '',
+    customerName,
+    country,
+    region,
+    fallbackKam: mapped ? mapped[1] : 'Ingecart',
+  });
 };
 
 const pipelineDemoOffers: Array<Record<string, any>> = [
@@ -303,7 +313,7 @@ const normalizeOfferPipelineEntry = (offer: Record<string, any>): OfferPipelineE
   const productName = String(offer.product_name || offer.product || title);
   const productFamily = String(offer.product_family || inferProductFamily(`${title} ${contextText}`));
   const productType = inferProductType(`${title} ${contextText}`);
-  const kam = inferKam(customerName, String(offer.kam || ''));
+  const kam = inferKam(customerName, String(offer.kam || ''), String(offer.country || ''), region);
   const stage = offer.stage ? String(offer.stage) as PipelineStage : normalizePipelineStage(status, bucket);
 
   return {
@@ -1031,7 +1041,7 @@ const CommercialActionsRepositoryPage = () => {
                       >
                         <div className="flex items-center justify-between text-sm mb-2">
                           <span className="font-medium">{PIPELINE_STAGE_LABELS[summary.stage]}</span>
-                          <span>{summary.count} items · EUR {Math.round(summary.value).toLocaleString()}</span>
+                          <span>{summary.count} items Â· EUR {Math.round(summary.value).toLocaleString()}</span>
                         </div>
                         <div className="h-2 bg-muted rounded-full overflow-hidden">
                           <div className="h-full bg-primary" style={{ width: `${ratio}%` }} />
@@ -1052,7 +1062,7 @@ const CommercialActionsRepositoryPage = () => {
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="text-sm font-medium">{entry.customer_name}</p>
-                          <p className="text-xs text-muted-foreground">{entry.title} · {entry.offer_number}</p>
+                          <p className="text-xs text-muted-foreground">{entry.title} Â· {entry.offer_number}</p>
                         </div>
                         <Badge variant={entry.score >= 85 ? 'default' : 'secondary'}>{PIPELINE_STAGE_LABELS[entry.stage]}</Badge>
                       </div>
@@ -1269,6 +1279,7 @@ const CommercialActionsRepositoryPage = () => {
 };
 
 export default CommercialActionsRepositoryPage;
+
 
 
 
