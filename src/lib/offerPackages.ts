@@ -1,4 +1,4 @@
-﻿import { DEFAULT_INGECART_POLICY, type OfferCostPolicy } from '@/lib/utils';
+import { DEFAULT_INGECART_POLICY, type OfferCostPolicy } from '@/lib/utils';
 
 export type OfferPackageType = 'core' | 'optional' | 'installation';
 
@@ -77,7 +77,7 @@ const EMPTY_CATEGORY_TOTALS = (): OfferCostCategoryTotals => ({
 export const DEFAULT_PAYMENT_MILESTONES: PaymentMilestone[] = [
   { id: 'po', percentage: 30, description: 'by bank transfer with the purchase order' },
   { id: 'engineering', percentage: 20, description: 'by bank transfer with the completion of engineering package' },
-  { id: 'ready', percentage: 45, description: "by bank transfer upon notification that the goods are ready for collection at INGECART\'s workshops" },
+  { id: 'ready', percentage: 45, description: "by bank transfer upon notification that the goods are ready for collection at INGECART's workshops" },
   { id: 'commissioning', percentage: 5, description: 'by bank transfer at commissioning, and no later than 90 days from the Certificate of Loading / check-in' },
 ];
 
@@ -314,5 +314,6 @@ export const buildPackageExecutiveDetail = (pkg: OfferPackageDraft, items: Offer
   if (!isInstallationPackage(pkg, costRows)) return base;
   return [base, INSTALLATION_ASSOCIATED_COSTS_TEXT, INSTALLATION_CUSTOMER_SUPPORT_TEXT].filter(Boolean).join(' ');
 };
+
 
 

@@ -45,7 +45,7 @@ const text = (value: unknown) => String(value || '').trim();
 const num = (value: unknown) => Number(value || 0);
 const pct = (value: unknown) => Number(value || 0) / 100;
 
-const sheetNameSafe = (value: string) => value.replace(/[\\/?*\[\]:]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 31) || 'Sheet';
+const sheetNameSafe = (value: string) => value.replace(/[\\/?*[\]:]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 31) || 'Sheet';
 const fileSafe = (value: string) => value.replace(/[<>:"/\\|?*]+/g, '_').replace(/\s+/g, '_').trim() || 'offer';
 
 const categoryLabel = (value: string, language: ExportLanguage) => {
@@ -376,3 +376,4 @@ export async function downloadOfferCostWorkbook(input: OfferCostExportInput): Pr
   window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
   return { fileName };
 }
+
