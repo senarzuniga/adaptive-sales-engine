@@ -16,7 +16,7 @@ import { dedupeOpportunities, dedupeOrders, getActivePipelineOpportunities, isNe
 
 const COLORS = ['hsl(var(--primary))', 'hsl(35,90%,55%)', 'hsl(150,60%,45%)', 'hsl(280,60%,55%)', 'hsl(0,70%,55%)', 'hsl(200,70%,50%)'];
 
-const fmt = (v: number) => v >= 1_000_000 ? `â‚¬${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `â‚¬${(v / 1_000).toFixed(0)}K` : `â‚¬${v.toFixed(0)}`;
+const fmt = (v: number) => v >= 1_000_000 ? `EUR ${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `EUR ${(v / 1_000).toFixed(0)}K` : `EUR ${v.toFixed(0)}`;
 
 type PipelineStage = 'contact' | 'qualification' | 'meeting' | 'proposal' | 'negotiation' | 'closing' | 'retention';
 
@@ -176,7 +176,7 @@ const SalesArchitecturePage = () => {
   const totalNeglectedValue = useMemo(() => opportunities.filter(o => isNeglectedStatus(o.status)).reduce((s, o) => s + o.estRevenue, 0), [opportunities]);
   const totalNeglectedCount = useMemo(() => opportunities.filter(o => isNeglectedStatus(o.status)).length, [opportunities]);
 
-  // â”€â”€ Parse company profile for structure info â”€â”€
+  // -- Parse company profile for structure info --
   const companyInsights = useMemo(() => {
     const notes = company?.additional_notes || '';
     const desc = company?.business_description || '';
@@ -187,8 +187,8 @@ const SalesArchitecturePage = () => {
     const teamSize = employees ? parseInt(employees[1]) : null;
     const serviceRadius = fullText.match(/(\d+)\s*km\s*radius/i);
     const outsourceRatio = fullText.match(/(\d+)%\s*outsourced/i);
-    const currentRevenue = fullText.match(/Revenue:\s*â‚¬([\d.,]+)M/i);
-    const targetRevenue = fullText.match(/targeting\s*â‚¬([\d.,]+)M/i) || fullText.match(/Target.*?â‚¬([\d.,]+)M/i);
+    const currentRevenue = fullText.match(/Revenue:\s*(?:EUR\s*)?([\d.,]+)M/i);
+    const targetRevenue = fullText.match(/targeting\s*(?:EUR\s*)?([\d.,]+)M/i) || fullText.match(/Target.*?(?:EUR\s*)?([\d.,]+)M/i);
 
     return {
       teamSize,
@@ -199,7 +199,7 @@ const SalesArchitecturePage = () => {
     };
   }, [company]);
 
-  // â”€â”€ Regional Analysis â”€â”€
+  // -- Regional Analysis --
   const regionalAnalysis = useMemo(() => {
     const regionMap: Record<string, { pipeline: number; oppCount: number; customers: Set<string>; sold: number; neglected: number; neglectedValue: number; kams: Set<string> }> = {};
     const ensureRegion = (region: string) => {
@@ -261,7 +261,7 @@ const SalesArchitecturePage = () => {
       .sort((a, b) => (b.pipeline + b.sold) - (a.pipeline + a.sold));
   }, [opportunities, orders]);
 
-  // â”€â”€ KAM Performance â”€â”€
+  // -- KAM Performance --
   const kamAnalysis = useMemo(() => {
     const kamMap: Record<string, { pipeline: number; oppCount: number; sold: number; neglected: number; neglectedValue: number; regions: Set<string>; customers: Set<string> }> = {};
     const ensureKam = (kam: string) => {
@@ -320,7 +320,7 @@ const SalesArchitecturePage = () => {
     })).sort((a, b) => (b.pipeline + b.sold) - (a.pipeline + a.sold));
   }, [opportunities, orders]);
 
-  // â”€â”€ Structure Recommendations (rule-based) â”€â”€
+  // -- Structure Recommendations (rule-based) --
   const kamPipelineStageData = useMemo(() => {
     const rows = opportunities
       .filter((opportunity) => selectedKamPipeline === 'all' || (opportunity.kam || 'Unassigned') === selectedKamPipeline)
@@ -389,8 +389,8 @@ const SalesArchitecturePage = () => {
     if (totalNeglected > 0) {
       recs.push({
         type: 'critical',
-        title: `â‚¬${(totalNeglected / 1_000_000).toFixed(1)}M in Neglected Opportunities`,
-        detail: `${totalNeglectedCount} opportunities worth â‚¬${(totalNeglected / 1_000_000).toFixed(1)}M are unattended or neglected. This signals insufficient commercial coverage capacity.`,
+        title: `EUR ${(totalNeglected / 1_000_000).toFixed(1)}M in Neglected Opportunities`,
+        detail: `${totalNeglectedCount} opportunities worth EUR ${(totalNeglected / 1_000_000).toFixed(1)}M are unattended or neglected. This signals insufficient commercial coverage capacity.`,
       });
     }
 
@@ -411,7 +411,7 @@ const SalesArchitecturePage = () => {
       recs.push({
         type: 'warning',
         title: 'Spain Market Underserved Despite Proximity',
-        detail: `${spainData.neglected} opportunities neglected in Spain (${fmt(spainData.neglectedValue)}). With HQ in Spain, this shouldn't happen â€” consider back-office commercial support.`,
+        detail: `${spainData.neglected} opportunities neglected in Spain (${fmt(spainData.neglectedValue)}). With HQ in Spain, this should not happen - consider back-office commercial support.`,
         region: 'SPAIN',
       });
     }
@@ -445,7 +445,7 @@ const SalesArchitecturePage = () => {
         recs.push({
           type: 'warning',
           title: 'Revenue/Employee Ratio Too High for Target',
-          detail: `Target of ${fmt(companyInsights.targetRevenue)} with ${companyInsights.teamSize} employees = ${fmt(revenuePerPerson)}/person. Industry benchmark is â‚¬200-300K. Consider adding commercial roles.`,
+          detail: `Target of ${fmt(companyInsights.targetRevenue)} with ${companyInsights.teamSize} employees = ${fmt(revenuePerPerson)}/person. Industry benchmark is EUR 200-300K. Consider adding commercial roles.`,
         });
       }
     }
@@ -453,7 +453,7 @@ const SalesArchitecturePage = () => {
     return recs;
   }, [regionalAnalysis, kamAnalysis, companyInsights, totalNeglectedValue, totalOpenPipelineValue, totalNeglectedCount]);
 
-  // â”€â”€ Proposed Structure â”€â”€
+  // -- Proposed Structure --
   const proposedStructure = useMemo(() => {
     const roles: { role: string; type: string; location: string; rationale: string; priority: 'high' | 'medium' | 'low'; cost: string }[] = [];
     const usaPipeline = regionalAnalysis.find(r => r.region === 'USA');
@@ -467,7 +467,7 @@ const SalesArchitecturePage = () => {
       location: 'HQ (Spain)',
       rationale: 'Centralized support for quotes, follow-ups, CRM management. Frees KAMs from admin tasks. Critical to prevent opportunity neglect.',
       priority: 'high',
-      cost: 'â‚¬30-40K/year',
+      cost: 'EUR 30-40K/year',
     });
 
     // USA agent (already LINETEX)
@@ -490,7 +490,7 @@ const SalesArchitecturePage = () => {
         location: 'HQ (Spain)',
         rationale: `Spain has ${fmt(spainPipeline.pipeline)} pipeline with ${spainPipeline.neglected} neglected deals. An inside sales role can cover local market and support service business growth.`,
         priority: 'medium',
-        cost: 'â‚¬35-50K/year + variable',
+        cost: 'EUR 35-50K/year + variable',
       });
     }
 
@@ -527,14 +527,14 @@ const SalesArchitecturePage = () => {
         location: 'Spain (National)',
         rationale: `Current service limited to ${companyInsights.serviceRadius}km. Scaling from local maintenance to national contract-based service requires a dedicated commercial role.`,
         priority: 'medium',
-        cost: 'â‚¬40-55K/year + bonus',
+        cost: 'EUR 40-55K/year + bonus',
       });
     }
 
     return roles;
   }, [regionalAnalysis, companyInsights]);
 
-  // â”€â”€ AI Recommendation Engine â”€â”€
+  // -- AI Recommendation Engine --
   const generateFallbackRecommendation = () => {
     return buildSalesArchitectureFallbackRecommendation({
       companyName: company?.company_name || 'Company',
@@ -675,7 +675,7 @@ const SalesArchitecturePage = () => {
             <Users className="h-4 w-4 text-muted-foreground" />
             <p className="text-xs text-muted-foreground">Team Size</p>
           </div>
-          <p className="text-2xl font-bold text-foreground">{companyInsights.teamSize || 'â€”'}</p>
+          <p className="text-2xl font-bold text-foreground">{companyInsights.teamSize || '-'}</p>
           <p className="text-[10px] text-muted-foreground">employees</p>
         </CardContent></Card>
         <Card><CardContent className="pt-5 pb-4">
@@ -733,7 +733,7 @@ const SalesArchitecturePage = () => {
           <TabsTrigger value="recommendation">AI Recommendation</TabsTrigger>
         </TabsList>
 
-        {/* â”€â”€ Regional Coverage â”€â”€ */}
+        {/* -- Regional Coverage -- */}
         <TabsContent value="coverage" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
@@ -743,7 +743,7 @@ const SalesArchitecturePage = () => {
                   <BarChart data={regionChartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <YAxis tickFormatter={(v) => v >= 1_000_000 ? `â‚¬${(v / 1_000_000).toFixed(0)}M` : `â‚¬${(v / 1_000).toFixed(0)}K`} stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                    <YAxis tickFormatter={(v) => v >= 1_000_000 ? `EUR ${(v / 1_000_000).toFixed(0)}M` : `EUR ${(v / 1_000).toFixed(0)}K`} stroke="hsl(var(--muted-foreground))" fontSize={11} />
                     <Tooltip formatter={(v: number) => fmt(v)} />
                     <Legend />
                     <Bar dataKey="sold" fill="hsl(150,60%,45%)" name="Sold" stackId="total" radius={[0, 0, 0, 0]} />
@@ -799,7 +799,7 @@ const SalesArchitecturePage = () => {
                           <Badge variant="secondary" className="text-[10px]">None</Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-xs">{r.kams.length > 0 ? r.kams.join(', ') : 'â€”'}</TableCell>
+                      <TableCell className="text-xs">{r.kams.length > 0 ? r.kams.join(', ') : '-'}</TableCell>
                       <TableCell className="text-xs">
                         <Badge variant="outline" className="text-[10px]">
                           {r.region === 'USA' ? 'Exclusive Agent' : r.region === 'SPAIN' ? 'Direct + Back Office' : r.region === 'LATAM' ? "Finder's Fee" : 'Agent Network'}
@@ -813,7 +813,7 @@ const SalesArchitecturePage = () => {
           </Card>
         </TabsContent>
 
-        {/* â”€â”€ Proposed Structure â”€â”€ */}
+        {/* -- Proposed Structure -- */}
         <TabsContent value="structure" className="space-y-4">
           <Card>
             <CardHeader>
@@ -887,7 +887,7 @@ const SalesArchitecturePage = () => {
           </div>
         </TabsContent>
 
-        {/* â”€â”€ KAM Analysis â”€â”€ */}
+        {/* -- KAM Analysis -- */}
         <TabsContent value="kam" className="space-y-4">
           <Card>
             <CardHeader><CardTitle className="text-base">KAM / Agent Performance & Coverage</CardTitle></CardHeader>
@@ -971,7 +971,7 @@ const SalesArchitecturePage = () => {
                         <TableCell className="text-xs text-right">
                           {k.neglected > 0 ? (
                             <Badge variant="destructive" className="text-[10px]">{k.neglected}</Badge>
-                          ) : 'â€”'}
+                          ) : '-'}
                         </TableCell>
                         <TableCell>
                           <Badge variant={score >= 3 ? 'default' : score >= 2 ? 'secondary' : 'destructive'} className="text-[10px]">
@@ -987,7 +987,7 @@ const SalesArchitecturePage = () => {
           </Card>
         </TabsContent>
 
-        {/* â”€â”€ AI Recommendation â”€â”€ */}
+        {/* -- AI Recommendation -- */}
         <TabsContent value="action-plans" className="space-y-4">
           <Card>
             <CardHeader><CardTitle className="text-base">KAM Action Plan Progress</CardTitle></CardHeader>

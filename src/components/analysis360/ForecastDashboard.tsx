@@ -444,7 +444,7 @@ export const ForecastDashboard = ({ companyId, company, orders, opportunities, o
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <p className="font-medium text-sm">{candidate.name}</p>
-                        <p className="text-xs text-muted-foreground">{candidate.source} Â· {candidate.line === 'equipment' ? 'Equipment' : 'After-sales / Services'} Â· {candidate.period}</p>
+                        <p className="text-xs text-muted-foreground">{candidate.source} - {candidate.line === 'equipment' ? 'Equipment' : 'After-sales / Services'} - {candidate.period}</p>
                       </div>
                       <Badge variant={included ? 'secondary' : 'outline'}>{included ? 'Included' : 'Excluded'}</Badge>
                     </div>

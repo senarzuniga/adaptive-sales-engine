@@ -1,4 +1,4 @@
-import type { MonitoringTask, TaskCategory, TaskPillar, TaskPriority } from '@/store/DataStore';
+﻿import type { MonitoringTask, TaskCategory, TaskPillar, TaskPriority } from '@/store/DataStore';
 
 export interface ActionTrigger {
   event: string;
@@ -128,7 +128,7 @@ const PLAN_POSTVENTA_PRIORITY_ALIGNMENT: Record<string, number> = {
 function normalizePlanKey(value: string): string {
   return String(value || '')
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^A-Za-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
     .toUpperCase();
@@ -418,6 +418,41 @@ export const DEFAULT_REPOSITORY: ActionsRepository = {
 
 const REQUIRED_FIELDS: ReadonlyArray<keyof CommercialAction> = ['id', 'description', 'role', 'inputs', 'outputs', 'triggers', 'kpis', 'ai_tags'];
 
+const EXTERNAL_ALLOWED_INPUTS = new Set<string>([
+  'market_signals',
+  'crm_data',
+  'historical_data',
+  'external_signals',
+  'crm_lead_history',
+  'segment_priority',
+  'lead_profile',
+  'historical_conversion',
+  'firmographics',
+  'open_offer',
+  'contract_probability',
+  'deal_value',
+  'health_score',
+  'nps',
+  'support_tickets',
+  'usage_data',
+  'account_plan',
+  'product_adoption',
+  'action_pool',
+  'goal_weights',
+  'resource_capacity',
+  'nps_score',
+  'feedback_items',
+  'service_history',
+  'contract_end_date',
+  'value_realization',
+  'stakeholder_map',
+  'product_gaps',
+  'customer_outcomes',
+  'roi_metrics',
+  'event_payload',
+  'churn_model_score',
+]);
+
 export function cloneRepository(repository: ActionsRepository): ActionsRepository {
   return JSON.parse(JSON.stringify(repository));
 }
@@ -463,7 +498,7 @@ export function validateRepository(repository: ActionsRepository): RepositoryVal
 
   for (const action of flattenActions(repository)) {
     for (const input of action.inputs || []) {
-      if (['market_signals', 'crm_data', 'historical_data', 'external_signals'].includes(input)) continue;
+      if (EXTERNAL_ALLOWED_INPUTS.has(input)) continue;
       if (!outputs.has(input)) {
         issues.push(`Action ${action.id} input '${input}' is not produced by previous actions`);
       }
@@ -776,3 +811,5 @@ export function generateActionByRule(context: Partial<TriggerContext>): { stage:
 
   return generated;
 }
+
+
