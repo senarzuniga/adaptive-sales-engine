@@ -7,6 +7,7 @@ import { inferProductCategory, parseProductComments, serializeProductComments, t
 import type { DatasetQualityReport, NormalizedEntityRegistries } from '@/agents/dataManagementAgent';
 import type { EnrichedCompanyProfile } from '@/agents/customerEnrichmentAgent';
 import { buildSeedProductCatalog } from '@/lib/productKnowledge';
+import { inferKamOwner } from '@/lib/kamNormalization';
 
 // Offline / localStorage mode when Supabase is not configured
 export const isSupabaseConfigured =
@@ -388,6 +389,26 @@ const buildAiActionQueue = ({
   });
 };
 
+const normalizeKamValue = (kam: string, customerName: string, country: string, region: string) => inferKamOwner({
+  existingKam: kam,
+  customerName,
+  country,
+  region,
+  fallbackKam: 'Ingecart',
+});
+
+const normalizeLeadOwner = (owner: string, companyName: string, country: string, region: string) => inferKamOwner({
+  existingKam: owner,
+  customerName: companyName,
+  country,
+  region,
+  fallbackKam: 'Ingecart',
+});
+
+const normalizeStrategyKam = (kam: string) => inferKamOwner({
+  existingKam: kam,
+  fallbackKam: 'Ingecart',
+});
 // DB to App mappers
 function dbToOrder(r: any): OrderRecord {
   return {
@@ -396,7 +417,7 @@ function dbToOrder(r: any): OrderRecord {
     customerName: r.customer_name || '', scope: r.scope || '', productFamily: r.product_family || '',
     segment: r.segment || '', purchasingYear: r.purchasing_year || '',
     purchasingQuarter: r.purchasing_quarter || '', purchasingMonth: r.purchasing_month || '',
-    sellingPrice: parseFlexibleNumber(r.selling_price), margin: parseFlexibleNumber(r.margin), kam: r.kam || '',
+    sellingPrice: parseFlexibleNumber(r.selling_price), margin: parseFlexibleNumber(r.margin), kam: normalizeKamValue(r.kam || '', r.customer_name || '', r.country || '', r.region || ''),
   };
 }
 
@@ -409,7 +430,7 @@ function dbToOpportunity(r: any): OpportunityRecord {
     productFamily: r.product_family || '', segment: r.segment || '',
     estPurchasingYear: r.est_purchasing_year || '', estPurchasingQuarter: r.est_purchasing_quarter || '',
     estRevenue: parseFlexibleNumber(r.est_revenue), contractProb: parseFlexibleNumber(r.contract_prob),
-    margin: parseFlexibleNumber(r.margin), contact: r.contact || '', kam: r.kam || '',
+    margin: parseFlexibleNumber(r.margin), contact: r.contact || '', kam: normalizeKamValue(r.kam || '', r.customer_name || '', r.country || '', r.region || ''),
   };
 }
 
@@ -443,7 +464,7 @@ function dbToStrategy(r: any): StrategyRecord {
   return {
     productFamily: r.product_family || '', numberOfSegment: r.number_of_segment || '',
     region: r.region || '', estPurchasingQuarter: r.est_purchasing_quarter || '',
-    estRevenue: parseFlexibleNumber(r.est_revenue), margin: parseFlexibleNumber(r.margin), kam: r.kam || '',
+    estRevenue: parseFlexibleNumber(r.est_revenue), margin: parseFlexibleNumber(r.margin), kam: normalizeStrategyKam(r.kam || ''),
   };
 }
 
@@ -1106,7 +1127,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // CRUD operations (persist to Supabase)
   const setOrders = useCallback(async (records: OrderRecord[]) => {
     if (!activeCompanyId) return;
-    const harmonized = harmonizeCommercialRecords({ orders: records, opportunities: data.opportunities });
+    const normalizedOrders = records.map((record) => ({
+      ...record,
+      kam: normalizeKamValue(record.kam || '', record.customerName || '', record.country || '', record.region || ''),
+    }));
+    const normalizedOpportunities = data.opportunities.map((record) => ({
+      ...record,
+      kam: normalizeKamValue(record.kam || '', record.customerName || '', record.country || '', record.region || ''),
+    }));
+    const harmonized = harmonizeCommercialRecords({ orders: normalizedOrders, opportunities: normalizedOpportunities });
     const cleanRecords = dedupeOrders(harmonized.orders as OrderRecord[]);
     const syncedOpportunities = dedupeOpportunities(harmonized.opportunities as OpportunityRecord[]);
 
@@ -1144,7 +1173,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const setOpportunities = useCallback(async (records: OpportunityRecord[]) => {
     if (!activeCompanyId) return;
-    const harmonized = harmonizeCommercialRecords({ orders: data.orders, opportunities: records.map((record) => ({ ...record, status: normalizeOpportunityStatus(record.status) })) });
+    const normalizedOrders = data.orders.map((record) => ({
+      ...record,
+      kam: normalizeKamValue(record.kam || '', record.customerName || '', record.country || '', record.region || ''),
+    }));
+    const normalizedOpportunities = records.map((record) => ({
+      ...record,
+      status: normalizeOpportunityStatus(record.status),
+      kam: normalizeKamValue(record.kam || '', record.customerName || '', record.country || '', record.region || ''),
+    }));
+    const harmonized = harmonizeCommercialRecords({ orders: normalizedOrders, opportunities: normalizedOpportunities });
     const cleanRecords = dedupeOpportunities(harmonized.opportunities as OpportunityRecord[]);
 
     if (!isSupabaseConfigured) {
@@ -1204,32 +1242,44 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const setStrategy = useCallback(async (records: StrategyRecord[]) => {
     if (!activeCompanyId) return;
+    const normalizedRecords = records.map((record) => ({
+      ...record,
+      kam: normalizeStrategyKam(record.kam || ''),
+    }));
     if (!isSupabaseConfigured) {
-      LS.set(`acs_strategy_${activeCompanyId}`, records);
-      setData(prev => ({ ...prev, strategy: records }));
+      LS.set(`acs_strategy_${activeCompanyId}`, normalizedRecords);
+      setData(prev => ({ ...prev, strategy: normalizedRecords }));
       return;
     }
     await supabase.from('strategy').delete().eq('company_id', activeCompanyId);
-    if (records.length > 0) {
-      await supabase.from('strategy').insert(records.map(s => ({
+    if (normalizedRecords.length > 0) {
+      await supabase.from('strategy').insert(normalizedRecords.map(s => ({
         company_id: activeCompanyId, product_family: s.productFamily, number_of_segment: s.numberOfSegment,
         region: s.region, est_purchasing_quarter: s.estPurchasingQuarter,
         est_revenue: s.estRevenue, margin: s.margin, kam: s.kam,
       })));
     }
-    setData(prev => ({ ...prev, strategy: records }));
+    setData(prev => ({ ...prev, strategy: normalizedRecords }));
   }, [activeCompanyId]);
 
   const setLeads = useCallback(async (records: LeadRecord[]) => {
     if (!activeCompanyId) return;
-    LS.set(`acs_leads_${activeCompanyId}`, records);
-    setData(prev => ({ ...prev, leads: records }));
+    const normalizedRecords = records.map((record) => ({
+      ...record,
+      owner: normalizeLeadOwner(record.owner || '', record.companyName || '', record.country || '', record.region || ''),
+    }));
+    LS.set(`acs_leads_${activeCompanyId}`, normalizedRecords);
+    setData(prev => ({ ...prev, leads: normalizedRecords }));
   }, [activeCompanyId]);
 
   const setContacts = useCallback(async (records: ContactRecord[]) => {
     if (!activeCompanyId) return;
-    LS.set(`acs_contacts_${activeCompanyId}`, records);
-    setData(prev => ({ ...prev, contacts: records }));
+    const normalizedRecords = records.map((record) => ({
+      ...record,
+      kam: normalizeKamValue(record.kam || '', record.companyName || '', record.country || '', record.region || ''),
+    }));
+    LS.set(`acs_contacts_${activeCompanyId}`, normalizedRecords);
+    setData(prev => ({ ...prev, contacts: normalizedRecords }));
   }, [activeCompanyId]);
 
   const setDataManagementResults = useCallback((registries: NormalizedEntityRegistries, qualityReports: DatasetQualityReport[]) => {
