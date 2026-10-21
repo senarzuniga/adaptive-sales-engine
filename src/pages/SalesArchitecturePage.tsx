@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useData } from '@/store/DataStore';
+import { type MonitoringTask, useData } from '@/store/DataStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,14 +16,155 @@ import { dedupeOpportunities, dedupeOrders, getActivePipelineOpportunities, isNe
 
 const COLORS = ['hsl(var(--primary))', 'hsl(35,90%,55%)', 'hsl(150,60%,45%)', 'hsl(280,60%,55%)', 'hsl(0,70%,55%)', 'hsl(200,70%,50%)'];
 
-const fmt = (v: number) => v >= 1_000_000 ? `€${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `€${(v / 1_000).toFixed(0)}K` : `€${v.toFixed(0)}`;
+const fmt = (v: number) => v >= 1_000_000 ? `â‚¬${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `â‚¬${(v / 1_000).toFixed(0)}K` : `â‚¬${v.toFixed(0)}`;
 
+type PipelineStage = 'contact' | 'qualification' | 'meeting' | 'proposal' | 'negotiation' | 'closing' | 'retention';
+
+type PlanStatus = 'pending' | 'in_progress' | 'done';
+
+interface ActionPlanItem {
+  id: string;
+  level: 'account_development' | 'short_term';
+  title: string;
+  details: string;
+  status: PlanStatus;
+  hypothesis: string;
+}
+
+interface KamActionPlan {
+  kam: string;
+  region: string;
+  objective: string;
+  actions: ActionPlanItem[];
+}
+
+const STAGE_LABELS: Record<PipelineStage, string> = {
+  contact: 'Contact',
+  qualification: 'Qualification',
+  meeting: 'Meeting',
+  proposal: 'Proposal',
+  negotiation: 'Negotiation',
+  closing: 'Closing',
+  retention: 'Retention',
+};
+
+const PIPELINE_STAGES: PipelineStage[] = ['contact', 'qualification', 'meeting', 'proposal', 'negotiation', 'closing', 'retention'];
+
+const normalizeStage = (status: string): PipelineStage => {
+  const normalized = status.toLowerCase();
+  if (normalized.includes('retention')) return 'retention';
+  if (normalized.includes('meeting')) return 'meeting';
+  if (normalized.includes('qualif')) return 'qualification';
+  if (normalized.includes('contact') || normalized.includes('prospect')) return 'contact';
+  if (normalized.includes('proposal') || normalized.includes('offer')) return 'proposal';
+  if (normalized.includes('negotiat')) return 'negotiation';
+  if (['won', 'sold', 'accepted', 'signed', 'closed'].some((token) => normalized.includes(token))) return 'closing';
+  return 'proposal';
+};
+
+const INITIAL_ACTION_PLANS: KamActionPlan[] = [
+  {
+    kam: 'Heriberto',
+    region: 'Mexico',
+    objective: 'Two-level plan: strategic account development + short-term service-entry actions.',
+    actions: [
+      {
+        id: 'mx-accounts-map',
+        level: 'account_development',
+        title: 'Map strategic accounts and key contacts',
+        details: 'Focus on Smurfit Westrock, Torsacor, PCM Mexico, Smurfit Westrock Mexico, Krafir, Papelesultra, Cartro, Grupak, Cartograf, Grupo Titan, PROAM, Copamex.',
+        status: 'in_progress',
+        hypothesis: 'Systematic contact map improves qualification speed and meeting conversion.',
+      },
+      {
+        id: 'mx-service-entry',
+        level: 'short_term',
+        title: 'Launch installed-base short-term offers',
+        details: 'CECSO (Retal-RDC), PCM (Sistema Retal/Ingetrans v0/K&H output), Biopapel (618/924/1228 FFG + DRYEND). Promote EUR 35k spare package + audits and service contracts.',
+        status: 'pending',
+        hypothesis: 'Installed-base service entry can open fast recurring revenue in under one quarter.',
+      },
+      {
+        id: 'mx-alliance',
+        level: 'short_term',
+        title: 'Activate EMANSA alliance and Mexico DF area penetration',
+        details: 'Joint offer motion for carton and conversion plants close to Mexico DF; include audits and general services as lead offer.',
+        status: 'pending',
+        hypothesis: 'Local service partner reduces entry friction and raises proposal volume.',
+      },
+    ],
+  },
+  {
+    kam: 'Linetex',
+    region: 'USA / North America',
+    objective: 'Accelerate follow-up and close active offers while opening maintenance service streams.',
+    actions: [
+      {
+        id: 'ltx-offer-followup',
+        level: 'account_development',
+        title: 'Weekly cadence for active offer follow-up',
+        details: 'Track Cartogua, Cascades, COPAK, IP, Kelly Box, President Container, PMP, Smurfit Torsacor, Smurfit Yaqui, Sigmaq by stage and next action date.',
+        status: 'in_progress',
+        hypothesis: 'Structured cadence reduces stalled proposals and improves close ratio.',
+      },
+      {
+        id: 'ltx-maintenance-ip-cascades',
+        level: 'short_term',
+        title: 'Push maintenance services to IP and Cascades',
+        details: 'Package preventive maintenance + audits + spare options as short-cycle entry offers.',
+        status: 'pending',
+        hypothesis: 'Service-first entry improves trust and unlocks larger equipment projects.',
+      },
+      {
+        id: 'ltx-generic-template',
+        level: 'short_term',
+        title: 'Use generic service template based on Sterner reference',
+        details: 'Reference file: C:/Users/isena/Documents/INGECART/COMMERCIAL/PROYECTOS/Sterner Global/MASTERCORR/OFF-2026-S140_Sterner_Global-Mastercorr_Service_Offer_FIELDSUPPORT_EN R2.docx.',
+        status: 'pending',
+        hypothesis: 'Reusable commercial template shortens offer preparation cycle.',
+      },
+    ],
+  },
+  {
+    kam: 'Ingecart',
+    region: 'Iberia / Europe',
+    objective: 'Develop strategic accounts and execute high-impact market-entry actions.',
+    actions: [
+      {
+        id: 'ing-strategic-accounts',
+        level: 'account_development',
+        title: 'Strategic account program for IP, Smurfit, SAICA, FONT',
+        details: 'Define quarterly executive reviews, installed-base map, and modernization proposal pipeline per account.',
+        status: 'in_progress',
+        hypothesis: 'Account governance model increases medium/long-term revenue predictability.',
+      },
+      {
+        id: 'ing-midmarket-entry',
+        level: 'short_term',
+        title: 'Entry-impact actions on Iberian converters',
+        details: 'Run targeted outreach and qualification waves across high-potential converters (including Klingele Embalajes and listed carton plants) using stage gating.',
+        status: 'pending',
+        hypothesis: 'Segmented outreach can quickly feed top-of-funnel with qualified meetings.',
+      },
+      {
+        id: 'ing-eu-twins',
+        level: 'account_development',
+        title: 'European twins analysis for Germany/France prospects',
+        details: 'Use installed-equipment records and EUROPA prospecting files to replicate account playbooks across similar plants.',
+        status: 'pending',
+        hypothesis: 'Twin-account method improves prioritization and proposal relevance.',
+      },
+    ],
+  },
+];
 const SalesArchitecturePage = () => {
-  const { data } = useData();
+  const { addTask, data } = useData();
   const [aiRecommendation, setAiRecommendation] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [scenarioPrompt, setScenarioPrompt] = useState('');
   const [scenarioReports, setScenarioReports] = useState<Array<{ name: string; prompt: string; report: string }>>([]);
+  const [actionPlans, setActionPlans] = useState<KamActionPlan[]>(INITIAL_ACTION_PLANS);
+  const [selectedKamPipeline, setSelectedKamPipeline] = useState<string>('all');
 
   const company = data.companyProfile;
   const opportunities = useMemo(() => dedupeOpportunities(data.opportunities), [data.opportunities]);
@@ -35,7 +176,7 @@ const SalesArchitecturePage = () => {
   const totalNeglectedValue = useMemo(() => opportunities.filter(o => isNeglectedStatus(o.status)).reduce((s, o) => s + o.estRevenue, 0), [opportunities]);
   const totalNeglectedCount = useMemo(() => opportunities.filter(o => isNeglectedStatus(o.status)).length, [opportunities]);
 
-  // ── Parse company profile for structure info ──
+  // â”€â”€ Parse company profile for structure info â”€â”€
   const companyInsights = useMemo(() => {
     const notes = company?.additional_notes || '';
     const desc = company?.business_description || '';
@@ -46,8 +187,8 @@ const SalesArchitecturePage = () => {
     const teamSize = employees ? parseInt(employees[1]) : null;
     const serviceRadius = fullText.match(/(\d+)\s*km\s*radius/i);
     const outsourceRatio = fullText.match(/(\d+)%\s*outsourced/i);
-    const currentRevenue = fullText.match(/Revenue:\s*€([\d.,]+)M/i);
-    const targetRevenue = fullText.match(/targeting\s*€([\d.,]+)M/i) || fullText.match(/Target.*?€([\d.,]+)M/i);
+    const currentRevenue = fullText.match(/Revenue:\s*â‚¬([\d.,]+)M/i);
+    const targetRevenue = fullText.match(/targeting\s*â‚¬([\d.,]+)M/i) || fullText.match(/Target.*?â‚¬([\d.,]+)M/i);
 
     return {
       teamSize,
@@ -58,7 +199,7 @@ const SalesArchitecturePage = () => {
     };
   }, [company]);
 
-  // ── Regional Analysis ──
+  // â”€â”€ Regional Analysis â”€â”€
   const regionalAnalysis = useMemo(() => {
     const regionMap: Record<string, { pipeline: number; oppCount: number; customers: Set<string>; sold: number; neglected: number; neglectedValue: number; kams: Set<string> }> = {};
     const ensureRegion = (region: string) => {
@@ -120,7 +261,7 @@ const SalesArchitecturePage = () => {
       .sort((a, b) => (b.pipeline + b.sold) - (a.pipeline + a.sold));
   }, [opportunities, orders]);
 
-  // ── KAM Performance ──
+  // â”€â”€ KAM Performance â”€â”€
   const kamAnalysis = useMemo(() => {
     const kamMap: Record<string, { pipeline: number; oppCount: number; sold: number; neglected: number; neglectedValue: number; regions: Set<string>; customers: Set<string> }> = {};
     const ensureKam = (kam: string) => {
@@ -179,7 +320,67 @@ const SalesArchitecturePage = () => {
     })).sort((a, b) => (b.pipeline + b.sold) - (a.pipeline + a.sold));
   }, [opportunities, orders]);
 
-  // ── Structure Recommendations (rule-based) ──
+  // â”€â”€ Structure Recommendations (rule-based) â”€â”€
+  const kamPipelineStageData = useMemo(() => {
+    const rows = opportunities
+      .filter((opportunity) => selectedKamPipeline === 'all' || (opportunity.kam || 'Unassigned') === selectedKamPipeline)
+      .map((opportunity) => ({
+        stage: normalizeStage(opportunity.status || ''),
+        value: opportunity.estRevenue || 0,
+      }));
+
+    return PIPELINE_STAGES.map((stage) => {
+      const stageRows = rows.filter((row) => row.stage === stage);
+      return {
+        stage,
+        label: STAGE_LABELS[stage],
+        count: stageRows.length,
+        value: stageRows.reduce((acc, row) => acc + row.value, 0),
+      };
+    });
+  }, [opportunities, selectedKamPipeline]);
+
+  const planProgressByKam = useMemo(() => {
+    return actionPlans.map((plan) => {
+      const done = plan.actions.filter((action) => action.status === 'done').length;
+      return {
+        kam: plan.kam,
+        done,
+        total: plan.actions.length,
+        progress: plan.actions.length === 0 ? 0 : (done / plan.actions.length) * 100,
+      };
+    });
+  }, [actionPlans]);
+
+  const updatePlanActionStatus = (kam: string, actionId: string, status: PlanStatus) => {
+    setActionPlans((current) => current.map((plan) => plan.kam !== kam ? plan : {
+      ...plan,
+      actions: plan.actions.map((action) => action.id !== actionId ? action : { ...action, status }),
+    }));
+  };
+
+  const createPlanTask = async (plan: KamActionPlan, action: ActionPlanItem) => {
+    const task: MonitoringTask = {
+      id: `plan_${plan.kam}_${action.id}`,
+      title: `${plan.kam}: ${action.title}`,
+      description: `${action.details} Hypothesis: ${action.hypothesis}`,
+      pillar: action.level === 'account_development' ? 'p2' : 'p1',
+      status: 'todo',
+      priority: action.level === 'account_development' ? 'high' : 'medium',
+      category: action.level === 'account_development' ? 'strategy' : 'follow_up',
+      assignee: plan.kam,
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      createdAt: new Date().toISOString(),
+      notes: [plan.objective, action.hypothesis],
+      actionContent: {
+        goal: action.title,
+        callScript: action.details,
+        emailTemplate: `Subject: ${plan.kam} action - ${action.title}\n\n${action.details}`,
+        presentationNotes: action.hypothesis,
+      },
+    };
+    await addTask(task);
+  };
   const structureRecommendations = useMemo(() => {
     const recs: { type: 'critical' | 'warning' | 'opportunity'; title: string; detail: string; region?: string }[] = [];
     const totalNeglected = totalNeglectedValue;
@@ -188,8 +389,8 @@ const SalesArchitecturePage = () => {
     if (totalNeglected > 0) {
       recs.push({
         type: 'critical',
-        title: `€${(totalNeglected / 1_000_000).toFixed(1)}M in Neglected Opportunities`,
-        detail: `${totalNeglectedCount} opportunities worth €${(totalNeglected / 1_000_000).toFixed(1)}M are unattended or neglected. This signals insufficient commercial coverage capacity.`,
+        title: `â‚¬${(totalNeglected / 1_000_000).toFixed(1)}M in Neglected Opportunities`,
+        detail: `${totalNeglectedCount} opportunities worth â‚¬${(totalNeglected / 1_000_000).toFixed(1)}M are unattended or neglected. This signals insufficient commercial coverage capacity.`,
       });
     }
 
@@ -210,7 +411,7 @@ const SalesArchitecturePage = () => {
       recs.push({
         type: 'warning',
         title: 'Spain Market Underserved Despite Proximity',
-        detail: `${spainData.neglected} opportunities neglected in Spain (${fmt(spainData.neglectedValue)}). With HQ in Spain, this shouldn't happen — consider back-office commercial support.`,
+        detail: `${spainData.neglected} opportunities neglected in Spain (${fmt(spainData.neglectedValue)}). With HQ in Spain, this shouldn't happen â€” consider back-office commercial support.`,
         region: 'SPAIN',
       });
     }
@@ -244,7 +445,7 @@ const SalesArchitecturePage = () => {
         recs.push({
           type: 'warning',
           title: 'Revenue/Employee Ratio Too High for Target',
-          detail: `Target of ${fmt(companyInsights.targetRevenue)} with ${companyInsights.teamSize} employees = ${fmt(revenuePerPerson)}/person. Industry benchmark is €200-300K. Consider adding commercial roles.`,
+          detail: `Target of ${fmt(companyInsights.targetRevenue)} with ${companyInsights.teamSize} employees = ${fmt(revenuePerPerson)}/person. Industry benchmark is â‚¬200-300K. Consider adding commercial roles.`,
         });
       }
     }
@@ -252,7 +453,7 @@ const SalesArchitecturePage = () => {
     return recs;
   }, [regionalAnalysis, kamAnalysis, companyInsights, totalNeglectedValue, totalOpenPipelineValue, totalNeglectedCount]);
 
-  // ── Proposed Structure ──
+  // â”€â”€ Proposed Structure â”€â”€
   const proposedStructure = useMemo(() => {
     const roles: { role: string; type: string; location: string; rationale: string; priority: 'high' | 'medium' | 'low'; cost: string }[] = [];
     const usaPipeline = regionalAnalysis.find(r => r.region === 'USA');
@@ -266,7 +467,7 @@ const SalesArchitecturePage = () => {
       location: 'HQ (Spain)',
       rationale: 'Centralized support for quotes, follow-ups, CRM management. Frees KAMs from admin tasks. Critical to prevent opportunity neglect.',
       priority: 'high',
-      cost: '€30-40K/year',
+      cost: 'â‚¬30-40K/year',
     });
 
     // USA agent (already LINETEX)
@@ -289,7 +490,7 @@ const SalesArchitecturePage = () => {
         location: 'HQ (Spain)',
         rationale: `Spain has ${fmt(spainPipeline.pipeline)} pipeline with ${spainPipeline.neglected} neglected deals. An inside sales role can cover local market and support service business growth.`,
         priority: 'medium',
-        cost: '€35-50K/year + variable',
+        cost: 'â‚¬35-50K/year + variable',
       });
     }
 
@@ -326,14 +527,14 @@ const SalesArchitecturePage = () => {
         location: 'Spain (National)',
         rationale: `Current service limited to ${companyInsights.serviceRadius}km. Scaling from local maintenance to national contract-based service requires a dedicated commercial role.`,
         priority: 'medium',
-        cost: '€40-55K/year + bonus',
+        cost: 'â‚¬40-55K/year + bonus',
       });
     }
 
     return roles;
   }, [regionalAnalysis, companyInsights]);
 
-  // ── AI Recommendation Engine ──
+  // â”€â”€ AI Recommendation Engine â”€â”€
   const generateFallbackRecommendation = () => {
     return buildSalesArchitectureFallbackRecommendation({
       companyName: company?.company_name || 'Company',
@@ -474,7 +675,7 @@ const SalesArchitecturePage = () => {
             <Users className="h-4 w-4 text-muted-foreground" />
             <p className="text-xs text-muted-foreground">Team Size</p>
           </div>
-          <p className="text-2xl font-bold text-foreground">{companyInsights.teamSize || '—'}</p>
+          <p className="text-2xl font-bold text-foreground">{companyInsights.teamSize || 'â€”'}</p>
           <p className="text-[10px] text-muted-foreground">employees</p>
         </CardContent></Card>
         <Card><CardContent className="pt-5 pb-4">
@@ -528,10 +729,11 @@ const SalesArchitecturePage = () => {
           <TabsTrigger value="coverage">Regional Coverage</TabsTrigger>
           <TabsTrigger value="structure">Proposed Structure</TabsTrigger>
           <TabsTrigger value="kam">KAM Analysis</TabsTrigger>
+          <TabsTrigger value="action-plans">Action Plans</TabsTrigger>
           <TabsTrigger value="recommendation">AI Recommendation</TabsTrigger>
         </TabsList>
 
-        {/* ── Regional Coverage ── */}
+        {/* â”€â”€ Regional Coverage â”€â”€ */}
         <TabsContent value="coverage" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
@@ -541,7 +743,7 @@ const SalesArchitecturePage = () => {
                   <BarChart data={regionChartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <YAxis tickFormatter={(v) => v >= 1_000_000 ? `€${(v / 1_000_000).toFixed(0)}M` : `€${(v / 1_000).toFixed(0)}K`} stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                    <YAxis tickFormatter={(v) => v >= 1_000_000 ? `â‚¬${(v / 1_000_000).toFixed(0)}M` : `â‚¬${(v / 1_000).toFixed(0)}K`} stroke="hsl(var(--muted-foreground))" fontSize={11} />
                     <Tooltip formatter={(v: number) => fmt(v)} />
                     <Legend />
                     <Bar dataKey="sold" fill="hsl(150,60%,45%)" name="Sold" stackId="total" radius={[0, 0, 0, 0]} />
@@ -597,7 +799,7 @@ const SalesArchitecturePage = () => {
                           <Badge variant="secondary" className="text-[10px]">None</Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-xs">{r.kams.length > 0 ? r.kams.join(', ') : '—'}</TableCell>
+                      <TableCell className="text-xs">{r.kams.length > 0 ? r.kams.join(', ') : 'â€”'}</TableCell>
                       <TableCell className="text-xs">
                         <Badge variant="outline" className="text-[10px]">
                           {r.region === 'USA' ? 'Exclusive Agent' : r.region === 'SPAIN' ? 'Direct + Back Office' : r.region === 'LATAM' ? "Finder's Fee" : 'Agent Network'}
@@ -611,7 +813,7 @@ const SalesArchitecturePage = () => {
           </Card>
         </TabsContent>
 
-        {/* ── Proposed Structure ── */}
+        {/* â”€â”€ Proposed Structure â”€â”€ */}
         <TabsContent value="structure" className="space-y-4">
           <Card>
             <CardHeader>
@@ -685,7 +887,7 @@ const SalesArchitecturePage = () => {
           </div>
         </TabsContent>
 
-        {/* ── KAM Analysis ── */}
+        {/* â”€â”€ KAM Analysis â”€â”€ */}
         <TabsContent value="kam" className="space-y-4">
           <Card>
             <CardHeader><CardTitle className="text-base">KAM / Agent Performance & Coverage</CardTitle></CardHeader>
@@ -702,6 +904,41 @@ const SalesArchitecturePage = () => {
                   <Bar dataKey="neglectedValue" fill="hsl(0,70%,55%)" name="Neglected" opacity={0.8} />
                 </BarChart>
               </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle className="text-base">Sales pipeline stages by KAM</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="max-w-xs">
+                <select
+                  className="w-full h-9 rounded-md border bg-background px-3 text-sm"
+                  value={selectedKamPipeline}
+                  onChange={(event) => setSelectedKamPipeline(event.target.value)}
+                >
+                  <option value="all">All KAMs</option>
+                  {kamAnalysis.map((row) => (
+                    <option key={row.kam} value={row.kam}>{row.kam}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                {kamPipelineStageData.map((row) => {
+                  const total = Math.max(kamPipelineStageData.reduce((acc, item) => acc + item.count, 0), 1);
+                  const width = (row.count / total) * 100;
+                  return (
+                    <div key={row.stage} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span>{row.label}</span>
+                        <span>{row.count} · {fmt(row.value)}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full bg-primary" style={{ width: `${width}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
 
@@ -734,7 +971,7 @@ const SalesArchitecturePage = () => {
                         <TableCell className="text-xs text-right">
                           {k.neglected > 0 ? (
                             <Badge variant="destructive" className="text-[10px]">{k.neglected}</Badge>
-                          ) : '—'}
+                          ) : 'â€”'}
                         </TableCell>
                         <TableCell>
                           <Badge variant={score >= 3 ? 'default' : score >= 2 ? 'secondary' : 'destructive'} className="text-[10px]">
@@ -750,8 +987,57 @@ const SalesArchitecturePage = () => {
           </Card>
         </TabsContent>
 
-        {/* ── AI Recommendation ── */}
-        <TabsContent value="recommendation" className="space-y-4">
+        {/* â”€â”€ AI Recommendation â”€â”€ */}
+        <TabsContent value="action-plans" className="space-y-4">
+          <Card>
+            <CardHeader><CardTitle className="text-base">KAM Action Plan Progress</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {planProgressByKam.map((row) => (
+                <div key={row.kam} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span>{row.kam}</span>
+                    <span>{row.done}/{row.total} completed</span>
+                  </div>
+                  <Progress value={row.progress} className="h-2" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <div className="grid lg:grid-cols-3 gap-4">
+            {actionPlans.map((plan) => (
+              <Card key={plan.kam}>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center justify-between gap-2">
+                    <span>{plan.kam}</span>
+                    <Badge variant="outline">{plan.region}</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-xs text-muted-foreground">{plan.objective}</p>
+                  {plan.actions.map((action) => (
+                    <div key={action.id} className="border rounded-md p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs font-medium">{action.title}</p>
+                        <Badge variant={action.status === 'done' ? 'default' : action.status === 'in_progress' ? 'secondary' : 'outline'} className="text-[10px]">{action.status}</Badge>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">{action.details}</p>
+                      <p className="text-[11px] text-muted-foreground"><span className="font-medium">Hypothesis:</span> {action.hypothesis}</p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="sm" variant="outline" onClick={() => updatePlanActionStatus(plan.kam, action.id, 'pending')}>Pending</Button>
+                        <Button size="sm" variant="outline" onClick={() => updatePlanActionStatus(plan.kam, action.id, 'in_progress')}>In progress</Button>
+                        <Button size="sm" variant="outline" onClick={() => updatePlanActionStatus(plan.kam, action.id, 'done')}>Done</Button>
+                        <Button size="sm" onClick={() => createPlanTask(plan, action)}>Create task</Button>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="recommendation" className="space-y-4"> 
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -848,3 +1134,13 @@ const SalesArchitecturePage = () => {
 };
 
 export default SalesArchitecturePage;
+
+
+
+
+
+
+
+
+
+
