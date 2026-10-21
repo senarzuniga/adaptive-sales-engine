@@ -350,7 +350,7 @@ const normalizeOfferPipelineEntry = (offer: Record<string, any>): OfferPipelineE
 
 const buildPipelineTask = (offer: OfferPipelineEntry): MonitoringTask => ({
   id: `pipeline_${offer.id}`,
-  title: `${offer.customer_name} â€” ${offer.title}`,
+  title: `${offer.customer_name} - ${offer.title}`,
   description: `${offer.next_action} Context: ${offer.context}`,
   pillar: offer.bucket === 'sold' ? 'p2' : offer.bucket === 'cancelled' ? 'p1' : 'p0',
   status: 'todo',
@@ -883,7 +883,7 @@ const CommercialActionsRepositoryPage = () => {
                             Goal: {action.goal || 'Not defined'}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            Content: {action.supportive_content?.call_script ? 'Script' : 'No script'} Â· {action.supportive_content?.email_template ? 'Email' : 'No email'} Â· {action.supportive_content?.presentation_notes ? 'Notes' : 'No notes'}
+                            Content: {action.supportive_content?.call_script ? 'Script' : 'No script'} - {action.supportive_content?.email_template ? 'Email' : 'No email'} - {action.supportive_content?.presentation_notes ? 'Notes' : 'No notes'}
                           </p>
                         </div>
                         <div className="flex flex-col gap-2">
@@ -1177,7 +1177,7 @@ const CommercialActionsRepositoryPage = () => {
                     <div key={action.id} className="border rounded p-3 flex items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-medium">{action.name}</p>
-                        <p className="text-xs text-muted-foreground">{action.stage} Â· {action.description}</p>
+                        <p className="text-xs text-muted-foreground">{action.stage} - {action.description}</p>
                       </div>
                       <Button size="sm" onClick={() => addAsTask(action, action.stage)} className="gap-1"><Rocket className="h-3.5 w-3.5" />Create task</Button>
                     </div>
@@ -1193,7 +1193,7 @@ const CommercialActionsRepositoryPage = () => {
               {nextBestAction ? (
                 <div className="border rounded p-3">
                   <p className="text-sm font-semibold">{nextBestAction.name}</p>
-                  <p className="text-xs text-muted-foreground">{nextBestAction.stage} Â· score {nextBestAction.computed_score}</p>
+                  <p className="text-xs text-muted-foreground">{nextBestAction.stage} - score {nextBestAction.computed_score}</p>
                   <p className="text-xs text-muted-foreground mt-1">{nextBestAction.description}</p>
                   <Button size="sm" className="mt-2 gap-1" onClick={() => addAsTask(nextBestAction, nextBestAction.stage)}>
                     <Target className="h-3.5 w-3.5" />Create task from next-best
@@ -1237,7 +1237,7 @@ const CommercialActionsRepositoryPage = () => {
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-medium">{action.name}</p>
-                        <p className="text-xs text-muted-foreground">{action.stage} Â· {action.role}</p>
+                        <p className="text-xs text-muted-foreground">{action.stage} - {action.role}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant={selected ? 'default' : 'outline'}>{selected ? 'Selected' : 'Candidate'}</Badge>
@@ -1259,8 +1259,8 @@ const CommercialActionsRepositoryPage = () => {
         <Card className="border-destructive/40">
           <CardHeader className="pb-2"><CardTitle className="text-sm text-destructive">Validation report (execution blocked)</CardTitle></CardHeader>
           <CardContent className="space-y-1 text-xs text-muted-foreground">
-            {validation.issues.map((issue, index) => <p key={index}>â€¢ {issue}</p>)}
-            {cycles.map((cycle) => <p key={cycle}>â€¢ Circular trigger detected: {cycle}</p>)}
+            {validation.issues.map((issue, index) => <p key={index}>- {issue}</p>)}
+            {cycles.map((cycle) => <p key={cycle}>- Circular trigger detected: {cycle}</p>)}
           </CardContent>
         </Card>
       )}
