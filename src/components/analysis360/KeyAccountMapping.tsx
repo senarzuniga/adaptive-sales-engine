@@ -5,6 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { OrderRecord, OpportunityRecord } from '@/store/DataStore';
 import { groupBy, fmt, COLORS } from './AnalysisUtils';
 import { useMemo } from 'react';
+import { inferKamOwner } from '@/lib/kamNormalization';
 
 interface Props {
   orders: OrderRecord[];
@@ -12,11 +13,21 @@ interface Props {
 }
 
 export const KeyAccountMapping = ({ orders, opportunities }: Props) => {
-  const totalRevenue = useMemo(() => orders.reduce((s, o) => s + o.sellingPrice, 0), [orders]);
+  const normalizedOrders = useMemo(() => orders.map((order) => ({
+    ...order,
+    kam: inferKamOwner({ existingKam: order.kam, customerName: order.customerName, country: order.country, region: order.region, fallbackKam: 'Ingecart' }),
+  })), [orders]);
+
+  const normalizedOpportunities = useMemo(() => opportunities.map((opportunity) => ({
+    ...opportunity,
+    kam: inferKamOwner({ existingKam: opportunity.kam, customerName: opportunity.customerName, country: opportunity.country, region: opportunity.region, fallbackKam: 'Ingecart' }),
+  })), [opportunities]);
+
+  const totalRevenue = useMemo(() => normalizedOrders.reduce((s, o) => s + o.sellingPrice, 0), [normalizedOrders]);
 
   // KAM performance
   const kamData = useMemo(() => {
-    const groups = groupBy(orders, o => o.kam);
+    const groups = groupBy(normalizedOrders, o => o.kam);
     return Object.entries(groups).map(([kam, items]) => {
       const revenue = items.reduce((s, i) => s + i.sellingPrice, 0);
       const margin = items.reduce((s, i) => s + i.margin, 0);
@@ -28,18 +39,18 @@ export const KeyAccountMapping = ({ orders, opportunities }: Props) => {
       const share = totalRevenue > 0 ? (revenue / totalRevenue) * 100 : 0;
       return { kam, revenue, margin, marginPct, customers, products, regions, orders: items.length, avgDealSize, share };
     }).sort((a, b) => b.revenue - a.revenue);
-  }, [orders, totalRevenue]);
+  }, [normalizedOrders, totalRevenue]);
 
   // KAM pipeline (opportunities)
   const kamPipeline = useMemo(() => {
-    const groups = groupBy(opportunities, o => o.kam);
+    const groups = groupBy(normalizedOpportunities, o => o.kam);
     return Object.entries(groups).map(([kam, items]) => ({
       kam,
       pipeline: items.reduce((s, i) => s + i.estRevenue, 0),
       oppCount: items.length,
       avgProb: items.length > 0 ? items.reduce((s, i) => s + i.contractProb, 0) / items.length : 0,
     }));
-  }, [opportunities]);
+  }, [normalizedOpportunities]);
 
   // Combined view
   const combined = useMemo(() => {
@@ -56,13 +67,13 @@ export const KeyAccountMapping = ({ orders, opportunities }: Props) => {
 
   // Customer-KAM matrix
   const customerKamMatrix = useMemo(() => {
-    const byCustomer = groupBy(orders, o => o.customerName);
+    const byCustomer = groupBy(normalizedOrders, o => o.customerName);
     return Object.entries(byCustomer).map(([customer, items]) => {
       const revenue = items.reduce((s, i) => s + i.sellingPrice, 0);
       const kams = [...new Set(items.map(i => i.kam))];
       return { customer, revenue, kams: kams.join(', '), kamCount: kams.length };
     }).sort((a, b) => b.revenue - a.revenue).slice(0, 20);
-  }, [orders]);
+  }, [normalizedOrders]);
 
   return (
     <div className="space-y-6">
@@ -154,7 +165,7 @@ export const KeyAccountMapping = ({ orders, opportunities }: Props) => {
 
       {/* Top Customer-KAM mapping */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Customer → KAM Assignment</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">Customer â†’ KAM Assignment</CardTitle></CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
@@ -183,3 +194,4 @@ export const KeyAccountMapping = ({ orders, opportunities }: Props) => {
     </div>
   );
 };
+

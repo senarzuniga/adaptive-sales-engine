@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { buildSalesArchitectureFallbackRecommendation } from '@/lib/salesArchitecture';
 import { buildSalesScenarioRecommendation, buildScenarioSynthesis } from '@/lib/salesScenario';
 import { dedupeOpportunities, dedupeOrders, getActivePipelineOpportunities, isNeglectedStatus, isOpportunityCoveredByOrder, normalizeOpportunityStatus } from '@/lib/salesData';
+import { inferKamOwner } from '@/lib/kamNormalization';
 
 const COLORS = ['hsl(var(--primary))', 'hsl(35,90%,55%)', 'hsl(150,60%,45%)', 'hsl(280,60%,55%)', 'hsl(0,70%,55%)', 'hsl(200,70%,50%)'];
 
@@ -66,7 +67,7 @@ const INITIAL_ACTION_PLANS: KamActionPlan[] = [
   {
     kam: 'Heriberto',
     region: 'Mexico',
-    objective: 'Two-level plan: strategic account development + short-term service-entry actions.',
+    objective: 'Primary ownership in Mexico (non-exclusive), coordinated with Linetex support on shared USA/LATAM accounts.',
     actions: [
       {
         id: 'mx-accounts-map',
@@ -96,8 +97,8 @@ const INITIAL_ACTION_PLANS: KamActionPlan[] = [
   },
   {
     kam: 'Linetex',
-    region: 'USA / North America',
-    objective: 'Accelerate follow-up and close active offers while opening maintenance service streams.',
+    region: 'USA / LATAM support',
+    objective: 'Support ownership (non-exclusive) across USA and LATAM while accelerating follow-up and service-entry actions.',
     actions: [
       {
         id: 'ltx-offer-followup',
@@ -171,6 +172,13 @@ const SalesArchitecturePage = () => {
   const orders = useMemo(() => dedupeOrders(data.orders), [data.orders]);
   const strategy = data.strategy;
   const tasks = data.tasks;
+  const getKam = (kam: string, customerName: string, country: string, region: string) => inferKamOwner({
+    existingKam: kam,
+    customerName,
+    country,
+    region,
+    fallbackKam: 'Ingecart',
+  });
   const activePipelineOpportunities = useMemo(() => getActivePipelineOpportunities(opportunities, orders), [opportunities, orders]);
   const totalOpenPipelineValue = useMemo(() => activePipelineOpportunities.reduce((s, o) => s + o.estRevenue, 0), [activePipelineOpportunities]);
   const totalNeglectedValue = useMemo(() => opportunities.filter(o => isNeglectedStatus(o.status)).reduce((s, o) => s + o.estRevenue, 0), [opportunities]);
@@ -216,7 +224,7 @@ const SalesArchitecturePage = () => {
       const alreadyBooked = isOpportunityCoveredByOrder(o, orders);
 
       bucket.customers.add(o.customerName);
-      if (o.kam) bucket.kams.add(o.kam);
+      bucket.kams.add(getKam(o.kam || '', o.customerName || '', o.country || '', o.region || ''));
 
       if (alreadyBooked) return;
 
@@ -242,7 +250,7 @@ const SalesArchitecturePage = () => {
       const bucket = ensureRegion(region);
       bucket.sold += o.sellingPrice;
       bucket.customers.add(o.customerName);
-      if (o.kam) bucket.kams.add(o.kam);
+      bucket.kams.add(getKam(o.kam || '', o.customerName || '', o.country || '', o.region || ''));
     });
 
     return Object.entries(regionMap)
@@ -272,7 +280,7 @@ const SalesArchitecturePage = () => {
     };
 
     opportunities.forEach(o => {
-      const kam = o.kam || 'Unassigned';
+      const kam = getKam(o.kam || '', o.customerName || '', o.country || '', o.region || '') || 'Unassigned';
       const bucket = ensureKam(kam);
       const status = normalizeOpportunityStatus(o.status);
       const alreadyBooked = isOpportunityCoveredByOrder(o, orders);
@@ -300,7 +308,7 @@ const SalesArchitecturePage = () => {
     });
 
     orders.forEach(o => {
-      const kam = o.kam || 'Unassigned';
+      const kam = getKam(o.kam || '', o.customerName || '', o.country || '', o.region || '') || 'Unassigned';
       const bucket = ensureKam(kam);
       bucket.sold += o.sellingPrice;
       if (o.region) bucket.regions.add(o.region);
@@ -323,7 +331,7 @@ const SalesArchitecturePage = () => {
   // -- Structure Recommendations (rule-based) --
   const kamPipelineStageData = useMemo(() => {
     const rows = opportunities
-      .filter((opportunity) => selectedKamPipeline === 'all' || (opportunity.kam || 'Unassigned') === selectedKamPipeline)
+      .filter((opportunity) => selectedKamPipeline === 'all' || (getKam(opportunity.kam || '', opportunity.customerName || '', opportunity.country || '', opportunity.region || '') || 'Unassigned') === selectedKamPipeline)
       .map((opportunity) => ({
         stage: normalizeStage(opportunity.status || ''),
         value: opportunity.estRevenue || 0,
@@ -930,7 +938,7 @@ const SalesArchitecturePage = () => {
                     <div key={row.stage} className="space-y-1">
                       <div className="flex items-center justify-between text-xs">
                         <span>{row.label}</span>
-                        <span>{row.count} · {fmt(row.value)}</span>
+                        <span>{row.count} Â· {fmt(row.value)}</span>
                       </div>
                       <div className="h-2 rounded-full bg-muted overflow-hidden">
                         <div className="h-full bg-primary" style={{ width: `${width}%` }} />
@@ -1134,6 +1142,10 @@ const SalesArchitecturePage = () => {
 };
 
 export default SalesArchitecturePage;
+
+
+
+
 
 
 
