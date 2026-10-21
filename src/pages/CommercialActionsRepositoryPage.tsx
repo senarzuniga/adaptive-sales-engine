@@ -33,7 +33,7 @@ import {
   validateRepository,
 } from '@/lib/commercialActionsRepository';
 import { Layers, Play, Plus, Rocket, Save, Target, Timer, Wand2 } from 'lucide-react';
-import { isWorkspaceSupabaseConfigured, readWorkspaceRows } from '@/lib/workspaceStorage';
+import { isWorkspaceSupabaseConfigured, readWorkspaceRows, writeWorkspaceRows } from '@/lib/workspaceStorage';
 import { canonicalizeKamOwner, inferKamOwner } from '@/lib/kamNormalization';
 
 const getPathLabel = (value: string) => value.split(/[\\/]/).pop() || value;
@@ -100,9 +100,19 @@ interface OfferPipelineEntry {
   product_name: string;
   project_folder: string;
   contract_value: number;
+  success_probability: number;
+  next_follow_up: string;
 }
 
 type PipelineStage = 'contact' | 'qualification' | 'meeting' | 'proposal' | 'negotiation' | 'closing' | 'retention';
+
+interface OfferQuickEditDraft {
+  successProbability: string;
+  kam: string;
+  region: string;
+  estimatedSalesValue: string;
+  nextFollowUp: string;
+}
 
 const PIPELINE_STAGES: PipelineStage[] = ['contact', 'qualification', 'meeting', 'proposal', 'negotiation', 'closing', 'retention'];
 
@@ -315,6 +325,9 @@ const normalizeOfferPipelineEntry = (offer: Record<string, any>): OfferPipelineE
   const productType = inferProductType(`${title} ${contextText}`);
   const kam = inferKam(customerName, String(offer.kam || ''), String(offer.country || ''), region);
   const stage = offer.stage ? String(offer.stage) as PipelineStage : normalizePipelineStage(status, bucket);
+  const successProbabilityRaw = Number(offer.probability ?? offer.contract_prob ?? offer.score ?? (bucket === 'sold' ? 100 : 50));
+  const successProbability = Number.isFinite(successProbabilityRaw) ? Math.max(0, Math.min(100, successProbabilityRaw)) : 0;
+  const nextFollowUp = String(offer.next_follow_up || offer.next_followup || offer.follow_up_date || '');
 
   return {
     id: String(offer.id || `${offer.offer_number || customerName}-${Math.random().toString(16).slice(2)}`),
@@ -355,6 +368,8 @@ const normalizeOfferPipelineEntry = (offer: Record<string, any>): OfferPipelineE
     product_name: productName,
     project_folder: String(offer.project_folder || ''),
     contract_value: Number(offer.contract_value || 0),
+    success_probability: successProbability,
+    next_follow_up: nextFollowUp,
   };
 };
 
@@ -427,6 +442,8 @@ const CommercialActionsRepositoryPage = () => {
   const [pipelineProductTypeFilter, setPipelineProductTypeFilter] = useState<'all' | 'service' | 'equipment'>('all');
   const [pipelineFamilyFilter, setPipelineFamilyFilter] = useState('all');
   const [pipelineSearch, setPipelineSearch] = useState('');
+  const [offerQuickEdits, setOfferQuickEdits] = useState<Record<string, OfferQuickEditDraft>>({});
+  const [savingOfferId, setSavingOfferId] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -556,6 +573,141 @@ const CommercialActionsRepositoryPage = () => {
     };
   }, [pipelineRecords]);
 
+
+  const getOfferQuickDraft = (offer: OfferPipelineEntry): OfferQuickEditDraft => {
+    const existing = offerQuickEdits[offer.id];
+    if (existing) return existing;
+    return {
+      successProbability: String(Math.round(offer.success_probability || 0)),
+      kam: offer.kam || '',
+      region: offer.region || '',
+      estimatedSalesValue: String(Math.round(offer.contract_value || 0)),
+      nextFollowUp: offer.next_follow_up || '',
+    };
+  };
+
+  const updateOfferQuickDraft = (offerId: string, field: keyof OfferQuickEditDraft, value: string) => {
+    setOfferQuickEdits((current) => ({
+      ...current,
+      [offerId]: {
+        ...(current[offerId] || {
+          successProbability: '',
+          kam: '',
+          region: '',
+          estimatedSalesValue: '',
+          nextFollowUp: '',
+        }),
+        [field]: value,
+      },
+    }));
+  };
+
+  const saveQuickOfferChanges = async (offer: OfferPipelineEntry) => {
+    if (!activeCompanyId) {
+      toast({ title: 'No company selected', description: 'Select a company before updating offer metadata.' });
+      return;
+    }
+
+    const draft = getOfferQuickDraft(offer);
+    const parsedProbability = Number(draft.successProbability || 0);
+    const successProbability = Number.isFinite(parsedProbability) ? Math.min(100, Math.max(0, parsedProbability)) : 0;
+    const parsedValue = Number(draft.estimatedSalesValue || 0);
+    const estimatedSalesValue = Number.isFinite(parsedValue) ? Math.max(0, parsedValue) : 0;
+    const kam = inferKamOwner({
+      existingKam: draft.kam,
+      customerName: offer.customer_name,
+      country: offer.country,
+      region: draft.region || offer.region,
+      fallbackKam: offer.kam || 'Ingecart',
+    });
+    const region = (draft.region || offer.region || '').trim();
+    const nextFollowUp = (draft.nextFollowUp || '').trim();
+
+    setSavingOfferId(offer.id);
+    try {
+      const localOffers = readWorkspaceRows<Record<string, any>>('offers', activeCompanyId);
+      const matchIndex = localOffers.findIndex((row) =>
+        String(row.id || '') === offer.id
+        || (
+          String(row.offer_number || row.offerNumber || '') === offer.offer_number
+          && String(row.customer_name || row.customerName || '') === offer.customer_name
+        )
+      );
+
+      const baseRow = matchIndex >= 0 ? localOffers[matchIndex] : {};
+      const updatedRow = {
+        ...baseRow,
+        id: baseRow.id || offer.id,
+        company_id: baseRow.company_id || activeCompanyId,
+        offer_number: offer.offer_number,
+        title: offer.title,
+        customer_name: offer.customer_name,
+        status: offer.status,
+        kam,
+        region,
+        contract_value: estimatedSalesValue,
+        probability: successProbability,
+        next_follow_up: nextFollowUp,
+        updated_at: new Date().toISOString(),
+      };
+
+      const nextRows = matchIndex >= 0
+        ? localOffers.map((row, index) => (index === matchIndex ? updatedRow : row))
+        : [updatedRow, ...localOffers];
+
+      writeWorkspaceRows('offers', activeCompanyId, nextRows);
+
+      if (isWorkspaceSupabaseConfigured && !offer.id.startsWith('demo-') && !offer.id.startsWith('opp-') && !offer.id.startsWith('lead-')) {
+        const { error } = await supabase
+          .from('offers')
+          .update({
+            kam,
+            region,
+            contract_value: estimatedSalesValue,
+            probability: successProbability,
+            next_follow_up: nextFollowUp,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', offer.id)
+          .eq('company_id', activeCompanyId);
+        if (error) {
+          throw error;
+        }
+      }
+
+      setOfferPipeline((current) => current.map((entry) =>
+        entry.id !== offer.id
+          ? entry
+          : {
+            ...entry,
+            kam,
+            region,
+            contract_value: estimatedSalesValue,
+            success_probability: successProbability,
+            next_follow_up: nextFollowUp,
+            source_confidence: 'confirmed',
+            last_update: new Date().toLocaleDateString(),
+          }
+      ));
+
+      setOfferQuickEdits((current) => ({
+        ...current,
+        [offer.id]: {
+          successProbability: String(Math.round(successProbability)),
+          kam,
+          region,
+          estimatedSalesValue: String(Math.round(estimatedSalesValue)),
+          nextFollowUp,
+        },
+      }));
+
+      toast({ title: 'Offer updated', description: `${offer.offer_number} quick fields saved.` });
+    } catch (error: any) {
+      toast({ title: 'Could not save quick changes', description: String(error?.message || error), variant: 'destructive' });
+    } finally {
+      setSavingOfferId(null);
+    }
+  };
   const filteredPipelineRecords = useMemo(() => {
     const normalizedSearch = normalizeText(pipelineSearch);
     return pipelineRecords.filter((entry) => {
@@ -1041,7 +1193,7 @@ const CommercialActionsRepositoryPage = () => {
                       >
                         <div className="flex items-center justify-between text-sm mb-2">
                           <span className="font-medium">{PIPELINE_STAGE_LABELS[summary.stage]}</span>
-                          <span>{summary.count} items Â· EUR {Math.round(summary.value).toLocaleString()}</span>
+                          <span>{summary.count} items Ã‚Â· EUR {Math.round(summary.value).toLocaleString()}</span>
                         </div>
                         <div className="h-2 bg-muted rounded-full overflow-hidden">
                           <div className="h-full bg-primary" style={{ width: `${ratio}%` }} />
@@ -1062,7 +1214,7 @@ const CommercialActionsRepositoryPage = () => {
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="text-sm font-medium">{entry.customer_name}</p>
-                          <p className="text-xs text-muted-foreground">{entry.title} Â· {entry.offer_number}</p>
+                          <p className="text-xs text-muted-foreground">{entry.title} Ã‚Â· {entry.offer_number}</p>
                         </div>
                         <Badge variant={entry.score >= 85 ? 'default' : 'secondary'}>{PIPELINE_STAGE_LABELS[entry.stage]}</Badge>
                       </div>
@@ -1111,10 +1263,58 @@ const CommercialActionsRepositoryPage = () => {
                     {offer.site ? <span className="border rounded-full px-2 py-0.5">Site: {offer.site}</span> : null}
                     {offer.country ? <span className="border rounded-full px-2 py-0.5">{offer.country}</span> : null}
                     {offer.contract_value > 0 ? <span className="border rounded-full px-2 py-0.5">EUR {offer.contract_value.toLocaleString()}</span> : null}
+                    <span className="border rounded-full px-2 py-0.5">Success: {Math.round(offer.success_probability)}%</span>
+                    {offer.next_follow_up ? <span className="border rounded-full px-2 py-0.5">Follow-up: {offer.next_follow_up}</span> : null}
                   </div>
 
                   <p className="text-xs text-muted-foreground">{offer.context}</p>
                   <p className="text-xs font-medium">Next action: {offer.next_action}</p>
+
+                  {(() => {
+                    const quickDraft = getOfferQuickDraft(offer);
+                    return (
+                      <div className="border rounded-md p-3 space-y-3">
+                        <p className="text-xs font-semibold">Quick edit windows</p>
+                        <div className="grid md:grid-cols-2 xl:grid-cols-5 gap-2">
+                          <div>
+                            <Label className="text-[11px]">Expected success (%)</Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={quickDraft.successProbability}
+                              onChange={(event) => updateOfferQuickDraft(offer.id, 'successProbability', event.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-[11px]">KAM</Label>
+                            <Input value={quickDraft.kam} onChange={(event) => updateOfferQuickDraft(offer.id, 'kam', event.target.value)} />
+                          </div>
+                          <div>
+                            <Label className="text-[11px]">Region</Label>
+                            <Input value={quickDraft.region} onChange={(event) => updateOfferQuickDraft(offer.id, 'region', event.target.value)} />
+                          </div>
+                          <div>
+                            <Label className="text-[11px]">Estimated sales value (EUR)</Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={quickDraft.estimatedSalesValue}
+                              onChange={(event) => updateOfferQuickDraft(offer.id, 'estimatedSalesValue', event.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-[11px]">Next follow-up date</Label>
+                            <Input
+                              type="date"
+                              value={quickDraft.nextFollowUp}
+                              onChange={(event) => updateOfferQuickDraft(offer.id, 'nextFollowUp', event.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div className="space-y-2">
                     <p className="text-xs font-medium">Linked documents</p>
@@ -1148,6 +1348,13 @@ const CommercialActionsRepositoryPage = () => {
                       }}
                     >
                       Create task
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => void saveQuickOfferChanges(offer)}
+                      disabled={savingOfferId === offer.id}
+                    >
+                      {savingOfferId === offer.id ? 'Saving...' : 'Save quick changes'}
                     </Button>
                   </div>
                 </div>
@@ -1279,6 +1486,11 @@ const CommercialActionsRepositoryPage = () => {
 };
 
 export default CommercialActionsRepositoryPage;
+
+
+
+
+
 
 
 
