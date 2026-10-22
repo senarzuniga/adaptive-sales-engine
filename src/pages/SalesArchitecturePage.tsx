@@ -1015,6 +1015,42 @@ const SalesArchitecturePage = () => {
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader><CardTitle className="text-base">Action plan flow diagram</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {actionPlans.map((plan) => (
+                <div key={`flow-${plan.kam}`} className="rounded-md border p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold">{plan.kam}</p>
+                    <Badge variant="outline">{plan.region}</Badge>
+                  </div>
+                  <div className="grid lg:grid-cols-4 gap-2">
+                    <div className="rounded-md border p-2 text-xs">
+                      <p className="font-medium mb-1">Concepto</p>
+                      <p>{plan.actions.map((action) => action.title).slice(0, 2).join(' / ') || '-'}</p>
+                    </div>
+                    <div className="rounded-md border p-2 text-xs space-y-1">
+                      <p className="font-medium mb-1">Secuencia</p>
+                      {plan.actions.map((action, index) => (
+                        <p key={`${plan.kam}-${action.id}-seq`}>{index + 1}. {action.title}</p>
+                      ))}
+                    </div>
+                    <div className="rounded-md border p-2 text-xs space-y-1">
+                      <p className="font-medium mb-1">Contenidos</p>
+                      {plan.actions.map((action) => (
+                        <p key={`${plan.kam}-${action.id}-content`}>- {action.details}</p>
+                      ))}
+                    </div>
+                    <div className="rounded-md border p-2 text-xs">
+                      <p className="font-medium mb-1">Objetivo</p>
+                      <p>{plan.objective}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
           <div className="grid lg:grid-cols-3 gap-4">
             {actionPlans.map((plan) => (
               <Card key={plan.kam}>

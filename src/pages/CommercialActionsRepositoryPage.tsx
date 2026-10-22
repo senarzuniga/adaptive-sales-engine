@@ -121,6 +121,15 @@ interface OfferQuickEditDraft {
   status: string;
 }
 
+type OfferAlertFilter = 'all' | 'missing_value' | 'missing_follow_up' | 'preliminary';
+type QueryField = 'offer_number' | 'customer_name' | 'kam' | 'region' | 'status' | 'stage' | 'contract_value' | 'success_probability' | 'next_follow_up';
+
+interface OfferAlertItem {
+  id: Exclude<OfferAlertFilter, 'all'>;
+  label: string;
+  count: number;
+}
+
 const PIPELINE_STAGES: PipelineStage[] = ['contact', 'qualification', 'meeting', 'proposal', 'negotiation', 'closing', 'retention'];
 
 const PIPELINE_STAGE_LABELS: Record<PipelineStage, string> = {
@@ -464,6 +473,22 @@ const CommercialActionsRepositoryPage = () => {
   const [offerSortDirection, setOfferSortDirection] = useState<'asc' | 'desc'>('desc');
   const [offerQuickEdits, setOfferQuickEdits] = useState<Record<string, OfferQuickEditDraft>>({});
   const [savingOfferId, setSavingOfferId] = useState<string | null>(null);
+  const [offerAlertFilter, setOfferAlertFilter] = useState<OfferAlertFilter>('all');
+  const [openOffersOnly, setOpenOffersOnly] = useState(false);
+  const [queryText, setQueryText] = useState('ofertas vivas con probabilidad de exito mayor a 50');
+  const [queryFields, setQueryFields] = useState<QueryField[]>(['offer_number', 'customer_name', 'status', 'contract_value', 'success_probability']);
+  const [queryResults, setQueryResults] = useState<OfferPipelineEntry[]>([]);
+  const [forecastPriceAdjustmentPct, setForecastPriceAdjustmentPct] = useState(0);
+  const [forecastPeriod, setForecastPeriod] = useState<'month' | 'quarter' | 'semester' | 'year'>('month');
+  const [forecastSelection, setForecastSelection] = useState<Record<string, boolean>>({});
+  const [scenarioBreakdown, setScenarioBreakdown] = useState<'kam' | 'region' | 'product'>('kam');
+  const [newWorkflowItem, setNewWorkflowItem] = useState('');
+  const [newWorkflowColumn, setNewWorkflowColumn] = useState<'h1' | 'h2' | 'h3'>('h1');
+  const [workflowIdeas, setWorkflowIdeas] = useState<{ h1: string[]; h2: string[]; h3: string[] }>({
+    h1: ['Ofertas abiertas', 'Oportunidades estancadas', 'Posventa, repuestos y mantenimiento'],
+    h2: ['International Paper', 'Smurfit Westrock', 'SAICA y Cartonajes Font'],
+    h3: ['Convertidores Europa (DE/FR)', 'Entrada nuevas plantas', 'Alianzas estratégicas'],
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -766,6 +791,13 @@ const CommercialActionsRepositoryPage = () => {
   const filteredOfferRecords = useMemo(() => {
     const sortedRows = offerPipeline
       .filter((entry) => recordMatchesFilters(entry, true))
+      .filter((entry) => !openOffersOnly || entry.bucket === 'live')
+      .filter((entry) => {
+        if (offerAlertFilter === 'missing_value') return entry.contract_value <= 0;
+        if (offerAlertFilter === 'missing_follow_up') return !entry.next_follow_up;
+        if (offerAlertFilter === 'preliminary') return normalizeText(entry.status).includes('draft') || normalizeText(entry.status).includes('pending');
+        return true;
+      })
       .sort((left, right) => {
         const direction = offerSortDirection === 'asc' ? 1 : -1;
         if (offerSortField === 'contract_value' || offerSortField === 'success_probability') {
@@ -778,11 +810,16 @@ const CommercialActionsRepositoryPage = () => {
       });
 
     return sortedRows;
-  }, [offerPipeline, selectedPipelineStage, pipelineKamFilter, pipelineRegionFilter, pipelineSectorFilter, pipelineProductTypeFilter, pipelineFamilyFilter, pipelineStatusFilter, pipelineSourceFilter, pipelineSearch, offerSortField, offerSortDirection]);
+  }, [offerPipeline, selectedPipelineStage, pipelineKamFilter, pipelineRegionFilter, pipelineSectorFilter, pipelineProductTypeFilter, pipelineFamilyFilter, pipelineStatusFilter, pipelineSourceFilter, pipelineSearch, offerSortField, offerSortDirection, offerAlertFilter, openOffersOnly]);
+
+  const openPipelineRecords = useMemo(
+    () => filteredPipelineRecords.filter((entry) => entry.bucket === 'live'),
+    [filteredPipelineRecords],
+  );
 
   const pipelineStageSummary = useMemo(() => {
     return PIPELINE_STAGES.map((stage) => {
-      const stageRecords = filteredPipelineRecords.filter((entry) => entry.stage === stage);
+      const stageRecords = openPipelineRecords.filter((entry) => entry.stage === stage);
       const stageValue = stageRecords.reduce((acc, entry) => acc + entry.contract_value, 0);
       return {
         stage,
@@ -790,26 +827,27 @@ const CommercialActionsRepositoryPage = () => {
         value: stageValue,
       };
     });
-  }, [filteredPipelineRecords]);
+  }, [openPipelineRecords]);
 
   const weightedPipelineValue = useMemo(
-    () => filteredPipelineRecords.reduce((acc, entry) => acc + (entry.contract_value * (entry.success_probability / 100)), 0),
-    [filteredPipelineRecords],
+    () => openPipelineRecords.reduce((acc, entry) => acc + (entry.contract_value * (entry.success_probability / 100)), 0),
+    [openPipelineRecords],
   );
 
   const overdueFollowUpCount = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
-    return filteredPipelineRecords.filter((entry) => entry.next_follow_up && entry.next_follow_up < today).length;
-  }, [filteredPipelineRecords]);
+    return openPipelineRecords.filter((entry) => entry.next_follow_up && entry.next_follow_up < today).length;
+  }, [openPipelineRecords]);
 
   const kamCommercialSummary = useMemo(() => {
     return REQUIRED_KAMS.map((kamName) => {
       const rows = filteredPipelineRecords.filter((entry) => entry.kam === kamName);
-      const live = rows.filter((entry) => entry.bucket === 'live').length;
+      const liveRows = rows.filter((entry) => entry.bucket === 'live');
+      const live = liveRows.length;
       const sold = rows.filter((entry) => entry.bucket === 'sold').length;
-      const value = rows.reduce((acc, entry) => acc + entry.contract_value, 0);
-      const weighted = rows.reduce((acc, entry) => acc + (entry.contract_value * (entry.success_probability / 100)), 0);
-      const withoutNextAction = rows.filter((entry) => !entry.next_action || !entry.next_action.trim()).length;
+      const value = liveRows.reduce((acc, entry) => acc + entry.contract_value, 0);
+      const weighted = liveRows.reduce((acc, entry) => acc + (entry.contract_value * (entry.success_probability / 100)), 0);
+      const withoutNextAction = liveRows.filter((entry) => !entry.next_action || !entry.next_action.trim()).length;
 
       return {
         kam: kamName,
@@ -823,18 +861,37 @@ const CommercialActionsRepositoryPage = () => {
     });
   }, [filteredPipelineRecords]);
 
-  const riskAlerts = useMemo(() => {
-    const alerts: string[] = [];
-    const missingValue = filteredOfferRecords.filter((entry) => entry.contract_value <= 0).length;
-    const missingFollowUp = filteredOfferRecords.filter((entry) => !entry.next_follow_up).length;
-    const pendingStatus = filteredOfferRecords.filter((entry) => normalizeText(entry.status).includes('draft') || normalizeText(entry.status).includes('pending')).length;
+  const riskAlerts = useMemo<OfferAlertItem[]>(() => {
+    const missingValue = offerPipeline.filter((entry) => entry.contract_value <= 0).length;
+    const missingFollowUp = offerPipeline.filter((entry) => !entry.next_follow_up).length;
+    const pendingStatus = offerPipeline.filter((entry) => normalizeText(entry.status).includes('draft') || normalizeText(entry.status).includes('pending')).length;
 
-    if (missingValue > 0) alerts.push(`${missingValue} ofertas no tienen importe estimado.`);
-    if (missingFollowUp > 0) alerts.push(`${missingFollowUp} ofertas no tienen fecha de seguimiento.`);
-    if (pendingStatus > 0) alerts.push(`${pendingStatus} ofertas siguen en estado preliminar y requieren decisión.`);
-    if (overdueFollowUpCount > 0) alerts.push(`${overdueFollowUpCount} seguimientos están vencidos.`);
-    return alerts;
-  }, [filteredOfferRecords, overdueFollowUpCount]);
+    return [
+      { id: 'missing_value', label: 'ofertas no tienen importe estimado', count: missingValue },
+      { id: 'missing_follow_up', label: 'ofertas no tienen fecha de seguimiento', count: missingFollowUp },
+      { id: 'preliminary', label: 'ofertas siguen en estado preliminar y requieren decisión', count: pendingStatus },
+    ];
+  }, [offerPipeline]);
+
+  const offerStatusAnalysis = useMemo(() => {
+    const totalValue = offerPipeline.reduce((acc, entry) => acc + entry.contract_value, 0);
+    const groups = new Map<string, { count: number; value: number }>();
+
+    offerPipeline.forEach((entry) => {
+      const key = entry.status || 'sin_estado';
+      const current = groups.get(key) || { count: 0, value: 0 };
+      current.count += 1;
+      current.value += entry.contract_value;
+      groups.set(key, current);
+    });
+
+    return Array.from(groups.entries()).map(([status, metrics]) => ({
+      status,
+      count: metrics.count,
+      value: metrics.value,
+      share: totalValue > 0 ? (metrics.value / totalValue) * 100 : 0,
+    })).sort((a, b) => b.value - a.value);
+  }, [offerPipeline]);
 
   const allActions = useMemo(
     () =>
@@ -891,6 +948,204 @@ const CommercialActionsRepositoryPage = () => {
       })
       .filter((row) => !!row.recommended);
   }, [allActions, pipelineStageSummary]);
+  const applyAlertFilter = (alertId: OfferAlertItem['id']) => {
+    setOfferAlertFilter(alertId);
+    setActiveMainTab('offers');
+  };
+
+  const clearOfferAlertFilter = () => {
+    setOfferAlertFilter('all');
+  };
+
+  const runOfferQuery = () => {
+    const normalized = normalizeText(queryText);
+    let results = [...offerPipeline];
+
+    if (normalized.includes('vivas') || normalized.includes('abiertas') || normalized.includes('open')) {
+      results = results.filter((entry) => entry.bucket === 'live');
+    }
+
+    const probabilityMatch = normalized.match(/probabilidad[^0-9]*(\d{1,3})/);
+    if (probabilityMatch) {
+      const minProbability = Number(probabilityMatch[1]);
+      if (Number.isFinite(minProbability)) {
+        results = results.filter((entry) => entry.success_probability >= minProbability);
+      }
+    }
+
+    const kamMatch = REQUIRED_KAMS.find((kamName) => normalized.includes(normalizeText(kamName)));
+    if (kamMatch) {
+      results = results.filter((entry) => entry.kam === kamMatch);
+    }
+
+    if (normalized.includes('perdidas') || normalized.includes('lost')) {
+      results = results.filter((entry) => entry.bucket === 'cancelled' || normalizeText(entry.status).includes('lost'));
+    }
+
+    if (normalized.includes('ganadas') || normalized.includes('won')) {
+      results = results.filter((entry) => entry.bucket === 'sold' || normalizeText(entry.status).includes('won'));
+    }
+
+    const fieldsMatch = queryText.match(/campos\s*:\s*([^\n]+)/i);
+    if (fieldsMatch) {
+      const mappedFields = fieldsMatch[1]
+        .split(',')
+        .map((token) => normalizeText(token))
+        .map((token): QueryField | null => {
+          if (token.includes('oferta') || token.includes('referencia')) return 'offer_number';
+          if (token.includes('cliente')) return 'customer_name';
+          if (token.includes('kam')) return 'kam';
+          if (token.includes('region')) return 'region';
+          if (token.includes('estado')) return 'status';
+          if (token.includes('fase')) return 'stage';
+          if (token.includes('importe') || token.includes('valor')) return 'contract_value';
+          if (token.includes('exito') || token.includes('probabilidad')) return 'success_probability';
+          if (token.includes('seguimiento')) return 'next_follow_up';
+          return null;
+        })
+        .filter((field): field is QueryField => !!field);
+
+      if (mappedFields.length > 0) {
+        setQueryFields(Array.from(new Set(mappedFields)));
+      }
+    }
+
+    setQueryResults(results);
+    toast({ title: 'Consulta ejecutada', description: `${results.length} ofertas encontradas.` });
+  };
+
+  const addWorkflowItem = () => {
+    const clean = newWorkflowItem.trim();
+    if (!clean) return;
+
+    setWorkflowIdeas((current) => ({
+      ...current,
+      [newWorkflowColumn]: [...current[newWorkflowColumn], clean],
+    }));
+    setNewWorkflowItem('');
+  };
+
+  const promoteQueryResultsToWorkflow = () => {
+    if (queryResults.length === 0) return;
+    const items = queryResults.slice(0, 5).map((entry) => `${entry.offer_number} - ${entry.customer_name} (${Math.round(entry.success_probability)}%)`);
+    setWorkflowIdeas((current) => ({
+      ...current,
+      h1: [...current.h1, ...items],
+    }));
+    toast({ title: 'Flujo actualizado', description: 'Las ofertas de la consulta se añadieron al horizonte 1.' });
+  };
+
+  const averageWonTicket = useMemo(() => {
+    const wonOffers = offerPipeline.filter((entry) => entry.bucket === 'sold' && entry.contract_value > 0);
+    if (wonOffers.length === 0) return 244471;
+    return wonOffers.reduce((acc, entry) => acc + entry.contract_value, 0) / wonOffers.length;
+  }, [offerPipeline]);
+
+  const forecastBaseOffers = useMemo(() => {
+    const selected = offerPipeline.filter((entry) => forecastSelection[entry.id]);
+    if (selected.length > 0) return selected;
+    return offerPipeline.filter((entry) => entry.bucket === 'live');
+  }, [offerPipeline, forecastSelection]);
+
+  const forecastAdjustedOffers = useMemo(() => {
+    const multiplier = 1 + (forecastPriceAdjustmentPct / 100);
+    return forecastBaseOffers.map((entry) => ({
+      ...entry,
+      adjusted_value: entry.contract_value * multiplier,
+      weighted_adjusted_value: (entry.contract_value * multiplier) * (entry.success_probability / 100),
+    }));
+  }, [forecastBaseOffers, forecastPriceAdjustmentPct]);
+
+  const forecastByPeriod = useMemo(() => {
+    const groups = new Map<string, { offers: number; adjusted: number; weighted: number }>();
+
+    const getPeriodKey = (value: string) => {
+      const baseDate = value ? new Date(value) : new Date();
+      if (Number.isNaN(baseDate.getTime())) return 'sin_fecha';
+      const year = baseDate.getFullYear();
+      const month = baseDate.getMonth() + 1;
+      if (forecastPeriod === 'month') return `${year}-${String(month).padStart(2, '0')}`;
+      if (forecastPeriod === 'quarter') return `${year}-Q${Math.ceil(month / 3)}`;
+      if (forecastPeriod === 'semester') return `${year}-S${month <= 6 ? 1 : 2}`;
+      return String(year);
+    };
+
+    forecastAdjustedOffers.forEach((entry) => {
+      const key = getPeriodKey(entry.next_follow_up);
+      const current = groups.get(key) || { offers: 0, adjusted: 0, weighted: 0 };
+      current.offers += 1;
+      current.adjusted += entry.adjusted_value;
+      current.weighted += entry.weighted_adjusted_value;
+      groups.set(key, current);
+    });
+
+    return Array.from(groups.entries()).map(([period, values]) => ({ period, ...values }));
+  }, [forecastAdjustedOffers, forecastPeriod]);
+
+  const scenarioDefinitions = [
+    { name: 'Realista', target: 5000000, winRate: 0.14 },
+    { name: 'Conservador', target: 3800000, winRate: 0.12 },
+    { name: 'Ambicioso', target: 6500000, winRate: 0.16 },
+  ];
+
+  const scenarioRows = useMemo(() => {
+    const contactToQualified = 0.07;
+    const qualifiedToMeeting = 0.15;
+    const meetingToOffer = 0.05;
+
+    return scenarioDefinitions.map((scenario) => {
+      const wonOffersTarget = Math.max(1, Math.ceil(scenario.target / Math.max(averageWonTicket, 1)));
+      const liveOffersTarget = Math.ceil(wonOffersTarget / scenario.winRate);
+      const meetingsTarget = Math.ceil(liveOffersTarget / meetingToOffer);
+      const qualifiedLeadsTarget = Math.ceil(meetingsTarget / qualifiedToMeeting);
+      const contactsTarget = Math.ceil(qualifiedLeadsTarget / contactToQualified);
+      const pipelineTarget = Math.ceil(scenario.target / scenario.winRate);
+
+      const strengths = [
+        `Foco en ticket medio estimado de EUR ${Math.round(averageWonTicket).toLocaleString()}.`,
+        `Objetivo de ${liveOffersTarget} ofertas vivas para sostener ${scenario.target.toLocaleString()} EUR de ventas.`,
+      ];
+      const weaknesses = [
+        `Conversión implícita exige ${contactsTarget} contactos cualificados en origen.`,
+        'Dependencia alta de disciplina comercial en seguimiento y calidad de datos.',
+      ];
+
+      return {
+        ...scenario,
+        pipelineTarget,
+        wonOffersTarget,
+        liveOffersTarget,
+        qualifiedLeadsTarget,
+        contactsTarget,
+        strengths,
+        weaknesses,
+      };
+    });
+  }, [averageWonTicket]);
+
+  const scenarioDistribution = useMemo(() => {
+    const totalValue = forecastAdjustedOffers.reduce((acc, entry) => acc + entry.adjusted_value, 0);
+    const groups = new Map<string, { value: number; count: number }>();
+
+    forecastAdjustedOffers.forEach((entry) => {
+      const key = scenarioBreakdown === 'kam'
+        ? entry.kam || 'Sin KAM'
+        : scenarioBreakdown === 'region'
+          ? entry.region || 'Sin región'
+          : entry.product_family || 'Sin familia';
+      const current = groups.get(key) || { value: 0, count: 0 };
+      current.value += entry.adjusted_value;
+      current.count += 1;
+      groups.set(key, current);
+    });
+
+    return Array.from(groups.entries()).map(([segment, metrics]) => ({
+      segment,
+      count: metrics.count,
+      value: metrics.value,
+      share: totalValue > 0 ? (metrics.value / totalValue) * 100 : 0,
+    })).sort((a, b) => b.value - a.value);
+  }, [forecastAdjustedOffers, scenarioBreakdown]);
   const persist = (nextRepo: ActionsRepository, message?: string) => {
     setRepository(nextRepo);
     saveRepositoryToStorage(nextRepo);
@@ -1124,6 +1379,8 @@ const CommercialActionsRepositoryPage = () => {
           <TabsTrigger value="repository">Estrategia y repositorio</TabsTrigger>
           <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
           <TabsTrigger value="offers">Ofertas</TabsTrigger>
+          <TabsTrigger value="queries">Consultas y flujos</TabsTrigger>
+          <TabsTrigger value="forecast">Forecast y escenarios</TabsTrigger>
           <TabsTrigger value="simulate">Simulación</TabsTrigger>
           <TabsTrigger value="capacity">Plan de capacidad</TabsTrigger>
         </TabsList>
@@ -1204,11 +1461,14 @@ const CommercialActionsRepositoryPage = () => {
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-base">Alertas de estado y calidad de datos</CardTitle></CardHeader>
               <CardContent className="space-y-2 text-sm">
-                {riskAlerts.length === 0 ? (
+                {riskAlerts.every((alert) => alert.count === 0) ? (
                   <p className="text-muted-foreground">Sin alertas críticas con los filtros actuales.</p>
-                ) : riskAlerts.map((alert) => (
-                  <p key={alert} className="border rounded-md p-2">{alert}</p>
+                ) : riskAlerts.filter((alert) => alert.count > 0).map((alert) => (
+                  <button key={alert.id} type="button" className="w-full border rounded-md p-2 text-left hover:border-primary/40" onClick={() => applyAlertFilter(alert.id)}>
+                    {alert.count} {alert.label}.
+                  </button>
                 ))}
+                <Button size="sm" variant="outline" onClick={() => { clearOfferAlertFilter(); setActiveMainTab('offers'); }}>Ir al listado completo de ofertas</Button>
               </CardContent>
             </Card>
 
@@ -1434,7 +1694,7 @@ const CommercialActionsRepositoryPage = () => {
                 <CardHeader className="pb-2"><CardTitle className="text-base">Sales pipeline distribution</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   {pipelineStageSummary.map((summary) => {
-                    const total = Math.max(filteredPipelineRecords.length, 1);
+                    const total = Math.max(openPipelineRecords.length, 1);
                     const ratio = (summary.count / total) * 100;
                     return (
                       <button
@@ -1495,6 +1755,17 @@ const CommercialActionsRepositoryPage = () => {
               <CardTitle className="text-base">Registro de ofertas y edición rápida</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant={openOffersOnly ? 'default' : 'outline'} onClick={() => setOpenOffersOnly((current) => !current)}>
+                  {openOffersOnly ? 'Mostrando solo abiertas' : 'Filtrar solo abiertas'}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => toggleOfferSort('success_probability')}>
+                  Ordenar por probabilidad de éxito
+                </Button>
+                {offerAlertFilter !== 'all' ? (
+                  <Button size="sm" variant="outline" onClick={clearOfferAlertFilter}>Quitar filtro de alerta</Button>
+                ) : null}
+              </div>
               {filteredOfferRecords.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No hay ofertas para los filtros activos.</p>
               ) : (
@@ -1577,6 +1848,271 @@ const CommercialActionsRepositoryPage = () => {
                   </div>
                 </>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="queries" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-base">Panel de consultas de datos</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <Label>Consulta</Label>
+              <Textarea value={queryText} onChange={(event) => setQueryText(event.target.value)} rows={3} placeholder="Ejemplo: ofertas vivas con probabilidad de exito mayor a 50. campos: oferta, cliente, kam, importe" />
+              <div className="flex flex-wrap gap-2">
+                {(['offer_number', 'customer_name', 'kam', 'region', 'status', 'stage', 'contract_value', 'success_probability', 'next_follow_up'] as QueryField[]).map((field) => (
+                  <Button
+                    key={field}
+                    size="sm"
+                    variant={queryFields.includes(field) ? 'default' : 'outline'}
+                    onClick={() => setQueryFields((current) => current.includes(field) ? current.filter((entry) => entry !== field) : [...current, field])}
+                  >
+                    {field}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={runOfferQuery}>Ejecutar consulta</Button>
+                <Button variant="outline" onClick={promoteQueryResultsToWorkflow}>Crear box en flujo con resultados</Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-base">Resultado de consulta</CardTitle></CardHeader>
+            <CardContent>
+              {(queryResults.length === 0 ? filteredOfferRecords : queryResults).length === 0 ? (
+                <p className="text-sm text-muted-foreground">No hay resultados para mostrar.</p>
+              ) : (
+                <div className="overflow-auto rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>{queryFields.map((field) => <TableHead key={field}>{field}</TableHead>)}</TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(queryResults.length === 0 ? filteredOfferRecords : queryResults).slice(0, 50).map((offer) => (
+                        <TableRow key={`query-${offer.id}`}>
+                          {queryFields.map((field) => (
+                            <TableCell key={`${offer.id}-${field}`} className="text-xs">
+                              {field === 'contract_value'
+                                ? `EUR ${Math.round(offer.contract_value).toLocaleString()}`
+                                : field === 'success_probability'
+                                  ? `${Math.round(offer.success_probability)}%`
+                                  : field === 'stage'
+                                    ? PIPELINE_STAGE_LABELS[offer.stage]
+                                    : String(offer[field] || '-')}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-base">Análisis de ofertas por estado</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <p className="text-xs text-muted-foreground">Referencia cargada desde análisis 2026 (hit rate observado 16,25%; modelo operativo ajustado al 14%).</p>
+              <div className="overflow-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Estado</TableHead>
+                      <TableHead className="text-right">Count of title</TableHead>
+                      <TableHead className="text-right">Sum of contract_value_eur</TableHead>
+                      <TableHead className="text-right">Sum of contract_value_eur2</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {offerStatusAnalysis.map((row) => (
+                      <TableRow key={row.status}>
+                        <TableCell>{row.status}</TableCell>
+                        <TableCell className="text-right">{row.count}</TableCell>
+                        <TableCell className="text-right">EUR {Math.round(row.value).toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{row.share.toFixed(2)}%</TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow>
+                      <TableCell className="font-semibold">Grand Total</TableCell>
+                      <TableCell className="text-right font-semibold">{offerStatusAnalysis.reduce((acc, row) => acc + row.count, 0)}</TableCell>
+                      <TableCell className="text-right font-semibold">EUR {Math.round(offerStatusAnalysis.reduce((acc, row) => acc + row.value, 0)).toLocaleString()}</TableCell>
+                      <TableCell className="text-right font-semibold">100.00%</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-base">Sistema de gestión de diagramas de flujo</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid lg:grid-cols-3 gap-3">
+                <div className="rounded-md border p-3 space-y-2"><p className="text-sm font-semibold">HORIZONTE 1 (0-90 días)</p>{workflowIdeas.h1.map((item) => <p key={`h1-${item}`} className="text-xs border rounded px-2 py-1">• {item}</p>)}</div>
+                <div className="rounded-md border p-3 space-y-2"><p className="text-sm font-semibold">HORIZONTE 2 (1-6 meses)</p>{workflowIdeas.h2.map((item) => <p key={`h2-${item}`} className="text-xs border rounded px-2 py-1">• {item}</p>)}</div>
+                <div className="rounded-md border p-3 space-y-2"><p className="text-sm font-semibold">HORIZONTE 3 (2-6 meses)</p>{workflowIdeas.h3.map((item) => <p key={`h3-${item}`} className="text-xs border rounded px-2 py-1">• {item}</p>)}</div>
+              </div>
+              <div className="rounded-md border p-3 text-center text-sm font-medium">H1/H2/H3 → EJECUCIÓN POR KAM (Linetex / Heriberto / Ingecart) → MATRIZ DE PRIORIZACIÓN</div>
+              <div className="grid md:grid-cols-[180px_1fr_auto] gap-2">
+                <Select value={newWorkflowColumn} onValueChange={(value) => setNewWorkflowColumn(value as 'h1' | 'h2' | 'h3')}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="h1">Horizonte 1</SelectItem>
+                    <SelectItem value="h2">Horizonte 2</SelectItem>
+                    <SelectItem value="h3">Horizonte 3</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input value={newWorkflowItem} onChange={(event) => setNewWorkflowItem(event.target.value)} placeholder="Nueva idea/acción para el flujo" />
+                <Button onClick={addWorkflowItem}>Añadir box</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="forecast" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-base">Forecast operacional (base IA ajustada)</CardTitle></CardHeader>
+            <CardContent className="grid md:grid-cols-3 gap-3">
+              <div>
+                <Label>Corrección de precio (%)</Label>
+                <Input type="number" value={forecastPriceAdjustmentPct} onChange={(event) => setForecastPriceAdjustmentPct(Number(event.target.value) || 0)} />
+              </div>
+              <div>
+                <Label>Horizonte de forecast</Label>
+                <Select value={forecastPeriod} onValueChange={(value) => setForecastPeriod(value as 'month' | 'quarter' | 'semester' | 'year')}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="month">Mes</SelectItem>
+                    <SelectItem value="quarter">Trimestre</SelectItem>
+                    <SelectItem value="semester">Semestre</SelectItem>
+                    <SelectItem value="year">Año</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="rounded-md border p-3 text-sm">
+                <p>Hit rate IA base: <span className="font-semibold">14%</span></p>
+                <p className="text-xs text-muted-foreground">Ajustado desde 16,25% según análisis 2026.</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-base">Selección de ofertas para forecast</CardTitle></CardHeader>
+            <CardContent className="space-y-2 max-h-[320px] overflow-auto">
+              {offerPipeline.filter((entry) => entry.bucket === 'live').map((offer) => (
+                <label key={`fc-${offer.id}`} className="flex items-center justify-between gap-3 border rounded-md px-3 py-2 text-sm">
+                  <span>{offer.offer_number} · {offer.customer_name} · EUR {Math.round(offer.contract_value).toLocaleString()}</span>
+                  <input type="checkbox" checked={!!forecastSelection[offer.id]} onChange={(event) => setForecastSelection((current) => ({ ...current, [offer.id]: event.target.checked }))} />
+                </label>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-base">Forecast por periodo</CardTitle></CardHeader>
+            <CardContent>
+              <div className="overflow-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Periodo</TableHead>
+                      <TableHead className="text-right">Ofertas</TableHead>
+                      <TableHead className="text-right">Valor corregido</TableHead>
+                      <TableHead className="text-right">Forecast ponderado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {forecastByPeriod.map((row) => (
+                      <TableRow key={row.period}>
+                        <TableCell>{row.period}</TableCell>
+                        <TableCell className="text-right">{row.offers}</TableCell>
+                        <TableCell className="text-right">EUR {Math.round(row.adjusted).toLocaleString()}</TableCell>
+                        <TableCell className="text-right">EUR {Math.round(row.weighted).toLocaleString()}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-base">Escenarios 2027 (sector corrugado: equipos + servicios)</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="overflow-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Escenario</TableHead>
+                      <TableHead className="text-right">Objetivo venta</TableHead>
+                      <TableHead className="text-right">Pipeline objetivo</TableHead>
+                      <TableHead className="text-right">Ofertas vivas</TableHead>
+                      <TableHead className="text-right">Leads cualificados</TableHead>
+                      <TableHead className="text-right">Contactos necesarios</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {scenarioRows.map((scenario) => (
+                      <TableRow key={scenario.name}>
+                        <TableCell>{scenario.name}</TableCell>
+                        <TableCell className="text-right">EUR {Math.round(scenario.target).toLocaleString()}</TableCell>
+                        <TableCell className="text-right">EUR {Math.round(scenario.pipelineTarget).toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{scenario.liveOffersTarget}</TableCell>
+                        <TableCell className="text-right">{scenario.qualifiedLeadsTarget}</TableCell>
+                        <TableCell className="text-right">{scenario.contactsTarget}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="grid lg:grid-cols-3 gap-3">
+                {scenarioRows.map((scenario) => (
+                  <div key={`analysis-${scenario.name}`} className="rounded-md border p-3 space-y-2">
+                    <p className="font-semibold text-sm">{scenario.name}</p>
+                    <p className="text-xs font-medium">Fortalezas IA</p>
+                    {scenario.strengths.map((entry) => <p key={`${scenario.name}-s-${entry}`} className="text-xs">• {entry}</p>)}
+                    <p className="text-xs font-medium pt-1">Debilidades IA</p>
+                    {scenario.weaknesses.map((entry) => <p key={`${scenario.name}-w-${entry}`} className="text-xs">• {entry}</p>)}
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <Label>Desglose por</Label>
+                <Select value={scenarioBreakdown} onValueChange={(value) => setScenarioBreakdown(value as 'kam' | 'region' | 'product')}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="kam">KAM</SelectItem>
+                    <SelectItem value="region">Región</SelectItem>
+                    <SelectItem value="product">Producto / familia</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="overflow-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Segmento</TableHead>
+                      <TableHead className="text-right">Registros</TableHead>
+                      <TableHead className="text-right">Valor corregido</TableHead>
+                      <TableHead className="text-right">Peso</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {scenarioDistribution.map((row) => (
+                      <TableRow key={row.segment}>
+                        <TableCell>{row.segment}</TableCell>
+                        <TableCell className="text-right">{row.count}</TableCell>
+                        <TableCell className="text-right">EUR {Math.round(row.value).toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{row.share.toFixed(2)}%</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
