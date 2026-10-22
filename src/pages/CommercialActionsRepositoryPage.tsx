@@ -72,7 +72,7 @@ const emptyAction: CommercialAction = {
   },
 };
 
-type OfferPipelineBucket = 'live' | 'cancelled' | 'sold';
+type OfferPipelineBucket = 'live' | 'cancelled' | 'sold' | 'draft';
 type PipelineSourceFilter = 'offers_only' | 'offers_opportunities' | 'all';
 type OfferSortField = 'offer_number' | 'customer_name' | 'title' | 'kam' | 'region' | 'status' | 'stage' | 'contract_value' | 'success_probability' | 'next_follow_up';
 
@@ -181,6 +181,7 @@ const normalizePipelineStage = (status: string, bucket: OfferPipelineBucket): Pi
   if (normalized.includes('contact') || normalized.includes('prospect')) return 'contact';
   if (normalized.includes('proposal') || normalized.includes('offer') || normalized.includes('cotiz')) return 'proposal';
   if (normalized.includes('close') || normalized.includes('won') || normalized.includes('signed') || normalized.includes('accepted')) return 'closing';
+  if (bucket === 'draft') return 'contact';
   return bucket === 'cancelled' ? 'qualification' : 'proposal';
 };
 
@@ -318,17 +319,23 @@ const pipelineDemoOffers: Array<Record<string, any>> = [
   },
 ];
 
-const normalizeOfferBucket = (status: string): OfferPipelineBucket => {
-  const normalized = status.toLowerCase();
-  if (['won', 'sold', 'accepted', 'approved', 'closed', 'converted', 'signed'].includes(normalized)) return 'sold';
-  if (['cancelled', 'canceled', 'postponed', 'declined', 'lost', 'dead', 'stalled', 'on_hold', 'paused'].includes(normalized)) return 'cancelled';
+const normalizeOfferBucket = (status: string, bucketHint = ''): OfferPipelineBucket => {
+  const normalizedBucket = normalizeText(bucketHint || '');
+  if (['draft', 'borrador', 'pending_validation'].includes(normalizedBucket)) return 'draft';
+  if (['won', 'sold', 'closed_won', 'ganada'].includes(normalizedBucket)) return 'sold';
+  if (['lost', 'cancelled', 'canceled', 'closed_lost', 'perdida'].includes(normalizedBucket)) return 'cancelled';
+
+  const normalized = normalizeText(status || '');
+  if (['draft', 'borrador'].includes(normalized)) return 'draft';
+  if (['won', 'sold', 'accepted', 'approved', 'closed', 'converted', 'signed', 'ganada'].includes(normalized)) return 'sold';
+  if (['cancelled', 'canceled', 'postponed', 'declined', 'lost', 'dead', 'stalled', 'on_hold', 'paused', 'perdida'].includes(normalized)) return 'cancelled';
   return 'live';
 };
 
 const normalizeOfferPipelineEntry = (offer: Record<string, any>): OfferPipelineEntry => {
   const status = String(offer.status || 'draft');
-  const bucket = normalizeOfferBucket(status);
-  const scoreRaw = Number(offer.global_score ?? offer.score ?? (bucket === 'live' ? 90 : bucket === 'sold' ? 82 : 55));
+  const bucket = normalizeOfferBucket(status, String(offer.status_bucket || offer.bucket || ''));
+  const scoreRaw = Number(offer.global_score ?? offer.score ?? (bucket === 'live' ? 90 : bucket === 'sold' ? 82 : bucket === 'draft' ? 25 : 55));
   const score = Number.isFinite(scoreRaw) ? Math.max(0, Math.min(100, scoreRaw)) : 0;
   const title = String(offer.title || offer.offer_number || 'Unnamed offer');
   const customerName = String(offer.customer_name || offer.customerName || 'Customer pending');
@@ -342,7 +349,7 @@ const normalizeOfferPipelineEntry = (offer: Record<string, any>): OfferPipelineE
   const productType = inferProductType(`${title} ${contextText}`);
   const kam = inferKam(customerName, String(offer.kam || ''), String(offer.country || ''), region);
   const stage = offer.stage ? String(offer.stage) as PipelineStage : normalizePipelineStage(status, bucket);
-  const successProbabilityRaw = Number(offer.probability ?? offer.contract_prob ?? offer.score ?? (bucket === 'sold' ? 100 : 50));
+  const successProbabilityRaw = Number(offer.probability ?? offer.contract_prob ?? offer.score ?? (bucket === 'sold' ? 100 : bucket === 'draft' ? 0 : 50));
   const successProbability = Number.isFinite(successProbabilityRaw) ? Math.max(0, Math.min(100, successProbabilityRaw)) : 0;
   const nextFollowUp = String(offer.next_follow_up || offer.next_followup || offer.follow_up_date || '');
   const recordType = String(offer.record_type || '').toLowerCase();
@@ -368,14 +375,18 @@ const normalizeOfferPipelineEntry = (offer: Record<string, any>): OfferPipelineE
         ? 'Open commercial opportunity requiring active follow-up and decision support.'
         : bucket === 'sold'
           ? 'Offer has been won and requires execution handoff to project management.'
-          : 'Decision paused or missed; recovery and learning actions should be documented.'
+          : bucket === 'draft'
+            ? 'Draft in customer-management mode: complete validation before activating the commercial pipeline.'
+            : 'Decision paused or missed; recovery and learning actions should be documented.'
     )),
     next_action: String(offer.next_action || (
       bucket === 'live'
         ? 'Confirm next meeting, review technical constraints, and push the offer to a decision milestone.'
         : bucket === 'sold'
           ? 'Start the project activation checklist and confirm full delivery ownership.'
-          : 'Reassess commercial conditions and decide whether to recover, archive, or convert the opportunity.'
+          : bucket === 'draft'
+            ? 'Complete commercial validation with the customer and define status before pipeline activation.'
+            : 'Reassess commercial conditions and decide whether to recover, archive, or convert the opportunity.'
     )),
     priority: score >= 90 ? 'critical' : score >= 75 ? 'high' : score >= 60 ? 'medium' : 'low',
     source: String(offer.source || 'Commercial pipeline'),
@@ -401,10 +412,10 @@ const buildPipelineTask = (offer: OfferPipelineEntry): MonitoringTask => ({
   id: `pipeline_${offer.id}`,
   title: `${offer.customer_name} - ${offer.title}`,
   description: `${offer.next_action} Context: ${offer.context}`,
-  pillar: offer.bucket === 'sold' ? 'p2' : offer.bucket === 'cancelled' ? 'p1' : 'p0',
+  pillar: offer.bucket === 'sold' ? 'p2' : offer.bucket === 'cancelled' ? 'p1' : offer.bucket === 'draft' ? 'general' : 'p0',
   status: 'todo',
   priority: offer.priority === 'critical' ? 'critical' : offer.priority === 'high' ? 'high' : offer.priority === 'medium' ? 'medium' : 'low',
-  category: offer.bucket === 'sold' ? 'strategy' : offer.bucket === 'cancelled' ? 'analysis' : 'follow_up',
+  category: offer.bucket === 'sold' ? 'strategy' : offer.bucket === 'cancelled' ? 'analysis' : offer.bucket === 'draft' ? 'data' : 'follow_up',
   assignee: 'sales',
   dueDate: new Date(Date.now() + (offer.priority === 'critical' ? 2 : 4) * 24 * 60 * 60 * 1000).toISOString(),
   createdAt: new Date().toISOString(),
@@ -547,7 +558,7 @@ const CommercialActionsRepositoryPage = () => {
 
     const fromOpportunities = data.opportunities.map((opportunity) => {
       const status = String(opportunity.status || 'prospect');
-      const bucket = normalizeOfferBucket(status);
+      const bucket = normalizeOfferBucket(status, String(offer.status_bucket || offer.bucket || ''));
       const title = String(opportunity.scope || (opportunity.opp_number || opportunity.oppNumber) || 'Opportunity');
       const customerName = String((opportunity.customer_name || opportunity.customerName) || 'Customer pending');
       const sourceText = `${title} ${(opportunity.product_family || opportunity.productFamily) || ''}`;
@@ -784,7 +795,7 @@ const CommercialActionsRepositoryPage = () => {
   };
 
   const filteredPipelineRecords = useMemo(
-    () => pipelineRecords.filter((entry) => recordMatchesFilters(entry, true)),
+    () => pipelineRecords.filter((entry) => recordMatchesFilters(entry, true) && entry.bucket !== 'draft'),
     [pipelineRecords, selectedPipelineStage, pipelineKamFilter, pipelineRegionFilter, pipelineSectorFilter, pipelineProductTypeFilter, pipelineFamilyFilter, pipelineStatusFilter, pipelineSourceFilter, pipelineSearch],
   );
 
