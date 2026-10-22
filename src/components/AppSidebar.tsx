@@ -1,4 +1,4 @@
-﻿import { useLanguage } from '@/i18n/LanguageContext';
+import { useLanguage } from '@/i18n/LanguageContext';
 import { NavLink } from '@/components/NavLink';
 import {
   Sidebar,
@@ -79,7 +79,7 @@ export function AppSidebar() {
     {
       label: isEs ? 'Ventas' : 'Sales',
       items: [
-        { title: isEs ? 'Ofertas y pipeline' : 'Offers & Pipeline', url: '/commercial-actions-repository', icon: Layers },
+        { title: isEs ? 'Gestión comercial' : 'Commercial Management', url: '/commercial-actions-repository', icon: Layers },
         { title: isEs ? 'Pricing y costes' : 'Pricing & Costs', url: '/offer-pricing', icon: Calculator },
         { title: isEs ? 'Inteligencia comercial' : 'Sales Intelligence', url: '/ai-sales', icon: Brain },
         { title: isEs ? 'Arquitectura comercial' : 'Sales Architecture', url: '/sales-architecture', icon: Building2 },

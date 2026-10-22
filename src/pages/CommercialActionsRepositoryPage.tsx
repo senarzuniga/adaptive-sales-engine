@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
@@ -72,6 +73,10 @@ const emptyAction: CommercialAction = {
 };
 
 type OfferPipelineBucket = 'live' | 'cancelled' | 'sold';
+type PipelineSourceFilter = 'offers_only' | 'offers_opportunities' | 'all';
+type OfferSortField = 'offer_number' | 'customer_name' | 'title' | 'kam' | 'region' | 'status' | 'stage' | 'contract_value' | 'success_probability' | 'next_follow_up';
+
+const REQUIRED_KAMS = ['Linetex', 'Heriberto', 'Ingecart'] as const;
 
 interface OfferPipelineEntry {
   id: string;
@@ -102,6 +107,7 @@ interface OfferPipelineEntry {
   contract_value: number;
   success_probability: number;
   next_follow_up: string;
+  record_type: 'offer' | 'opportunity' | 'lead';
 }
 
 type PipelineStage = 'contact' | 'qualification' | 'meeting' | 'proposal' | 'negotiation' | 'closing' | 'retention';
@@ -112,6 +118,7 @@ interface OfferQuickEditDraft {
   region: string;
   estimatedSalesValue: string;
   nextFollowUp: string;
+  status: string;
 }
 
 const PIPELINE_STAGES: PipelineStage[] = ['contact', 'qualification', 'meeting', 'proposal', 'negotiation', 'closing', 'retention'];
@@ -312,7 +319,8 @@ const normalizeOfferBucket = (status: string): OfferPipelineBucket => {
 const normalizeOfferPipelineEntry = (offer: Record<string, any>): OfferPipelineEntry => {
   const status = String(offer.status || 'draft');
   const bucket = normalizeOfferBucket(status);
-  const score = Number(offer.global_score - offer.score - (bucket === 'live' ? 90 : bucket === 'sold' ? 82 : 55));
+  const scoreRaw = Number(offer.global_score ?? offer.score ?? (bucket === 'live' ? 90 : bucket === 'sold' ? 82 : 55));
+  const score = Number.isFinite(scoreRaw) ? Math.max(0, Math.min(100, scoreRaw)) : 0;
   const title = String(offer.title || offer.offer_number || 'Unnamed offer');
   const customerName = String(offer.customer_name || offer.customerName || 'Customer pending');
   const companyName = String(offer.company_name || offer.companyName || 'Portfolio');
@@ -328,6 +336,12 @@ const normalizeOfferPipelineEntry = (offer: Record<string, any>): OfferPipelineE
   const successProbabilityRaw = Number(offer.probability ?? offer.contract_prob ?? offer.score ?? (bucket === 'sold' ? 100 : 50));
   const successProbability = Number.isFinite(successProbabilityRaw) ? Math.max(0, Math.min(100, successProbabilityRaw)) : 0;
   const nextFollowUp = String(offer.next_follow_up || offer.next_followup || offer.follow_up_date || '');
+  const recordType = String(offer.record_type || '').toLowerCase();
+  const inferredRecordType: OfferPipelineEntry['record_type'] = recordType === 'lead' || String(offer.source || '').toLowerCase() === 'leads'
+    ? 'lead'
+    : recordType === 'opportunity' || String(offer.source || '').toLowerCase() === 'opportunities'
+      ? 'opportunity'
+      : 'offer';
 
   return {
     id: String(offer.id || `${offer.offer_number || customerName}-${Math.random().toString(16).slice(2)}`),
@@ -338,7 +352,7 @@ const normalizeOfferPipelineEntry = (offer: Record<string, any>): OfferPipelineE
     status,
     bucket,
     stage,
-    score: Number.isFinite(score) ? score : 0,
+    score,
     last_update: offer.updated_at ? new Date(offer.updated_at).toLocaleDateString() : 'recently',
     context: String(offer.context || (
       bucket === 'live'
@@ -370,6 +384,7 @@ const normalizeOfferPipelineEntry = (offer: Record<string, any>): OfferPipelineE
     contract_value: Number(offer.contract_value || 0),
     success_probability: successProbability,
     next_follow_up: nextFollowUp,
+    record_type: inferredRecordType,
   };
 };
 
@@ -423,6 +438,7 @@ const CommercialActionsRepositoryPage = () => {
   const { addTask, activeCompanyId, data, setContacts, setLeads, setOpportunities } = useData();
   const [repository, setRepository] = useState<ActionsRepository>(() => loadRepositoryFromStorage());
   const [selectedStage, setSelectedStage] = useState(repository.lifecycle_stages[0]?.stage || 'PIPELINE_EXECUTION');
+  const [activeMainTab, setActiveMainTab] = useState('management');
   const [workingHours, setWorkingHours] = useState(40);
   const [triggerEvent, setTriggerEvent] = useState('planning_cycle');
   const [healthScore, setHealthScore] = useState(55);
@@ -441,7 +457,11 @@ const CommercialActionsRepositoryPage = () => {
   const [pipelineSectorFilter, setPipelineSectorFilter] = useState('all');
   const [pipelineProductTypeFilter, setPipelineProductTypeFilter] = useState<'all' | 'service' | 'equipment'>('all');
   const [pipelineFamilyFilter, setPipelineFamilyFilter] = useState('all');
+  const [pipelineStatusFilter, setPipelineStatusFilter] = useState('all');
+  const [pipelineSourceFilter, setPipelineSourceFilter] = useState<PipelineSourceFilter>('offers_opportunities');
   const [pipelineSearch, setPipelineSearch] = useState('');
+  const [offerSortField, setOfferSortField] = useState<OfferSortField>('contract_value');
+  const [offerSortDirection, setOfferSortDirection] = useState<'asc' | 'desc'>('desc');
   const [offerQuickEdits, setOfferQuickEdits] = useState<Record<string, OfferQuickEditDraft>>({});
   const [savingOfferId, setSavingOfferId] = useState<string | null>(null);
 
@@ -521,6 +541,7 @@ const CommercialActionsRepositoryPage = () => {
         contract_value: Number((opportunity.est_revenue || opportunity.estRevenue) || 0),
         score: Number((opportunity.contract_prob || opportunity.contractProb) || 0),
         source: 'Opportunities',
+        record_type: 'opportunity',
         context: `Pipeline opportunity with estimated close ${(opportunity.est_purchasing_year || opportunity.estPurchasingYear) || 'n/a'} Q${(opportunity.est_purchasing_quarter || opportunity.estPurchasingQuarter) || '-'}.`,
         next_action: String(opportunity.contact || 'Confirm next customer touchpoint and move the opportunity to the next stage.'),
         product_name: title,
@@ -545,6 +566,7 @@ const CommercialActionsRepositoryPage = () => {
         sector: String((lead.segment || lead.sector) || 'Corrugated Packaging'),
         kam: String(lead.owner || ''),
         source: 'Leads',
+        record_type: 'lead',
         score: 50,
         context: 'Prospection lead in pipeline discovery stage.',
         next_action: String(lead.email || 'Reach out to identify key stakeholders and qualification criteria.'),
@@ -564,12 +586,17 @@ const CommercialActionsRepositoryPage = () => {
   }, [offerPipeline, data.leads, data.opportunities]);
 
   const pipelineFilterOptions = useMemo(() => {
-    const valueSet = <T extends string>(values: T[]) => ['all', ...Array.from(new Set(values.filter(Boolean))).sort((a, b) => a.localeCompare(b))];
+    const valueSet = <T extends string>(values: T[], seed: string[] = []) => [
+      'all',
+      ...Array.from(new Set([...seed, ...values].filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    ];
+
     return {
-      kam: valueSet(pipelineRecords.map((entry) => entry.kam)),
+      kam: valueSet(pipelineRecords.map((entry) => entry.kam), [...REQUIRED_KAMS]),
       region: valueSet(pipelineRecords.map((entry) => entry.region)),
       sector: valueSet(pipelineRecords.map((entry) => entry.sector)),
       family: valueSet(pipelineRecords.map((entry) => entry.product_family)),
+      status: valueSet(pipelineRecords.map((entry) => entry.status)),
     };
   }, [pipelineRecords]);
 
@@ -583,6 +610,7 @@ const CommercialActionsRepositoryPage = () => {
       region: offer.region || '',
       estimatedSalesValue: String(Math.round(offer.contract_value || 0)),
       nextFollowUp: offer.next_follow_up || '',
+      status: offer.status || '',
     };
   };
 
@@ -596,6 +624,7 @@ const CommercialActionsRepositoryPage = () => {
           region: '',
           estimatedSalesValue: '',
           nextFollowUp: '',
+          status: '',
         }),
         [field]: value,
       },
@@ -622,6 +651,7 @@ const CommercialActionsRepositoryPage = () => {
     });
     const region = (draft.region || offer.region || '').trim();
     const nextFollowUp = (draft.nextFollowUp || '').trim();
+    const status = (draft.status || offer.status || 'draft').trim();
 
     setSavingOfferId(offer.id);
     try {
@@ -642,7 +672,7 @@ const CommercialActionsRepositoryPage = () => {
         offer_number: offer.offer_number,
         title: offer.title,
         customer_name: offer.customer_name,
-        status: offer.status,
+        status,
         kam,
         region,
         contract_value: estimatedSalesValue,
@@ -666,6 +696,7 @@ const CommercialActionsRepositoryPage = () => {
             contract_value: estimatedSalesValue,
             probability: successProbability,
             next_follow_up: nextFollowUp,
+            status,
             updated_at: new Date().toISOString(),
           })
           .eq('id', offer.id)
@@ -685,6 +716,8 @@ const CommercialActionsRepositoryPage = () => {
             contract_value: estimatedSalesValue,
             success_probability: successProbability,
             next_follow_up: nextFollowUp,
+            status,
+            stage: normalizePipelineStage(status, entry.bucket),
             source_confidence: 'confirmed',
             last_update: new Date().toLocaleDateString(),
           }
@@ -698,6 +731,7 @@ const CommercialActionsRepositoryPage = () => {
           region,
           estimatedSalesValue: String(Math.round(estimatedSalesValue)),
           nextFollowUp,
+          status,
         },
       }));
 
@@ -708,19 +742,43 @@ const CommercialActionsRepositoryPage = () => {
       setSavingOfferId(null);
     }
   };
-  const filteredPipelineRecords = useMemo(() => {
+  const recordMatchesFilters = (entry: OfferPipelineEntry, includeStage = true) => {
+    if (includeStage && selectedPipelineStage !== 'all' && entry.stage !== selectedPipelineStage) return false;
+    if (pipelineKamFilter !== 'all' && entry.kam !== pipelineKamFilter) return false;
+    if (pipelineRegionFilter !== 'all' && entry.region !== pipelineRegionFilter) return false;
+    if (pipelineSectorFilter !== 'all' && entry.sector !== pipelineSectorFilter) return false;
+    if (pipelineProductTypeFilter !== 'all' && entry.product_type !== pipelineProductTypeFilter) return false;
+    if (pipelineFamilyFilter !== 'all' && entry.product_family !== pipelineFamilyFilter) return false;
+    if (pipelineStatusFilter !== 'all' && normalizeText(entry.status) !== normalizeText(pipelineStatusFilter)) return false;
+    if (pipelineSourceFilter === 'offers_only' && entry.record_type !== 'offer') return false;
+    if (pipelineSourceFilter === 'offers_opportunities' && entry.record_type === 'lead') return false;
+
     const normalizedSearch = normalizeText(pipelineSearch);
-    return pipelineRecords.filter((entry) => {
-      if (selectedPipelineStage !== 'all' && entry.stage !== selectedPipelineStage) return false;
-      if (pipelineKamFilter !== 'all' && entry.kam !== pipelineKamFilter) return false;
-      if (pipelineRegionFilter !== 'all' && entry.region !== pipelineRegionFilter) return false;
-      if (pipelineSectorFilter !== 'all' && entry.sector !== pipelineSectorFilter) return false;
-      if (pipelineProductTypeFilter !== 'all' && entry.product_type !== pipelineProductTypeFilter) return false;
-      if (pipelineFamilyFilter !== 'all' && entry.product_family !== pipelineFamilyFilter) return false;
-      if (!normalizedSearch) return true;
-      return normalizeText(`${entry.customer_name} ${entry.title} ${entry.product_name} ${entry.offer_number}`).includes(normalizedSearch);
-    });
-  }, [pipelineRecords, selectedPipelineStage, pipelineKamFilter, pipelineRegionFilter, pipelineSectorFilter, pipelineProductTypeFilter, pipelineFamilyFilter, pipelineSearch]);
+    if (!normalizedSearch) return true;
+    return normalizeText(`${entry.customer_name} ${entry.title} ${entry.product_name} ${entry.offer_number}`).includes(normalizedSearch);
+  };
+
+  const filteredPipelineRecords = useMemo(
+    () => pipelineRecords.filter((entry) => recordMatchesFilters(entry, true)),
+    [pipelineRecords, selectedPipelineStage, pipelineKamFilter, pipelineRegionFilter, pipelineSectorFilter, pipelineProductTypeFilter, pipelineFamilyFilter, pipelineStatusFilter, pipelineSourceFilter, pipelineSearch],
+  );
+
+  const filteredOfferRecords = useMemo(() => {
+    const sortedRows = offerPipeline
+      .filter((entry) => recordMatchesFilters(entry, true))
+      .sort((left, right) => {
+        const direction = offerSortDirection === 'asc' ? 1 : -1;
+        if (offerSortField === 'contract_value' || offerSortField === 'success_probability') {
+          return (((left[offerSortField] as number) || 0) - ((right[offerSortField] as number) || 0)) * direction;
+        }
+
+        const leftValue = String(left[offerSortField] || '').toLowerCase();
+        const rightValue = String(right[offerSortField] || '').toLowerCase();
+        return leftValue.localeCompare(rightValue) * direction;
+      });
+
+    return sortedRows;
+  }, [offerPipeline, selectedPipelineStage, pipelineKamFilter, pipelineRegionFilter, pipelineSectorFilter, pipelineProductTypeFilter, pipelineFamilyFilter, pipelineStatusFilter, pipelineSourceFilter, pipelineSearch, offerSortField, offerSortDirection]);
 
   const pipelineStageSummary = useMemo(() => {
     return PIPELINE_STAGES.map((stage) => {
@@ -733,6 +791,51 @@ const CommercialActionsRepositoryPage = () => {
       };
     });
   }, [filteredPipelineRecords]);
+
+  const weightedPipelineValue = useMemo(
+    () => filteredPipelineRecords.reduce((acc, entry) => acc + (entry.contract_value * (entry.success_probability / 100)), 0),
+    [filteredPipelineRecords],
+  );
+
+  const overdueFollowUpCount = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return filteredPipelineRecords.filter((entry) => entry.next_follow_up && entry.next_follow_up < today).length;
+  }, [filteredPipelineRecords]);
+
+  const kamCommercialSummary = useMemo(() => {
+    return REQUIRED_KAMS.map((kamName) => {
+      const rows = filteredPipelineRecords.filter((entry) => entry.kam === kamName);
+      const live = rows.filter((entry) => entry.bucket === 'live').length;
+      const sold = rows.filter((entry) => entry.bucket === 'sold').length;
+      const value = rows.reduce((acc, entry) => acc + entry.contract_value, 0);
+      const weighted = rows.reduce((acc, entry) => acc + (entry.contract_value * (entry.success_probability / 100)), 0);
+      const withoutNextAction = rows.filter((entry) => !entry.next_action || !entry.next_action.trim()).length;
+
+      return {
+        kam: kamName,
+        total: rows.length,
+        live,
+        sold,
+        value,
+        weighted,
+        withoutNextAction,
+      };
+    });
+  }, [filteredPipelineRecords]);
+
+  const riskAlerts = useMemo(() => {
+    const alerts: string[] = [];
+    const missingValue = filteredOfferRecords.filter((entry) => entry.contract_value <= 0).length;
+    const missingFollowUp = filteredOfferRecords.filter((entry) => !entry.next_follow_up).length;
+    const pendingStatus = filteredOfferRecords.filter((entry) => normalizeText(entry.status).includes('draft') || normalizeText(entry.status).includes('pending')).length;
+
+    if (missingValue > 0) alerts.push(`${missingValue} ofertas no tienen importe estimado.`);
+    if (missingFollowUp > 0) alerts.push(`${missingFollowUp} ofertas no tienen fecha de seguimiento.`);
+    if (pendingStatus > 0) alerts.push(`${pendingStatus} ofertas siguen en estado preliminar y requieren decisión.`);
+    if (overdueFollowUpCount > 0) alerts.push(`${overdueFollowUpCount} seguimientos están vencidos.`);
+    return alerts;
+  }, [filteredOfferRecords, overdueFollowUpCount]);
+
   const allActions = useMemo(
     () =>
       flattenActions(repository)
@@ -759,6 +862,35 @@ const CommercialActionsRepositoryPage = () => {
   const validation = useMemo(() => validateRepository(repository), [repository]);
   const cycles = useMemo(() => detectCircularTriggers(repository), [repository]);
 
+  const toggleOfferSort = (field: OfferSortField) => {
+    if (offerSortField === field) {
+      setOfferSortDirection((previous) => previous === 'asc' ? 'desc' : 'asc');
+      return;
+    }
+    setOfferSortField(field);
+    setOfferSortDirection(field === 'contract_value' || field === 'success_probability' ? 'desc' : 'asc');
+  };
+
+  const pipelineActionRecommendations = useMemo(() => {
+    const stageMap: Record<PipelineStage, string> = {
+      contact: 'LEAD_ACQUISITION',
+      qualification: 'LEAD_ACQUISITION',
+      meeting: 'PIPELINE_EXECUTION',
+      proposal: 'PIPELINE_EXECUTION',
+      negotiation: 'PIPELINE_EXECUTION',
+      closing: 'PIPELINE_EXECUTION',
+      retention: 'CUSTOMER_SUCCESS',
+    };
+
+    return pipelineStageSummary
+      .filter((stageNode) => stageNode.count > 0)
+      .map((stageNode) => {
+        const stageKey = stageMap[stageNode.stage];
+        const recommended = allActions.find((action) => action.stage === stageKey);
+        return { stageNode, recommended };
+      })
+      .filter((row) => !!row.recommended);
+  }, [allActions, pipelineStageSummary]);
   const persist = (nextRepo: ActionsRepository, message?: string) => {
     setRepository(nextRepo);
     saveRepositoryToStorage(nextRepo);
@@ -967,15 +1099,15 @@ const CommercialActionsRepositoryPage = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold text-foreground flex items-center gap-2">
-            <Layers className="h-6 w-6 text-primary" /> Commercial Actions Repository
+            <Layers className="h-6 w-6 text-primary" /> Gestión Comercial
           </h2>
           <p className="text-sm text-muted-foreground">
-            Dynamic action repository for Sales, Customer Success, Growth, RevOps, and Orchestrator agents.
+            Panel unificado para análisis de situación, estrategia comercial, plan de acciones y pipeline de ofertas.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline">Version {repository.version}</Badge>
-          <Button variant="outline" onClick={restoreDefaults}>Restore Base</Button>
+          <Button variant="outline" onClick={restoreDefaults}>Restaurar base</Button>
         </div>
       </div>
 
@@ -986,14 +1118,122 @@ const CommercialActionsRepositoryPage = () => {
         <Card><CardContent className="pt-4 pb-3"><p className="text-xs text-muted-foreground">Execution Rule</p><p className="text-sm font-semibold">No partial execution</p></CardContent></Card>
       </div>
 
-      <Tabs defaultValue="repository" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="repository">Repository</TabsTrigger>
-          <TabsTrigger value="pipeline">Pipeline View</TabsTrigger>
-          <TabsTrigger value="offers">Offers</TabsTrigger>
-          <TabsTrigger value="simulate">Trigger Simulation</TabsTrigger>
-          <TabsTrigger value="capacity">Capacity Panel</TabsTrigger>
+      <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="space-y-4">
+        <TabsList className="flex flex-wrap h-auto">
+          <TabsTrigger value="management">Gestión Comercial</TabsTrigger>
+          <TabsTrigger value="repository">Estrategia y repositorio</TabsTrigger>
+          <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+          <TabsTrigger value="offers">Ofertas</TabsTrigger>
+          <TabsTrigger value="simulate">Simulación</TabsTrigger>
+          <TabsTrigger value="capacity">Plan de capacidad</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="management" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Dirección comercial agregada</CardTitle>
+            </CardHeader>
+            <CardContent className="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
+              <div className="rounded-md border p-3"><p className="text-xs text-muted-foreground">Registros activos</p><p className="text-2xl font-semibold">{filteredPipelineRecords.length}</p></div>
+              <div className="rounded-md border p-3"><p className="text-xs text-muted-foreground">Importe abierto</p><p className="text-2xl font-semibold">EUR {Math.round(filteredPipelineRecords.reduce((sum, row) => sum + row.contract_value, 0)).toLocaleString()}</p></div>
+              <div className="rounded-md border p-3"><p className="text-xs text-muted-foreground">Pipeline ponderado</p><p className="text-2xl font-semibold">EUR {Math.round(weightedPipelineValue).toLocaleString()}</p></div>
+              <div className="rounded-md border p-3"><p className="text-xs text-muted-foreground">Seguimientos vencidos</p><p className="text-2xl font-semibold">{overdueFollowUpCount}</p></div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-base">Filtros compartidos (análisis, plan y pipeline)</CardTitle></CardHeader>
+            <CardContent className="grid md:grid-cols-4 gap-3">
+              <Select value={pipelineKamFilter} onValueChange={setPipelineKamFilter}>
+                <SelectTrigger><SelectValue placeholder="KAM" /></SelectTrigger>
+                <SelectContent>{pipelineFilterOptions.kam.map((value) => <SelectItem key={`mgmt-kam-${value}`} value={value}>{value === 'all' ? 'Todos los KAM' : value}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={pipelineRegionFilter} onValueChange={setPipelineRegionFilter}>
+                <SelectTrigger><SelectValue placeholder="Región" /></SelectTrigger>
+                <SelectContent>{pipelineFilterOptions.region.map((value) => <SelectItem key={`mgmt-region-${value}`} value={value}>{value === 'all' ? 'Todas las regiones' : value}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={pipelineStatusFilter} onValueChange={setPipelineStatusFilter}>
+                <SelectTrigger><SelectValue placeholder="Estado" /></SelectTrigger>
+                <SelectContent>{pipelineFilterOptions.status.map((value) => <SelectItem key={`mgmt-status-${value}`} value={value}>{value === 'all' ? 'Todos los estados' : value}</SelectItem>)}</SelectContent>
+              </Select>
+              <Input value={pipelineSearch} onChange={(event) => setPipelineSearch(event.target.value)} placeholder="Buscar cuenta, oferta o producto" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-base">Comparativa KAM (siempre visible)</CardTitle></CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>KAM</TableHead>
+                    <TableHead className="text-right">Registros</TableHead>
+                    <TableHead className="text-right">Live</TableHead>
+                    <TableHead className="text-right">Sold</TableHead>
+                    <TableHead className="text-right">Importe</TableHead>
+                    <TableHead className="text-right">Ponderado</TableHead>
+                    <TableHead className="text-right">Sin siguiente acción</TableHead>
+                    <TableHead className="text-right">Abrir</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {kamCommercialSummary.map((row) => (
+                    <TableRow key={row.kam}>
+                      <TableCell className="font-medium">{row.kam}</TableCell>
+                      <TableCell className="text-right">{row.total > 0 ? row.total : 'Sin datos'}</TableCell>
+                      <TableCell className="text-right">{row.live}</TableCell>
+                      <TableCell className="text-right">{row.sold}</TableCell>
+                      <TableCell className="text-right">EUR {Math.round(row.value).toLocaleString()}</TableCell>
+                      <TableCell className="text-right">EUR {Math.round(row.weighted).toLocaleString()}</TableCell>
+                      <TableCell className="text-right">{row.withoutNextAction}</TableCell>
+                      <TableCell className="text-right">
+                        <Button size="sm" variant="outline" onClick={() => { setPipelineKamFilter(row.kam); setActiveMainTab('pipeline'); }}>Ver pipeline</Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => { setPipelineKamFilter('all'); setActiveMainTab('pipeline'); }}>Vista dirección comercial</Button>
+                <Button size="sm" variant="outline" onClick={() => setActiveMainTab('offers')}>Abrir lista de ofertas</Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid lg:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-base">Alertas de estado y calidad de datos</CardTitle></CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {riskAlerts.length === 0 ? (
+                  <p className="text-muted-foreground">Sin alertas críticas con los filtros actuales.</p>
+                ) : riskAlerts.map((alert) => (
+                  <p key={alert} className="border rounded-md p-2">{alert}</p>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-base">Acciones sugeridas con contenido</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                {pipelineActionRecommendations.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No hay recomendaciones disponibles para los filtros actuales.</p>
+                ) : pipelineActionRecommendations.slice(0, 4).map(({ stageNode, recommended }) => (
+                  <div key={stageNode.stage} className="rounded-md border p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold">{PIPELINE_STAGE_LABELS[stageNode.stage]}</p>
+                      <Badge variant="outline">{recommended?.stage}</Badge>
+                    </div>
+                    <p className="text-sm font-medium">{recommended?.name}</p>
+                    <p className="text-xs text-muted-foreground">{recommended?.description}</p>
+                    <p className="text-xs"><span className="font-medium">Objetivo:</span> {recommended?.goal || 'Pendiente de definir'}</p>
+                    <p className="text-xs"><span className="font-medium">Email:</span> {recommended?.supportive_content?.email_template || 'Pendiente de contenido'}</p>
+                    <Button size="sm" onClick={() => recommended && addAsTask(recommended, recommended.stage)} className="gap-1"><Plus className="h-3.5 w-3.5" />Crear tarea</Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
         <TabsContent value="repository" className="space-y-4">
           <Card>
@@ -1144,33 +1384,45 @@ const CommercialActionsRepositoryPage = () => {
           </div>
 
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Pipeline filters</CardTitle></CardHeader>
-            <CardContent className="grid md:grid-cols-3 xl:grid-cols-6 gap-3">
+            <CardHeader className="pb-2"><CardTitle className="text-base">Filtros globales del pipeline</CardTitle></CardHeader>
+            <CardContent className="grid md:grid-cols-3 xl:grid-cols-8 gap-3">
               <Select value={pipelineKamFilter} onValueChange={setPipelineKamFilter}>
                 <SelectTrigger><SelectValue placeholder="KAM" /></SelectTrigger>
-                <SelectContent>{pipelineFilterOptions.kam.map((value) => <SelectItem key={value} value={value}>{value === 'all' ? 'All KAMs' : value}</SelectItem>)}</SelectContent>
+                <SelectContent>{pipelineFilterOptions.kam.map((value) => <SelectItem key={value} value={value}>{value === 'all' ? 'Todos los KAM' : value}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={pipelineRegionFilter} onValueChange={setPipelineRegionFilter}>
-                <SelectTrigger><SelectValue placeholder="Region" /></SelectTrigger>
-                <SelectContent>{pipelineFilterOptions.region.map((value) => <SelectItem key={value} value={value}>{value === 'all' ? 'All regions' : value}</SelectItem>)}</SelectContent>
+                <SelectTrigger><SelectValue placeholder="Región" /></SelectTrigger>
+                <SelectContent>{pipelineFilterOptions.region.map((value) => <SelectItem key={value} value={value}>{value === 'all' ? 'Todas las regiones' : value}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={pipelineSectorFilter} onValueChange={setPipelineSectorFilter}>
                 <SelectTrigger><SelectValue placeholder="Sector" /></SelectTrigger>
-                <SelectContent>{pipelineFilterOptions.sector.map((value) => <SelectItem key={value} value={value}>{value === 'all' ? 'All sectors' : value}</SelectItem>)}</SelectContent>
+                <SelectContent>{pipelineFilterOptions.sector.map((value) => <SelectItem key={value} value={value}>{value === 'all' ? 'Todos los sectores' : value}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={pipelineProductTypeFilter} onValueChange={(value) => setPipelineProductTypeFilter(value as 'all' | 'service' | 'equipment')}>
-                <SelectTrigger><SelectValue placeholder="Product type" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All product types</SelectItem>
-                  <SelectItem value="service">Service</SelectItem>
-                  <SelectItem value="equipment">Equipment</SelectItem>
+                  <SelectItem value="all">Todos los tipos</SelectItem>
+                  <SelectItem value="service">Servicio</SelectItem>
+                  <SelectItem value="equipment">Equipo</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={pipelineFamilyFilter} onValueChange={setPipelineFamilyFilter}>
-                <SelectTrigger><SelectValue placeholder="Product family" /></SelectTrigger>
-                <SelectContent>{pipelineFilterOptions.family.map((value) => <SelectItem key={value} value={value}>{value === 'all' ? 'All families' : value}</SelectItem>)}</SelectContent>
+                <SelectTrigger><SelectValue placeholder="Familia" /></SelectTrigger>
+                <SelectContent>{pipelineFilterOptions.family.map((value) => <SelectItem key={value} value={value}>{value === 'all' ? 'Todas las familias' : value}</SelectItem>)}</SelectContent>
               </Select>
-              <Input value={pipelineSearch} onChange={(event) => setPipelineSearch(event.target.value)} placeholder="Account, offer, product" />
+              <Select value={pipelineStatusFilter} onValueChange={setPipelineStatusFilter}>
+                <SelectTrigger><SelectValue placeholder="Estado" /></SelectTrigger>
+                <SelectContent>{pipelineFilterOptions.status.map((value) => <SelectItem key={value} value={value}>{value === 'all' ? 'Todos los estados' : value}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={pipelineSourceFilter} onValueChange={(value) => setPipelineSourceFilter(value as PipelineSourceFilter)}>
+                <SelectTrigger><SelectValue placeholder="Fuente" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todo (ofertas, oportunidades y leads)</SelectItem>
+                  <SelectItem value="offers_opportunities">Ofertas + oportunidades</SelectItem>
+                  <SelectItem value="offers_only">Solo ofertas</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input value={pipelineSearch} onChange={(event) => setPipelineSearch(event.target.value)} placeholder="Cuenta, oferta o producto" />
             </CardContent>
           </Card>
 
@@ -1193,7 +1445,7 @@ const CommercialActionsRepositoryPage = () => {
                       >
                         <div className="flex items-center justify-between text-sm mb-2">
                           <span className="font-medium">{PIPELINE_STAGE_LABELS[summary.stage]}</span>
-                          <span>{summary.count} items Ã‚Â· EUR {Math.round(summary.value).toLocaleString()}</span>
+                          <span>{summary.count} items · EUR {Math.round(summary.value).toLocaleString()}</span>
                         </div>
                         <div className="h-2 bg-muted rounded-full overflow-hidden">
                           <div className="h-full bg-primary" style={{ width: `${ratio}%` }} />
@@ -1214,7 +1466,7 @@ const CommercialActionsRepositoryPage = () => {
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="text-sm font-medium">{entry.customer_name}</p>
-                          <p className="text-xs text-muted-foreground">{entry.title} Ã‚Â· {entry.offer_number}</p>
+                          <p className="text-xs text-muted-foreground">{entry.title} · {entry.offer_number}</p>
                         </div>
                         <Badge variant={entry.score >= 85 ? 'default' : 'secondary'}>{PIPELINE_STAGE_LABELS[entry.stage]}</Badge>
                       </div>
@@ -1240,129 +1492,94 @@ const CommercialActionsRepositoryPage = () => {
         <TabsContent value="offers" className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Offer register and source documents</CardTitle>
+              <CardTitle className="text-base">Registro de ofertas y edición rápida</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {offerPipeline.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No offers loaded yet.</p>
-              ) : offerPipeline.map((offer) => (
-                <div key={offer.id} className="border rounded-lg p-3 space-y-2">
-                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-                    <div>
-                      <p className="text-sm font-medium">{offer.title}</p>
-                      <p className="text-xs text-muted-foreground">{offer.customer_name} - {offer.offer_number} - {offer.status}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant={offer.bucket === 'sold' ? 'outline' : offer.bucket === 'live' ? 'default' : 'secondary'}>{offer.bucket}</Badge>
-                      <Badge variant={offer.score >= 90 ? 'destructive' : offer.score >= 75 ? 'default' : 'secondary'}>{offer.score}</Badge>
-                    </div>
+            <CardContent className="space-y-4">
+              {filteredOfferRecords.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No hay ofertas para los filtros activos.</p>
+              ) : (
+                <>
+                  <div className="overflow-auto rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead><button type="button" className="text-left" onClick={() => toggleOfferSort('offer_number')}>Oferta</button></TableHead>
+                          <TableHead><button type="button" className="text-left" onClick={() => toggleOfferSort('customer_name')}>Cliente</button></TableHead>
+                          <TableHead><button type="button" className="text-left" onClick={() => toggleOfferSort('kam')}>KAM</button></TableHead>
+                          <TableHead><button type="button" className="text-left" onClick={() => toggleOfferSort('region')}>Región</button></TableHead>
+                          <TableHead><button type="button" className="text-left" onClick={() => toggleOfferSort('status')}>Estado</button></TableHead>
+                          <TableHead><button type="button" className="text-left" onClick={() => toggleOfferSort('stage')}>Fase</button></TableHead>
+                          <TableHead><button type="button" className="text-left" onClick={() => toggleOfferSort('contract_value')}>Importe (EUR)</button></TableHead>
+                          <TableHead><button type="button" className="text-left" onClick={() => toggleOfferSort('success_probability')}>Éxito %</button></TableHead>
+                          <TableHead><button type="button" className="text-left" onClick={() => toggleOfferSort('next_follow_up')}>Seguimiento</button></TableHead>
+                          <TableHead className="text-right">Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredOfferRecords.map((offer) => {
+                          const quickDraft = getOfferQuickDraft(offer);
+                          return (
+                            <TableRow key={offer.id}>
+                              <TableCell>
+                                <p className="font-medium text-xs">{offer.offer_number}</p>
+                                <p className="text-[11px] text-muted-foreground">{offer.title}</p>
+                              </TableCell>
+                              <TableCell className="text-xs">{offer.customer_name}</TableCell>
+                              <TableCell><Input className="h-8" value={quickDraft.kam} onChange={(event) => updateOfferQuickDraft(offer.id, 'kam', event.target.value)} /></TableCell>
+                              <TableCell><Input className="h-8" value={quickDraft.region} onChange={(event) => updateOfferQuickDraft(offer.id, 'region', event.target.value)} /></TableCell>
+                              <TableCell><Input className="h-8" value={quickDraft.status} onChange={(event) => updateOfferQuickDraft(offer.id, 'status', event.target.value)} /></TableCell>
+                              <TableCell className="text-xs">{PIPELINE_STAGE_LABELS[offer.stage]}</TableCell>
+                              <TableCell><Input className="h-8" type="number" min={0} value={quickDraft.estimatedSalesValue} onChange={(event) => updateOfferQuickDraft(offer.id, 'estimatedSalesValue', event.target.value)} /></TableCell>
+                              <TableCell><Input className="h-8" type="number" min={0} max={100} value={quickDraft.successProbability} onChange={(event) => updateOfferQuickDraft(offer.id, 'successProbability', event.target.value)} /></TableCell>
+                              <TableCell><Input className="h-8" type="date" value={quickDraft.nextFollowUp} onChange={(event) => updateOfferQuickDraft(offer.id, 'nextFollowUp', event.target.value)} /></TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button size="sm" variant="outline" onClick={() => addTask(buildPipelineTask(offer))}>Tarea</Button>
+                                  <Button size="sm" onClick={() => void saveQuickOfferChanges(offer)} disabled={savingOfferId === offer.id}>{savingOfferId === offer.id ? 'Guardando...' : 'Guardar'}</Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
                   </div>
 
-                  <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
-                    {offer.kam ? <span className="border rounded-full px-2 py-0.5">KAM: {offer.kam}</span> : null}
-                    {offer.site ? <span className="border rounded-full px-2 py-0.5">Site: {offer.site}</span> : null}
-                    {offer.country ? <span className="border rounded-full px-2 py-0.5">{offer.country}</span> : null}
-                    {offer.contract_value > 0 ? <span className="border rounded-full px-2 py-0.5">EUR {offer.contract_value.toLocaleString()}</span> : null}
-                    <span className="border rounded-full px-2 py-0.5">Success: {Math.round(offer.success_probability)}%</span>
-                    {offer.next_follow_up ? <span className="border rounded-full px-2 py-0.5">Follow-up: {offer.next_follow_up}</span> : null}
-                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Orden actual: <span className="font-medium">{offerSortField}</span> ({offerSortDirection}). Las mismas selecciones de filtros aplican en Gestión Comercial, Pipeline y Ofertas.
+                  </p>
 
-                  <p className="text-xs text-muted-foreground">{offer.context}</p>
-                  <p className="text-xs font-medium">Next action: {offer.next_action}</p>
-
-                  {(() => {
-                    const quickDraft = getOfferQuickDraft(offer);
-                    return (
-                      <div className="border rounded-md p-3 space-y-3">
-                        <p className="text-xs font-semibold">Quick edit windows</p>
-                        <div className="grid md:grid-cols-2 xl:grid-cols-5 gap-2">
-                          <div>
-                            <Label className="text-[11px]">Expected success (%)</Label>
-                            <Input
-                              type="number"
-                              min={0}
-                              max={100}
-                              value={quickDraft.successProbability}
-                              onChange={(event) => updateOfferQuickDraft(offer.id, 'successProbability', event.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-[11px]">KAM</Label>
-                            <Input value={quickDraft.kam} onChange={(event) => updateOfferQuickDraft(offer.id, 'kam', event.target.value)} />
-                          </div>
-                          <div>
-                            <Label className="text-[11px]">Region</Label>
-                            <Input value={quickDraft.region} onChange={(event) => updateOfferQuickDraft(offer.id, 'region', event.target.value)} />
-                          </div>
-                          <div>
-                            <Label className="text-[11px]">Estimated sales value (EUR)</Label>
-                            <Input
-                              type="number"
-                              min={0}
-                              value={quickDraft.estimatedSalesValue}
-                              onChange={(event) => updateOfferQuickDraft(offer.id, 'estimatedSalesValue', event.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-[11px]">Next follow-up date</Label>
-                            <Input
-                              type="date"
-                              value={quickDraft.nextFollowUp}
-                              onChange={(event) => updateOfferQuickDraft(offer.id, 'nextFollowUp', event.target.value)}
-                            />
+                  <div className="space-y-3">
+                    {filteredOfferRecords.slice(0, 12).map((offer) => (
+                      <div key={`detail-${offer.id}`} className="border rounded-lg p-3 space-y-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-sm font-medium">{offer.customer_name} · {offer.offer_number}</p>
+                          <div className="flex flex-wrap gap-2">
+                            <Badge variant={offer.bucket === 'sold' ? 'outline' : offer.bucket === 'live' ? 'default' : 'secondary'}>{offer.bucket}</Badge>
+                            <Badge variant={offer.score >= 90 ? 'destructive' : offer.score >= 75 ? 'default' : 'secondary'}>{offer.score}</Badge>
                           </div>
                         </div>
+                        <p className="text-xs text-muted-foreground">{offer.context}</p>
+                        <p className="text-xs font-medium">Siguiente acción: {offer.next_action}</p>
+                        {offer.documents.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {offer.documents.map((documentPath) => (
+                              <span key={documentPath} className="rounded-full border px-2 py-1 text-[10px] text-muted-foreground" title={documentPath}>
+                                {getPathLabel(documentPath)}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">Sin documentos vinculados.</p>
+                        )}
                       </div>
-                    );
-                  })()}
-
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium">Linked documents</p>
-                    {offer.documents.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">No linked offer files found in the local evidence folders.</p>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {offer.documents.map((documentPath) => (
-                          <span key={documentPath} className="rounded-full border px-2 py-1 text-[10px] text-muted-foreground" title={documentPath}>
-                            {getPathLabel(documentPath)}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {offer.project_folder ? (
-                      <p className="text-[10px] text-muted-foreground">Project folder: {offer.project_folder}</p>
-                    ) : null}
+                    ))}
                   </div>
-
-                  <div className="flex gap-2 pt-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        if (!activeCompanyId) {
-                          toast({ title: 'No company selected', description: 'Select a company to create the offer task.' });
-                          return;
-                        }
-                        addTask(buildPipelineTask(offer));
-                        toast({ title: 'Offer task created', description: `${offer.customer_name} moved into the action queue.` });
-                      }}
-                    >
-                      Create task
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => void saveQuickOfferChanges(offer)}
-                      disabled={savingOfferId === offer.id}
-                    >
-                      {savingOfferId === offer.id ? 'Saving...' : 'Save quick changes'}
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="simulate" className="space-y-4">
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-base">Trigger simulation</CardTitle></CardHeader>

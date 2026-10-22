@@ -50,6 +50,7 @@ const STAGE_LABELS: Record<PipelineStage, string> = {
 };
 
 const PIPELINE_STAGES: PipelineStage[] = ['contact', 'qualification', 'meeting', 'proposal', 'negotiation', 'closing', 'retention'];
+const REQUIRED_KAMS = ['Linetex', 'Heriberto', 'Ingecart'];
 
 const normalizeStage = (status: string): PipelineStage => {
   const normalized = status.toLowerCase();
@@ -314,6 +315,8 @@ const SalesArchitecturePage = () => {
       if (o.region) bucket.regions.add(o.region);
       bucket.customers.add(o.customerName);
     });
+
+    REQUIRED_KAMS.forEach((kamName) => ensureKam(kamName));
 
     return Object.entries(kamMap).map(([kam, d]) => ({
       kam,
@@ -938,7 +941,7 @@ const SalesArchitecturePage = () => {
                     <div key={row.stage} className="space-y-1">
                       <div className="flex items-center justify-between text-xs">
                         <span>{row.label}</span>
-                        <span>{row.count} Â· {fmt(row.value)}</span>
+                        <span>{row.count} · {fmt(row.value)}</span>
                       </div>
                       <div className="h-2 rounded-full bg-muted overflow-hidden">
                         <div className="h-full bg-primary" style={{ width: `${width}%` }} />

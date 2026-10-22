@@ -369,9 +369,9 @@ const KeyAccountManagementPage = () => {
         accountName: 'Saica',
         sender: 'cgo@ingecart.es',
         recipient: 'saica.procurement@saica.com',
-        subject: 'AuditorÃ­a de servicios',
+        subject: 'Auditoría de servicios',
         receivedAt: '2026-08-26',
-        summary: 'RevisiÃ³n del alcance del proyecto de auditorÃ­a y coordinaciÃ³n de servicios tÃ©cnicos.',
+        summary: 'Revisión del alcance del proyecto de auditoría y coordinación de servicios técnicos.',
         direction: 'outbound',
       },
     ];
@@ -464,7 +464,7 @@ const KeyAccountManagementPage = () => {
       id: order.id || `${order.customerName}-${order.oppNumber}`,
       title: order.customerName || 'Pedido',
       value: order.sellingPrice || 0,
-      summary: `${order.productFamily || 'Product'} Â· ${order.scope || 'Scope pending'} Â· ${order.poDate || 'Date pending'}`,
+      summary: `${order.productFamily || 'Product'} · ${order.scope || 'Scope pending'} · ${order.poDate || 'Date pending'}`,
       meta: {
         amount: order.sellingPrice || 0,
         margin: order.margin || 0,
@@ -478,7 +478,7 @@ const KeyAccountManagementPage = () => {
       id: opp.oppNumber || `${opp.customerName}-${opp.status}`,
       title: opp.customerName || 'Opportunity',
       value: opp.estRevenue || 0,
-      summary: `${opp.productFamily || 'Product'} Â· ${opp.status} Â· ${opp.contractProb || 0}%`,
+      summary: `${opp.productFamily || 'Product'} · ${opp.status} · ${opp.contractProb || 0}%`,
       meta: {
         amount: opp.estRevenue || 0,
         margin: opp.margin || 0,
@@ -493,14 +493,14 @@ const KeyAccountManagementPage = () => {
         id: `${contact.email}-${contact.name}`,
         title: contact.name || 'Contacto',
         value: 1,
-        summary: `${contact.role || 'Stakeholder'} Â· ${contact.email || 'Email pending'}`,
+        summary: `${contact.role || 'Stakeholder'} · ${contact.email || 'Email pending'}`,
         meta: { amount: 1, margin: 0, kam: contact.kam || 'Unassigned', status: 'Active', product: 'Stakeholder', region: contact.region || 'Not assigned' },
       })),
       ...selectedAccountLeads.map((lead) => ({
         id: `${lead.leadName}-${lead.companyName}`,
         title: lead.leadName || lead.companyName || 'Lead',
         value: 1,
-        summary: `${lead.status || 'Open'} Â· ${lead.email || 'Email pending'}`,
+        summary: `${lead.status || 'Open'} · ${lead.email || 'Email pending'}`,
         meta: { amount: 1, margin: 0, kam: lead.owner || 'Unassigned', status: lead.status || 'Open', product: 'Lead', region: lead.region || 'Not assigned' },
       })),
     ],
@@ -765,7 +765,7 @@ const KeyAccountManagementPage = () => {
                     <CardHeader className="flex flex-row items-center justify-between gap-2">
                       <div>
                         <CardTitle className="text-base">{selectedAccount.customer}</CardTitle>
-                        <p className="text-xs text-muted-foreground mt-1">{selectedAccount.regions.join(', ') || selectedAccount.sector || 'Portfolio account'} Â· {selectedAccount.kamOwner || 'Owner pending'}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{selectedAccount.regions.join(', ') || selectedAccount.sector || 'Portfolio account'} · {selectedAccount.kamOwner || 'Owner pending'}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <Button type="button" variant={selectedAccountStrategic ? 'default' : 'outline'} size="sm" onClick={() => toggleStrategicStatus(selectedAccount.customer)}>{selectedAccountStrategic ? 'Strategic ON' : 'Set as strategic'}</Button>
@@ -843,7 +843,7 @@ const KeyAccountManagementPage = () => {
                             </div>
                           </div>
                         ))}</div></div>
-                        <div className="rounded-md border p-3"><div className="flex items-center justify-between gap-2 text-sm font-medium"><div className="flex items-center gap-2"><Factory className="h-4 w-4 text-primary" /> Active plants</div><Button type="button" variant="outline" size="sm" onClick={addPlantToAccount}>Add plant</Button></div><div className="mt-2 space-y-2 text-xs text-muted-foreground">{selectedAccountPlantList.map((plant) => (<div key={plant.id} className="border-b pb-1 last:border-b-0 last:pb-0"><p className="font-medium text-foreground">{plant.plantName}</p><p>{plant.region} Â· {plant.status}</p><p>{plant.contact}</p></div>))}</div></div>
+                        <div className="rounded-md border p-3"><div className="flex items-center justify-between gap-2 text-sm font-medium"><div className="flex items-center gap-2"><Factory className="h-4 w-4 text-primary" /> Active plants</div><Button type="button" variant="outline" size="sm" onClick={addPlantToAccount}>Add plant</Button></div><div className="mt-2 space-y-2 text-xs text-muted-foreground">{selectedAccountPlantList.map((plant) => (<div key={plant.id} className="border-b pb-1 last:border-b-0 last:pb-0"><p className="font-medium text-foreground">{plant.plantName}</p><p>{plant.region} · {plant.status}</p><p>{plant.contact}</p></div>))}</div></div>
                         <div className="rounded-md border p-3"><div className="flex items-center gap-2 text-sm font-medium"><Briefcase className="h-4 w-4 text-primary" /> Active project signals</div><div className="mt-2 space-y-2 text-xs text-muted-foreground">{selectedAccountProjects.length === 0 ? <p>No mapped projects</p> : selectedAccountProjects.map((project) => (<div key={project.name} className="border-b pb-1 last:border-b-0 last:pb-0"><p className="font-medium text-foreground">{project.name}</p><p>{project.status}</p><p>{fmt(project.value)}</p></div>))}</div></div>
                       </div>
 
@@ -855,7 +855,7 @@ const KeyAccountManagementPage = () => {
                               <div key={record.id} className="flex items-center justify-between border rounded-md p-2">
                                 <div>
                                   <p className="font-medium text-foreground">{record.name}</p>
-                                  <p className="text-muted-foreground">{record.type} Â· {record.product}</p>
+                                  <p className="text-muted-foreground">{record.type} · {record.product}</p>
                                 </div>
                                 <div className="text-right">
                                   <p className="font-medium text-foreground">{fmt(record.value)}</p>
@@ -888,7 +888,7 @@ const KeyAccountManagementPage = () => {
                               <div key={doc.id} className="flex items-center justify-between border rounded-md p-2">
                                 <div>
                                   <p className="font-medium text-foreground">{doc.name}</p>
-                                  <p className="text-muted-foreground">{doc.type} Â· {doc.owner}</p>
+                                  <p className="text-muted-foreground">{doc.type} · {doc.owner}</p>
                                 </div>
                                 <span className="text-muted-foreground">{doc.updatedAt}</span>
                               </div>
@@ -960,7 +960,7 @@ const KeyAccountManagementPage = () => {
                     ) : knownContacts.map((contact) => (
                       <div key={`${contact.email}-${contact.name}`} className="border rounded-md p-2">
                         <p className="font-medium">{contact.name || contact.email}</p>
-                        <p className="text-muted-foreground">{contact.role || 'Commercial contact'} Â· {contact.email || 'email pending'}</p>
+                        <p className="text-muted-foreground">{contact.role || 'Commercial contact'} · {contact.email || 'email pending'}</p>
                       </div>
                     ))}
                   </div>
