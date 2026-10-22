@@ -320,12 +320,12 @@ const pipelineDemoOffers: Array<Record<string, any>> = [
 ];
 
 const normalizeOfferBucket = (status: string, bucketHint = ''): OfferPipelineBucket => {
-  const normalizedBucket = normalizeText(bucketHint || '');
+  const normalizedBucket = normalizeText(bucketHint || '').trim();
   if (['draft', 'borrador', 'pending_validation'].includes(normalizedBucket)) return 'draft';
   if (['won', 'sold', 'closed_won', 'ganada'].includes(normalizedBucket)) return 'sold';
   if (['lost', 'cancelled', 'canceled', 'closed_lost', 'perdida'].includes(normalizedBucket)) return 'cancelled';
 
-  const normalized = normalizeText(status || '');
+  const normalized = normalizeText(status || '').trim();
   if (['draft', 'borrador'].includes(normalized)) return 'draft';
   if (['won', 'sold', 'accepted', 'approved', 'closed', 'converted', 'signed', 'ganada'].includes(normalized)) return 'sold';
   if (['cancelled', 'canceled', 'postponed', 'declined', 'lost', 'dead', 'stalled', 'on_hold', 'paused', 'perdida'].includes(normalized)) return 'cancelled';
@@ -785,7 +785,7 @@ const CommercialActionsRepositoryPage = () => {
     if (pipelineSectorFilter !== 'all' && entry.sector !== pipelineSectorFilter) return false;
     if (pipelineProductTypeFilter !== 'all' && entry.product_type !== pipelineProductTypeFilter) return false;
     if (pipelineFamilyFilter !== 'all' && entry.product_family !== pipelineFamilyFilter) return false;
-    if (pipelineStatusFilter !== 'all' && normalizeText(entry.status) !== normalizeText(pipelineStatusFilter)) return false;
+    if (pipelineStatusFilter !== 'all' && normalizeText(entry.status).trim() !== normalizeText(pipelineStatusFilter).trim()) return false;
     if (pipelineSourceFilter === 'offers_only' && entry.record_type !== 'offer') return false;
     if (pipelineSourceFilter === 'offers_opportunities' && entry.record_type === 'lead') return false;
 
@@ -971,17 +971,30 @@ const CommercialActionsRepositoryPage = () => {
   const runOfferQuery = () => {
     const normalized = normalizeText(queryText);
     let results = [...offerPipeline];
+    const isLiveQuery = normalized.includes('vivas') || normalized.includes('abiertas') || normalized.includes('open');
 
-    if (normalized.includes('vivas') || normalized.includes('abiertas') || normalized.includes('open')) {
+    if (isLiveQuery) {
       results = results.filter((entry) => entry.bucket === 'live');
     }
 
-    const probabilityMatch = normalized.match(/probabilidad[^0-9]*(\d{1,3})/);
-    if (probabilityMatch) {
-      const minProbability = Number(probabilityMatch[1]);
-      if (Number.isFinite(minProbability)) {
-        results = results.filter((entry) => entry.success_probability >= minProbability);
+    const asksProbability = normalized.includes('probabilidad') || normalized.includes('exito') || normalized.includes('ratio') || normalized.includes('success');
+    if (asksProbability) {
+      const probabilityThresholdMatch =
+        normalized.match(/(?:probabilidad|exito|ratio|success)[^0-9]*(\d{1,3})/) ||
+        normalized.match(/(?:mayor|superior|above|over|>=|>)[^0-9]*(\d{1,3})/) ||
+        normalized.match(/(\d{1,3})\s*%/);
+
+      if (probabilityThresholdMatch) {
+        const threshold = Number(probabilityThresholdMatch[1]);
+        if (Number.isFinite(threshold)) {
+          const isUpperBound = normalized.includes('menor') || normalized.includes('inferior') || normalized.includes('below') || normalized.includes('<');
+          results = results.filter((entry) => isUpperBound ? entry.success_probability <= threshold : entry.success_probability >= threshold);
+        }
       }
+    }
+
+    if (isLiveQuery) {
+      results = results.filter((entry) => entry.bucket === 'live');
     }
 
     const kamMatch = REQUIRED_KAMS.find((kamName) => normalized.includes(normalizeText(kamName)));
@@ -2250,7 +2263,6 @@ const CommercialActionsRepositoryPage = () => {
 };
 
 export default CommercialActionsRepositoryPage;
-
 
 
 
