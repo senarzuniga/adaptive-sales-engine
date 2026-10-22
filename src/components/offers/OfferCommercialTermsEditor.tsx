@@ -26,7 +26,7 @@ export function OfferCommercialTermsEditor({ isEs, terms, onChange }: OfferComme
       <CardHeader className="pb-3">
         <CardTitle className="text-base">{isEs ? 'Condiciones comerciales' : 'Commercial conditions'}</CardTitle>
         <CardDescription>
-          {isEs ? 'Define pagos, shipping, entrega y garant�a para reutilizar el mismo cuadro en el Word.' : 'Define payment, shipping, delivery and warranty so the same matrix flows into the Word offer.'}
+          {isEs ? 'Define pagos, shipping, entrega y garantía para reutilizar el mismo cuadro en el Word.' : 'Define payment, shipping, delivery and warranty so the same matrix flows into the Word offer.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -41,15 +41,15 @@ export function OfferCommercialTermsEditor({ isEs, terms, onChange }: OfferComme
             </Select>
           </div>
           <div className="md:col-span-2">
-            <label className="text-sm font-medium text-foreground">{isEs ? 'Ubicaci�n Incoterm' : 'Incoterm location'}</label>
+            <label className="text-sm font-medium text-foreground">{isEs ? 'Ubicación Incoterm' : 'Incoterm location'}</label>
             <Input value={terms.incotermLocation} onChange={(event) => updateTerms({ incotermLocation: event.target.value })} placeholder="Barcelona, Spain" />
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground">{isEs ? 'Validez (d�as)' : 'Validity (days)'}</label>
+            <label className="text-sm font-medium text-foreground">{isEs ? 'Validez (días)' : 'Validity (days)'}</label>
             <Input type="number" min={1} value={terms.validityDays} onChange={(event) => updateTerms({ validityDays: Number(event.target.value || 0) })} />
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground">{isEs ? 'Garant�a (meses)' : 'Warranty (months)'}</label>
+            <label className="text-sm font-medium text-foreground">{isEs ? 'Garantía (meses)' : 'Warranty (months)'}</label>
             <Input type="number" min={1} value={terms.warrantyMonths} onChange={(event) => updateTerms({ warrantyMonths: Number(event.target.value || 0) })} />
           </div>
           <div>
@@ -58,7 +58,7 @@ export function OfferCommercialTermsEditor({ isEs, terms, onChange }: OfferComme
           </div>
           <div className="md:col-span-2">
             <label className="text-sm font-medium text-foreground">{isEs ? 'Notas de entrega' : 'Delivery notes'}</label>
-            <Input value={terms.deliveryNotes} onChange={(event) => updateTerms({ deliveryNotes: event.target.value })} placeholder={isEs ? 'Fecha final confirmada tras kickoff y planificaci�n de proveedores.' : 'Final date confirmed after kick-off and supplier scheduling.'} />
+            <Input value={terms.deliveryNotes} onChange={(event) => updateTerms({ deliveryNotes: event.target.value })} placeholder={isEs ? 'Fecha final confirmada tras kickoff y planificación de proveedores.' : 'Final date confirmed after kick-off and supplier scheduling.'} />
           </div>
         </div>
 
@@ -66,10 +66,10 @@ export function OfferCommercialTermsEditor({ isEs, terms, onChange }: OfferComme
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm font-medium text-foreground">{isEs ? 'Hitos de pago' : 'Payment milestones'}</p>
-              <p className="text-xs text-muted-foreground">{isEs ? 'Cada hito define porcentaje y vencimiento o condici�n de cobro.' : 'Each milestone defines percentage and collection due point or condition.'}</p>
+              <p className="text-xs text-muted-foreground">{isEs ? 'Cada hito define porcentaje y vencimiento o condición de cobro.' : 'Each milestone defines percentage and collection due point or condition.'}</p>
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-xs text-muted-foreground">{isEs ? 'N�mero de hitos' : 'Milestones'}</label>
+              <label className="text-xs text-muted-foreground">{isEs ? 'Número de hitos' : 'Milestones'}</label>
               <Input className="h-8 w-20" type="number" min={1} value={terms.paymentMilestones.length} onChange={(event) => updateTerms({ paymentMilestones: resizePaymentMilestones(Number(event.target.value || 1), terms.paymentMilestones) })} />
               <Badge variant={paymentTotal === 100 ? 'default' : 'secondary'}>{paymentTotal.toFixed(1)}%</Badge>
             </div>
@@ -82,7 +82,7 @@ export function OfferCommercialTermsEditor({ isEs, terms, onChange }: OfferComme
                   <Input type="number" step="0.5" min={0} value={milestone.percentage} onChange={(event) => updateTerms({ paymentMilestones: terms.paymentMilestones.map((entry) => entry.id === milestone.id ? { ...entry, percentage: Number(event.target.value || 0) } : entry) })} />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">{isEs ? 'Descripci�n / vencimiento' : 'Description / due point'}</label>
+                  <label className="text-xs text-muted-foreground">{isEs ? 'Descripción / vencimiento' : 'Description / due point'}</label>
                   <Textarea rows={2} value={milestone.description} onChange={(event) => updateTerms({ paymentMilestones: terms.paymentMilestones.map((entry) => entry.id === milestone.id ? { ...entry, description: event.target.value } : entry) })} />
                 </div>
                 <div className="pt-5">
@@ -96,7 +96,7 @@ export function OfferCommercialTermsEditor({ isEs, terms, onChange }: OfferComme
           <div className="flex justify-end">
             <Button variant="outline" size="sm" onClick={() => updateTerms({ paymentMilestones: [...terms.paymentMilestones, { id: crypto.randomUUID(), percentage: 0, description: '' }] })}>
               <Plus className="h-4 w-4 mr-2" />
-              {isEs ? 'A�adir hito' : 'Add milestone'}
+              {isEs ? 'Añadir hito' : 'Add milestone'}
             </Button>
           </div>
         </div>
@@ -111,7 +111,7 @@ export function OfferCommercialTermsEditor({ isEs, terms, onChange }: OfferComme
             <p className="mt-1">{buildEquipmentIncotermText(terms)}</p>
           </div>
           <div className="rounded-lg border bg-muted/20 p-3">
-            <p className="text-xs text-muted-foreground">{isEs ? 'Garant�a' : 'Warranty'}</p>
+            <p className="text-xs text-muted-foreground">{isEs ? 'Garantía' : 'Warranty'}</p>
             <p className="mt-1">{buildWarrantyTermsText(terms)}</p>
           </div>
         </div>
