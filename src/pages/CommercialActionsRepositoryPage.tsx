@@ -558,7 +558,7 @@ const CommercialActionsRepositoryPage = () => {
 
     const fromOpportunities = data.opportunities.map((opportunity) => {
       const status = String(opportunity.status || 'prospect');
-      const bucket = normalizeOfferBucket(status, String(offer.status_bucket || offer.bucket || ''));
+      const bucket = normalizeOfferBucket(status, '');
       const title = String(opportunity.scope || (opportunity.opp_number || opportunity.oppNumber) || 'Opportunity');
       const customerName = String((opportunity.customer_name || opportunity.customerName) || 'Customer pending');
       const sourceText = `${title} ${(opportunity.product_family || opportunity.productFamily) || ''}`;
