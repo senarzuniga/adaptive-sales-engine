@@ -1,4 +1,4 @@
-﻿import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
@@ -118,6 +118,35 @@ describe('Offer pricing save flow without Supabase', () => {
     expect(screen.getByText('Sigmaq Guatemala FFG MID LINE PALLETIZER')).toBeTruthy();
   }, 30000);
 
+  it('duplicates a cost block with reductions and stores it in repository', async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByPlaceholderText('OFF-2026-001')).toBeTruthy());
+
+    fireEvent.change(screen.getAllByLabelText(/unit cost materials/i)[0], { target: { value: '1000' } });
+    fireEvent.change(screen.getByLabelText('Base cost reduction (%)'), { target: { value: '20' } });
+
+    fireEvent.click(screen.getByLabelText(/Copy block/i));
+
+    await waitFor(() => {
+      const costs = screen
+        .getAllByLabelText(/unit cost materials/i)
+        .map((input) => Number((input as HTMLInputElement).value));
+      expect(costs).toContain(1000);
+      expect(costs).toContain(800);
+    });
+
+    await waitFor(() => {
+      const repository = JSON.parse(localStorage.getItem('acs_offer_block_repository_' + companyId) || '[]');
+      expect(repository.length).toBeGreaterThan(0);
+      expect(String(repository[0].name)).toContain('(');
+      expect(repository[0].item?.type).toBe('product');
+    });
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /block repository/i }), { button: 0 });
+    fireEvent.click(screen.getByRole('tab', { name: /block repository/i }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /load in builder/i })).toBeTruthy());
+  }, 30000);
   it('re-opens a saved offer in the builder and updates it in place', async () => {
     const offerId = 'local-offer-1';
     localStorage.setItem(`acs_workspace_offers_${companyId}`, JSON.stringify([{ id: offerId, company_id: companyId, offer_number: 'OFF-2026-200', title: 'Cascades - Palletizer', customer_name: 'Cascades', currency: 'EUR', status: 'draft', target_margin: 25, created_at: '2026-01-01T00:00:00.000Z', storage: 'local' }]));

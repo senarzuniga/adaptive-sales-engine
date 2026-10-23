@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
   Calculator, Plus, Trash2, Brain, TrendingUp, AlertTriangle, Shield,
   DollarSign, BarChart3, Lightbulb, ChevronDown, ChevronUp, Save, FileText, Loader2,
-  FolderKanban, ArrowRight, Settings2
+  FolderKanban, ArrowRight, Settings2, Copy
 } from 'lucide-react';
 import { buildFallbackOfferAnalysis, classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
 import { inferProductCategory } from '@/lib/productCatalog';
@@ -150,6 +150,27 @@ const sortOffersByRecent = <T extends { updated_at?: string; created_at?: string
   rows.slice().sort((a, b) => String(b.updated_at || b.created_at || '').localeCompare(String(a.updated_at || a.created_at || '')));
 
 const getOfferDraftStorageKey = (companyId: string) => 'acs_offer_pricing_draft_' + companyId;
+const getOfferBlockRepositoryStorageKey = (companyId: string) => 'acs_offer_block_repository_' + companyId;
+
+const computeItemUnitCost = (item: OfferItem) => item.costLines.reduce((sum, line) => sum + Number(line.totalCost || 0), 0);
+const computeItemTotalCost = (item: OfferItem) => computeItemUnitCost(item) * Math.max(Number(item.quantity || 1), 1);
+
+const cloneCostLineSet = (lines: CostLine[]): CostLine[] => {
+  const idMap = new Map<string, string>();
+  lines.forEach((line) => idMap.set(line.id, crypto.randomUUID()));
+  return lines.map((line) => ({
+    ...line,
+    id: idMap.get(line.id) || crypto.randomUUID(),
+    installation: line.installation ? { ...line.installation } : undefined,
+    linkedTravelLineId: line.linkedTravelLineId ? idMap.get(line.linkedTravelLineId) : undefined,
+  }));
+};
+
+const cloneOfferItemBlock = (item: OfferItem): OfferItem => ({
+  ...item,
+  id: crypto.randomUUID(),
+  costLines: cloneCostLineSet(item.costLines),
+});
 
 const parseOptionalNumber = (value: unknown): number | null => {
   if (value === null || value === undefined || value === '') return null;
@@ -183,9 +204,17 @@ type OfferDraftSnapshot = {
 
 type OfferHistorySortKey = 'offer_number' | 'title' | 'customer_name' | 'status' | 'contract_value' | 'probability' | 'updated_at';
 type OfferPricingNavigationState = {
-  openTab?: 'builder' | 'analysis' | 'history' | 'summary';
+  openTab?: 'builder' | 'analysis' | 'history' | 'blocks' | 'summary';
   openOfferId?: string;
   focusOfferNumber?: string;
+};
+
+type OfferBlockRepositoryEntry = {
+  id: string;
+  name: string;
+  item: OfferItem;
+  sourceOfferNumber?: string;
+  updatedAt: string;
 };
 
 const hasMeaningfulDraftSnapshot = (snapshot: OfferDraftSnapshot) =>
@@ -271,6 +300,10 @@ export default function OfferPricingPage() {
   const [catalogSelection, setCatalogSelection] = useState('');
   const [catalogLengthM, setCatalogLengthM] = useState(80);
   const [catalogIncludeInstallation, setCatalogIncludeInstallation] = useState(true);
+  const [copyEngineeringReductionPct, setCopyEngineeringReductionPct] = useState(35);
+  const [copyCostReductionPct, setCopyCostReductionPct] = useState(0);
+  const [blockRepository, setBlockRepository] = useState<OfferBlockRepositoryEntry[]>([]);
+  const [blockRepositorySearch, setBlockRepositorySearch] = useState('');
   const restoredDraftCompanyId = React.useRef<string | null>(null);
   const restoredServiceDraftCompanyId = React.useRef<string | null>(null);
 
@@ -278,6 +311,9 @@ export default function OfferPricingPage() {
     if (selectedCompanyId) {
       loadOffers();
       loadRates();
+      loadBlockRepository();
+    } else {
+      setBlockRepository([]);
     }
   }, [selectedCompanyId]);
 
@@ -285,6 +321,35 @@ export default function OfferPricingPage() {
     if (!selectedCompanyId) return;
     const { data } = await supabase.from('cost_rates').select('*').eq('company_id', selectedCompanyId).eq('is_active', true);
     if (data) setCompanyRates(data);
+  };
+
+  const loadBlockRepository = () => {
+    if (!selectedCompanyId) {
+      setBlockRepository([]);
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(getOfferBlockRepositoryStorageKey(selectedCompanyId));
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(parsed)) {
+        setBlockRepository([]);
+        return;
+      }
+      const normalized = parsed
+        .filter((entry) => entry && typeof entry === 'object')
+        .map((entry) => ({
+          id: String(entry.id || crypto.randomUUID()),
+          name: String(entry.name || ''),
+          item: cloneOfferItemBlock(entry.item || buildEmptyOfferItem()),
+          sourceOfferNumber: entry.sourceOfferNumber ? String(entry.sourceOfferNumber) : undefined,
+          updatedAt: String(entry.updatedAt || new Date().toISOString()),
+        } as OfferBlockRepositoryEntry))
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      setBlockRepository(normalized);
+    } catch (error) {
+      console.warn('[offers] failed to load block repository', error);
+      setBlockRepository([]);
+    }
   };
 
   const registerOfferDocument = (offer: any, language: OfferDocumentLanguage, fileName: string, source: 'generated' | 'external-reference', explicitPath?: string, fileType: 'DOCX' | 'XLSX' = 'DOCX') => {
@@ -545,6 +610,11 @@ export default function OfferPricingPage() {
     localStorage.setItem(key, JSON.stringify(snapshot));
   }, [selectedCompanyId, editingOfferId, offerTitle, offerNumber, customerName, customerMode, newCustomer, projectDesc, currency, targetMargin, pricingPolicy, commercialTerms, offerPackages, principalPackagePriceOverride, offerTotalPriceOverride, items, documentLanguage, offerKind, linkedOpportunityId, linkedOpportunityTitle, serviceContent]);
 
+  useEffect(() => {
+    if (!selectedCompanyId) return;
+    localStorage.setItem(getOfferBlockRepositoryStorageKey(selectedCompanyId), JSON.stringify(blockRepository));
+  }, [selectedCompanyId, blockRepository]);
+
   const toggleItem = (id: string) => {
     setExpandedItems(prev => {
       const next = new Set(prev);
@@ -557,6 +627,89 @@ export default function OfferPricingPage() {
     const item: OfferItem = buildEmptyOfferItem(offerKind);
     setItems(prev => [...prev, item]);
     setExpandedItems(prev => new Set(prev).add(item.id));
+  };
+
+  const recalculateCostLine = (line: CostLine): CostLine => {
+    const next = { ...line };
+    if (next.category === 'engineering') {
+      next.totalCost = lineTotal(next.hours * next.hourlyRate, 0, next.structurePct);
+    } else if (next.category === 'installation') {
+      next.totalCost = lineTotal(next.days * next.resources * next.unitCost, next.surchargePct, next.structurePct);
+    } else {
+      next.totalCost = lineTotal(next.quantity * next.unitCost, next.surchargePct, next.structurePct);
+    }
+    return next;
+  };
+
+  const saveItemToRepository = (item: OfferItem, silent = false) => {
+    const baseName = (item.name || '').trim() || (item.type === 'service' ? 'Service block' : 'Product block');
+    const blockCopy = cloneOfferItemBlock(item);
+    const label = `${baseName} (${fmt(computeItemTotalCost(blockCopy))})`;
+    const entry: OfferBlockRepositoryEntry = {
+      id: crypto.randomUUID(),
+      name: label,
+      item: blockCopy,
+      sourceOfferNumber: offerNumber || undefined,
+      updatedAt: new Date().toISOString(),
+    };
+    setBlockRepository((current) => [entry, ...current].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
+    if (!silent) {
+      toast({ title: isEs ? 'Bloque guardado' : 'Block saved', description: label });
+    }
+  };
+
+  const duplicateItemBlock = (item: OfferItem) => {
+    const engineeringFactor = Math.max(0, 1 - (Number(copyEngineeringReductionPct) || 0) / 100);
+    const totalFactor = Math.max(0, 1 - (Number(copyCostReductionPct) || 0) / 100);
+    const duplicated = cloneOfferItemBlock(item);
+    duplicated.name = `${item.name || (item.type === 'service' ? 'Service block' : 'Product block')} copy`;
+    duplicated.costLines = duplicated.costLines.map((line) => {
+      const next = { ...line, installation: line.installation ? { ...line.installation } : undefined };
+      if (next.category === 'engineering' && engineeringFactor !== 1) {
+        next.hours = Number((next.hours * engineeringFactor).toFixed(2));
+      }
+      if (totalFactor !== 1) {
+        if (next.category === 'engineering') {
+          next.hourlyRate = Number((next.hourlyRate * totalFactor).toFixed(2));
+        } else {
+          next.unitCost = Number((next.unitCost * totalFactor).toFixed(2));
+        }
+      }
+      return recalculateCostLine(next);
+    });
+
+    setItems((prev) => [...prev, duplicated]);
+    setExpandedItems((prev) => new Set(prev).add(duplicated.id));
+    saveItemToRepository(duplicated, true);
+    toast({
+      title: isEs ? 'Bloque copiado' : 'Block copied',
+      description: isEs
+        ? `Duplicado con -${copyEngineeringReductionPct}% en ingenier?a y -${copyCostReductionPct}% en coste base.`
+        : `Duplicated with -${copyEngineeringReductionPct}% engineering and -${copyCostReductionPct}% base cost.`,
+    });
+  };
+
+  const addRepositoryBlockToBuilder = (entry: OfferBlockRepositoryEntry) => {
+    const cloned = cloneOfferItemBlock(entry.item);
+    setItems((prev) => [...prev, cloned]);
+    setExpandedItems((prev) => new Set(prev).add(cloned.id));
+    setActiveTab('builder');
+    toast({ title: isEs ? 'Bloque a?adido al constructor' : 'Block added to builder', description: entry.name });
+  };
+
+  const removeRepositoryBlock = (entryId: string) => {
+    setBlockRepository((prev) => prev.filter((entry) => entry.id !== entryId));
+  };
+
+  const updateRepositoryBlockName = (entryId: string, name: string) => {
+    setBlockRepository((prev) => prev.map((entry) => entry.id === entryId ? { ...entry, name, updatedAt: new Date().toISOString() } : entry));
+  };
+
+  const createRepositoryBlock = (type: 'product' | 'service') => {
+    const item = buildEmptyOfferItem(type === 'service' ? 'service' : 'standard');
+    item.type = type;
+    item.name = type === 'service' ? 'Service block' : 'Product block';
+    saveItemToRepository(item);
   };
 
   const selectedCatalogProduct = useMemo(() => {
@@ -780,6 +933,17 @@ export default function OfferPricingPage() {
       days: line.days,
       resources: line.resources,
     }))), [items]);
+
+  const filteredBlockRepository = useMemo(() => {
+    const query = blockRepositorySearch.trim().toLowerCase();
+    const rows = blockRepository
+      .slice()
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    if (!query) return rows;
+    return rows.filter((entry) =>
+      `${entry.name} ${entry.item.name} ${entry.item.description} ${entry.item.type}`.toLowerCase().includes(query),
+    );
+  }, [blockRepository, blockRepositorySearch]);
 
   const totals = useMemo(() => {
     const byCat: Record<string, number> = {};
@@ -1764,10 +1928,11 @@ export default function OfferPricingPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="builder">{isEs ? 'Constructor' : 'Builder'}</TabsTrigger>
           <TabsTrigger value="analysis">{isEs ? "Anlisis" : 'Analysis'}</TabsTrigger>
           <TabsTrigger value="history">{isEs ? 'Historial' : 'History'}</TabsTrigger>
+          <TabsTrigger value="blocks">{isEs ? 'Repositorio de bloques' : 'Block repository'}</TabsTrigger>
           <TabsTrigger value="summary">{isEs ? 'Resumen' : 'Summary'}</TabsTrigger>
         </TabsList>
 
@@ -2035,6 +2200,23 @@ export default function OfferPricingPage() {
             </Card>
           )}
 
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">{isEs ? 'Duplicaci?n de bloques de coste' : 'Cost block duplication'}</CardTitle>
+              <CardDescription>{isEs ? 'Duplica un bloque y ajusta reducciones para unidades repetidas (por ejemplo, -35% en ingenier?a o -20% en coste base).' : 'Duplicate a block and apply reductions for repeated units (for example, -35% engineering or -20% base cost).'}</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="copy-engineering-reduction" className="text-xs font-medium text-foreground">{isEs ? 'Reducci?n ingenier?a (%)' : 'Engineering reduction (%)'}</label>
+                <Input id="copy-engineering-reduction" type="number" min={0} max={100} value={copyEngineeringReductionPct} onChange={(e) => setCopyEngineeringReductionPct(Number(e.target.value || 0))} />
+              </div>
+              <div>
+                <label htmlFor="copy-base-cost-reduction" className="text-xs font-medium text-foreground">{isEs ? 'Reducci?n coste base (%)' : 'Base cost reduction (%)'}</label>
+                <Input id="copy-base-cost-reduction" type="number" min={0} max={100} value={copyCostReductionPct} onChange={(e) => setCopyCostReductionPct(Number(e.target.value || 0))} />
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Items */}
           {items.map((item, idx) => (
             <Card key={item.id} className="border-l-4 border-l-primary">
@@ -2050,11 +2232,19 @@ export default function OfferPricingPage() {
                       {fmt(item.costLines.reduce((s, cl) => s + cl.totalCost, 0) * item.quantity)}
                     </span>
                   </div>
-                  {items.length > 1 && (
-                    <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); removeItem(item.id); }}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); saveItemToRepository(item); }} aria-label={`Save block ${item.name || idx + 1}`}>
+                      <Save className="h-4 w-4" />
                     </Button>
-                  )}
+                    <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); duplicateItemBlock(item); }} aria-label={`Copy block ${item.name || idx + 1}`}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    {items.length > 1 && (
+                      <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); removeItem(item.id); }}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               {expandedItems.has(item.id) && (
@@ -2774,6 +2964,44 @@ export default function OfferPricingPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="blocks" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2"><FolderKanban className="h-5 w-5 text-primary" />{isEs ? 'Repositorio de bloques reutilizables' : 'Reusable block repository'}</CardTitle>
+              <CardDescription>{isEs ? 'Guarda bloques de producto/servicio con su coste y rec?rgalos en nuevas ofertas. Puedes renombrar, crear o borrar versiones.' : 'Store product/service blocks with their cost and reuse them in new offers. You can rename, create or delete versions.'}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                <Input value={blockRepositorySearch} onChange={(event) => setBlockRepositorySearch(event.target.value)} placeholder={isEs ? 'Buscar por nombre, tipo o descripci?n' : 'Search by name, type or description'} className="md:col-span-2" />
+                <Button variant="outline" onClick={() => createRepositoryBlock('product')}><Plus className="h-4 w-4 mr-1" />{isEs ? 'Nuevo bloque producto' : 'New product block'}</Button>
+                <Button variant="outline" onClick={() => createRepositoryBlock('service')}><Plus className="h-4 w-4 mr-1" />{isEs ? 'Nuevo bloque servicio' : 'New service block'}</Button>
+              </div>
+
+              {filteredBlockRepository.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{isEs ? 'Sin bloques en repositorio. Guarda bloques desde el constructor usando el icono de guardar en cada bloque.' : 'No repository blocks yet. Save blocks from the builder using the save icon on each block.'}</p>
+              ) : (
+                <div className="space-y-2">
+                  {filteredBlockRepository.map((entry) => (
+                    <div key={entry.id} className="rounded-md border p-3 space-y-2">
+                      <div className="grid grid-cols-1 md:grid-cols-[1fr_140px_200px_auto] gap-2 items-center">
+                        <Input value={entry.name} onChange={(event) => updateRepositoryBlockName(entry.id, event.target.value)} />
+                        <Badge variant="outline">{entry.item.type}</Badge>
+                        <span className="text-xs text-muted-foreground">{new Date(entry.updatedAt).toLocaleString()}</span>
+                        <div className="flex flex-wrap justify-end gap-1">
+                          <Button size="sm" variant="outline" onClick={() => addRepositoryBlockToBuilder(entry)}>{isEs ? 'Cargar en builder' : 'Load in builder'}</Button>
+                          <Button size="sm" variant="ghost" onClick={() => removeRepositoryBlock(entry.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{entry.item.description || (isEs ? 'Sin descripci?n.' : 'No description.')}</p>
+                      <p className="text-xs font-medium">{isEs ? 'Coste unidad:' : 'Unit cost:'} {fmt(computeItemUnitCost(entry.item))} | {isEs ? 'Cantidad:' : 'Qty:'} {entry.item.quantity} | {isEs ? 'Total bloque:' : 'Block total:'} {fmt(computeItemTotalCost(entry.item))}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* SUMMARY TAB */}
         <TabsContent value="summary">
           <Card>
@@ -2905,7 +3133,7 @@ export default function OfferPricingPage() {
                 </TableHeader>
                 <TableBody>
                   {items.map(item => {
-                    const unitCost = item.costLines.reduce((s, cl) => s + cl.totalCost, 0);
+                    const unitCost = computeItemUnitCost(item);
                     return (
                       <TableRow key={item.id}>
                         <TableCell>{item.name || '-'}</TableCell>
