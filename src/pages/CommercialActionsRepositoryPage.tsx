@@ -200,10 +200,10 @@ const inferProductFamily = (text: string): string => {
   if (normalized.includes('bobina') || normalized.includes('splicer')) return 'Carga de Bobinas';
   if (normalized.includes('palet')) return 'Paletizado';
   if (normalized.includes('desperdicio') || normalized.includes('retal')) return 'Sistema de Desperdicio';
-  if (normalized.includes('entrada') || normalized.includes('almacen')) return 'Gestion de Entradas Almacen';
+  if (normalized.includes('entrada') || normalized.includes('almacen')) return 'Gestión de Entradas Almacén';
   if (normalized.includes('intralog')) return 'Intralogistica';
-  if (normalized.includes('exped')) return 'Salidas expedicion';
-  return 'Varios/Gestion de Flujo';
+  if (normalized.includes('exped')) return 'Salidas expedición';
+  return 'Varios/Gestión de Flujo';
 };
 
 const inferProductType = (text: string): 'service' | 'equipment' => {
@@ -486,7 +486,7 @@ const CommercialActionsRepositoryPage = () => {
   const [savingOfferId, setSavingOfferId] = useState<string | null>(null);
   const [offerAlertFilter, setOfferAlertFilter] = useState<OfferAlertFilter>('all');
   const [openOffersOnly, setOpenOffersOnly] = useState(false);
-  const [queryText, setQueryText] = useState('ofertas vivas con probabilidad de exito mayor a 50');
+  const [queryText, setQueryText] = useState('ofertas vivas con probabilidad de éxito mayor a 50');
   const [queryFields, setQueryFields] = useState<QueryField[]>(['offer_number', 'customer_name', 'status', 'contract_value', 'success_probability']);
   const [queryResults, setQueryResults] = useState<OfferPipelineEntry[]>([]);
   const [forecastPriceAdjustmentPct, setForecastPriceAdjustmentPct] = useState(0);
@@ -977,10 +977,10 @@ const CommercialActionsRepositoryPage = () => {
       results = results.filter((entry) => entry.bucket === 'live');
     }
 
-    const asksProbability = normalized.includes('probabilidad') || normalized.includes('exito') || normalized.includes('ratio') || normalized.includes('success');
+    const asksProbability = normalized.includes('probabilidad') || normalized.includes('éxito') || normalized.includes('ratio') || normalized.includes('success');
     if (asksProbability) {
       const probabilityThresholdMatch =
-        normalized.match(/(?:probabilidad|exito|ratio|success)[^0-9]*(\d{1,3})/) ||
+        normalized.match(/(?:probabilidad|éxito|ratio|success)[^0-9]*(\d{1,3})/) ||
         normalized.match(/(?:mayor|superior|above|over|>=|>)[^0-9]*(\d{1,3})/) ||
         normalized.match(/(\d{1,3})\s*%/);
 
@@ -1023,7 +1023,7 @@ const CommercialActionsRepositoryPage = () => {
           if (token.includes('estado')) return 'status';
           if (token.includes('fase')) return 'stage';
           if (token.includes('importe') || token.includes('valor')) return 'contract_value';
-          if (token.includes('exito') || token.includes('probabilidad')) return 'success_probability';
+          if (token.includes('éxito') || token.includes('probabilidad')) return 'success_probability';
           if (token.includes('seguimiento')) return 'next_follow_up';
           return null;
         })
@@ -1331,7 +1331,7 @@ const CommercialActionsRepositoryPage = () => {
       country: 'Spain',
       customerName: account,
       scope: `${account} follow-up and maintenance proposal`,
-      productFamily: index % 2 === 0 ? 'Varios/Gestion de Flujo' : 'Salidas expedicion',
+      productFamily: index % 2 === 0 ? 'Varios/Gestión de Flujo' : 'Salidas expedición',
       segment: 'Corrugated Packaging',
       estPurchasingYear: String(new Date().getFullYear()),
       estPurchasingQuarter: index % 2 === 0 ? 'Q3' : 'Q4',
@@ -1880,7 +1880,7 @@ const CommercialActionsRepositoryPage = () => {
             <CardHeader className="pb-2"><CardTitle className="text-base">Panel de consultas de datos</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <Label>Consulta</Label>
-              <Textarea value={queryText} onChange={(event) => setQueryText(event.target.value)} rows={3} placeholder="Ejemplo: ofertas vivas con probabilidad de exito mayor a 50. campos: oferta, cliente, kam, importe" />
+              <Textarea value={queryText} onChange={(event) => setQueryText(event.target.value)} rows={3} placeholder="Ejemplo: ofertas vivas con probabilidad de éxito mayor a 50. campos: oferta, cliente, kam, importe" />
               <div className="flex flex-wrap gap-2">
                 {(['offer_number', 'customer_name', 'kam', 'region', 'status', 'stage', 'contract_value', 'success_probability', 'next_follow_up'] as QueryField[]).map((field) => (
                   <Button
@@ -2034,13 +2034,13 @@ const CommercialActionsRepositoryPage = () => {
           </Card>
 
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Forecast por periodo</CardTitle></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-base">Forecast por período</CardTitle></CardHeader>
             <CardContent>
               <div className="overflow-auto rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Periodo</TableHead>
+                      <TableHead>Período</TableHead>
                       <TableHead className="text-right">Ofertas</TableHead>
                       <TableHead className="text-right">Valor corregido</TableHead>
                       <TableHead className="text-right">Forecast ponderado</TableHead>

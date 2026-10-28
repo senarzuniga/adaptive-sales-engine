@@ -13,6 +13,8 @@ interface OfferPackagePlannerProps {
   isEs: boolean;
   currency: string;
   pricingPolicy: OfferCostPolicy;
+  /** Optional per-item policy resolver used when product/service policies are split. */
+  resolveItemPolicy?: (itemId: string) => OfferCostPolicy;
   items: Array<{ id: string; name: string; description: string; quantity: number }>;
   costRows: Array<{ offer_item_id?: string; category?: string; line_item?: string; total_cost?: number }>;
   packages: OfferPackageDraft[];
@@ -22,12 +24,12 @@ interface OfferPackagePlannerProps {
 const PACKAGE_TYPES: Array<{ value: OfferPackageType; en: string; es: string }> = [
   { value: 'core', en: 'Core package', es: 'Paquete principal' },
   { value: 'optional', en: 'Optional package', es: 'Paquete opcional' },
-  { value: 'installation', en: 'Installation package', es: 'Paquete de instalacion' },
+  { value: 'installation', en: 'Installation package', es: 'Paquete de instalación' },
 ];
 
 const money = (value: number, currency: string) => new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(Number(value || 0));
 
-export function OfferPackagePlanner({ isEs, currency, pricingPolicy, items, costRows, packages, onChange }: OfferPackagePlannerProps) {
+export function OfferPackagePlanner({ isEs, currency, pricingPolicy, resolveItemPolicy, items, costRows, packages, onChange }: OfferPackagePlannerProps) {
   const updatePackage = (packageId: string, patch: Partial<OfferPackageDraft>) => onChange(packages.map((pkg) => pkg.id === packageId ? { ...pkg, ...patch } : pkg));
   const nextOrder = Math.max(0, ...packages.map((pkg) => Number(pkg.sortOrder || 0))) + 1;
 
@@ -38,7 +40,7 @@ export function OfferPackagePlanner({ isEs, currency, pricingPolicy, items, cost
           <div>
             <CardTitle className="text-base">{isEs ? 'Paquetes comerciales' : 'Commercial packages'}</CardTitle>
             <CardDescription>
-              {isEs ? 'Agrupa elementos configurados, define precio de venta por paquete y analiza costes directos, politicas y margen sobre precio propuesto.' : 'Group configured items, define package selling price and analyze direct cost, policy-loaded cost and margin on the proposed price.'}
+              {isEs ? 'Agrupa elementos configurados, define precio de venta por paquete y analiza costes directos, políticas y margen sobre precio propuesto.' : 'Group configured items, define package selling price and analyze direct cost, policy-loaded cost and margin on the proposed price.'}
             </CardDescription>
           </div>
           <Button variant="outline" onClick={() => onChange([...packages, createOfferPackage(nextOrder)])}>
@@ -57,7 +59,7 @@ export function OfferPackagePlanner({ isEs, currency, pricingPolicy, items, cost
           .slice()
           .sort((a, b) => a.sortOrder - b.sortOrder)
           .map((pkg) => {
-            const pricing = summarizePackageCostWithPolicy(pkg, items, costRows, pricingPolicy);
+            const pricing = summarizePackageCostWithPolicy(pkg, items, costRows, pricingPolicy, resolveItemPolicy);
             const packageCost = pricing.totalCostWithPolicy;
             const directCost = pricing.directCost;
             const policyCost = pricing.policyCharges.total;
@@ -104,7 +106,7 @@ export function OfferPackagePlanner({ isEs, currency, pricingPolicy, items, cost
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-medium text-foreground">{isEs ? 'Elementos incluidos' : 'Included items'}</span>
-                    {installationPackage ? <Badge variant="secondary">{isEs ? 'Cargara notas de instalacion en Word' : 'Installation notes forced into Word'}</Badge> : null}
+                    {installationPackage ? <Badge variant="secondary">{isEs ? 'Cargara notas de instalación en Word' : 'Installation notes forced into Word'}</Badge> : null}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {items.map((item) => (
@@ -130,10 +132,10 @@ export function OfferPackagePlanner({ isEs, currency, pricingPolicy, items, cost
                     <p className="text-lg font-semibold">{money(directCost, currency)}</p>
                   </div>
                   <div className="rounded-lg border bg-background p-3">
-                    <p className="text-xs text-muted-foreground">{isEs ? 'Politicas aplicadas' : 'Policy charges'}</p>
+                    <p className="text-xs text-muted-foreground">{isEs ? 'Políticas aplicadas' : 'Policy charges'}</p>
                     <p className="text-lg font-semibold">{money(policyCost, currency)}</p>
                     <p className="text-[11px] text-muted-foreground mt-1">
-                      {isEs ? `Garantia ${pricingPolicy.warrantyPct}% + estructura ${pricingPolicy.materialStructurePct}% + finanzas ${pricingPolicy.financialPct}% + gestion ${pricingPolicy.commercialMgmtPct}%` : `Warranty ${pricingPolicy.warrantyPct}% + structure ${pricingPolicy.materialStructurePct}% + finance ${pricingPolicy.financialPct}% + management ${pricingPolicy.commercialMgmtPct}%`}
+                      {isEs ? `Garantía ${pricingPolicy.warrantyPct}% + estructura ${pricingPolicy.materialStructurePct}% + finanzas ${pricingPolicy.financialPct}% + gestión ${pricingPolicy.commercialMgmtPct}%` : `Warranty ${pricingPolicy.warrantyPct}% + structure ${pricingPolicy.materialStructurePct}% + finance ${pricingPolicy.financialPct}% + management ${pricingPolicy.commercialMgmtPct}%`}
                     </p>
                   </div>
                   <div className="rounded-lg border bg-background p-3">
@@ -149,10 +151,10 @@ export function OfferPackagePlanner({ isEs, currency, pricingPolicy, items, cost
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-muted-foreground">
-                  <p>{isEs ? 'Garantia aplicada a Comercio + Ingenieria + Subcontratas' : 'Warranty applied to Comercio + Engineering + Subcontracting'}: {money(pricing.policyCharges.warranty, currency)}</p>
+                  <p>{isEs ? 'Garantía aplicada a Comercio + Ingeniería + Subcontratas' : 'Warranty applied to Comercio + Engineering + Subcontracting'}: {money(pricing.policyCharges.warranty, currency)}</p>
                   <p>{isEs ? 'Estructura aplicada a Comercio' : 'Material structure applied to Comercio'}: {money(pricing.policyCharges.materialStructure, currency)}</p>
                   <p>{isEs ? 'Financiacion aplicada al coste directo' : 'Finance applied to direct cost'}: {money(pricing.policyCharges.financial, currency)}</p>
-                  <p>{isEs ? 'Gestion comercial aplicada al coste directo' : 'Commercial management applied to direct cost'}: {money(pricing.policyCharges.commercialMgmt, currency)}</p>
+                  <p>{isEs ? 'Gestión comercial aplicada al coste directo' : 'Commercial management applied to direct cost'}: {money(pricing.policyCharges.commercialMgmt, currency)}</p>
                 </div>
 
                 <div className="flex justify-end">

@@ -52,7 +52,7 @@ export function AppSidebar() {
 
   const sections: NavSection[] = [
     {
-      label: isEs ? 'Ejecucion diaria' : 'Daily Execution',
+      label: isEs ? 'Ejecución diaria' : 'Daily Execution',
       items: [
         { title: isEs ? 'Mi trabajo' : 'My Work', url: '/', icon: LayoutDashboard },
         { title: isEs ? 'Repositorio de acciones' : 'Action Repository', url: '/commercial-actions-repository', icon: Layers },
@@ -63,7 +63,7 @@ export function AppSidebar() {
       label: isEs ? 'Empresa' : 'Company',
       items: [
         { title: isEs ? 'Empresas' : 'Companies', url: '/companies', icon: Building2 },
-        { title: isEs ? 'Organizacion' : 'Organization', url: '/company-info', icon: Info },
+        { title: isEs ? 'Organización' : 'Organization', url: '/company-info', icon: Info },
         { title: isEs ? 'Personas y contactos' : 'People & Contacts', url: '/team-directory', icon: Contact },
         { title: isEs ? 'Carga de datos' : 'Data Upload', url: '/upload', icon: Upload },
       ],

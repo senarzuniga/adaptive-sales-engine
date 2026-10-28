@@ -107,7 +107,7 @@ export const INSTALLATION_ASSOCIATED_COSTS_TEXT = 'Associated costs include the 
 export const INSTALLATION_CUSTOMER_SUPPORT_TEXT = 'Customer to provide additional mechanical and electrical support as well as needed cranes and auxiliary equipment.';
 
 export const INSTALLATION_SERVICE_DELIVERABLES = [
-  'Mechanical supervision/assembly according to the responsibility matrix.',
+  'Mechanical supervisión/assembly according to the responsibility matrix.',
   'Cold commissioning, I/O checks and station handshake verification.',
   'Software start-up, sequence tuning and production-mode testing.',
   'RFID/MES interface support within the agreed protocol and data scope.',
@@ -185,9 +185,9 @@ const translatePaymentDescription = (value: string, language: 'en' | 'es' = 'en'
   if (language !== 'es') return compact;
   return compact
     .replace(/^by bank transfer with the purchase order$/i, 'mediante transferencia bancaria con el pedido')
-    .replace(/^by bank transfer with the completion of engineering package$/i, 'mediante transferencia bancaria con la finalizacion del paquete de ingenieria')
-    .replace(/^by bank transfer upon notification that the goods are ready for collection at INGECART's workshops$/i, 'mediante transferencia bancaria tras la notificacion de que los equipos estan listos para su recogida en los talleres de INGECART')
-    .replace(/^by bank transfer at commissioning, and no later than 90 days from the Certificate of Loading \/ check-in$/i, 'mediante transferencia bancaria en la puesta en marcha y, en todo caso, no mas tarde de 90 dias desde el Certificate of Loading / check-in');
+    .replace(/^by bank transfer with the completion of engineering package$/i, 'mediante transferencia bancaria con la finalización del paquete de ingeniería')
+    .replace(/^by bank transfer upon notification that the goods are ready for collection at INGECART's workshops$/i, 'mediante transferencia bancaria tras la notificación de que los equipos están listos para su recogida en los talleres de INGECART')
+    .replace(/^by bank transfer at commissioning, and no later than 90 days from the Certificate of Loading \/ check-in$/i, 'mediante transferencia bancaria en la puesta en marcha y, en todo caso, no más tarde de 90 días desde el Certificate of Loading / check-in');
 };
 
 export const buildPaymentTermsText = (terms: OfferCommercialTerms, language: 'en' | 'es' = 'en') =>
@@ -199,14 +199,14 @@ export const buildPaymentTermsText = (terms: OfferCommercialTerms, language: 'en
 export const buildDeliveryTermsText = (terms: OfferCommercialTerms, language: 'en' | 'es' = 'en') => {
   const notes = String(terms.deliveryNotes || '').trim();
   if (language === 'es') {
-    return `Plazo objetivo de disponibilidad del equipo: ${Number(terms.deliveryMonths || 0)} meses desde la recepcion del anticipo, los datos tecnicos aprobados y el cierre de diseno. ${notes || 'La fecha final se confirmara tras el kick-off y la programacion de proveedores.'}`.trim();
+    return `Plazo objetivo de disponibilidad del equipo: ${Number(terms.deliveryMonths || 0)} meses desde la recepción del anticipo, los datos técnicos aprobados y el cierre de diseño. ${notes || 'La fecha final se confirmara tras el kick-off y la programacion de proveedores.'}`.trim();
   }
   return `Target equipment readiness: ${Number(terms.deliveryMonths || 0)} months from receipt of down payment, approved technical data and design freeze. ${notes}`.trim();
 };
 
 export const buildValidityTermsText = (terms: OfferCommercialTerms, language: 'en' | 'es' = 'en') =>
   language === 'es'
-    ? `${Number(terms.validityDays || 0)} dias naturales desde la fecha de la propuesta, sujetos a disponibilidad de materiales y precios de proveedores.`
+    ? `${Number(terms.validityDays || 0)} días naturales desde la fecha de la propuesta, sujetos a disponibilidad de materiales y precios de proveedores.`
     : `${Number(terms.validityDays || 0)} calendar days from proposal date, subject to material and supplier price availability.`;
 
 export const buildWarrantyTermsText = (terms: OfferCommercialTerms, language: 'en' | 'es' = 'en') =>
@@ -272,10 +272,43 @@ export const summarizePackageCostWithPolicy = (
   items: OfferLikeItem[],
   costRows: OfferLikeCostRow[],
   policy: OfferCostPolicy = DEFAULT_INGECART_POLICY,
+  resolveItemPolicy?: (itemId: string) => OfferCostPolicy,
 ): OfferCostWithPolicySummary => {
-  const categoryTotals = summarizeCostByItemIds(pkg.itemIds, items, costRows);
-  const directCost = Object.values(categoryTotals).reduce((sum, value) => sum + Number(value || 0), 0);
-  const policyCharges = estimatePolicyChargesFromCost(categoryTotals, directCost, policy);
+  if (!resolveItemPolicy) {
+    const categoryTotals = summarizeCostByItemIds(pkg.itemIds, items, costRows);
+    const directCost = Object.values(categoryTotals).reduce((sum, value) => sum + Number(value || 0), 0);
+    const policyCharges = estimatePolicyChargesFromCost(categoryTotals, directCost, policy);
+    return {
+      categoryTotals,
+      directCost,
+      policyCharges,
+      totalCostWithPolicy: directCost + policyCharges.total,
+    };
+  }
+  // Split mode: group package items by their resolved policy and sum the charges per group.
+  const groups = new Map<OfferCostPolicy, string[]>();
+  pkg.itemIds.forEach((itemId) => {
+    const id = String(itemId);
+    const resolved = resolveItemPolicy(id) || policy;
+    const bucket = groups.get(resolved) || [];
+    bucket.push(id);
+    groups.set(resolved, bucket);
+  });
+  const categoryTotals = EMPTY_CATEGORY_TOTALS();
+  let directCost = 0;
+  const policyCharges: OfferPolicyCharges = { warranty: 0, materialStructure: 0, financial: 0, commercialMgmt: 0, total: 0 };
+  groups.forEach((itemIds, groupPolicy) => {
+    const groupTotals = summarizeCostByItemIds(itemIds, items, costRows);
+    const groupDirect = Object.values(groupTotals).reduce((sum, value) => sum + Number(value || 0), 0);
+    const groupCharges = estimatePolicyChargesFromCost(groupTotals, groupDirect, groupPolicy);
+    (Object.keys(categoryTotals) as OfferCostCategory[]).forEach((category) => { categoryTotals[category] += groupTotals[category]; });
+    directCost += groupDirect;
+    policyCharges.warranty += groupCharges.warranty;
+    policyCharges.materialStructure += groupCharges.materialStructure;
+    policyCharges.financial += groupCharges.financial;
+    policyCharges.commercialMgmt += groupCharges.commercialMgmt;
+    policyCharges.total += groupCharges.total;
+  });
   return {
     categoryTotals,
     directCost,

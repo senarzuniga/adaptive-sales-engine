@@ -51,7 +51,8 @@ import {
   type ServiceOfferContent,
 } from '@/lib/serviceOfferFlow';
 
-const ORANGE = 'F36B21';
+// INGECART master brand block (INGECART_BLOQUE_MAESTRO_ESTILOS.txt, Parte 4)
+const ORANGE = 'FF6600'; // Naranja oficial INGECART para Word/Excel
 const DARK = '171717';
 const MID_GREY = '5C5C5C';
 const LIGHT = 'F7F7F7';
@@ -271,7 +272,7 @@ const coverTable = (input: OfferWordExportInput, language: OfferWordLanguage = '
   const serviceOffer = isServiceOffer(input);
   const basisText = serviceOffer
     ? (isEs ? 'Servicio postventa según el alcance, niveles de servicio y condiciones comerciales configuradas.' : 'After-sales service according to the configured scope, service levels and commercial conditions.')
-    : (isEs ? 'Suministro de equipos y servicios segun el alcance y las condiciones comerciales configuradas.' : 'Equipment and services according to the configured scope and commercial conditions.');
+    : (isEs ? 'Suministro de equipos y servicios según el alcance y las condiciones comerciales configuradas.' : 'Equipment and services according to the configured scope and commercial conditions.');
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
@@ -316,21 +317,21 @@ const buildCoverRibbon = (input: OfferWordExportInput, language: OfferWordLangua
 };
 
 const getAssociatedCostsText = (language: OfferWordLanguage) => language === 'es'
-  ? 'Los costes asociados incluyen hotel, vuelos, transporte local y dietas segun la base de alcance aprobada. Las duraciones indicadas se entienden como dias laborables y asumen acceso continuo a planta preparada, medios de elevacion disponibles y apoyo puntual del cliente.'
+  ? 'Los costes asociados incluyen hotel, vuelos, transporte local y dietas según la base de alcance aprobada. Las duraciones indicadas se entienden como días laborables y asumen acceso continuo a planta preparada, medios de elevación disponibles y apoyo puntual del cliente.'
   : INSTALLATION_ASSOCIATED_COSTS_TEXT;
 
 const getCustomerSupportText = (language: OfferWordLanguage) => language === 'es'
-  ? 'El cliente debera proporcionar soporte mecanico y electrico adicional, asi como gruas y equipos auxiliares necesarios para la ejecucion.'
+  ? 'El cliente deberá proporcionar soporte mecánico y eléctrico adicional, así como grúas y equipos auxiliares necesarios para la ejecución.'
   : INSTALLATION_CUSTOMER_SUPPORT_TEXT;
 
 const getServiceDeliverables = (language: OfferWordLanguage) => language === 'es'
   ? [
-      'Supervision mecanica y apoyo al montaje de acuerdo con la matriz de responsabilidades.',
-      'Cold commissioning, verificaciones de I/O y validacion de handshake entre estaciones.',
+      'Supervisión mecánica y apoyo al montaje de acuerdo con la matriz de responsabilidades.',
+      'Cold commissioning, verificaciones de I/O y validación de handshake entre estaciones.',
       'Puesta en marcha de software, ajuste de secuencias y pruebas en modo produccion.',
       'Soporte a la interfaz RFID/MES dentro del protocolo y alcance de datos acordados.',
-      'Configuracion de AMR, rutas y estaciones bajo condiciones reales de planta.',
-      'Formacion de operacion y mantenimiento para ciclo normal, alarmas y recuperacion.',
+      'Configuración de AMR, rutas y estaciones bajo condiciones reales de planta.',
+      'Formación de operacion y mantenimiento para ciclo normal, alarmas y recuperacion.',
       'Soporte SAT y cierre de punch-list acordado.',
     ]
   : [...INSTALLATION_SERVICE_DELIVERABLES];
@@ -347,7 +348,7 @@ const buildScopeExecutiveNarrative = (scopeRow: ScopeRow, language: OfferWordLan
   const base = withTrailingPeriod(scopeRow.executiveDetail || scopeRow.scope);
   if (base) return base;
   return language === 'es'
-    ? 'Resumen ejecutivo del paquete pendiente de ajuste final en la emision comercial.'
+    ? 'Resumen ejecutivo del paquete pendiente de ajuste final en la emisión comercial.'
     : 'Executive package summary pending final commercial release.';
 };
 
@@ -389,23 +390,23 @@ const buildExecutiveSummaryPoints = ({
     isEs ? `La estructura comercial se presenta en ${currency} y ordena el alcance en ${scopeRows.length} paquete(s) ejecutivos.` : `The commercial structure is presented in ${currency} and organizes the scope into ${scopeRows.length} executive package(s).`,
     firstRows.length > 0 ? (isEs ? `Bloques clave: ${firstRows.join(' | ')}.` : `Key blocks: ${firstRows.join(' | ')}.`) : undefined,
     score ? (isEs ? `Scoring IA de pricing: ${Number(score.global_score || 0).toFixed(0)} / 100. ${text(score.ai_explanation)}` : `AI pricing score: ${Number(score.global_score || 0).toFixed(0)} / 100. ${text(score.ai_explanation)}`) : (isEs ? 'El analisis IA de pricing puede adjuntarse como anexo cuando proceda.' : 'AI pricing analysis can be attached as an annex when available.'),
-    installationRows.length > 0 ? (isEs ? 'Los servicios de instalacion, puesta en marcha y soporte de campo quedan integrados con entregables y responsabilidades definidos.' : 'Installation, commissioning and field-support services are integrated with defined deliverables and responsibilities.') : undefined,
+    installationRows.length > 0 ? (isEs ? 'Los servicios de instalación, puesta en marcha y soporte de campo quedan integrados con entregables y responsabilidades definidos.' : 'Installation, commissioning and field-support services are integrated with defined deliverables and responsibilities.') : undefined,
   ]);
 };
 
 const buildBlockLead = (item: ItemRow, product: ProductRecord | null, language: OfferWordLanguage) => {
   const dossier = product?.technicalDossier;
-  return withTrailingPeriod(text(item.description) || text(dossier?.valueProposition) || text(product?.comments) || (language === 'es' ? 'Bloque configurado desde la oferta y pendiente de cierre final de ingenieria.' : 'Configured scope generated from the offer builder and subject to final engineering closure.'));
+  return withTrailingPeriod(text(item.description) || text(dossier?.valueProposition) || text(product?.comments) || (language === 'es' ? 'Bloque configurado desde la oferta y pendiente de cierre final de ingeniería.' : 'Configured scope generated from the offer builder and subject to final engineering closure.'));
 };
 
 const buildFunctionalScopeLines = (item: ItemRow, product: ProductRecord | null, language: OfferWordLanguage) => {
   const dossier = product?.technicalDossier;
   const lines = bullets([
     ...(product?.characteristics || []).slice(0, 4),
-    ...(dossier?.applications || []).slice(0, 2).map((application) => language === 'es' ? `Aplicacion objetivo: ${application}` : `Target application: ${application}`),
+    ...(dossier?.applications || []).slice(0, 2).map((application) => language === 'es' ? `Aplicación objetivo: ${application}` : `Target application: ${application}`),
     text(item.description),
   ]);
-  return lines.length > 0 ? lines.slice(0, 6) : [language === 'es' ? 'Alcance funcional y criterios de interfaz a validar durante la ingenieria de detalle.' : 'Functional scope and interface criteria to be validated during detailed engineering.'];
+  return lines.length > 0 ? lines.slice(0, 6) : [language === 'es' ? 'Alcance funcional y criterios de interfaz a validar durante la ingeniería de detalle.' : 'Functional scope and interface criteria to be validated during detailed engineering.'];
 };
 
 const buildPerformanceLines = (product: ProductRecord | null, language: OfferWordLanguage) => {
@@ -413,7 +414,7 @@ const buildPerformanceLines = (product: ProductRecord | null, language: OfferWor
   const specLines = (dossier?.technicalSpecifications || []).slice(0, 5).map((spec) => `${spec.parameter}: ${spec.value}`);
   const kpiLines = (dossier?.performanceKpis || []).slice(0, 2).map((kpi) => language === 'es' ? `KPI de referencia: ${kpi}` : `Reference KPI: ${kpi}`);
   const lines = bullets([...specLines, ...kpiLines]);
-  return lines.length > 0 ? lines : [language === 'es' ? 'La base tecnica final se cerrara con layout aprobado, matriz de cargas, utilidades disponibles y documentos de interfaz del proyecto.' : 'The final technical basis will be closed against the approved layout, load matrix, available utilities and project interface documents.'];
+  return lines.length > 0 ? lines : [language === 'es' ? 'La base técnica final se cerrará con layout aprobado, matriz de cargas, utilidades disponibles y documentos de interfaz del proyecto.' : 'The final technical basis will be closed against the approved layout, load matrix, available utilities and project interface documents.'];
 };
 
 const buildBusinessValueLines = (product: ProductRecord | null, language: OfferWordLanguage) => {
@@ -423,16 +424,16 @@ const buildBusinessValueLines = (product: ProductRecord | null, language: OfferW
     ...(dossier?.roiFramework || []).slice(0, 3),
     ...(intelligence?.marketFitNotes || []).slice(0, 3),
   ]);
-  return lines.length > 0 ? lines : [language === 'es' ? 'La solucion esta planteada para mejorar continuidad operativa, control del flujo, seguridad y robustez de ejecucion.' : 'The solution is positioned to improve operational continuity, flow control, safety and execution robustness.'];
+  return lines.length > 0 ? lines : [language === 'es' ? 'La solución esta planteada para mejorar continuidad operativa, control del flujo, seguridad y robustez de ejecución.' : 'The solution is positioned to improve operational continuity, flow control, safety and execution robustness.'];
 };
 
 const buildExecutionAssumptionLines = (product: ProductRecord | null, language: OfferWordLanguage) => {
   const dossier = product?.technicalDossier;
   const lines = bullets([
     ...(dossier?.risksAndLimits || []).slice(0, 2),
-    ...(dossier?.acceptanceCriteria || []).slice(0, 2).map((criterion) => language === 'es' ? `Validacion requerida: ${criterion}` : `Required validation: ${criterion}`),
+    ...(dossier?.acceptanceCriteria || []).slice(0, 2).map((criterion) => language === 'es' ? `Validación requerida: ${criterion}` : `Required validation: ${criterion}`),
   ]);
-  return lines.length > 0 ? lines : [language === 'es' ? 'Las prestaciones finales quedaran sujetas a validacion de ingenieria, layout aprobado y criterios de aceptacion acordados.' : 'Final performance remains subject to engineering validation, approved layout and agreed acceptance criteria.'];
+  return lines.length > 0 ? lines : [language === 'es' ? 'Las prestaciones finales quedarán sujetas a validación de ingeniería, layout aprobado y criterios de aceptación acordados.' : 'Final performance remains subject to engineering validation, approved layout and agreed acceptance criteria.'];
 };
 
 const imageParagraph = (image: { data: Uint8Array; type: 'jpg' | 'png' }, size: { width: number; height: number }) => new Paragraph({
@@ -455,6 +456,10 @@ const buildHeader = (offerRef: string, templateAssets: OfferWordTemplateAssets) 
       borderlessCell([new Paragraph({ children: templateAssets.headerLogo ? [new ImageRun({ type: templateAssets.headerLogo.type, data: templateAssets.headerLogo.data, transformation: HEADER_LOGO_SIZE })] : [new TextRun({ text: 'INGECART', font: 'Arial', size: 22, bold: true, color: DARK })] })]),
       borderlessCell([new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: offerRef, font: 'Arial', size: 14, bold: true, color: MID_GREY })] })]),
     ] })],
+  }), new Paragraph({
+    spacing: { after: 120 },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: ORANGE, space: 1 } },
+    children: [new TextRun({ text: 'INGECART · Engineering & Auditing', font: 'Arial', size: 14, color: MID_GREY })],
   })],
 });
 
@@ -463,7 +468,7 @@ const buildFooter = (customer: string, project: string) => new Footer({
     width: { size: 100, type: WidthType.PERCENTAGE },
     columnWidths: [6800, 2800],
     rows: [new TableRow({ children: [
-      borderlessCell([new Paragraph({ children: [new TextRun({ text: `CONFIDENTIAL | ${customer}${project ? ` | ${project}` : ''}`, font: 'Arial', size: 14, color: MID_GREY })] })]),
+      borderlessCell([new Paragraph({ children: [new TextRun({ text: `INGECART · Engineering & Auditing — CONFIDENTIAL | ${customer}${project ? ` | ${project}` : ''}`, font: 'Arial', size: 14, color: MID_GREY })] })]),
       borderlessCell([new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: 'Page ', font: 'Arial', size: 14, color: MID_GREY }), new TextRun({ children: [PageNumber.CURRENT], font: 'Arial', size: 14, color: MID_GREY }), new TextRun({ text: ' / ', font: 'Arial', size: 14, color: MID_GREY }), new TextRun({ children: [PageNumber.TOTAL_PAGES], font: 'Arial', size: 14, color: MID_GREY })] })]),
     ] })],
   })],
@@ -480,7 +485,7 @@ const buildCommercialConditionsTable = (currency: string, terms: OfferCommercial
       new TableRow({ children: [cell(isEs ? 'Pago' : 'Payment', { bold: true }), cell(buildPaymentTermsText(terms, language))] }),
       new TableRow({ children: [cell(isEs ? 'Entrega' : 'Delivery', { bold: true }), cell(buildDeliveryTermsText(terms, language))] }),
       new TableRow({ children: [cell(isEs ? 'Validez' : 'Validity', { bold: true }), cell(buildValidityTermsText(terms, language))] }),
-      new TableRow({ children: [cell(isEs ? 'Garantia' : 'Warranty', { bold: true }), cell(buildWarrantyTermsText(terms, language))] }),
+      new TableRow({ children: [cell(isEs ? 'Garantía' : 'Warranty', { bold: true }), cell(buildWarrantyTermsText(terms, language))] }),
     ],
     columnWidths: [2600, 6755],
   });
@@ -613,7 +618,7 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
       '12.1 Inclusiones de precio',
       '12.2 Exclusiones',
       '12.3 Responsabilidades del cliente',
-      '13  GARANTIA Y CONDICIONES GENERALES DE VENTA',
+      '13  GARANTÍA Y CONDICIONES GENERALES DE VENTA',
       '14  ACEPTACION DE OFERTA',
     ] : DEFAULT_OFFER_SECTIONS);
   const offerRef = text(input.offer.offer_number) || 'OFFER-DRAFT';
@@ -638,7 +643,7 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
     ? (isEs ? 'Servicio postventa INGECART - propuesta anual de mantenimiento y fiabilidad' : 'INGECART after-sales service - annual maintenance and reliability proposal')
     : isIngecartTemplate(input)
       ? (isEs ? 'Plataforma integrada de logistica de bobinas INGECART - imagen de referencia' : 'INGECART integrated reel logistics platform - reference image')
-      : (isEs ? 'Imagen de referencia de la solucion configurada' : 'Configured solution reference image');
+      : (isEs ? 'Imagen de referencia de la solución configurada' : 'Configured solution reference image');
 
   sections.push({
     properties: {},
@@ -670,14 +675,14 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
           ? `INGECART presenta la propuesta de servicio ${offerRef} para ${text(input.offer.title) || 'el alcance de postventa definido'}. La oferta consolida alcance, servicios ofrecidos, entregables, niveles de servicio y condiciones comerciales en un formato ejecutivo listo para validación interna y aprobación.`
           : `INGECART is pleased to submit the service proposal ${offerRef} for ${text(input.offer.title) || 'the defined after-sales scope'}. The proposal consolidates scope, deliverables, service levels and commercial conditions in an executive format ready for internal validation and approval.`)
         : (isEs
-          ? `INGECART presenta la propuesta ${offerRef} para ${text(input.offer.title) || 'el alcance definido del proyecto'}. La oferta consolida alcance, integracion y condiciones comerciales en un formato ejecutivo listo para validacion interna y negociacion final.`
+          ? `INGECART presenta la propuesta ${offerRef} para ${text(input.offer.title) || 'el alcance definido del proyecto'}. La oferta consolida alcance, integración y condiciones comerciales en un formato ejecutivo listo para validación interna y negociación final.`
           : `INGECART is pleased to submit proposal ${offerRef} for ${text(input.offer.title) || 'the defined project scope'}. The proposal consolidates scope, integration logic and commercial conditions in an executive format ready for internal validation and final negotiation.`)),
       normal(serviceOffer && serviceContent
         ? (isEs
           ? 'El objetivo de esta emisión es ofrecer un programa de servicio técnicamente consistente, comercialmente trazable y preparado para minimizar paradas no planificadas y garantizar la disponibilidad del equipo.'
           : 'The objective of this release is to provide a technically consistent, commercially traceable service programme that minimizes unplanned downtime and secures equipment availability.')
         : (isEs
-          ? 'El objetivo de esta emision es ofrecer una propuesta tecnicamente consistente, comercialmente trazable y preparada para minimizar aclaraciones posteriores durante la fase de ingenieria y adjudicacion.'
+          ? 'El objetivo de esta emisión es ofrecer una propuesta tecnicamente consistente, comercialmente trazable y preparada para minimizar aclaraciones posteriores durante la fase de ingeniería y adjudicación.'
           : 'The objective of this release is to provide a technically consistent, commercially traceable proposal that minimizes downstream clarifications during engineering and award.')),
       heading(1, isEs ? '2  RESUMEN EJECUTIVO' : '2  EXECUTIVE SUMMARY'),
       ...buildExecutiveSummaryPoints({
@@ -754,7 +759,7 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
         normal(buildScopeExecutiveNarrative(scopeRow, language)),
         ...(scopeRow.itemNames.length > 0 ? [heading(2, isEs ? `4.${index + 1}.1 Elementos incluidos` : `4.${index + 1}.1 Included elements`), ...scopeRow.itemNames.map((value) => bullet(value))] : []),
         ...(scopeRow.installationPackage ? [
-          heading(2, isEs ? `4.${index + 1}.2 Base de instalacion` : `4.${index + 1}.2 Installation basis`),
+          heading(2, isEs ? `4.${index + 1}.2 Base de instalación` : `4.${index + 1}.2 Installation basis`),
           normal(getAssociatedCostsText(language)),
           normal(getCustomerSupportText(language)),
           heading(2, isEs ? `4.${index + 1}.3 Entregables de servicio` : `4.${index + 1}.3 Service deliverables`),
@@ -771,23 +776,23 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
           normal(buildBlockLead(item, product, language)),
           heading(2, isEs ? `${sectionNo}.1 Alcance funcional` : `${sectionNo}.1 Functional scope`),
           ...buildFunctionalScopeLines(item, product, language).map(bullet),
-          heading(2, isEs ? `${sectionNo}.2 Base tecnica y rendimiento` : `${sectionNo}.2 Technical and performance basis`),
+          heading(2, isEs ? `${sectionNo}.2 Base técnica y rendimiento` : `${sectionNo}.2 Technical and performance basis`),
           ...buildPerformanceLines(product, language).map(bullet),
           heading(2, isEs ? `${sectionNo}.3 Valor operativo y caso de negocio` : `${sectionNo}.3 Operational value and business case`),
           ...buildBusinessValueLines(product, language).map(bullet),
-          heading(2, isEs ? `${sectionNo}.4 Hipotesis de ejecucion y validacion` : `${sectionNo}.4 Execution assumptions and validation`),
+          heading(2, isEs ? `${sectionNo}.4 Hipótesis de ejecución y validación` : `${sectionNo}.4 Execution assumptions and validation`),
           ...buildExecutionAssumptionLines(product, language).map(bullet),
           heading(2, isEs ? `${sectionNo}.5 Base comercial del bloque` : `${sectionNo}.5 Commercial basis of the block`),
-          normal(isEs ? 'El precio comercial de este bloque se recoge en el resumen de alcance y estructura comercial de la oferta, sin exponer costes internos ni criterios de formacion de coste.' : 'The commercial price for this block is captured in the scope and commercial structure summary, without exposing internal costs or internal cost-building criteria.'),
+          normal(isEs ? 'El precio comercial de este bloque se recoge en el resumen de alcance y estructura comercial de la oferta, sin exponer costes internos ni criterios de formación de coste.' : 'The commercial price for this block is captured in the scope and commercial structure summary, without exposing internal costs or internal cost-building criteria.'),
           ...(intelligence?.fitImprovementActions && intelligence.fitImprovementActions.length > 0 ? [heading(2, isEs ? `${sectionNo}.6 Posicionamiento comercial` : `${sectionNo}.6 Commercial positioning`), ...intelligence.fitImprovementActions.slice(0, 4).map(bullet)] : []),
         ];
       }) : []),
       ...(!serviceOffer ? [
-        heading(1, isEs ? '10  INSTALACION, PUESTA EN MARCHA Y FORMACION' : '10  INSTALLATION, COMMISSIONING AND TRAINING'),
+        heading(1, isEs ? '10  INSTALACIÓN, PUESTA EN MARCHA Y FORMACION' : '10  INSTALLATION, COMMISSIONING AND TRAINING'),
         ...(installationRows.length > 0 ? [
-          normal(isEs ? 'Los servicios de campo se presentan como un bloque de ejecucion con entregables, bases de trabajo y responsabilidades compartidas claramente definidos.' : 'Site services are presented as an execution block with clearly defined deliverables, working assumptions and shared responsibilities.'),
+          normal(isEs ? 'Los servicios de campo se presentan como un bloque de ejecución con entregables, bases de trabajo y responsabilidades compartidas claramente definidos.' : 'Site services are presented as an execution block with clearly defined deliverables, working assumptions and shared responsibilities.'),
           gridTable(
-            [isEs ? 'Familia de servicio' : 'Service family', isEs ? 'Descripcion' : 'Description', isEs ? 'Base' : 'Basis'],
+            [isEs ? 'Familia de servicio' : 'Service family', isEs ? 'Descripción' : 'Description', isEs ? 'Base' : 'Basis'],
             installationRows.map((row) => [text(row.category), text(row.line_item), row.hours ? `${row.hours} h` : row.days ? `${row.days} d / ${row.resources || 0} tech` : `${row.quantity || 1}`]),
             [2200, 5600, 1800],
           ),
@@ -795,18 +800,18 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
           normal(getCustomerSupportText(language)),
           heading(2, isEs ? '10.1 Entregables de servicio' : '10.1 Service deliverables'),
           ...getServiceDeliverables(language).map((value) => bullet(value)),
-        ] : [normal(isEs ? 'No se ha configurado un paquete separado de servicios de campo en esta version de oferta.' : 'No separate site-service package has been configured in this offer version.')]),
+        ] : [normal(isEs ? 'No se ha configurado un paquete separado de servicios de campo en esta versión de oferta.' : 'No separate site-service package has been configured in this offer version.')]),
       ] : []),
       heading(1, sectionLabels[0]),
       normal(serviceOffer && serviceContent
         ? (isEs ? 'La ejecución del servicio seguirá el calendario anual acordado, los informes de cada visita y la revisión trimestral de KPIs. El punto de aceptación será la firma del informe de servicio y el cumplimiento de los SLA definidos.' : 'Service execution will follow the agreed annual calendar, each visit report and the quarterly KPI review. Acceptance will be the service report sign-off and fulfilment of the defined SLAs.')
-        : (isEs ? 'La planificacion de ejecucion, el cierre de KPI y el metodo de aceptacion final se confirmaran en el kick-off de ingenieria, con base en el alcance aprobado, layout, interfaces y preparacion de planta.' : 'Project execution planning, KPI lock and final acceptance method will be confirmed during engineering kick-off, taking the approved scope, layout, interfaces and site readiness into account.')),
+        : (isEs ? 'La planificación de ejecución, el cierre de KPI y el método de aceptación final se confirmarán en el kick-off de ingeniería, con base en el alcance aprobado, layout, interfaces y preparación de planta.' : 'Project execution planning, KPI lock and final acceptance method will be confirmed during engineering kick-off, taking the approved scope, layout, interfaces and site readiness into account.')),
       heading(2, sectionLabels[1]),
       ...(serviceOffer && serviceContent
         ? serviceContent.responseSla.map((sla) => bullet(`${sla.label}: ${sla.value}.`))
         : bullets([
-          isEs ? 'Throughput, disponibilidad, logica de interfaces y evidencias SAT se acordaran contra el paquete de ingenieria aprobado.' : 'Throughput, availability, interface handshake logic and SAT evidence will be agreed against the approved engineering package.',
-          isEs ? 'Cliente e INGECART cerraran la matriz de responsabilidades, matriz de utilidades y ruta de cierre de punch-list antes de la ejecucion en planta.' : 'Customer and INGECART will freeze the responsibility matrix, utilities matrix and punch-list closure route before site execution.',
+          isEs ? 'Throughput, disponibilidad, lógica de interfaces y evidencias SAT se acordarán contra el paquete de ingeniería aprobado.' : 'Throughput, availability, interface handshake logic and SAT evidence will be agreed against the approved engineering package.',
+          isEs ? 'Cliente e INGECART cerrarán la matriz de responsabilidades, matriz de utilidades y ruta de cierre de punch-list antes de la ejecución en planta.' : 'Customer and INGECART will freeze the responsibility matrix, utilities matrix and punch-list closure route before site execution.',
         ]).map(bullet)),
       heading(1, sectionLabels[2]),
       ...(serviceOffer && serviceContent ? [
@@ -827,13 +832,13 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
       ...scopeRows.map((row) => bullet(`${row.label}: ${row.scope || (isEs ? 'Alcance configurado' : 'Configured scope')} - ${fmtCurrency(row.proposalPrice, currency, language)}.`)),
       heading(2, sectionLabels[4]),
       ...bullets([
-          isEs ? 'Obra civil, cimentaciones, permisos, utilidades del cliente e interfaces de terceros quedan excluidos salvo inclusion explicita en el alcance del paquete.' : 'Civil works, foundations, permits, customer-side utilities and third-party interfaces are excluded unless explicitly listed in the package scope.',
+          isEs ? 'Obra civil, cimentaciones, permisos, utilidades del cliente e interfaces de terceros quedan excluidos salvo inclusión explícita en el alcance del paquete.' : 'Civil works, foundations, permits, customer-side utilities and third-party interfaces are excluded unless explicitly listed in the package scope.',
           isEs ? 'Cualquier crecimiento de alcance por cambios de layout, retrasos de aprobacion, redefinicion de interfaces o restricciones de planta sera tratado como variacion comercial.' : 'Any scope growth derived from layout changes, delayed approvals, interface redefinition or site restrictions will be reviewed as a commercial variation.',
         ]).map(bullet),
       heading(2, sectionLabels[5]),
       ...bullets([
           getCustomerSupportText(language),
-          isEs ? 'El cliente facilitara acceso continuo a planta preparada, decisiones tecnicas en plazo, utilidades, permisos de seguridad y datos de interfaz requeridos para la ejecucion.' : 'Customer to provide continuous access to the ready site, timely technical decisions, utilities, safety permits and interface data required for execution.',
+          isEs ? 'El cliente facilitará acceso continuo a planta preparada, decisiones técnicas en plazo, utilidades, permisos de seguridad y datos de interfaz requeridos para la ejecución.' : 'Customer to provide continuous access to the ready site, timely technical decisions, utilities, safety permits and interface data required for execution.',
         ]).map(bullet),
       ] : []),
       heading(1, sectionLabels[6]),
@@ -845,8 +850,8 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
         ]).map(bullet)
         : bullets([
           buildWarrantyTermsText(commercialTerms, language),
-          isEs ? 'Exclusiones finales, utilidades, obra civil y responsabilidades del cliente deben adjuntarse a la version comercial aprobada antes de la entrada de pedido.' : 'Final exclusions, utilities, civil works and customer-side responsibilities must be attached to the approved commercial version before order intake.',
-          isEs ? 'Prestaciones, capacidades e interfaces quedan sujetas a validacion final de ingenieria sobre el layout y matriz de cargas aprobados por cliente.' : 'Performance, capacities and interfaces are subject to final engineering validation on the approved customer layout and load matrix.',
+          isEs ? 'Exclusiones finales, utilidades, obra civil y responsabilidades del cliente deben adjuntarse a la versión comercial aprobada antes de la entrada de pedido.' : 'Final exclusions, utilities, civil works and customer-side responsibilities must be attached to the approved commercial version before order intake.',
+          isEs ? 'Prestaciones, capacidades e interfaces quedan sujetas a validación final de ingeniería sobre el layout y matriz de cargas aprobados por cliente.' : 'Performance, capacities and interfaces are subject to final engineering validation on the approved customer layout and load matrix.',
         ]).map(bullet)),
       heading(1, sectionLabels[7]),
       ...(serviceOffer && serviceContent ? [
@@ -857,6 +862,9 @@ export const buildOfferWordDocument = (input: OfferWordExportInput, templateAsse
         new TableRow({ children: [cell(isEs ? 'Aceptado por el cliente' : 'Accepted by customer', { fill: LIGHT, bold: true }), cell(isEs ? 'Fecha' : 'Date', { fill: LIGHT, bold: true })] }),
         new TableRow({ children: [cell('\n\n'), cell('\n\n')] }),
       ] }),
+      new Paragraph({ spacing: { before: 320, after: 40 }, children: [new TextRun({ text: isEs ? 'Por INGECART · Engineering & Auditing' : 'For INGECART · Engineering & Auditing', font: 'Arial', size: 19, bold: true, color: DARK })] }),
+      new Paragraph({ spacing: { after: 40 }, children: [new TextRun({ text: 'Gerard González — Electrical & Automation Director', font: 'Arial', size: 19, color: DARK })] }),
+      new Paragraph({ spacing: { after: 40 }, children: [new TextRun({ text: 'INGECART S.L. · +34 938 183 316 · www.ingecart.eu', font: 'Arial', size: 15, color: MID_GREY })] }),
     ],
   });
 

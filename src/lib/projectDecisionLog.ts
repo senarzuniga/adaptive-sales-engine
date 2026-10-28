@@ -510,7 +510,7 @@ export function buildProjectDecisionWorkbookFileName(project: GenericRow, panel:
       : `Decision_Log_${projectName}_INGECART_EN.xlsx`;
   }
   return language === 'es'
-    ? `Registro_Gestion_${projectName}_INGECART_ES.xlsx`
+    ? `Registro_Gestión_${projectName}_INGECART_ES.xlsx`
     : `Project_Management_Log_${projectName}_INGECART_EN.xlsx`;
 }
 

@@ -975,7 +975,7 @@ const KeyAccountManagementPage = () => {
                 <Card key={account.customer}>
                   <CardHeader><CardTitle className="text-base">{account.customer}</CardTitle></CardHeader>
                   <CardContent className="space-y-2">
-                    {account.plan.map((item) => <p key={item} className="text-xs text-muted-foreground">â€¢ {item}</p>)}
+                    {account.plan.map((item) => <p key={item} className="text-xs text-muted-foreground">• {item}</p>)}
                     <div className="pt-2 text-xs text-foreground font-medium">Horizon: {account.horizon}</div>
                   </CardContent>
                 </Card>

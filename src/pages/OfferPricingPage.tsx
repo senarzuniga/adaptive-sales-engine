@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Calculator, Plus, Trash2, Brain, TrendingUp, AlertTriangle, Shield,
   DollarSign, BarChart3, Lightbulb, ChevronDown, ChevronUp, Save, FileText, Loader2,
@@ -22,7 +23,7 @@ import {
 import { buildFallbackOfferAnalysis, classifyEdgeRuntimeError, invokeEdgeWithRetry } from '@/lib/edgeStability';
 import { inferProductCategory } from '@/lib/productCatalog';
 import { buildOfferCostPreset, mergeProductWithKnowledge } from '@/lib/productKnowledge';
-import { DEFAULT_INGECART_POLICY, buildIngecartOfferTemplate } from '@/lib/utils';
+import { DEFAULT_INGECART_POLICY, buildIngecartOfferTemplate, type OfferCostPolicy } from '@/lib/utils';
 import { InstallationPlanner } from '@/components/costs/InstallationPlanner';
 import { computeInstallationCost, createInstallationPlan, describeInstallationPlan, type InstallationPlan } from '@/lib/installationCost';
 import { isWorkspaceSupabaseConfigured, readWorkspaceRows, writeWorkspaceRows } from '@/lib/workspaceStorage';
@@ -31,7 +32,7 @@ import { downloadOfferCostWorkbook } from '@/lib/offerCostExport';
 import { buildOfferDocumentPath, buildSuggestedOfferProjectFolder, upsertOfferDocument } from '@/lib/offerDocumentRegistry';
 import { OfferCommercialTermsEditor } from '@/components/offers/OfferCommercialTermsEditor';
 import { OfferPackagePlanner } from '@/components/offers/OfferPackagePlanner';
-import { buildDefaultCommercialTerms, buildPaymentTermsText, hydrateCommercialTerms, hydrateOfferPackage, summarizePackageCostWithPolicy, type OfferCommercialTerms, type OfferPackageDraft } from '@/lib/offerPackages';
+import { buildDefaultCommercialTerms, buildPaymentTermsText, estimatePolicyChargesFromCost, hydrateCommercialTerms, hydrateOfferPackage, summarizePackageCostWithPolicy, type OfferCommercialTerms, type OfferPackageDraft } from '@/lib/offerPackages';
 import {
   SMART_PLANT_ANNUAL_OFFER_REFERENCES,
   buildServiceOfferContent,
@@ -74,6 +75,11 @@ type OfferItem = {
 
 type OfferDocumentLanguage = 'en' | 'es';
 
+// unified = one policy applied at whole-package level; split = different policies for products and services.
+type PolicyScope = 'unified' | 'split';
+// variant = copy for the same customer with a -Vn suffix; new-customer = copy with fresh numbering.
+type OfferCopyMode = 'variant' | 'new-customer';
+
 type Scenario = {
   type: string;
   totalCost: number;
@@ -106,10 +112,10 @@ const CATEGORIES = [
 
 const CATEGORIES_ES: Record<string, string> = {
   materials: 'Comercio',
-  engineering: "Ingeniera",
+  engineering: "Ingeniería",
   subcontracting: 'Subcontratas',
-  installation: "Instalacin",
-  transport: "Transporte y Logstica",
+  installation: "Instalación",
+  transport: "Transporte y Logística",
   indirect: 'Otros',
   service: 'Servicios postventa',
 };
@@ -190,6 +196,9 @@ type OfferDraftSnapshot = {
   currency: string;
   targetMargin: number;
   pricingPolicy: typeof DEFAULT_INGECART_POLICY;
+  policyScope: PolicyScope;
+  servicePolicy: typeof DEFAULT_INGECART_POLICY;
+  excludedItemIds: string[];
   commercialTerms: OfferCommercialTerms;
   offerPackages: OfferPackageDraft[];
   principalPackagePriceOverride: number | null;
@@ -273,6 +282,11 @@ export default function OfferPricingPage() {
   const [currency, setCurrency] = useState('EUR');
   const [targetMargin, setTargetMargin] = useState(20);
   const [pricingPolicy, setPricingPolicy] = useState(DEFAULT_INGECART_POLICY);
+  const [policyScope, setPolicyScope] = useState<PolicyScope>('unified');
+  const [servicePolicy, setServicePolicy] = useState<OfferCostPolicy>({ ...DEFAULT_INGECART_POLICY });
+  const [excludedItemIds, setExcludedItemIds] = useState<string[]>([]);
+  const [copyRequest, setCopyRequest] = useState<{ source: 'builder' } | { source: 'saved'; offer: any } | null>(null);
+  const [copyingOffer, setCopyingOffer] = useState(false);
   const [commercialTerms, setCommercialTerms] = useState<OfferCommercialTerms>(() => buildDefaultCommercialTerms());
   const [offerPackages, setOfferPackages] = useState<OfferPackageDraft[]>([]);
   const [principalPackagePriceOverride, setPrincipalPackagePriceOverride] = useState<number | null>(null);
@@ -514,6 +528,9 @@ export default function OfferPricingPage() {
       setCurrency(draft.currency || 'EUR');
       setTargetMargin(Number(draft.targetMargin || 20));
       setPricingPolicy(draft.pricingPolicy || DEFAULT_INGECART_POLICY);
+      setPolicyScope(draft.policyScope === 'split' ? 'split' : 'unified');
+      setServicePolicy({ ...DEFAULT_INGECART_POLICY, ...(draft.servicePolicy || {}) });
+      setExcludedItemIds(Array.isArray(draft.excludedItemIds) ? draft.excludedItemIds.filter((id) => (draft.items || []).some((item) => item.id === id)) : []);
       setCommercialTerms(hydrateCommercialTerms(draft.commercialTerms));
       setOfferPackages((draft.offerPackages || []).map((pkg, index) => hydrateOfferPackage(pkg, index + 1)));
       setPrincipalPackagePriceOverride(parseOptionalNumber((draft as any).principalPackagePriceOverride));
@@ -549,6 +566,9 @@ export default function OfferPricingPage() {
       setCurrency(draft.currency || 'EUR');
       setTargetMargin(Number(draft.targetMargin || 35));
       setPricingPolicy(DEFAULT_INGECART_POLICY);
+      setPolicyScope('unified');
+      setServicePolicy({ ...DEFAULT_INGECART_POLICY });
+      setExcludedItemIds([]);
       setCommercialTerms(buildDefaultCommercialTerms());
       setOfferPackages([]);
       setPrincipalPackagePriceOverride(null);
@@ -591,6 +611,9 @@ export default function OfferPricingPage() {
       currency,
       targetMargin,
       pricingPolicy,
+      policyScope,
+      servicePolicy,
+      excludedItemIds,
       commercialTerms,
       offerPackages,
       principalPackagePriceOverride,
@@ -608,7 +631,7 @@ export default function OfferPricingPage() {
       return;
     }
     localStorage.setItem(key, JSON.stringify(snapshot));
-  }, [selectedCompanyId, editingOfferId, offerTitle, offerNumber, customerName, customerMode, newCustomer, projectDesc, currency, targetMargin, pricingPolicy, commercialTerms, offerPackages, principalPackagePriceOverride, offerTotalPriceOverride, items, documentLanguage, offerKind, linkedOpportunityId, linkedOpportunityTitle, serviceContent]);
+  }, [selectedCompanyId, editingOfferId, offerTitle, offerNumber, customerName, customerMode, newCustomer, projectDesc, currency, targetMargin, pricingPolicy, policyScope, servicePolicy, excludedItemIds, commercialTerms, offerPackages, principalPackagePriceOverride, offerTotalPriceOverride, items, documentLanguage, offerKind, linkedOpportunityId, linkedOpportunityTitle, serviceContent]);
 
   useEffect(() => {
     if (!selectedCompanyId) return;
@@ -684,7 +707,7 @@ export default function OfferPricingPage() {
     toast({
       title: isEs ? 'Bloque copiado' : 'Block copied',
       description: isEs
-        ? `Duplicado con -${copyEngineeringReductionPct}% en ingenier?a y -${copyCostReductionPct}% en coste base.`
+        ? `Duplicado con -${copyEngineeringReductionPct}% en ingeniería y -${copyCostReductionPct}% en coste base.`
         : `Duplicated with -${copyEngineeringReductionPct}% engineering and -${copyCostReductionPct}% base cost.`,
     });
   };
@@ -694,7 +717,7 @@ export default function OfferPricingPage() {
     setItems((prev) => [...prev, cloned]);
     setExpandedItems((prev) => new Set(prev).add(cloned.id));
     setActiveTab('builder');
-    toast({ title: isEs ? 'Bloque a?adido al constructor' : 'Block added to builder', description: entry.name });
+    toast({ title: isEs ? 'Bloque añadido al constructor' : 'Block added to builder', description: entry.name });
   };
 
   const removeRepositoryBlock = (entryId: string) => {
@@ -829,7 +852,7 @@ export default function OfferPricingPage() {
     setPricingPolicy(DEFAULT_INGECART_POLICY);
     toast({
       title: isEs ? 'Plantilla Ingecart cargada' : 'Ingecart template loaded',
-      description: isEs ? "Se aplican los valores de garanta, viajes, instalacin y estructura comercial recomendados." : 'The recommended cost, travel and installation commercial policy values have been applied.',
+      description: isEs ? "Se aplican los valores de garantía, viajes, instalación y estructura comercial recomendados." : 'The recommended cost, travel and installation commercial policy values have been applied.',
     });
   };
 
@@ -875,6 +898,7 @@ export default function OfferPricingPage() {
   const removeItem = (id: string) => {
     if (items.length <= 1) return;
     setItems(prev => prev.filter(i => i.id !== id));
+    setExcludedItemIds((current) => current.filter((value) => value !== id));
   };
 
   const updateItem = (id: string, field: string, value: any) => {
@@ -934,6 +958,22 @@ export default function OfferPricingPage() {
       resources: line.resources,
     }))), [items]);
 
+  // Pricing scope: excluded items stay in the offer but are left out of the price calculation.
+  const pricedItems = useMemo(() => items.filter((item) => !excludedItemIds.includes(item.id)), [items, excludedItemIds]);
+  const pricedBuilderCostRows = useMemo(() => builderCostRows.filter((row) => !excludedItemIds.includes(String(row.offer_item_id))), [builderCostRows, excludedItemIds]);
+
+  // Quick scope configurations for the pricing panel.
+  const setPricingScope = (mode: 'all' | 'products' | 'services' | 'none') => {
+    setExcludedItemIds(
+      mode === 'all' ? [] :
+      mode === 'none' ? items.map((item) => item.id) :
+      items.filter((item) => (mode === 'products' ? item.type === 'service' : item.type !== 'service')).map((item) => item.id),
+    );
+  };
+
+  const toggleItemPricingScope = (id: string) =>
+    setExcludedItemIds((current) => (current.includes(id) ? current.filter((value) => value !== id) : [...current, id]));
+
   const filteredBlockRepository = useMemo(() => {
     const query = blockRepositorySearch.trim().toLowerCase();
     const rows = blockRepository
@@ -946,26 +986,49 @@ export default function OfferPricingPage() {
   }, [blockRepository, blockRepositorySearch]);
 
   const totals = useMemo(() => {
-    const byCat: Record<string, number> = {};
-    let direct = 0;
-    items.forEach(item => {
-      item.costLines.forEach(cl => {
-        byCat[cl.category] = (byCat[cl.category] || 0) + cl.totalCost * item.quantity;
-        direct += cl.totalCost * item.quantity;
+    const sumSet = (targetItems: OfferItem[]) => {
+      const byCat: Record<string, number> = {};
+      let direct = 0;
+      targetItems.forEach((item) => {
+        item.costLines.forEach((cl) => {
+          byCat[cl.category] = (byCat[cl.category] || 0) + cl.totalCost * item.quantity;
+          direct += cl.totalCost * item.quantity;
+        });
       });
+      return { byCat, direct };
+    };
+    const productBase = sumSet(pricedItems.filter((item) => item.type !== 'service'));
+    const serviceBase = sumSet(pricedItems.filter((item) => item.type === 'service'));
+    const byCat: Record<string, number> = {};
+    [...Object.entries(productBase.byCat), ...Object.entries(serviceBase.byCat)].forEach(([key, value]) => {
+      byCat[key] = (byCat[key] || 0) + value;
     });
-    const materials = byCat.materials || 0;
-    const engineering = byCat.engineering || 0;
-    const subcontracting = byCat.subcontracting || 0;
-    // Warranty covers supplied goods (Comercio), engineering hours and subcontracted work.
-    const warranty = (materials + engineering + subcontracting) * (Number(pricingPolicy.warrantyPct) || 0) / 100;
-    const materialStructure = materials * (Number(pricingPolicy.materialStructurePct) || 0) / 100;
-    const financial = direct * (Number(pricingPolicy.financialPct) || 0) / 100;
-    const commercialMgmt = direct * (Number(pricingPolicy.commercialMgmtPct) || 0) / 100;
-    const policyCharges = { warranty, materialStructure, financial, commercialMgmt };
-    const total = direct + warranty + materialStructure + financial + commercialMgmt;
-    return { byCat, direct, policyCharges, total, sellingPrice: total * (1 + targetMargin / 100), margin: total * targetMargin / 100 };
-  }, [items, targetMargin, pricingPolicy]);
+    const direct = productBase.direct + serviceBase.direct;
+    // Warranty covers supplied goods (Comercio), engineering hours and subcontracted work; structure only Comercio.
+    // Unified mode applies one policy at whole-package level; split mode prices services with their own policy.
+    const effectiveServicePolicy = policyScope === 'split' ? servicePolicy : pricingPolicy;
+    const productCharges = estimatePolicyChargesFromCost(productBase.byCat, productBase.direct, pricingPolicy);
+    const serviceCharges = estimatePolicyChargesFromCost(serviceBase.byCat, serviceBase.direct, effectiveServicePolicy);
+    const policyCharges = {
+      warranty: productCharges.warranty + serviceCharges.warranty,
+      materialStructure: productCharges.materialStructure + serviceCharges.materialStructure,
+      financial: productCharges.financial + serviceCharges.financial,
+      commercialMgmt: productCharges.commercialMgmt + serviceCharges.commercialMgmt,
+    };
+    const total = direct + policyCharges.warranty + policyCharges.materialStructure + policyCharges.financial + policyCharges.commercialMgmt;
+    return {
+      byCat,
+      direct,
+      policyCharges,
+      total,
+      productDirect: productBase.direct,
+      serviceDirect: serviceBase.direct,
+      productPolicyCharges: { warranty: productCharges.warranty, materialStructure: productCharges.materialStructure, financial: productCharges.financial, commercialMgmt: productCharges.commercialMgmt },
+      servicePolicyCharges: { warranty: serviceCharges.warranty, materialStructure: serviceCharges.materialStructure, financial: serviceCharges.financial, commercialMgmt: serviceCharges.commercialMgmt },
+      sellingPrice: total * (1 + targetMargin / 100),
+      margin: total * targetMargin / 100,
+    };
+  }, [pricedItems, targetMargin, pricingPolicy, servicePolicy, policyScope]);
 
   // Offer numbers follow OFF-YYYY-NNN and service offers use OFF-YYYY-SNNN.
   const generateOfferNumber = (existing: any[], kind: OfferKind = offerKind) => {
@@ -1012,6 +1075,9 @@ export default function OfferPricingPage() {
   const updatePolicyPct = (field: 'warrantyPct' | 'financialPct' | 'commercialMgmtPct' | 'materialStructurePct', value: string) =>
     setPricingPolicy((prev) => ({ ...prev, [field]: value === '' ? 0 : Number(value) }));
 
+  const updateServicePolicyPct = (field: 'warrantyPct' | 'financialPct' | 'commercialMgmtPct' | 'materialStructurePct', value: string) =>
+    setServicePolicy((prev) => ({ ...prev, [field]: value === '' ? 0 : Number(value) }));
+
   const itemSummaryRows = useMemo(() => items.map((item) => {
     const categoryTotals = Object.fromEntries(CATEGORIES.map((category) => [category.value, item.costLines.filter((line) => line.category === category.value).reduce((sum, line) => sum + line.totalCost, 0) * item.quantity]));
     const engineeringHours = item.costLines.reduce((sum, line) => sum + (line.category === 'engineering' ? line.hours : 0), 0) * item.quantity;
@@ -1020,16 +1086,22 @@ export default function OfferPricingPage() {
     return { id: item.id, name: item.name || '-', quantity: item.quantity, categoryTotals, engineeringHours, installationDays, total };
   }), [items]);
 
+  // Resolves which policy applies to each item when product/service policies are split.
+  const resolveItemPolicy = React.useCallback(
+    (itemId: string) => (items.find((candidate) => candidate.id === itemId)?.type === 'service' ? servicePolicy : pricingPolicy),
+    [items, servicePolicy, pricingPolicy],
+  );
+
   const packageSummaryRows = useMemo(() => offerPackages
     .slice()
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((pkg) => {
-      const pricing = summarizePackageCostWithPolicy(pkg, items, builderCostRows, pricingPolicy);
+      const pricing = summarizePackageCostWithPolicy(pkg, pricedItems, pricedBuilderCostRows, pricingPolicy, policyScope === 'split' ? resolveItemPolicy : undefined);
       const cost = pricing.totalCostWithPolicy;
       const price = Number(pkg.commercialPrice || 0);
       const margin = price - cost;
       return { pkg, pricing, cost, directCost: pricing.directCost, policyCost: pricing.policyCharges.total, price, margin, marginPct: price > 0 ? margin / price * 100 : 0 };
-    }), [offerPackages, items, builderCostRows, pricingPolicy]);
+    }), [offerPackages, pricedItems, pricedBuilderCostRows, pricingPolicy, policyScope, resolveItemPolicy]);
 
   const packagePricingOverview = useMemo(() => {
     const additionalDirect = packageSummaryRows.reduce((sum, row) => sum + row.directCost, 0);
@@ -1278,7 +1350,7 @@ export default function OfferPricingPage() {
 
   const runAnalysis = async () => {
     if (totals.total === 0) {
-      toast({ title: isEs ? 'Sin datos de costes' : 'No cost data', description: isEs ? "Aade lneas de coste primero" : 'Add cost lines first', variant: 'destructive' });
+      toast({ title: isEs ? 'Sin datos de costes' : 'No cost data', description: isEs ? "Aade líneas de coste primero" : 'Add cost lines first', variant: 'destructive' });
       return;
     }
     setAnalyzing(true);
@@ -1286,7 +1358,7 @@ export default function OfferPricingPage() {
       const result = await requestOfferAnalysis();
       setAnalysis(result);
       setActiveTab('analysis');
-      toast({ title: isEs ? "Anlisis completado" : 'Analysis complete' });
+      toast({ title: isEs ? "Análisis completado" : 'Analysis complete' });
     } catch (e: any) {
       const details = classifyEdgeRuntimeError(e, 'local offer analysis');
       setAnalysis(buildFallbackOfferAnalysis({ totalCost: totals.total, targetMargin, currency }));
@@ -1311,6 +1383,15 @@ export default function OfferPricingPage() {
       updated_at: now,
     }))
     .filter((pkg) => pkg.item_ids.length > 0 || pkg.executive_summary || pkg.commercial_price > 0);
+
+  // Policy payload stays backward compatible: base percentages at the top level,
+  // plus the product/service split metadata and pricing exclusions by item name.
+  const buildPersistedCostPolicy = () => ({
+    ...pricingPolicy,
+    policyScope,
+    servicePolicy: { ...servicePolicy },
+    pricingExclusions: items.filter((item) => excludedItemIds.includes(item.id)).map((item) => String(item.name || '')).filter(Boolean),
+  });
 
   const buildPersistedCommercialTerms = (offerId: string, now: string) => ({
     id: `commercial-${offerId}`,
@@ -1349,7 +1430,7 @@ export default function OfferPricingPage() {
       total_cost: Math.round(totals.total),
       probability: previous?.probability ?? 50,
       target_margin: targetMargin,
-      cost_policy: pricingPolicy,
+      cost_policy: buildPersistedCostPolicy(),
       document_language: documentLanguage,
       service_content: serviceContent,
       principal_package_price: Math.round(packagePricingOverview.principalPrice),
@@ -1412,6 +1493,9 @@ export default function OfferPricingPage() {
     setCurrency('EUR');
     setTargetMargin(20);
     setPricingPolicy(DEFAULT_INGECART_POLICY);
+    setPolicyScope('unified');
+    setServicePolicy({ ...DEFAULT_INGECART_POLICY });
+    setExcludedItemIds([]);
     setCommercialTerms(buildDefaultCommercialTerms());
     setOfferPackages([]);
     setPrincipalPackagePriceOverride(null);
@@ -1520,7 +1604,12 @@ export default function OfferPricingPage() {
     setProjectDesc(offer.project_description || '');
     setCurrency(offer.currency || 'EUR');
     if (offer.target_margin !== undefined && offer.target_margin !== null) setTargetMargin(Number(offer.target_margin));
-    if (offer.cost_policy) setPricingPolicy({ ...DEFAULT_INGECART_POLICY, ...offer.cost_policy });
+    const { policyScope: savedScope, servicePolicy: savedServicePolicy, pricingExclusions: savedExclusions, ...basePolicy } = (offer.cost_policy || {}) as any;
+    setPricingPolicy({ ...DEFAULT_INGECART_POLICY, ...basePolicy });
+    setPolicyScope(savedScope === 'split' ? 'split' : 'unified');
+    setServicePolicy({ ...DEFAULT_INGECART_POLICY, ...(savedServicePolicy || {}) });
+    const excludedNames = new Set((Array.isArray(savedExclusions) ? savedExclusions : []).map((value) => String(value)));
+    setExcludedItemIds(nextItems.filter((item) => excludedNames.has(item.name)).map((item) => item.id));
     setDocumentLanguage(offer.document_language === 'es' ? 'es' : 'en');
     setCommercialTerms(bundle.commercialTerms || buildDefaultCommercialTerms());
     setOfferPackages(bundle.offerPackages || []);
@@ -1533,7 +1622,139 @@ export default function OfferPricingPage() {
     setItems(nextItems);
     setExpandedItems(new Set(nextItems.map((item) => item.id)));
     setActiveTab('builder');
-    toast({ title: isEs ? "Oferta cargada para edicin" : 'Offer loaded for editing', description: `${offer.offer_number || ''} ${offer.title || ''}`.trim() });
+    toast({ title: isEs ? "Oferta cargada para edición" : 'Offer loaded for editing', description: `${offer.offer_number || ''} ${offer.title || ''}`.trim() });
+  };
+
+  // Computes the next variant number for a same-customer copy: base offer number + -V1, -V2, ...
+  const buildVariantOfferNumber = (sourceNumber: string) => {
+    const base = String(sourceNumber || '').trim().replace(/-V\d+$/i, '');
+    if (!base) return '';
+    const escaped = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(`^${escaped}-V(\\d+)$`, 'i');
+    const maxVersion = savedOffers.reduce((max, row) => {
+      const match = String(row?.offer_number || '').match(pattern);
+      return match ? Math.max(max, Number(match[1])) : max;
+    }, 0);
+    return `${base}-V${maxVersion + 1}`;
+  };
+
+  // Shared header setup for offer copies. A variant keeps the customer and gets the -Vn suffix;
+  // a new-customer copy receives a fresh number and requires completing the new offer data.
+  const prepareCopySession = (mode: OfferCopyMode, kind: OfferKind, source: { number: string; title: string; customer: string }) => {
+    setEditingOfferId(null);
+    setAnalysis(null);
+    setExcludedItemIds([]);
+    let nextNumber: string;
+    if (mode === 'variant') {
+      offerNumberIsAuto.current = false;
+      setOfferKind(kind);
+      nextNumber = buildVariantOfferNumber(source.number) || generateOfferNumber(savedOffers, kind);
+      setCustomerName(source.customer);
+      setCustomerMode('existing');
+    } else {
+      offerNumberIsAuto.current = true;
+      setOfferKind(kind);
+      nextNumber = generateOfferNumber(savedOffers, kind);
+      setCustomerName('');
+      setCustomerMode('existing');
+      setNewCustomer({ name: '', country: '', contactName: '', email: '' });
+      setLinkedOpportunityId(null);
+      setLinkedOpportunityTitle('');
+    }
+    setOfferNumber(nextNumber);
+    setOfferTitle(source.title);
+    setActiveTab('builder');
+    return nextNumber;
+  };
+
+  const notifyCopyReady = (mode: OfferCopyMode, nextNumber: string) => {
+    toast({
+      title: mode === 'variant' ? (isEs ? 'Variante creada' : 'Variant created') : (isEs ? 'Copia creada para nuevo cliente' : 'Copy created for new customer'),
+      description: mode === 'variant'
+        ? `${nextNumber} - ${isEs ? 'misma numeración base y cliente; guarda para registrar la variante.' : 'same base number and customer; save to register the variant.'}`
+        : `${nextNumber} - ${isEs ? 'completa los datos del nuevo cliente; los bloques de costes y precios se copiaron de la oferta original.' : 'complete the new customer data; cost and pricing blocks were copied from the original offer.'}`,
+    });
+  };
+
+  // Copies a saved offer (local or remote) into the builder as a new draft.
+  const applySavedOfferCopy = async (source: any, mode: OfferCopyMode) => {
+    if (!selectedCompanyId) return;
+    setCopyingOffer(true);
+    try {
+      const bundle = await getOfferBundle(source);
+      const idMap = new Map<string, string>();
+      const clonedItems: OfferItem[] = bundle.offerItems.map((row: any) => {
+        const lines = bundle.costRows.filter((cost: any) => cost.offer_item_id === row.id).map(rowToCostLine);
+        const present = new Set(lines.map((line) => line.category));
+        const cloned = cloneOfferItemBlock({
+          id: row.id || crypto.randomUUID(),
+          name: row.item_name || '',
+          type: (row.item_type || 'product') as OfferItem['type'],
+          quantity: Number(row.quantity || 1),
+          description: row.description || '',
+          costLines: [...lines, ...CATEGORIES.filter((c) => !present.has(c.value)).map((c) => newCostLine(c.value))],
+        });
+        idMap.set(String(row.id), cloned.id);
+        return cloned;
+      });
+      const kind: OfferKind = source.offer_kind === 'service' || isServiceOfferNumber(source.offer_number) ? 'service' : 'standard';
+      const nextItems = clonedItems.length > 0 ? clonedItems : [buildEmptyOfferItem(kind)];
+      const nextNumber = prepareCopySession(mode, kind, { number: String(source.offer_number || ''), title: String(source.title || ''), customer: String(source.customer_name || '') });
+      setProjectDesc(source.project_description || '');
+      setCurrency(source.currency || 'EUR');
+      if (source.target_margin !== undefined && source.target_margin !== null) setTargetMargin(Number(source.target_margin));
+      const { policyScope: savedScope, servicePolicy: savedServicePolicy, ...basePolicy } = (source.cost_policy || {}) as any;
+      setPricingPolicy({ ...DEFAULT_INGECART_POLICY, ...basePolicy });
+      setPolicyScope(savedScope === 'split' ? 'split' : 'unified');
+      setServicePolicy({ ...DEFAULT_INGECART_POLICY, ...(savedServicePolicy || {}) });
+      setDocumentLanguage(source.document_language === 'es' ? 'es' : 'en');
+      setCommercialTerms(bundle.commercialTerms || buildDefaultCommercialTerms());
+      setOfferPackages((bundle.offerPackages || []).map((pkg, index) => {
+        const hydrated = hydrateOfferPackage(pkg, index + 1);
+        return { ...hydrated, id: crypto.randomUUID(), itemIds: hydrated.itemIds.map((itemId) => idMap.get(String(itemId))).filter(Boolean) as string[] };
+      }));
+      setPrincipalPackagePriceOverride(parseOptionalNumber(source.principal_package_price_override));
+      setOfferTotalPriceOverride(parseOptionalNumber(source.offer_total_price_override));
+      if (mode === 'variant') {
+        setLinkedOpportunityId((source.linked_opportunity_id as string | null) || null);
+        setLinkedOpportunityTitle(String(source.linked_opportunity_title || ''));
+      }
+      setServiceContent((source.service_content as ServiceOfferContent | null) || null);
+      setItems(nextItems);
+      setExpandedItems(new Set(nextItems.map((item) => item.id)));
+      notifyCopyReady(mode, nextNumber);
+    } catch (error: any) {
+      toast({ title: 'Error', description: error?.message || String(error), variant: 'destructive' });
+    } finally {
+      setCopyingOffer(false);
+    }
+  };
+
+  // Copies the current builder content (what you see is what gets copied).
+  const applyBuilderCopy = (mode: OfferCopyMode) => {
+    const idMap = new Map<string, string>();
+    const clonedItems = items.map((item) => {
+      const cloned = cloneOfferItemBlock(item);
+      idMap.set(item.id, cloned.id);
+      return cloned;
+    });
+    const nextItems = clonedItems.length > 0 ? clonedItems : [buildEmptyOfferItem(offerKind)];
+    const nextNumber = prepareCopySession(mode, offerKind, { number: offerNumber, title: offerTitle, customer: customerName });
+    setOfferPackages(offerPackages.map((pkg) => ({ ...pkg, id: crypto.randomUUID(), itemIds: pkg.itemIds.map((itemId) => idMap.get(String(itemId))).filter(Boolean) as string[] })));
+    setItems(nextItems);
+    setExpandedItems(new Set(nextItems.map((item) => item.id)));
+    notifyCopyReady(mode, nextNumber);
+  };
+
+  const runOfferCopy = async (mode: OfferCopyMode) => {
+    if (!copyRequest) return;
+    const request = copyRequest;
+    setCopyRequest(null);
+    if (request.source === 'builder') {
+      applyBuilderCopy(mode);
+      return;
+    }
+    await applySavedOfferCopy(request.offer, mode);
   };
 
   const exportOfferToWord = async (offer: any, languageOverride?: OfferDocumentLanguage) => {
@@ -1558,7 +1779,7 @@ export default function OfferPricingPage() {
       registerOfferDocument(offer, exportLanguage, fileName.fileName, 'generated', undefined, 'DOCX');
       toast({
         title: isEs ? 'Word generado' : 'Word generated',
-        description: [offer.offer_number || '', offer.title || ''].join(' ').trim() + ' - ' + (exportLanguage === 'es' ? (isEs ? 'castellano' : 'Spanish') : (isEs ? 'ingles' : 'English')),
+        description: [offer.offer_number || '', offer.title || ''].join(' ').trim() + ' - ' + (exportLanguage === 'es' ? (isEs ? 'castellano' : 'Spanish') : (isEs ? 'inglés' : 'English')),
       });
     } catch (error: any) {
       toast({ title: 'Error', description: error?.message || String(error), variant: 'destructive' });
@@ -1669,7 +1890,7 @@ export default function OfferPricingPage() {
         // Remote store unavailable: never lose the offer, fall back to the local workspace.
         console.warn('[offers] remote save failed, persisting locally', remoteError);
         offer = persistOfferLocally(analysisToPersist, header);
-        toast({ title: isEs ? 'Oferta guardada localmente' : 'Offer saved locally', description: isEs ? "Supabase no respondi; la oferta se guard en el espacio de trabajo local." : 'Supabase did not respond; the offer was stored in the local workspace.' });
+        toast({ title: isEs ? 'Oferta guardada localmente' : 'Offer saved locally', description: isEs ? "Supabase no respondió; la oferta se guardó en el espacio de trabajo local." : 'Supabase did not respond; the offer was stored in the local workspace.' });
         loadOffers();
         return;
       }
@@ -1690,7 +1911,7 @@ export default function OfferPricingPage() {
         total_cost: Math.round(totals.total),
         probability: offer.probability ?? 50,
         target_margin: targetMargin,
-        cost_policy: pricingPolicy,
+        cost_policy: buildPersistedCostPolicy(),
         document_language: documentLanguage,
         service_content: serviceContent,
         principal_package_price: Math.round(packagePricingOverview.principalPrice),
@@ -1903,6 +2124,40 @@ export default function OfferPricingPage() {
     return <Badge variant={v as any}>{s.toUpperCase()}</Badge>;
   };
 
+  // Shared editor for the four policy percentages; used by the builder card and the pricing panel.
+  const renderPolicyChargeInputs = (
+    policy: OfferCostPolicy,
+    onFieldChange: (field: 'warrantyPct' | 'financialPct' | 'commercialMgmtPct' | 'materialStructurePct', value: string) => void,
+    charges: { warranty: number; materialStructure: number; financial: number; commercialMgmt: number },
+    idPrefix: string,
+  ) => (
+    <>
+      {([
+        { field: 'warrantyPct', label: isEs ? 'Garantía %' : 'Warranty %', charge: charges.warranty, scope: isEs ? 'Comercio + Ingeniería + Subcontratas' : 'Comercio + Engineering + Subcontratas' },
+        { field: 'financialPct', label: isEs ? 'Financiacion %' : 'Finance %', charge: charges.financial, scope: isEs ? 'Coste directo' : 'Direct cost' },
+        { field: 'commercialMgmtPct', label: isEs ? 'Gestión comercial %' : 'Commercial mgmt. %', charge: charges.commercialMgmt, scope: isEs ? 'Coste directo' : 'Direct cost' },
+        { field: 'materialStructurePct', label: isEs ? 'Estructura materiales %' : 'Material structure %', charge: charges.materialStructure, scope: 'Comercio' },
+      ] as const).map((entry) => (
+        <div key={entry.field} className="rounded-md border bg-muted/20 p-3 space-y-1">
+          <label className="text-xs text-muted-foreground" htmlFor={`${idPrefix}-${entry.field}`}>{entry.label}</label>
+          <Input id={`${idPrefix}-${entry.field}`} type="number" step="0.5" min="0" className="h-8" value={policy[entry.field]} onChange={(e) => onFieldChange(entry.field, e.target.value)} />
+          <div className="text-[11px] text-muted-foreground">{entry.scope}  <span className="font-medium text-foreground">{fmt(entry.charge)}</span></div>
+        </div>
+      ))}
+    </>
+  );
+
+  // Copy dialog previews: the variant keeps the base number with -Vn; a new customer gets the next free number.
+  const copySourceNumber = copyRequest ? (copyRequest.source === 'saved' ? String(copyRequest.offer.offer_number || '') : offerNumber) : '';
+  const copySourceTitle = copyRequest ? (copyRequest.source === 'saved' ? String(copyRequest.offer.title || '') : offerTitle) : '';
+  const copySourceKind: OfferKind = copyRequest
+    ? (copyRequest.source === 'saved'
+      ? (copyRequest.offer.offer_kind === 'service' || isServiceOfferNumber(copyRequest.offer.offer_number) ? 'service' : 'standard')
+      : offerKind)
+    : offerKind;
+  const copyVariantPreview = copyRequest ? (buildVariantOfferNumber(copySourceNumber) || generateOfferNumber(savedOffers, copySourceKind)) : '';
+  const copyNewNumberPreview = copyRequest ? generateOfferNumber(savedOffers, copySourceKind) : '';
+
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex items-center justify-between">
@@ -1930,7 +2185,7 @@ export default function OfferPricingPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="builder">{isEs ? 'Constructor' : 'Builder'}</TabsTrigger>
-          <TabsTrigger value="analysis">{isEs ? "Anlisis" : 'Analysis'}</TabsTrigger>
+          <TabsTrigger value="analysis">{isEs ? "Análisis" : 'Analysis'}</TabsTrigger>
           <TabsTrigger value="history">{isEs ? 'Historial' : 'History'}</TabsTrigger>
           <TabsTrigger value="blocks">{isEs ? 'Repositorio de bloques' : 'Block repository'}</TabsTrigger>
           <TabsTrigger value="summary">{isEs ? 'Resumen' : 'Summary'}</TabsTrigger>
@@ -1945,14 +2200,15 @@ export default function OfferPricingPage() {
               {editingOfferId ? (
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary">{isEs ? 'Editando' : 'Editing'} {offerNumber}</Badge>
+                  <Button size="sm" variant="ghost" onClick={() => setCopyRequest({ source: 'builder' })}><Copy className="h-3 w-3 mr-1" />{isEs ? 'Crear copia' : 'Create copy'}</Button>
                   <Button size="sm" variant="ghost" onClick={resetBuilder}><Plus className="h-3 w-3 mr-1" />{isEs ? 'Nueva oferta' : 'New offer'}</Button>
                 </div>
               ) : null}
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div>
-                <label className="text-sm font-medium text-foreground">{isEs ? "Ttulo" : 'Title'}</label>
-                <Input value={offerTitle} onChange={e => setOfferTitle(e.target.value)} placeholder={isEs ? "Ej: Lnea de ensamblaje" : 'E.g: Assembly line'} />
+                <label className="text-sm font-medium text-foreground">{isEs ? "Título" : 'Title'}</label>
+                <Input value={offerTitle} onChange={e => setOfferTitle(e.target.value)} placeholder={isEs ? "Ej: Línea de ensamblaje" : 'E.g: Assembly line'} />
               </div>
               <div>
                 <label className="text-sm font-medium text-foreground">{isEs ? 'Tipo de oferta' : 'Offer type'}</label>
@@ -1968,7 +2224,7 @@ export default function OfferPricingPage() {
                 <label className="text-sm font-medium text-foreground">{isEs ? "N Oferta" : 'Offer #'}</label>
                 <div className="flex gap-1">
                   <Input value={offerNumber} onChange={e => editOfferNumber(e.target.value)} placeholder={offerKind === 'service' ? 'OFF-2026-S001' : 'OFF-2026-001'} />
-                  <Button variant="outline" size="icon" title={isEs ? "Generar siguiente nmero" : 'Generate next number'} onClick={() => { offerNumberIsAuto.current = true; setOfferNumber(generateOfferNumber(savedOffers, offerKind)); }}>
+                  <Button variant="outline" size="icon" title={isEs ? "Generar siguiente número" : 'Generate next number'} onClick={() => { offerNumberIsAuto.current = true; setOfferNumber(generateOfferNumber(savedOffers, offerKind)); }}>
                     <Settings2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -1993,7 +2249,7 @@ export default function OfferPricingPage() {
                   <div className="space-y-1 rounded-md border p-2 bg-muted/20">
                     <Input className="h-8" aria-label={isEs ? 'Nombre del cliente' : 'Customer name'} placeholder={isEs ? 'Nombre del cliente *' : 'Customer name *'} value={newCustomer.name} onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })} />
                     <div className="grid grid-cols-2 gap-1">
-                      <Input className="h-8" placeholder={isEs ? "Pas" : 'Country'} value={newCustomer.country} onChange={(e) => setNewCustomer({ ...newCustomer, country: e.target.value })} />
+                      <Input className="h-8" placeholder={isEs ? "País" : 'Country'} value={newCustomer.country} onChange={(e) => setNewCustomer({ ...newCustomer, country: e.target.value })} />
                       <Input className="h-8" placeholder={isEs ? 'Contacto' : 'Contact person'} value={newCustomer.contactName} onChange={(e) => setNewCustomer({ ...newCustomer, contactName: e.target.value })} />
                     </div>
                     <Input className="h-8" type="email" placeholder="Email" value={newCustomer.email} onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} />
@@ -2005,7 +2261,7 @@ export default function OfferPricingPage() {
                 )}
               </div>
               <div className="md:col-span-2">
-                <label className="text-sm font-medium text-foreground">{isEs ? "Descripcin del proyecto" : 'Project Description'}</label>
+                <label className="text-sm font-medium text-foreground">{isEs ? "Descripción del proyecto" : 'Project Description'}</label>
                 <Textarea value={projectDesc} onChange={e => setProjectDesc(e.target.value)} rows={2} />
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -2055,7 +2311,7 @@ export default function OfferPricingPage() {
                   <Textarea value={serviceContent.scopeSummary} onChange={(e) => setServiceContent((prev) => prev ? { ...prev, scopeSummary: e.target.value } : prev)} rows={2} />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-foreground">{isEs ? 'Descripcin del servicio' : 'Service description'}</label>
+                  <label className="text-sm font-medium text-foreground">{isEs ? 'Descripción del servicio' : 'Service description'}</label>
                   <Textarea value={serviceContent.serviceDescription} onChange={(e) => setServiceContent((prev) => prev ? { ...prev, serviceDescription: e.target.value } : prev)} rows={2} />
                 </div>
                 <div>
@@ -2095,7 +2351,7 @@ export default function OfferPricingPage() {
                 ) : null}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="font-medium mb-1">{isEs ? 'Por qu INGECART' : 'Why INGECART'}</p>
+                    <p className="font-medium mb-1">{isEs ? 'Por qué INGECART' : 'Why INGECART'}</p>
                     <ul className="list-disc list-inside text-muted-foreground">
                       {serviceContent.whyIngecart.map((line, i) => <li key={i}>{line}</li>)}
                     </ul>
@@ -2124,23 +2380,35 @@ export default function OfferPricingPage() {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">{isEs ? "Poltica de costes y plantilla" : 'Cost policy & template'}</CardTitle>
-              <CardDescription>{isEs ? "Porcentajes editables que se aaden al coste directo. La garanta se aplica a Comercio, Ingeniera y Subcontratas; estructura de materiales solo a Comercio; financiacin y gestin comercial al coste directo total." : 'Editable percentages added on top of the direct cost. Warranty applies to Comercio, Engineering and Subcontratas; material structure only to Comercio; finance and commercial management to the total direct cost.'}</CardDescription>
+              <CardTitle className="text-base">{isEs ? "Política de costes y plantilla" : 'Cost policy & template'}</CardTitle>
+              <CardDescription>{isEs ? "Porcentajes editables que se añaden al coste directo. La garantía se aplica a Comercio, Ingeniería y Subcontratas; estructura de materiales solo a Comercio; financiación y gestión comercial al coste directo total." : 'Editable percentages added on top of the direct cost. Warranty applies to Comercio, Engineering and Subcontratas; material structure only to Comercio; finance and commercial management to the total direct cost.'}</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {([
-                { field: 'warrantyPct', label: isEs ? "Garanta %" : 'Warranty %', charge: totals.policyCharges.warranty, scope: isEs ? "Comercio + Ingeniera + Subcontratas" : 'Comercio + Engineering + Subcontratas' },
-                { field: 'financialPct', label: isEs ? "Financiacin %" : 'Finance %', charge: totals.policyCharges.financial, scope: isEs ? 'Coste directo' : 'Direct cost' },
-                { field: 'commercialMgmtPct', label: isEs ? "Gestin comercial %" : 'Commercial mgmt. %', charge: totals.policyCharges.commercialMgmt, scope: isEs ? 'Coste directo' : 'Direct cost' },
-                { field: 'materialStructurePct', label: isEs ? 'Estructura materiales %' : 'Material structure %', charge: totals.policyCharges.materialStructure, scope: 'Comercio' },
-              ] as const).map((entry) => (
-                <div key={entry.field} className="rounded-md border bg-muted/20 p-3 space-y-1">
-                  <label className="text-xs text-muted-foreground" htmlFor={`policy-${entry.field}`}>{entry.label}</label>
-                  <Input id={`policy-${entry.field}`} type="number" step="0.5" min="0" className="h-8" value={pricingPolicy[entry.field]} onChange={(e) => updatePolicyPct(entry.field, e.target.value)} />
-                  <div className="text-[11px] text-muted-foreground">{entry.scope}  <span className="font-medium text-foreground">{fmt(entry.charge)}</span></div>
+            <CardContent className="space-y-3">
+              <div className="flex flex-col md:flex-row md:items-center gap-2">
+                <label className="text-sm font-medium text-foreground" htmlFor="policy-scope-select">{isEs ? 'Ámbito de políticas' : 'Policy scope'}</label>
+                <Select value={policyScope} onValueChange={(value) => setPolicyScope(value as PolicyScope)}>
+                  <SelectTrigger id="policy-scope-select" className="md:w-96"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unified">{isEs ? 'Politica unica a nivel de paquete general' : 'Single policy at whole-package level'}</SelectItem>
+                    <SelectItem value="split">{isEs ? 'Políticas diferenciadas: productos y servicios' : 'Differentiated policies: products vs services'}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {policyScope === 'split' ? (
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs font-semibold text-foreground mb-1">{isEs ? 'Productos' : 'Products'} <span className="text-muted-foreground font-normal">({fmt(totals.productDirect)})</span></p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">{renderPolicyChargeInputs(pricingPolicy, updatePolicyPct, totals.productPolicyCharges, 'policy-product')}</div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-foreground mb-1">{isEs ? 'Servicios' : 'Services'} <span className="text-muted-foreground font-normal">({fmt(totals.serviceDirect)})</span></p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">{renderPolicyChargeInputs(servicePolicy, updateServicePolicyPct, totals.servicePolicyCharges, 'policy-service')}</div>
+                  </div>
                 </div>
-              ))}
-              <div className="md:col-span-4 flex justify-end">
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">{renderPolicyChargeInputs(pricingPolicy, updatePolicyPct, totals.policyCharges, 'policy')}</div>
+              )}
+              <div className="flex justify-end">
                 <Button variant="outline" onClick={applyIngecartOfferTemplate}>
                   <Settings2 className="h-4 w-4 mr-2" />
                   {isEs ? 'Usar plantilla Ingecart' : 'Use Ingecart template'}
@@ -2154,14 +2422,14 @@ export default function OfferPricingPage() {
           {data.products.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">{isEs ? "Catlogo de productos y servicios" : 'Product & service catalog'}</CardTitle>
-                <CardDescription>{isEs ? "Selecciona un elemento validado para aadirlo a la oferta." : 'Select a validated catalog item and add it to this offer.'}</CardDescription>
+                <CardTitle className="text-base">{isEs ? "Catálogo de productos y servicios" : 'Product & service catalog'}</CardTitle>
+                <CardDescription>{isEs ? "Selecciona un elemento validado para añadirlo a la oferta." : 'Select a validated catalog item and add it to this offer.'}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex flex-col md:flex-row gap-2">
                   <Select value={catalogSelection} onValueChange={setCatalogSelection}>
                     <SelectTrigger className="md:flex-1">
-                      <SelectValue placeholder={isEs ? "Seleccionar del catlogo" : 'Select from catalog'} />
+                      <SelectValue placeholder={isEs ? "Seleccionar del catálogo" : 'Select from catalog'} />
                     </SelectTrigger>
                     <SelectContent>
                       {data.products
@@ -2175,7 +2443,7 @@ export default function OfferPricingPage() {
                   </Select>
                   <Button variant="outline" onClick={addCatalogItem} disabled={!catalogSelection}>
                     <Plus className="h-4 w-4 mr-2" />
-                    {isEs ? "Aadir del catlogo" : 'Add from catalog'}
+                    {isEs ? "Añadir del catálogo" : 'Add from catalog'}
                   </Button>
                 </div>
                 {selectedCatalogProduct ? (
@@ -2187,12 +2455,12 @@ export default function OfferPricingPage() {
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-foreground">{isEs ? 'Longitud de referencia (m)' : 'Reference length (m)'}</label>
                       <Input type="number" min={1} value={catalogLengthM} onChange={e => setCatalogLengthM(Number(e.target.value || selectedCatalogProduct.defaultLengthM || 80))} disabled={!selectedCatalogProduct.configurableByLength} />
-                      <p className="text-xs text-muted-foreground">{selectedCatalogProduct.configurableByLength ? (isEs ? "Este producto ajusta materiales segn la longitud seleccionada." : 'This product scales material costs with the selected length.') : (isEs ? 'Producto con preset fijo de costes.' : 'Product with fixed cost preset.')}</p>
+                      <p className="text-xs text-muted-foreground">{selectedCatalogProduct.configurableByLength ? (isEs ? "Este producto ajusta materiales según la longitud seleccionada." : 'This product scales material costs with the selected length.') : (isEs ? 'Producto con preset fijo de costes.' : 'Product with fixed cost preset.')}</p>
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-foreground">{isEs ? 'Opciones de preset' : 'Preset options'}</label>
-                      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={catalogIncludeInstallation} onChange={e => setCatalogIncludeInstallation(e.target.checked)} />{isEs ? "Incluir instalacin" : 'Include installation'}</label>
-                      <p className="text-xs text-muted-foreground">{isEs ? "Al aadir el producto se cargarn sus lneas de coste reutilizables en la oferta." : 'Adding the product loads its reusable cost lines into the offer.'}</p>
+                      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={catalogIncludeInstallation} onChange={e => setCatalogIncludeInstallation(e.target.checked)} />{isEs ? "Incluir instalación" : 'Include installation'}</label>
+                      <p className="text-xs text-muted-foreground">{isEs ? "Al añadir el producto se cargarán sus líneas de coste reutilizables en la oferta." : 'Adding the product loads its reusable cost lines into the offer.'}</p>
                     </div>
                   </div>
                 ) : null}
@@ -2202,16 +2470,16 @@ export default function OfferPricingPage() {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">{isEs ? 'Duplicaci?n de bloques de coste' : 'Cost block duplication'}</CardTitle>
-              <CardDescription>{isEs ? 'Duplica un bloque y ajusta reducciones para unidades repetidas (por ejemplo, -35% en ingenier?a o -20% en coste base).' : 'Duplicate a block and apply reductions for repeated units (for example, -35% engineering or -20% base cost).'}</CardDescription>
+              <CardTitle className="text-base">{isEs ? 'Duplicación de bloques de coste' : 'Cost block duplication'}</CardTitle>
+              <CardDescription>{isEs ? 'Duplica un bloque y ajusta reducciones para unidades repetidas (por ejemplo, -35% en ingeniería o -20% en coste base).' : 'Duplicate a block and apply reductions for repeated units (for example, -35% engineering or -20% base cost).'}</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label htmlFor="copy-engineering-reduction" className="text-xs font-medium text-foreground">{isEs ? 'Reducci?n ingenier?a (%)' : 'Engineering reduction (%)'}</label>
+                <label htmlFor="copy-engineering-reduction" className="text-xs font-medium text-foreground">{isEs ? 'Reducción ingeniería (%)' : 'Engineering reduction (%)'}</label>
                 <Input id="copy-engineering-reduction" type="number" min={0} max={100} value={copyEngineeringReductionPct} onChange={(e) => setCopyEngineeringReductionPct(Number(e.target.value || 0))} />
               </div>
               <div>
-                <label htmlFor="copy-base-cost-reduction" className="text-xs font-medium text-foreground">{isEs ? 'Reducci?n coste base (%)' : 'Base cost reduction (%)'}</label>
+                <label htmlFor="copy-base-cost-reduction" className="text-xs font-medium text-foreground">{isEs ? 'Reducción coste base (%)' : 'Base cost reduction (%)'}</label>
                 <Input id="copy-base-cost-reduction" type="number" min={0} max={100} value={copyCostReductionPct} onChange={(e) => setCopyCostReductionPct(Number(e.target.value || 0))} />
               </div>
             </CardContent>
@@ -2270,7 +2538,7 @@ export default function OfferPricingPage() {
                       <Input type="number" value={item.quantity} onChange={e => updateItem(item.id, 'quantity', Number(e.target.value))} min={1} />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-foreground">{isEs ? "Descripcin" : 'Description'}</label>
+                      <label className="text-xs font-medium text-foreground">{isEs ? "Descripción" : 'Description'}</label>
                       <Input value={item.description} onChange={e => updateItem(item.id, 'description', e.target.value)} />
                     </div>
                   </div>
@@ -2287,7 +2555,7 @@ export default function OfferPricingPage() {
                             </span>
                           </h4>
                           <Button variant="ghost" size="sm" onClick={() => addCostLine(item.id, cat.value)}>
-                            <Plus className="h-3 w-3 mr-1" />{isEs ? "Aadir" : 'Add'}
+                            <Plus className="h-3 w-3 mr-1" />{isEs ? "Añadir" : 'Add'}
                           </Button>
                         </div>
                         {lines.length > 0 && (
@@ -2303,7 +2571,7 @@ export default function OfferPricingPage() {
                                     </>
                                   ) : cat.value === 'installation' ? (
                                     <>
-                                      <TableHead>{isEs ? "Das" : 'Days'}</TableHead>
+                                      <TableHead>{isEs ? "Días" : 'Days'}</TableHead>
                                       <TableHead>{isEs ? 'Recursos' : 'Resources'}</TableHead>
                                       <TableHead>{isEs ? "Coste/da" : 'Cost/day'}</TableHead>
                                       <TableHead>{isEs ? 'Recargo %' : 'Surcharge %'}</TableHead>
@@ -2315,7 +2583,7 @@ export default function OfferPricingPage() {
                                       <TableHead>{isEs ? 'Recargo %' : 'Surcharge %'}</TableHead>
                                     </>
                                   )}
-                                  <TableHead title={isEs ? "Cargo de gestin de estructura interna" : 'Internal structure management overhead'}>{isEs ? 'Estructura %' : 'Structure %'}</TableHead>
+                                  <TableHead title={isEs ? "Cargo de gestión de estructura interna" : 'Internal structure management overhead'}>{isEs ? 'Estructura %' : 'Structure %'}</TableHead>
                                   <TableHead className="text-right">Total</TableHead>
                                   <TableHead className="w-[40px]"></TableHead>
                                 </TableRow>
@@ -2344,7 +2612,7 @@ export default function OfferPricingPage() {
                                               variant={cl.installation ? 'secondary' : 'outline'}
                                               size="sm"
                                               className="h-8 text-xs whitespace-nowrap"
-                                              title={isEs ? "Planificar mano de obra, dietas y viticos" : 'Plan labour, per diem and travel expenses'}
+                                              title={isEs ? "Planificar mano de obra, dietas y viáticos" : 'Plan labour, per diem and travel expenses'}
                                               onClick={() => {
                                                 if (!cl.installation) applyInstallationPlan(item.id, cl.id, createInstallationPlan({ days: cl.days || 1, resources: cl.resources || 1 }));
                                                 setPlannerLineId(plannerLineId === cl.id ? null : cl.id);
@@ -2381,7 +2649,7 @@ export default function OfferPricingPage() {
                                             onChange={(plan) => applyInstallationPlan(item.id, cl.id, plan)}
                                           />
                                           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                                            <span>{isEs ? "La mano de obra queda en esta lnea; los viticos se cargan en la lnea vinculada de Transporte y Logstica." : 'Labour stays on this line; travel & expenses are carried by the linked Transport & Logistics line.'}</span>
+                                            <span>{isEs ? "La mano de obra queda en esta línea; los viáticos se cargan en la línea vinculada de Transporte y Logística." : 'Labour stays on this line; travel & expenses are carried by the linked Transport & Logistics line.'}</span>
                                             <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { applyInstallationPlan(item.id, cl.id, null); setPlannerLineId(null); }}>
                                               {isEs ? 'Quitar plan detallado' : 'Remove detailed plan'}
                                             </Button>
@@ -2406,13 +2674,13 @@ export default function OfferPricingPage() {
 
           <Button variant="outline" className="w-full" onClick={addItem}>
             <Plus className="h-4 w-4 mr-2" />
-            {isEs ? "Aadir Producto/Servicio" : 'Add Product/Service'}
+            {isEs ? "Añadir Producto/Servicio" : 'Add Product/Service'}
           </Button>
 
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">{isEs ? 'Resumen de costes por elemento' : 'Cost summary by configured element'}</CardTitle>
-              <CardDescription>{isEs ? 'Cada linea resume los costes agregados por elemento de oferta, incluyendo materiales, horas de ingenieria e instalacion.' : 'Each row summarizes the aggregated cost basis by offer element, including material, engineering and installation effort.'}</CardDescription>
+              <CardDescription>{isEs ? 'Cada línea resume los costes agregados por elemento de oferta, incluyendo materiales, horas de ingeniería e instalación.' : 'Each row summarizes the aggregated cost basis by offer element, including material, engineering and installation effort.'}</CardDescription>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <Table>
@@ -2450,7 +2718,7 @@ export default function OfferPricingPage() {
             </CardContent>
           </Card>
 
-          <OfferPackagePlanner isEs={isEs} currency={currency} pricingPolicy={pricingPolicy} items={items.map((item) => ({ id: item.id, name: item.name, description: item.description, quantity: item.quantity }))} costRows={builderCostRows} packages={offerPackages} onChange={setOfferPackages} />
+          <OfferPackagePlanner isEs={isEs} currency={currency} pricingPolicy={pricingPolicy} resolveItemPolicy={policyScope === 'split' ? resolveItemPolicy : undefined} items={items.map((item) => ({ id: item.id, name: item.name, description: item.description, quantity: item.quantity }))} costRows={builderCostRows} packages={offerPackages} onChange={setOfferPackages} />
 
           <Card>
             <CardHeader className="pb-3">
@@ -2497,7 +2765,7 @@ export default function OfferPricingPage() {
                 <div>
                   <p className="text-xs text-muted-foreground">{isEs ? 'Coste Total' : 'Total Cost'}</p>
                   <p className="text-xl font-bold text-foreground">{fmt(totals.total)}</p>
-                  <p className="text-[11px] text-muted-foreground">{isEs ? 'Directo' : 'Direct'} {fmt(totals.direct)} + {isEs ? "poltica" : 'policy'} {fmt(totals.total - totals.direct)}</p>
+                  <p className="text-[11px] text-muted-foreground">{isEs ? 'Directo' : 'Direct'} {fmt(totals.direct)} + {isEs ? "política" : 'policy'} {fmt(totals.total - totals.direct)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">{isEs ? 'Precio Venta' : 'Selling Price'}</p>
@@ -2521,7 +2789,7 @@ export default function OfferPricingPage() {
           {!analysis ? (
             <Card><CardContent className="py-12 text-center text-muted-foreground">
               <Brain className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>{isEs ? "Ejecuta el anlisis IA para ver resultados" : 'Run AI analysis to see results'}</p>
+              <p>{isEs ? "Ejecuta el análisis IA para ver resultados" : 'Run AI analysis to see results'}</p>
             </CardContent></Card>
           ) : (
             <>
@@ -2624,7 +2892,7 @@ export default function OfferPricingPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {analysis.profitabilityControl.minimumMarginScenario && (
                         <div className="p-3 rounded-lg bg-muted/50">
-                          <p className="text-xs text-muted-foreground">{isEs ? "Margen Mnimo Escenario" : 'Minimum Margin Scenario'}</p>
+                          <p className="text-xs text-muted-foreground">{isEs ? "Margen Mínimo Escenario" : 'Minimum Margin Scenario'}</p>
                           <p className="text-lg font-bold">{fmtPct(analysis.profitabilityControl.minimumMarginScenario.margin)}</p>
                           <p className="text-xs text-muted-foreground">{analysis.profitabilityControl.minimumMarginScenario.conditions}</p>
                         </div>
@@ -2657,7 +2925,7 @@ export default function OfferPricingPage() {
               {/* Rate Validation */}
               {analysis.costAnalysis?.rateValidation && analysis.costAnalysis.rateValidation.length > 0 && (
                 <Card>
-                  <CardHeader><CardTitle className="flex items-center gap-2"><Settings2 className="h-5 w-5 text-primary" />{isEs ? "Validacin de Tasas" : 'Rate Validation'}</CardTitle></CardHeader>
+                  <CardHeader><CardTitle className="flex items-center gap-2"><Settings2 className="h-5 w-5 text-primary" />{isEs ? "Validación de Tasas" : 'Rate Validation'}</CardTitle></CardHeader>
                   <CardContent>
                     <Table>
                       <TableHeader>
@@ -2665,7 +2933,7 @@ export default function OfferPricingPage() {
                           <TableHead>{isEs ? 'Tasa' : 'Rate'}</TableHead>
                           <TableHead>{isEs ? 'Aplicado' : 'Applied'}</TableHead>
                           <TableHead>{isEs ? 'Esperado' : 'Expected'}</TableHead>
-                          <TableHead>{isEs ? "Desviacin" : 'Deviation'}</TableHead>
+                          <TableHead>{isEs ? "Desviación" : 'Deviation'}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -2690,7 +2958,7 @@ export default function OfferPricingPage() {
                     <div className="flex items-start gap-3">
                       <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
                       <div>
-                        <p className="font-medium text-destructive">{isEs ? "Categoras de Coste Faltantes" : 'Missing Cost Categories'}</p>
+                        <p className="font-medium text-destructive">{isEs ? "Categorías de Coste Faltantes" : 'Missing Cost Categories'}</p>
                         <p className="text-sm text-muted-foreground mt-1">{analysis.costAnalysis.missingCategories.join(', ')}</p>
                       </div>
                     </div>
@@ -2705,7 +2973,7 @@ export default function OfferPricingPage() {
                 <div className="flex flex-col md:flex-row gap-2">
                   <Select value={catalogSelection} onValueChange={setCatalogSelection}>
                     <SelectTrigger className="md:flex-1">
-                      <SelectValue placeholder={isEs ? "Seleccionar del catlogo" : 'Select from catalog'} />
+                      <SelectValue placeholder={isEs ? "Seleccionar del catálogo" : 'Select from catalog'} />
                     </SelectTrigger>
                     <SelectContent>
                       {data.products
@@ -2719,7 +2987,7 @@ export default function OfferPricingPage() {
                   </Select>
                   <Button variant="outline" onClick={addCatalogItem} disabled={!catalogSelection}>
                     <Plus className="h-4 w-4 mr-2" />
-                    {isEs ? "Aadir del catlogo" : 'Add from catalog'}
+                    {isEs ? "Añadir del catálogo" : 'Add from catalog'}
                   </Button>
                 </div>
                 {selectedCatalogProduct ? (
@@ -2731,12 +2999,12 @@ export default function OfferPricingPage() {
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-foreground">{isEs ? 'Longitud de referencia (m)' : 'Reference length (m)'}</label>
                       <Input type="number" min={1} value={catalogLengthM} onChange={e => setCatalogLengthM(Number(e.target.value || selectedCatalogProduct.defaultLengthM || 80))} disabled={!selectedCatalogProduct.configurableByLength} />
-                      <p className="text-xs text-muted-foreground">{selectedCatalogProduct.configurableByLength ? (isEs ? "Este producto ajusta materiales segn la longitud seleccionada." : 'This product scales material costs with the selected length.') : (isEs ? 'Producto con preset fijo de costes.' : 'Product with fixed cost preset.')}</p>
+                      <p className="text-xs text-muted-foreground">{selectedCatalogProduct.configurableByLength ? (isEs ? "Este producto ajusta materiales según la longitud seleccionada." : 'This product scales material costs with the selected length.') : (isEs ? 'Producto con preset fijo de costes.' : 'Product with fixed cost preset.')}</p>
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-foreground">{isEs ? 'Opciones de preset' : 'Preset options'}</label>
-                      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={catalogIncludeInstallation} onChange={e => setCatalogIncludeInstallation(e.target.checked)} />{isEs ? "Incluir instalacin" : 'Include installation'}</label>
-                      <p className="text-xs text-muted-foreground">{isEs ? "Al aadir el producto se cargarn sus lneas de coste reutilizables en la oferta." : 'Adding the product loads its reusable cost lines into the offer.'}</p>
+                      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={catalogIncludeInstallation} onChange={e => setCatalogIncludeInstallation(e.target.checked)} />{isEs ? "Incluir instalación" : 'Include installation'}</label>
+                      <p className="text-xs text-muted-foreground">{isEs ? "Al añadir el producto se cargarán sus líneas de coste reutilizables en la oferta." : 'Adding the product loads its reusable cost lines into the offer.'}</p>
                     </div>
                   </div>
                 ) : null}
@@ -2750,7 +3018,7 @@ export default function OfferPricingPage() {
                 <div className="flex flex-col md:flex-row gap-2">
                   <Select value={catalogSelection} onValueChange={setCatalogSelection}>
                     <SelectTrigger className="md:flex-1">
-                      <SelectValue placeholder={isEs ? "Seleccionar del catlogo" : 'Select from catalog'} />
+                      <SelectValue placeholder={isEs ? "Seleccionar del catálogo" : 'Select from catalog'} />
                     </SelectTrigger>
                     <SelectContent>
                       {data.products
@@ -2764,7 +3032,7 @@ export default function OfferPricingPage() {
                   </Select>
                   <Button variant="outline" onClick={addCatalogItem} disabled={!catalogSelection}>
                     <Plus className="h-4 w-4 mr-2" />
-                    {isEs ? "Aadir del catlogo" : 'Add from catalog'}
+                    {isEs ? "Añadir del catálogo" : 'Add from catalog'}
                   </Button>
                 </div>
                 {selectedCatalogProduct ? (
@@ -2776,12 +3044,12 @@ export default function OfferPricingPage() {
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-foreground">{isEs ? 'Longitud de referencia (m)' : 'Reference length (m)'}</label>
                       <Input type="number" min={1} value={catalogLengthM} onChange={e => setCatalogLengthM(Number(e.target.value || selectedCatalogProduct.defaultLengthM || 80))} disabled={!selectedCatalogProduct.configurableByLength} />
-                      <p className="text-xs text-muted-foreground">{selectedCatalogProduct.configurableByLength ? (isEs ? "Este producto ajusta materiales segn la longitud seleccionada." : 'This product scales material costs with the selected length.') : (isEs ? 'Producto con preset fijo de costes.' : 'Product with fixed cost preset.')}</p>
+                      <p className="text-xs text-muted-foreground">{selectedCatalogProduct.configurableByLength ? (isEs ? "Este producto ajusta materiales según la longitud seleccionada." : 'This product scales material costs with the selected length.') : (isEs ? 'Producto con preset fijo de costes.' : 'Product with fixed cost preset.')}</p>
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-foreground">{isEs ? 'Opciones de preset' : 'Preset options'}</label>
-                      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={catalogIncludeInstallation} onChange={e => setCatalogIncludeInstallation(e.target.checked)} />{isEs ? "Incluir instalacin" : 'Include installation'}</label>
-                      <p className="text-xs text-muted-foreground">{isEs ? "Al aadir el producto se cargarn sus lneas de coste reutilizables en la oferta." : 'Adding the product loads its reusable cost lines into the offer.'}</p>
+                      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={catalogIncludeInstallation} onChange={e => setCatalogIncludeInstallation(e.target.checked)} />{isEs ? "Incluir instalación" : 'Include installation'}</label>
+                      <p className="text-xs text-muted-foreground">{isEs ? "Al añadir el producto se cargarán sus líneas de coste reutilizables en la oferta." : 'Adding the product loads its reusable cost lines into the offer.'}</p>
                     </div>
                   </div>
                 ) : null}
@@ -2798,7 +3066,7 @@ export default function OfferPricingPage() {
             <CardContent>
               <div className="mb-4">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                  <Input value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} placeholder={isEs ? 'Buscar por numero, titulo, cliente, estado o valor' : 'Search by offer #, title, customer, status, or value'} aria-label={isEs ? 'Buscar ofertas' : 'Search offers'} className="md:col-span-2" />
+                  <Input value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} placeholder={isEs ? 'Buscar por número, título, cliente, estado o valor' : 'Search by offer #, title, customer, status, or value'} aria-label={isEs ? 'Buscar ofertas' : 'Search offers'} className="md:col-span-2" />
                   <Select value={historyStatusFilter} onValueChange={setHistoryStatusFilter}>
                     <SelectTrigger aria-label={isEs ? 'Filtrar por estado' : 'Filter by status'}>
                       <SelectValue placeholder={isEs ? 'Estado' : 'Status'} />
@@ -2826,7 +3094,7 @@ export default function OfferPricingPage() {
                       </SelectContent>
                     </Select>
                     <Select value={historySortDirection} onValueChange={(value) => setHistorySortDirection(value as 'asc' | 'desc')}>
-                      <SelectTrigger aria-label={isEs ? 'Direccion del orden' : 'Sort direction'} className="w-28">
+                      <SelectTrigger aria-label={isEs ? 'Dirección del orden' : 'Sort direction'} className="w-28">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -2840,13 +3108,13 @@ export default function OfferPricingPage() {
               {savedOffers.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">{isEs ? 'Sin ofertas guardadas' : 'No saved offers'}</p>
               ) : filteredSavedOffers.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">{isEs ? 'Sin coincidencias para la busqueda actual' : 'No offers match the current search'}</p>
+                <p className="text-center text-muted-foreground py-8">{isEs ? 'Sin coincidencias para la búsqueda actual' : 'No offers match the current search'}</p>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>{isEs ? "N Oferta" : 'Offer #'}</TableHead>
-                      <TableHead>{isEs ? "Ttulo" : 'Title'}</TableHead>
+                      <TableHead>{isEs ? "Título" : 'Title'}</TableHead>
                       <TableHead>{isEs ? 'Cliente' : 'Customer'}</TableHead>
                       <TableHead>{isEs ? 'Estado' : 'Status'}</TableHead>
                       <TableHead className="text-right">{isEs ? 'Valor' : 'Value'}</TableHead>
@@ -2876,7 +3144,7 @@ export default function OfferPricingPage() {
                             <SelectContent>
                               <SelectItem value="draft">{isEs ? 'Borrador' : 'Draft'}</SelectItem>
                               <SelectItem value="sent">{isEs ? 'Enviada' : 'Sent'}</SelectItem>
-                              <SelectItem value="negotiation">{isEs ? "Negociacin" : 'Negotiation'}</SelectItem>
+                              <SelectItem value="negotiation">{isEs ? "Negociación" : 'Negotiation'}</SelectItem>
                               <SelectItem value="won">{isEs ? 'Ganada' : 'Won'}</SelectItem>
                               <SelectItem value="lost">{isEs ? 'Perdida' : 'Lost'}</SelectItem>
                             </SelectContent>
@@ -2887,6 +3155,10 @@ export default function OfferPricingPage() {
                         <TableCell className="text-sm text-muted-foreground">{new Date(o.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
+                          <Button size="sm" variant="outline" onClick={() => setCopyRequest({ source: 'saved', offer: o })} aria-label={`Copy offer ${o.offer_number || o.id}`}>
+                            <Copy className="h-3 w-3 mr-1" />
+                            {isEs ? 'Copiar' : 'Copy'}
+                          </Button>
                           <Button size="sm" variant="outline" onClick={() => void loadOfferForEditing(o)} aria-label={`Edit offer ${o.offer_number || o.id}`}>
                             <Settings2 className="h-3 w-3 mr-1" />
                             {isEs ? 'Editar' : 'Edit'}
@@ -2968,11 +3240,11 @@ export default function OfferPricingPage() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2"><FolderKanban className="h-5 w-5 text-primary" />{isEs ? 'Repositorio de bloques reutilizables' : 'Reusable block repository'}</CardTitle>
-              <CardDescription>{isEs ? 'Guarda bloques de producto/servicio con su coste y rec?rgalos en nuevas ofertas. Puedes renombrar, crear o borrar versiones.' : 'Store product/service blocks with their cost and reuse them in new offers. You can rename, create or delete versions.'}</CardDescription>
+              <CardDescription>{isEs ? 'Guarda bloques de producto/servicio con su coste y recárgalos en nuevas ofertas. Puedes renombrar, crear o borrar versiones.' : 'Store product/service blocks with their cost and reuse them in new offers. You can rename, create or delete versions.'}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                <Input value={blockRepositorySearch} onChange={(event) => setBlockRepositorySearch(event.target.value)} placeholder={isEs ? 'Buscar por nombre, tipo o descripci?n' : 'Search by name, type or description'} className="md:col-span-2" />
+                <Input value={blockRepositorySearch} onChange={(event) => setBlockRepositorySearch(event.target.value)} placeholder={isEs ? 'Buscar por nombre, tipo o descripción' : 'Search by name, type or description'} className="md:col-span-2" />
                 <Button variant="outline" onClick={() => createRepositoryBlock('product')}><Plus className="h-4 w-4 mr-1" />{isEs ? 'Nuevo bloque producto' : 'New product block'}</Button>
                 <Button variant="outline" onClick={() => createRepositoryBlock('service')}><Plus className="h-4 w-4 mr-1" />{isEs ? 'Nuevo bloque servicio' : 'New service block'}</Button>
               </div>
@@ -2992,7 +3264,7 @@ export default function OfferPricingPage() {
                           <Button size="sm" variant="ghost" onClick={() => removeRepositoryBlock(entry.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                         </div>
                       </div>
-                      <p className="text-xs text-muted-foreground">{entry.item.description || (isEs ? 'Sin descripci?n.' : 'No description.')}</p>
+                      <p className="text-xs text-muted-foreground">{entry.item.description || (isEs ? 'Sin descripción.' : 'No description.')}</p>
                       <p className="text-xs font-medium">{isEs ? 'Coste unidad:' : 'Unit cost:'} {fmt(computeItemUnitCost(entry.item))} | {isEs ? 'Cantidad:' : 'Qty:'} {entry.item.quantity} | {isEs ? 'Total bloque:' : 'Block total:'} {fmt(computeItemTotalCost(entry.item))}</p>
                     </div>
                   ))}
@@ -3005,7 +3277,65 @@ export default function OfferPricingPage() {
         {/* SUMMARY TAB */}
         <TabsContent value="summary">
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" />{isEs ? "Resumen Econmico" : 'Economic Summary'}</CardTitle></CardHeader>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2"><Calculator className="h-5 w-5 text-primary" />{isEs ? 'Panel de cálculo de precios' : 'Pricing calculation panel'}</CardTitle>
+              <CardDescription>{isEs ? 'Selecciona los elementos configurados que entran en el cálculo, ajusta el alcance de forma rápida e introduce políticas a nivel de paquete general o diferenciadas para productos y servicios.' : 'Select which configured elements enter the calculation, adjust the scope quickly and apply policies at whole-package level or differentiated for products and services.'}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <span className="text-sm font-medium text-foreground">{isEs ? 'Alcance del cálculo' : 'Calculation scope'}</span>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setPricingScope('all')}>{isEs ? 'Todos' : 'All'}</Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setPricingScope('products')}>{isEs ? 'Solo productos' : 'Products only'}</Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setPricingScope('services')}>{isEs ? 'Solo servicios' : 'Services only'}</Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setPricingScope('none')}>{isEs ? 'Ninguno' : 'None'}</Button>
+                </div>
+                <div className="space-y-1">
+                  {items.map((item) => {
+                    const excluded = excludedItemIds.includes(item.id);
+                    return (
+                      <label key={item.id} className={`flex items-center gap-2 rounded-md border px-2 py-1 text-sm ${excluded ? 'opacity-60 bg-muted/30' : ''}`}>
+                        <input type="checkbox" checked={!excluded} onChange={() => toggleItemPricingScope(item.id)} aria-label={`${isEs ? 'Incluir en precio' : 'Include in pricing'} ${item.name || item.id}`} />
+                        <span className="flex-1 truncate">{item.name || (isEs ? 'Elemento sin nombre' : 'Unnamed item')}</span>
+                        <Badge variant="outline">{item.type}</Badge>
+                        <span className="tabular-nums text-muted-foreground">{fmt(computeItemTotalCost(item))}</span>
+                        {excluded ? <Badge variant="secondary">{isEs ? 'Excluido' : 'Excluded'}</Badge> : null}
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">{isEs ? 'Los elementos excluidos se mantienen en la oferta pero no entran en totales, paquetes ni analisis IA.' : 'Excluded items stay in the offer but are left out of totals, packages and AI analysis.'}</p>
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground" htmlFor="summary-policy-scope">{isEs ? 'Ámbito de políticas' : 'Policy scope'}</label>
+                <Select value={policyScope} onValueChange={(value) => setPolicyScope(value as PolicyScope)}>
+                  <SelectTrigger id="summary-policy-scope" className="md:w-96"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unified">{isEs ? 'Politica unica a nivel de paquete general' : 'Single policy at whole-package level'}</SelectItem>
+                    <SelectItem value="split">{isEs ? 'Políticas diferenciadas: productos y servicios' : 'Differentiated policies: products vs services'}</SelectItem>
+                  </SelectContent>
+                </Select>
+                {policyScope === 'split' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="rounded-md border p-3">
+                      <p className="text-xs font-semibold text-foreground mb-2">{isEs ? 'Productos' : 'Products'} <span className="text-muted-foreground font-normal">({fmt(totals.productDirect)})</span></p>
+                      <div className="grid grid-cols-2 gap-2">{renderPolicyChargeInputs(pricingPolicy, updatePolicyPct, totals.productPolicyCharges, 'summary-policy-product')}</div>
+                    </div>
+                    <div className="rounded-md border p-3">
+                      <p className="text-xs font-semibold text-foreground mb-2">{isEs ? 'Servicios' : 'Services'} <span className="text-muted-foreground font-normal">({fmt(totals.serviceDirect)})</span></p>
+                      <div className="grid grid-cols-2 gap-2">{renderPolicyChargeInputs(servicePolicy, updateServicePolicyPct, totals.servicePolicyCharges, 'summary-policy-service')}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">{isEs ? 'Sin políticas por producto/servicio: los porcentajes se aplican sobre el paquete general (Constructor > Politica de costes).' : 'No product/service-level policies: percentages apply to the whole package (Builder > Cost policy).'}</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" />{isEs ? "Resumen Económico" : 'Economic Summary'}</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 rounded-lg bg-muted/50 text-center">
@@ -3027,7 +3357,7 @@ export default function OfferPricingPage() {
               </div>
 
               <Separator />
-              <h3 className="font-semibold text-foreground">{isEs ? "Desglose por categora" : 'Breakdown by Category'}</h3>
+              <h3 className="font-semibold text-foreground">{isEs ? "Desglose por categoría" : 'Breakdown by Category'}</h3>
               <div className="space-y-2">
                 {CATEGORIES.map(c => {
                   const val = totals.byCat[c.value] || 0;
@@ -3042,10 +3372,10 @@ export default function OfferPricingPage() {
                   );
                 })}
                 {([
-                  { key: 'warranty', label: isEs ? `Garanta ${pricingPolicy.warrantyPct}%` : `Warranty ${pricingPolicy.warrantyPct}%`, val: totals.policyCharges.warranty },
+                  { key: 'warranty', label: isEs ? `Garantía ${pricingPolicy.warrantyPct}%` : `Warranty ${pricingPolicy.warrantyPct}%`, val: totals.policyCharges.warranty },
                   { key: 'materialStructure', label: isEs ? `Estructura materiales ${pricingPolicy.materialStructurePct}%` : `Material structure ${pricingPolicy.materialStructurePct}%`, val: totals.policyCharges.materialStructure },
-                  { key: 'financial', label: isEs ? `Financiacin ${pricingPolicy.financialPct}%` : `Finance ${pricingPolicy.financialPct}%`, val: totals.policyCharges.financial },
-                  { key: 'commercialMgmt', label: isEs ? `Gestin comercial ${pricingPolicy.commercialMgmtPct}%` : `Commercial mgmt. ${pricingPolicy.commercialMgmtPct}%`, val: totals.policyCharges.commercialMgmt },
+                  { key: 'financial', label: isEs ? `Financiación ${pricingPolicy.financialPct}%` : `Finance ${pricingPolicy.financialPct}%`, val: totals.policyCharges.financial },
+                  { key: 'commercialMgmt', label: isEs ? `Gestión comercial ${pricingPolicy.commercialMgmtPct}%` : `Commercial mgmt. ${pricingPolicy.commercialMgmtPct}%`, val: totals.policyCharges.commercialMgmt },
                 ]).map((entry) => {
                   const pct = totals.total > 0 ? (entry.val / totals.total) * 100 : 0;
                   return (
@@ -3069,7 +3399,7 @@ export default function OfferPricingPage() {
                       <TableHead>{isEs ? 'Tipo' : 'Type'}</TableHead>
                       <TableHead>{isEs ? 'Detalle ejecutivo' : 'Executive detail'}</TableHead>
                       <TableHead className="text-right">{isEs ? 'Coste directo' : 'Direct cost'}</TableHead>
-                      <TableHead className="text-right">{isEs ? 'Politicas' : 'Policy'}</TableHead>
+                      <TableHead className="text-right">{isEs ? 'Políticas' : 'Policy'}</TableHead>
                       <TableHead className="text-right">{isEs ? 'Coste total' : 'Total cost'}</TableHead>
                       <TableHead className="text-right">{isEs ? 'Precio' : 'Price'}</TableHead>
                       <TableHead className="text-right">{isEs ? 'Margen' : 'Margin'}</TableHead>
@@ -3111,7 +3441,7 @@ export default function OfferPricingPage() {
                   </TableBody>
                 </Table>
               ) : (
-                <p className="text-sm text-muted-foreground">{isEs ? 'No hay paquetes configurados todavia.' : 'No packages configured yet.'}</p>
+                <p className="text-sm text-muted-foreground">{isEs ? 'No hay paquetes configurados todavía.' : 'No packages configured yet.'}</p>
               )}
 
               <div className="rounded-lg border bg-muted/20 p-3 text-sm">
@@ -3136,7 +3466,12 @@ export default function OfferPricingPage() {
                     const unitCost = computeItemUnitCost(item);
                     return (
                       <TableRow key={item.id}>
-                        <TableCell>{item.name || '-'}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span>{item.name || '-'}</span>
+                            {excludedItemIds.includes(item.id) ? <Badge variant="secondary">{isEs ? 'Excluido' : 'Excluded'}</Badge> : null}
+                          </div>
+                        </TableCell>
                         <TableCell><Badge variant="outline">{item.type}</Badge></TableCell>
                         <TableCell>{item.quantity}</TableCell>
                         <TableCell className="text-right">{fmt(unitCost)}</TableCell>
@@ -3150,6 +3485,36 @@ export default function OfferPricingPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={copyRequest !== null} onOpenChange={(open) => { if (!open) setCopyRequest(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{isEs ? 'Crear copia de la oferta' : 'Create offer copy'}</DialogTitle>
+            <DialogDescription>
+              {isEs
+                ? 'La copia conserva los bloques de costes y precios de la oferta original. Elige variante para el mismo cliente o copia con nueva numeración para otro cliente.'
+                : 'The copy keeps the cost and pricing blocks of the original offer. Choose a variant for the same customer or a copy with fresh numbering for another customer.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-md border bg-muted/20 p-3 text-sm">
+              <span className="text-muted-foreground">{isEs ? 'Origen' : 'Source'}:</span>{' '}
+              <span className="font-medium">{[copySourceNumber, copySourceTitle].filter(Boolean).join(' - ') || '-'}</span>
+            </div>
+            <Button className="w-full justify-start" disabled={copyingOffer} onClick={() => void runOfferCopy('variant')}>
+              {copyingOffer ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+              {isEs ? 'Mismo cliente: variante' : 'Same customer: variant'}
+              {copyVariantPreview ? <span className="ml-1 font-mono text-xs">-&gt; {copyVariantPreview}</span> : null}
+            </Button>
+            <Button variant="outline" className="w-full justify-start" disabled={copyingOffer} onClick={() => void runOfferCopy('new-customer')}>
+              {copyingOffer ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+              {isEs ? 'Nuevo cliente: nueva numeración' : 'New customer: fresh numbering'}
+              {copyNewNumberPreview ? <span className="ml-1 font-mono text-xs">-&gt; {copyNewNumberPreview}</span> : null}
+            </Button>
+            <p className="text-xs text-muted-foreground">{isEs ? 'La copia se abre como borrador en el Constructor y no se registra hasta pulsar Guardar.' : 'The copy opens as a draft in the Builder and is not stored until you press Save.'}</p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

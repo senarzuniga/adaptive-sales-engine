@@ -98,7 +98,7 @@ const DOSSIERS: Record<string, ProductTechnicalDossier> = {
     ['3D survey and floor assessment', 'Discrete-event peak and N-1 simulation', 'Trident mock-up', 'Pilot stations before full deployment'],
     ['TECHNICAL REPORT AMR INTR.txt', 'KUKA Autonomous Mobile Robotics', 'VDA 5050'],
   ),
-  'amr gestion desperdicio area corrugado': dossier(
+  'amr gestión desperdicio área corrugado': dossier(
     'ING-P04',
     'Autonomous exchange, transport, weighing and traceability of corrugator waste cages without interrupting production.',
     ['Corrugator waste collection', 'Automatic full/empty cage exchange', 'Waste weighing by source, order or shift'],
@@ -256,8 +256,8 @@ const aliases: Record<string, keyof typeof DOSSIERS> = {
   'sr1400 por metro': 'sr1400',
   'sr 1400 por metro': 'sr1400',
   'sr1400 per meter': 'sr1400',
-  'amr waste management': 'amr gestion desperdicio area corrugado',
-  'amr gestion desperdico area corrugado': 'amr gestion desperdicio area corrugado',
+  'amr waste management': 'amr gestión desperdicio área corrugado',
+  'amr gestión desperdico área corrugado': 'amr gestión desperdicio área corrugado',
   'hd palletizer': 'heavy duty palletizer',
   'truck loading system': 'automatic truck loading system',
   'automatic truck loading': 'automatic truck loading system',
@@ -265,12 +265,18 @@ const aliases: Record<string, keyof typeof DOSSIERS> = {
   'transfer car + conveyor system intralogistics': 'transfer car conveyor system intralogistics',
 };
 
-const normalize = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+// Accent-insensitive normalize: dossier keys stay canonical even when product names carry diacritics.
+const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+// Index dossiers by their normalized key so accented display names resolve correctly.
+const DOSSIERS_BY_NORMALIZED_KEY: Record<string, ProductTechnicalDossier> = Object.fromEntries(
+  Object.entries(DOSSIERS).map(([key, dossier]) => [normalize(key), dossier]),
+);
 
 export function getCanonicalProductDossier(productName: string): ProductTechnicalDossier | undefined {
   const normalized = normalize(productName);
   const key = aliases[normalized] || normalized;
-  return DOSSIERS[key];
+  return DOSSIERS[key] || DOSSIERS_BY_NORMALIZED_KEY[normalize(key)];
 }
 
 export const CANONICAL_DOSSIER_COUNT = Object.keys(DOSSIERS).length;

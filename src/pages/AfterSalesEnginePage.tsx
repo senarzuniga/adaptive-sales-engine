@@ -527,7 +527,7 @@ export default function AfterSalesEnginePage() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2"><ArrowUpRight className="h-4 w-4 text-primary" />{isEs ? 'Oportunidades Principales' : 'Top Opportunities'}</CardTitle>
-                <CardDescription>{isEs ? 'Detectadas desde base instalada, historial de servicio, email context, referencias Smart Plant y senales del ecosistema digital.' : 'Detected from installed base, service history, email context, Smart Plant references and digital ecosystem signals.'}</CardDescription>
+                <CardDescription>{isEs ? 'Detectadas desde base instalada, historial de servicio, email context, referencias Smart Plant y señales del ecosistema digital.' : 'Detected from installed base, service history, email context, Smart Plant references and digital ecosystem signals.'}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -544,7 +544,7 @@ export default function AfterSalesEnginePage() {
                           <p className="mt-2 text-sm font-semibold">{o.title}</p>
                           <p className="text-xs text-muted-foreground">{o.customerName} - {o.triggerSignal}</p>
                           <p className="mt-2 text-sm text-muted-foreground">{o.recommendedScope}</p>
-                          <p className="mt-2 text-xs font-medium text-foreground">{isEs ? 'Accion preparada:' : 'Prepared action:'} <span className="font-normal text-muted-foreground">{o.recommendedAction}</span></p>
+                          <p className="mt-2 text-xs font-medium text-foreground">{isEs ? 'Acción preparada:' : 'Prepared action:'} <span className="font-normal text-muted-foreground">{o.recommendedAction}</span></p>
                         </div>
                         <div className="flex min-w-[220px] flex-col items-end gap-2">
                           <div className="text-right">

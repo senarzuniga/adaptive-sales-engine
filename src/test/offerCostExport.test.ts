@@ -23,17 +23,17 @@ describe('offer cost export', () => {
     costRows: [
       { id: 'b1', offer_item_id: 'item-b', category: 'subcontracting', line_item: 'SIFISE - llave en mano, programacion y puesta en marcha', quantity: 1, unit_cost: 184428, total_cost: 191805.12 },
       { id: 'b2', offer_item_id: 'item-b', category: 'materials', line_item: 'KUKA - robot paletizado', quantity: 1, unit_cost: 35871.56, total_cost: 37306.36 },
-      { id: 'b3', offer_item_id: 'item-b', category: 'engineering', line_item: 'Direccion ingenieria', hours: 70, total_cost: 3920 },
-      { id: 'b4', offer_item_id: 'item-b', category: 'engineering', line_item: 'Ingenieria', hours: 100, total_cost: 4200 },
-      { id: 'b5', offer_item_id: 'item-b', category: 'engineering', line_item: 'Direccion ingenieria electrica', hours: 60, total_cost: 3360 },
-      { id: 'b6', offer_item_id: 'item-b', category: 'engineering', line_item: 'Gestion de proyecto', hours: 80, total_cost: 6000 },
-      { id: 'b7', offer_item_id: 'item-b', category: 'installation', line_item: 'INSTALACION', days: 20, resources: 1, unit_cost: 814, total_cost: 16280 },
-      { id: 'b8', offer_item_id: 'item-b', category: 'transport', line_item: 'INSTALACION - travel & expenses', quantity: 1, unit_cost: 5480, total_cost: 5480 },
+      { id: 'b3', offer_item_id: 'item-b', category: 'engineering', line_item: 'Dirección ingeniería', hours: 70, total_cost: 3920 },
+      { id: 'b4', offer_item_id: 'item-b', category: 'engineering', line_item: 'Ingeniería', hours: 100, total_cost: 4200 },
+      { id: 'b5', offer_item_id: 'item-b', category: 'engineering', line_item: 'Dirección ingeniería eléctrica', hours: 60, total_cost: 3360 },
+      { id: 'b6', offer_item_id: 'item-b', category: 'engineering', line_item: 'Gestión de proyecto', hours: 80, total_cost: 6000 },
+      { id: 'b7', offer_item_id: 'item-b', category: 'installation', line_item: 'INSTALACIÓN', days: 20, resources: 1, unit_cost: 814, total_cost: 16280 },
+      { id: 'b8', offer_item_id: 'item-b', category: 'transport', line_item: 'INSTALACIÓN - travel & expenses', quantity: 1, unit_cost: 5480, total_cost: 5480 },
       { id: 'c1', offer_item_id: 'item-c', category: 'materials', line_item: 'MESA', quantity: 5, unit_cost: 3000, total_cost: 15600 },
       { id: 'c2', offer_item_id: 'item-c', category: 'materials', line_item: 'HORAS FABRICACION', quantity: 24, unit_cost: 70, total_cost: 1680 },
       { id: 'c3', offer_item_id: 'item-c', category: 'materials', line_item: 'HORAS MONTAJE', quantity: 20, unit_cost: 60, total_cost: 1200 },
       { id: 'c4', offer_item_id: 'item-c', category: 'materials', line_item: 'MONTAJE ELECTRICO', quantity: 30, unit_cost: 70, total_cost: 2100 },
-      { id: 'd1', offer_item_id: 'item-d', category: 'materials', line_item: 'MESA 90?', quantity: 1, unit_cost: 35000, total_cost: 36400 },
+      { id: 'd1', offer_item_id: 'item-d', category: 'materials', line_item: 'MESA 90°', quantity: 1, unit_cost: 35000, total_cost: 36400 },
       { id: 'd2', offer_item_id: 'item-d', category: 'materials', line_item: 'HORAS FABRICACION', quantity: 70, unit_cost: 70, total_cost: 4900 },
       { id: 'd3', offer_item_id: 'item-d', category: 'materials', line_item: 'HORAS MONTAJE', quantity: 60, unit_cost: 60, total_cost: 3600 },
       { id: 'd4', offer_item_id: 'item-d', category: 'materials', line_item: 'HORAS ELECTRICO', quantity: 100, unit_cost: 70, total_cost: 7000 },
@@ -53,8 +53,8 @@ describe('offer cost export', () => {
       'Costes_B_MESAS_CONVEYOR',
       'Costes_C_MESA_90_GRADOS',
       'Servicios',
-      'Politicas',
-      'Calculo_Precio',
+      'Políticas',
+      'Cálculo_Precio',
     ]);
 
     const summary = workbook.Sheets.Resumen;
@@ -64,7 +64,7 @@ describe('offer cost export', () => {
     expect(summary.D9.v).toBe(70305.47);
     expect(summary.C10.f).toContain('SUMPRODUCT');
 
-    const price = workbook.Sheets.Calculo_Precio;
+    const price = workbook.Sheets.Cálculo_Precio;
     expect(price.B6.f).toBe('IF(B3=0,0,B5/B3)');
   });
 

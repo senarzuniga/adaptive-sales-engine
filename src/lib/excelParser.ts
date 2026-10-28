@@ -184,7 +184,7 @@ export function parseExcelFile(file: File): Promise<{
             leadName: findCol(headers, 'Lead Name', 'Nombre Lead', 'Nombre', 'Contacto'),
             companyName: findCol(headers, 'Company', 'Company Name', 'Empresa'),
             email: findCol(headers, 'Email', 'Correo'),
-            phone: findCol(headers, 'Phone', 'Telefono', "Telfono", 'Mobile'),
+            phone: findCol(headers, 'Phone', 'Telefono', 'Teléfono', "Telfono", 'Mobile'),
             region: findCol(headers, 'Region', 'Geographical Area', 'Zona', 'Area'),
             country: findCol(headers, 'Country', 'Pais', "Pas"),
             sector: findCol(headers, 'Sector', 'Industry', 'Industria'),
@@ -213,7 +213,7 @@ export function parseExcelFile(file: File): Promise<{
           const cols = {
             name: findCol(headers, 'Contact Name', 'Name', 'Nombre'),
             email: findCol(headers, 'Email', 'Correo'),
-            phone: findCol(headers, 'Phone', 'Telefono', "Telfono", 'Mobile'),
+            phone: findCol(headers, 'Phone', 'Telefono', 'Teléfono', "Telfono", 'Mobile'),
             role: findCol(headers, 'Role', 'Cargo', 'Title'),
             department: findCol(headers, 'Department', 'Departamento', 'Area'),
             companyName: findCol(headers, 'Company', 'Company Name', 'Empresa'),

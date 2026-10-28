@@ -9,7 +9,7 @@ describe('product knowledge catalog', () => {
     expect(product).toBeTruthy();
     expect(product?.estimatedCost).toBe(210136);
     expect(product?.costPreset?.find((line) => line.lineItem === 'Syffise')?.unitCost).toBe(190016);
-    expect(product?.costPreset?.find((line) => line.role === 'DIRECTOR ING. ELECTRICA')?.hourlyRate).toBe(85);
+    expect(product?.costPreset?.find((line) => line.role === 'DIRECTOR ING. ELÉCTRICA')?.hourlyRate).toBe(85);
     expect(estimateProductPresetCost(product!)).toBe(210136);
   });
 

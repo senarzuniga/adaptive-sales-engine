@@ -136,10 +136,10 @@ function normalizePlanKey(value: string): string {
 
 function estimatePlanPostventaHours(row: PlanPostventaRow): number {
   const action = row.action.toLowerCase();
-  if (/(ejecucion|execution|diagnostico|diagnosis|finalizar|modify|modificar|revisar|study|estudio)/.test(action)) {
+  if (/(ejecucion|ejecución|execution|diagnostico|diagnóstico|diagnosis|finalizar|modify|modificar|revisar|study|estudio)/.test(action)) {
     return row.priority.toLowerCase() === 'alta' ? 4 : 3;
   }
-  if (/(presupuesto|oferta|offer|envio|send|manual|listado|recambios|mantenimiento)/.test(action)) {
+  if (/(presupuesto|oferta|offer|envio|envío|send|manual|listado|recambios|mantenimiento)/.test(action)) {
     return row.priority.toLowerCase() === 'alta' ? 2.5 : 2;
   }
   return row.priority.toLowerCase() === 'alta' ? 3 : row.priority.toLowerCase() === 'media' ? 2 : 1.5;

@@ -52,9 +52,9 @@ const categoryLabel = (value: string, language: ExportLanguage) => {
   const isEs = language === 'es';
   const map: Record<string, string> = {
     materials: isEs ? 'materiales' : 'materials',
-    engineering: isEs ? 'ingenieria' : 'engineering',
-    subcontracting: isEs ? 'subcontratacion' : 'subcontracting',
-    installation: isEs ? 'instalacion' : 'installation',
+    engineering: isEs ? 'ingeniería' : 'engineering',
+    subcontracting: isEs ? 'subcontratación' : 'subcontracting',
+    installation: isEs ? 'instalación' : 'installation',
     transport: isEs ? 'transporte' : 'transport',
     indirect: isEs ? 'indirectos' : 'indirect',
   };
@@ -185,7 +185,7 @@ const buildSummarySheet = (blocks: ExportBlock[], input: OfferCostExportInput, l
   setCell(sheet, 1, 2, text(input.offer.customer_name));
   setCell(sheet, 0, 3, isEs ? 'Moneda' : 'Currency');
   setCell(sheet, 1, 3, text(input.offer.currency) || 'EUR');
-  setCell(sheet, 0, 4, isEs ? 'Fecha exportacion' : 'Export date');
+  setCell(sheet, 0, 4, isEs ? 'Fecha de exportación' : 'Export date');
   setCell(sheet, 1, 4, exportDate);
 
   const headerRow = 6;
@@ -205,7 +205,7 @@ const buildSummarySheet = (blocks: ExportBlock[], input: OfferCostExportInput, l
   });
 
   const totalRow = dataStart + blocks.length;
-  setCell(sheet, 0, totalRow, isEs ? 'TOTAL GENERAL (segun incluidos)' : 'TOTAL GENERAL (by included rows)');
+  setCell(sheet, 0, totalRow, isEs ? 'TOTAL GENERAL (según incluidos)' : 'TOTAL GENERAL (by included rows)');
   setFormula(sheet, 2, totalRow, `SUMPRODUCT((B${dataStart}:B${totalRow - 1}=1)*(C${dataStart}:C${totalRow - 1}))`, '#,##0.00');
   setFormula(sheet, 3, totalRow, `SUMPRODUCT((B${dataStart}:B${totalRow - 1}=1)*(D${dataStart}:D${totalRow - 1}))`, '#,##0.00');
 
@@ -227,7 +227,7 @@ const buildDetailSheet = (block: ExportBlock, language: ExportLanguage) => {
   const isEs = language === 'es';
   const sheet: XLSX.WorkSheet = {};
   const headerRow = 1;
-  [isEs ? 'Familia' : 'Family', isEs ? 'Linea' : 'Line', isEs ? 'Cantidad/Esfuerzo' : 'Quantity/Effort', isEs ? 'Coste unitario (EUR)' : 'Unit cost (EUR)', isEs ? 'Coste total (EUR)' : 'Total cost (EUR)'].forEach((value, index) => setCell(sheet, index, headerRow, value));
+  [isEs ? 'Familia' : 'Family', isEs ? 'Línea' : 'Line', isEs ? 'Cantidad/Esfuerzo' : 'Quantity/Effort', isEs ? 'Coste unitario (EUR)' : 'Unit cost (EUR)', isEs ? 'Coste total (EUR)' : 'Total cost (EUR)'].forEach((value, index) => setCell(sheet, index, headerRow, value));
   const dataStart = 2;
   block.detailRows.forEach((row, index) => {
     const targetRow = dataStart + index;
@@ -251,7 +251,7 @@ const buildServicesSheet = (blocks: ExportBlock[], language: ExportLanguage, sum
     .filter((row) => ['installation', 'transport'].includes(String(row.row.category || '')))
     .map((row) => ({ block, row, summaryRow: summaryDataStart + index })));
   const sheet: XLSX.WorkSheet = {};
-  [isEs ? 'Bloque' : 'Block', isEs ? 'Incluido (1/0)' : 'Included (1/0)', isEs ? 'Familia servicio' : 'Service family', isEs ? 'Descripcion' : 'Description', 'Base', isEs ? 'Total (EUR)' : 'Total (EUR)'].forEach((value, index) => setCell(sheet, index, 1, value));
+  [isEs ? 'Bloque' : 'Block', isEs ? 'Incluido (1/0)' : 'Included (1/0)', isEs ? 'Familia servicio' : 'Service family', isEs ? 'Descripción' : 'Description', 'Base', isEs ? 'Total (EUR)' : 'Total (EUR)'].forEach((value, index) => setCell(sheet, index, 1, value));
   serviceRows.forEach((entry, index) => {
     const row = index + 2;
     setCell(sheet, 0, row, `${entry.block.code}. ${entry.block.label}`);
@@ -288,10 +288,10 @@ const buildPoliciesSheet = (input: OfferCostExportInput, summaryTotalRow: number
   const policyOriginal = estimatePolicyChargesFromCost({ materials: configuredMaterialsBase, engineering: blocks.reduce((sum, block) => sum + num(block.categoryTotals.engineering), 0), subcontracting: blocks.reduce((sum, block) => sum + num(block.categoryTotals.subcontracting), 0) }, directCostOriginal, policy);
 
   const rows = [
-    [isEs ? 'Garantia' : 'Warranty', isEs ? 'Comercio + Engineering + Subcontratas' : 'Materials + Engineering + Subcontracting', pct(policy.warrantyPct), warrantyBaseFormula, 'C2*D2', policyOriginal.warranty],
+    [isEs ? 'Garantía' : 'Warranty', isEs ? 'Comercio + Engineering + Subcontratas' : 'Materials + Engineering + Subcontracting', pct(policy.warrantyPct), warrantyBaseFormula, 'C2*D2', policyOriginal.warranty],
     [isEs ? 'Estructura material' : 'Material structure', isEs ? 'Comercio' : 'Materials', pct(policy.materialStructurePct), materialsBaseFormula, 'C3*D3', policyOriginal.materialStructure],
     ['Finance', isEs ? 'Coste directo' : 'Direct cost', pct(policy.financialPct), directBaseFormula, 'C4*D4', policyOriginal.financial],
-    [isEs ? 'Gestion comercial' : 'Commercial management', isEs ? 'Coste directo' : 'Direct cost', pct(policy.commercialMgmtPct), directBaseFormula, 'C5*D5', policyOriginal.commercialMgmt],
+    [isEs ? 'Gestión comercial' : 'Commercial management', isEs ? 'Coste directo' : 'Direct cost', pct(policy.commercialMgmtPct), directBaseFormula, 'C5*D5', policyOriginal.commercialMgmt],
   ];
 
   rows.forEach((values, index) => {
@@ -319,7 +319,7 @@ const buildPriceSheet = (summaryTotalRow: number, language: ExportLanguage) => {
   const rows = [
     [isEs ? 'Coste directo seleccionado' : 'Selected direct cost', `Resumen!C${summaryTotalRow}`],
     [isEs ? 'Precio oferta seleccionado' : 'Selected offer price', `Resumen!D${summaryTotalRow}`],
-    [isEs ? 'Cargas politica (calculadas)' : 'Policy charges (calculated)', 'Politicas!E6'],
+    [isEs ? 'Cargas de política (calculadas)' : 'Policy charges (calculated)', 'Políticas!E6'],
     [isEs ? 'Margen bruto estimado' : 'Estimated gross margin', 'B3-B2'],
     [isEs ? 'Margen % sobre precio' : 'Margin % over price', 'IF(B3=0,0,B5/B3)'],
   ];
@@ -344,8 +344,8 @@ export function buildOfferCostWorkbook(input: OfferCostExportInput): XLSX.WorkBo
     XLSX.utils.book_append_sheet(workbook, buildDetailSheet(block, language), sheetNameSafe(`Costes_${block.code}_${suffix || 'Bloque'}`));
   });
   XLSX.utils.book_append_sheet(workbook, buildServicesSheet(blocks, language, dataStart), 'Servicios');
-  XLSX.utils.book_append_sheet(workbook, buildPoliciesSheet(input, totalRow, dataStart, blocks, language), 'Politicas');
-  XLSX.utils.book_append_sheet(workbook, buildPriceSheet(totalRow, language), language === 'es' ? 'Calculo_Precio' : 'Price_Calculation');
+  XLSX.utils.book_append_sheet(workbook, buildPoliciesSheet(input, totalRow, dataStart, blocks, language), 'Políticas');
+  XLSX.utils.book_append_sheet(workbook, buildPriceSheet(totalRow, language), language === 'es' ? 'Cálculo_Precio' : 'Price_Calculation');
   return workbook;
 }
 
