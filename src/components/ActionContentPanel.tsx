@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { MonitoringTask, ActionContent, ActionResult, TaskPillar } from '@/store/DataStore';
+import type { MonitoringTask, ActionContent, ActionAttachment, ActionResult, TaskPillar } from '@/store/DataStore';
 import { useData } from '@/store/DataStore';
 import { VoiceTextInput } from '@/components/VoiceTextInput';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import {
-  Target, Phone, Mail, Presentation, FileText, Save, Sparkles,
+  Target, Phone, Mail, Presentation, FileText, Save, Sparkles, Paperclip, Download, Trash2,
   CheckCircle, AlertTriangle, ArrowLeft, ClipboardList, Loader2, Wand2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,7 +30,7 @@ interface ActionContentPanelProps {
   onBack: () => void;
 }
 
-const emptyContent: ActionContent = { goal: '', callScript: '', emailTemplate: '', presentationNotes: '' };
+const emptyContent: ActionContent = { goal: '', callScript: '', emailTemplate: '', presentationNotes: '', attachments: [] };
 
 export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack }: ActionContentPanelProps) {
   const { data } = useData();
@@ -87,6 +87,7 @@ export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack
         callScript: result.callScript || content.callScript,
         emailTemplate: result.emailTemplate || content.emailTemplate,
         presentationNotes: result.presentationNotes || content.presentationNotes,
+        attachments: content.attachments || [],
       };
       setContent(generated);
       setDirty(true);
@@ -94,16 +95,60 @@ export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack
     } catch (e: any) {
       console.error('AI generation error:', e);
       const details = classifyEdgeRuntimeError(e, 'local action content');
-      const generated = buildFallbackActionContent({
-        task: { title: task.title, description: task.description, category: task.category, pillar: task.pillar, priority: task.priority },
-        companyProfile: data.companyProfile,
-      });
+      const generated = {
+        ...buildFallbackActionContent({
+          task: { title: task.title, description: task.description, category: task.category, pillar: task.pillar, priority: task.priority },
+          companyProfile: data.companyProfile,
+        }),
+        attachments: content.attachments || [],
+      };
       setContent(generated);
       setDirty(true);
       toast({ title: details.title, description: details.description });
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleAttachFiles = async (files: FileList | null) => {
+    if (!files?.length) return;
+    const accepted: ActionAttachment[] = [];
+    const rejected: string[] = [];
+    for (const file of Array.from(files)) {
+      if (file.size > 2 * 1024 * 1024) {
+        rejected.push(file.name);
+        continue;
+      }
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(reader.error || new Error('Could not read file'));
+        reader.readAsDataURL(file);
+      });
+      accepted.push({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        name: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        size: file.size,
+        dataUrl,
+      });
+    }
+    if (accepted.length) {
+      setContent((previous) => ({ ...previous, attachments: [...(previous.attachments || []), ...accepted] }));
+      setDirty(true);
+      toast({ title: `${accepted.length} attachment${accepted.length === 1 ? '' : 's'} added` });
+    }
+    if (rejected.length) {
+      toast({ title: 'Some files were too large', description: `${rejected.join(', ')} — max 2 MB per file.`, variant: 'destructive' });
+    }
+  };
+
+  const removeAttachment = (attachmentId: string) => {
+    setContent((previous) => ({
+      ...previous,
+      attachments: (previous.attachments || []).filter((attachment) => attachment.id !== attachmentId),
+    }));
+    setDirty(true);
   };
 
   // ─── AI: Analyze result ───
@@ -182,12 +227,13 @@ export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack
 
       {/* Content Tabs */}
       <Tabs defaultValue="goal">
-        <TabsList className="grid grid-cols-5 w-full">
+        <TabsList className="grid grid-cols-6 w-full">
           <TabsTrigger value="goal" className="text-xs gap-1"><Target className="h-3 w-3" /> Goal</TabsTrigger>
           <TabsTrigger value="script" className="text-xs gap-1"><Phone className="h-3 w-3" /> Script</TabsTrigger>
           <TabsTrigger value="email" className="text-xs gap-1"><Mail className="h-3 w-3" /> Email</TabsTrigger>
           <TabsTrigger value="presentation" className="text-xs gap-1"><Presentation className="h-3 w-3" /> Slides</TabsTrigger>
           <TabsTrigger value="result" className="text-xs gap-1"><FileText className="h-3 w-3" /> Result</TabsTrigger>
+          <TabsTrigger value="attachments" className="text-xs gap-1"><Paperclip className="h-3 w-3" /> Files</TabsTrigger>
         </TabsList>
 
         {/* Goal Tab */}
@@ -355,6 +401,39 @@ export function ActionContentPanel({ task, onUpdateContent, onSaveResult, onBack
                   </div>
                 </>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="attachments">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2"><Paperclip className="h-4 w-4 text-primary" /> Action attachments</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-xs text-muted-foreground">Attach working lists and evidence to this action. Files are stored with the action content; limit 2 MB per file.</p>
+              <Label htmlFor="action-attachments" className="sr-only">Choose action attachments</Label>
+              <input
+                id="action-attachments"
+                type="file"
+                multiple
+                accept=".xlsx,.xls,.csv,.pdf,.docx,.doc"
+                onChange={(event) => { void handleAttachFiles(event.target.files); event.currentTarget.value = ''; }}
+                className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:bg-background file:px-3 file:py-2"
+              />
+              <div className="space-y-2">
+                {(content.attachments || []).length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No files attached yet.</p>
+                ) : (content.attachments || []).map((attachment) => (
+                  <div key={attachment.id} className="flex items-center justify-between gap-3 rounded-md border p-3">
+                    <div className="flex min-w-0 items-center gap-2"><FileText className="h-4 w-4 shrink-0 text-primary" /><span className="truncate text-sm">{attachment.name}</span><span className="shrink-0 text-xs text-muted-foreground">{Math.ceil(attachment.size / 1024)} KB</span></div>
+                    <div className="flex shrink-0 gap-1">
+                      <Button asChild size="sm" variant="outline"><a href={attachment.dataUrl} download={attachment.name}><Download className="mr-1 h-3.5 w-3.5" />Download</a></Button>
+                      <Button size="icon" variant="ghost" aria-label={`Remove ${attachment.name}`} onClick={() => removeAttachment(attachment.id)}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

@@ -8,6 +8,7 @@ import type { DatasetQualityReport, NormalizedEntityRegistries } from '@/agents/
 import type { EnrichedCompanyProfile } from '@/agents/customerEnrichmentAgent';
 import { buildSeedProductCatalog } from '@/lib/productKnowledge';
 import { inferKamOwner } from '@/lib/kamNormalization';
+import { applyOffer153LocalConfiguration } from '@/lib/offer153CostConfiguration';
 
 // Offline / localStorage mode when Supabase is not configured
 export const isSupabaseConfigured =
@@ -239,6 +240,15 @@ export interface ActionContent {
   callScript: string;
   emailTemplate: string;
   presentationNotes: string;
+  attachments?: ActionAttachment[];
+}
+
+export interface ActionAttachment {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  dataUrl: string;
 }
 
 export interface ActionResult {
@@ -477,7 +487,13 @@ function dbToTask(r: any): MonitoringTask {
     priority: r.priority as TaskPriority, category: r.category as TaskCategory,
     assignee: r.assignee || '', dueDate: r.due_date || '', createdAt: r.created_at,
     completedAt: r.completed_at || undefined, notes: (r.notes as string[]) || [],
-    actionContent: { goal: ac.goal || '', callScript: ac.callScript || '', emailTemplate: ac.emailTemplate || '', presentationNotes: ac.presentationNotes || '' },
+    actionContent: {
+      goal: ac.goal || '',
+      callScript: ac.callScript || '',
+      emailTemplate: ac.emailTemplate || '',
+      presentationNotes: ac.presentationNotes || '',
+      attachments: Array.isArray(ac.attachments) ? ac.attachments : [],
+    },
     actionResult: ar ? { outcome: ar.outcome, timestamp: ar.timestamp, aiAnalysis: ar.aiAnalysis, alignmentScore: ar.alignmentScore, recommendations: ar.recommendations || [] } : undefined,
   };
 }
@@ -723,6 +739,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (!isSupabaseConfigured) {
         const companies = LS.get<CompanyProfile[]>('acs_companies', []);
         const profile = companies.find(c => c.id === companyId) || emptyProfile;
+        try {
+          const configurationStatus = applyOffer153LocalConfiguration(companyId, profile.company_name);
+          if (configurationStatus === 'applied') {
+            toast({ title: 'OFF-2026-153 actualizada', description: 'SR1400 104 METROS, rampa e instalación incluidos. Precio final: 165.708 EUR. Copia de seguridad local conservada.' });
+          } else if (configurationStatus === 'not-found') {
+            toast({ title: 'OFF-2026-153 pendiente de aplicar', description: 'No se encontró una única oferta OFF-2026-153 en esta compañía y origen del navegador. La configuración está preparada; no se ha creado una oferta ni un cliente ficticios.' });
+          }
+        } catch (error) {
+          console.error('Could not persist OFF-2026-153 cost configuration:', error);
+          toast({ title: 'No se pudo actualizar OFF-2026-153', description: 'No se ha confirmado el guardado. Revisa el almacenamiento local y vuelve a cargar la compañía.', variant: 'destructive' });
+        }
         setData({
           orders: dedupeOrders(LS.get(`acs_orders_${companyId}`, [])),
           opportunities: dedupeOpportunities(LS.get(`acs_opps_${companyId}`, [])),

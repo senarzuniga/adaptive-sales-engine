@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { type ContactRecord, type LeadRecord, type MonitoringTask, type OpportunityRecord, useData } from '@/store/DataStore';
+import { type ActionAttachment, type ContactRecord, type LeadRecord, type MonitoringTask, type OpportunityRecord, useData } from '@/store/DataStore';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,7 +33,7 @@ import {
   upsertAction,
   validateRepository,
 } from '@/lib/commercialActionsRepository';
-import { Layers, Play, Plus, Rocket, Save, Target, Timer, Wand2 } from 'lucide-react';
+import { Layers, Play, Plus, Rocket, Save, Target, Timer, Wand2, Sparkles, Paperclip } from 'lucide-react';
 import { isWorkspaceSupabaseConfigured, readWorkspaceRows, writeWorkspaceRows } from '@/lib/workspaceStorage';
 import { canonicalizeKamOwner, inferKamOwner } from '@/lib/kamNormalization';
 
@@ -455,7 +455,7 @@ const loadBundledCompanyOffers = async (companyName: string) => {
 };
 
 const CommercialActionsRepositoryPage = () => {
-  const { addTask, activeCompanyId, data, setContacts, setLeads, setOpportunities } = useData();
+  const { addTask, updateTask, activeCompanyId, data, setContacts, setLeads, setOpportunities, loading: dataLoading, loadedCompanyId } = useData();
   const [repository, setRepository] = useState<ActionsRepository>(() => loadRepositoryFromStorage());
   const [selectedStage, setSelectedStage] = useState(repository.lifecycle_stages[0]?.stage || 'PIPELINE_EXECUTION');
   const [activeMainTab, setActiveMainTab] = useState('management');
@@ -472,13 +472,19 @@ const CommercialActionsRepositoryPage = () => {
   const [offerPipeline, setOfferPipeline] = useState<OfferPipelineEntry[]>([]);
   const [offerPipelineLoading, setOfferPipelineLoading] = useState(true);
   const [selectedPipelineStage, setSelectedPipelineStage] = useState<PipelineStage | 'all'>('all');
-  const [pipelineKamFilter, setPipelineKamFilter] = useState('all');
-  const [pipelineRegionFilter, setPipelineRegionFilter] = useState('all');
+  const [pipelineKamFilter, setPipelineKamFilter] = useState('Heriberto');
+  const [pipelineRegionFilter, setPipelineRegionFilter] = useState('Mexico');
   const [pipelineSectorFilter, setPipelineSectorFilter] = useState('all');
   const [pipelineProductTypeFilter, setPipelineProductTypeFilter] = useState<'all' | 'service' | 'equipment'>('all');
   const [pipelineFamilyFilter, setPipelineFamilyFilter] = useState('all');
   const [pipelineStatusFilter, setPipelineStatusFilter] = useState('all');
-  const [pipelineSourceFilter, setPipelineSourceFilter] = useState<PipelineSourceFilter>('offers_opportunities');
+  const [pipelineSourceFilter, setPipelineSourceFilter] = useState<PipelineSourceFilter>('all');
+  const [validationContactDetails, setValidationContactDetails] = useState('');
+  const [validationRationale, setValidationRationale] = useState('Confirmar identidad, puesto, vigencia de los datos y permiso/canal adecuado antes de cualquier contacto comercial.');
+  const [validationAccount, setValidationAccount] = useState('');
+  const [generatingStageAction, setGeneratingStageAction] = useState<PipelineStage | null>(null);
+  const [stageAiRecommendations, setStageAiRecommendations] = useState<Record<string, string>>({});
+  const seededValidationActionCompanies = useRef(new Set<string>());
   const [pipelineSearch, setPipelineSearch] = useState('');
   const [offerSortField, setOfferSortField] = useState<OfferSortField>('contract_value');
   const [offerSortDirection, setOfferSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -500,6 +506,187 @@ const CommercialActionsRepositoryPage = () => {
     h2: ['International Paper', 'Smurfit Westrock', 'SAICA y Cartonajes Font'],
     h3: ['Convertidores Europa (DE/FR)', 'Entrada nuevas plantas', 'Alianzas estratégicas'],
   });
+
+  useEffect(() => {
+    if (!activeCompanyId || dataLoading || loadedCompanyId !== activeCompanyId || seededValidationActionCompanies.current.has(activeCompanyId)) return;
+    seededValidationActionCompanies.current.add(activeCompanyId);
+    const alreadyExists = data.tasks.some((task) =>
+      normalizeText(task.title) === normalizeText('Validar listas de contactos segmentados') &&
+      normalizeText(task.assignee) === 'heriberto' &&
+      task.notes.some((note) => normalizeText(note).includes('region: mexico'))
+    );
+    if (alreadyExists) return;
+
+    const createdAt = new Date().toISOString();
+    void addTask({
+      id: crypto.randomUUID(),
+      title: 'Validar listas de contactos segmentados',
+      description: 'Revisar, depurar y segmentar contactos con ubicación verificada en México; asociar cada contacto a su cuenta antes de iniciar la validación comercial.',
+      pillar: 'p2',
+      status: 'todo',
+      priority: 'high',
+      category: 'analysis',
+      assignee: 'Heriberto',
+      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+      createdAt,
+      notes: ['Region: Mexico', 'KAM: Heriberto', 'Fuente a revisar: CRM y ficheros de prospección', 'Pendiente adjuntar el Excel de contactos segmentados y validar los datos antes de contactar.'],
+      actionContent: {
+        goal: 'Validar datos de contacto y cuenta de cada prospecto mexicano, registrar evidencia de vigencia y priorizar los contactos verificables para el pipeline de Heriberto.',
+        callScript: 'Antes de contactar, comprobar nombre, empresa, puesto, email/teléfono, país/estado y fuente. Confirmar con el equipo que el contacto sigue vinculado a la cuenta indicada y anotar fecha, evidencia y resultado.',
+        emailTemplate: '',
+        presentationNotes: 'No tratar coincidencias de nombre de empresa, códigos telefónicos ni referencias textuales a México como prueba suficiente de ubicación. Mantener como “pendiente de validar” los registros ambiguos.',
+        attachments: [],
+      },
+    });
+  }, [activeCompanyId, dataLoading, loadedCompanyId, data.tasks, addTask]);
+
+  const validationAction = data.tasks.find((task) =>
+    normalizeText(task.title) === normalizeText('Validar listas de contactos segmentados') &&
+    normalizeText(task.assignee) === 'heriberto' &&
+    task.notes.some((note) => normalizeText(note).includes('region: mexico'))
+  );
+
+  const attachValidationWorkbook = async (file: File | undefined) => {
+    if (!file || !validationAction) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: 'El fichero supera el límite', description: 'El máximo por adjunto es 2 MB.', variant: 'destructive' });
+      return;
+    }
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(reader.error || new Error('No se pudo leer el fichero'));
+        reader.readAsDataURL(file);
+      });
+      const attachment: ActionAttachment = {
+        id: crypto.randomUUID(),
+        name: file.name,
+        mimeType: file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        size: file.size,
+        dataUrl,
+      };
+      await updateTask(validationAction.id, {
+        actionContent: {
+          ...validationAction.actionContent,
+          attachments: [...(validationAction.actionContent.attachments || []), attachment],
+        },
+      });
+      toast({ title: 'Excel adjuntado a la acción', description: file.name });
+    } catch (error) {
+      toast({ title: 'No se pudo adjuntar el fichero', description: String(error), variant: 'destructive' });
+    }
+  };
+
+  const createContactValidationTask = async () => {
+    if (!validationAccount.trim() || !validationContactDetails.trim() || !validationRationale.trim()) {
+      toast({ title: 'Completa contacto, cuenta y motivo de validación', variant: 'destructive' });
+      return;
+    }
+    const account = validationAccount.trim();
+    const rationale = validationRationale.trim();
+    const contactDetails = validationContactDetails.trim();
+    await addTask({
+      id: crypto.randomUUID(),
+      title: `Validar contacto — ${account}`,
+      description: `Validar el registro de contacto propuesto para ${account} antes de incorporarlo como contacto activo.`,
+      pillar: 'p2',
+      status: 'todo',
+      priority: 'high',
+      category: 'data',
+      assignee: 'Heriberto',
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      createdAt: new Date().toISOString(),
+      notes: ['Region: Mexico', `Account: ${account}`, `Validation rationale: ${rationale}`],
+      actionContent: {
+        goal: `Confirmar la exactitud y vigencia del contacto vinculado a ${account}, documentar fuente/fecha de validación y actualizar la ficha de cuenta.`,
+        callScript: `Datos recibidos:\n${contactDetails}\n\nMotivo de validación:\n${rationale}\n\nVerificar identidad, empresa, cargo y canal de contacto; registrar evidencia y resultado antes de iniciar prospección.`,
+        emailTemplate: '',
+        presentationNotes: `Cuenta asociada: ${account}. Responsable: Heriberto. Región: México. No contactar hasta verificar la fuente y el uso autorizado de los datos.`,
+        attachments: [],
+      },
+    });
+    setValidationContactDetails('');
+    setValidationRationale('');
+    toast({ title: 'Acción de validación creada', description: `${account} · Heriberto · México` });
+  };
+
+  const generateStageRecommendation = async (stage: PipelineStage) => {
+    const stageRows = openPipelineRecords.filter((entry) => entry.stage === stage);
+    const stageLabel = PIPELINE_STAGE_LABELS[stage];
+    const kam = pipelineKamFilter === 'all' ? 'Heriberto' : pipelineKamFilter;
+    const region = pipelineRegionFilter === 'all' ? 'Mexico' : pipelineRegionFilter;
+    const actionTitle = stage === 'contact' || stage === 'qualification'
+      ? 'Validar listas de contactos segmentados'
+      : `Impulsar pipeline ${stageLabel} — ${kam} / ${region}`;
+    const recordsEvidence = stageRows.slice(0, 12).map((entry) => `${entry.customer_name}: ${entry.title} (${entry.status})`).join('\n');
+    const promptDescription = `KAM: ${kam}. Región: ${region}. Etapa: ${stageLabel}. Registros abiertos: ${stageRows.length}. Valor abierto: EUR ${Math.round(stageRows.reduce((sum, entry) => sum + entry.contract_value, 0))}.\nRegistros que sustentan el dato:\n${recordsEvidence || 'No hay registros con los filtros actuales.'}\nPropón acciones concretas para mejorar cobertura y conversión, sin inventar contactos ni cuentas.`;
+    setGeneratingStageAction(stage);
+    try {
+      const { data: generated, error } = await supabase.functions.invoke('generate-action-content', {
+        body: {
+          type: 'generate',
+          task: { title: actionTitle, description: promptDescription, category: 'analysis', pillar: 'p2', priority: 'high', assignee: kam },
+          companyProfile: data.companyProfile,
+          contextData: {
+            pipelineStage: stageLabel,
+            owner: kam,
+            region,
+            stageCount: stageRows.length,
+            stageValue: stageRows.reduce((sum, entry) => sum + entry.contract_value, 0),
+            knownLeads: data.leads.filter((lead) => normalizeText(lead.owner) === normalizeText(kam) && normalizeText(`${lead.region} ${lead.country}`).includes(normalizeText(region))).length,
+            existingContacts: data.contacts.filter((contact) => normalizeText(contact.kam) === normalizeText(kam) && normalizeText(`${contact.region} ${contact.country}`).includes(normalizeText(region))).length,
+          },
+        },
+      });
+      if (error) throw error;
+      const recommendation = String(generated?.goal || generated?.presentationNotes || 'La IA no devolvió una recomendación estructurada.');
+      setStageAiRecommendations((previous) => ({ ...previous, [stage]: recommendation }));
+      toast({ title: 'Recomendación IA generada', description: `${stageLabel} · ${kam} · ${region}` });
+    } catch (error) {
+      const fallback = stage === 'contact' || stage === 'qualification'
+        ? `El pipeline muestra ${stageRows.length} registros en ${stageLabel}. Analizar los contactos existentes con país/estado verificable, deduplicar por email y cuenta, separar registros con datos incompletos y comenzar la validación con Heriberto en México. No asumir que una empresa o un teléfono implica ubicación mexicana.`
+        : `Revisar los ${stageRows.length} registros de ${stageLabel}, confirmar responsable y siguiente hito comercial y priorizar los casos con mayor valor y seguimiento vencido. Evidencia: ${recordsEvidence || 'sin registros con filtros actuales'}.`;
+      setStageAiRecommendations((previous) => ({ ...previous, [stage]: fallback }));
+      toast({ title: 'Recomendación local generada', description: 'El servicio IA no está disponible; se muestra una propuesta basada en los datos del pipeline.' });
+      console.error('Pipeline AI recommendation failed:', error);
+    } finally {
+      setGeneratingStageAction(null);
+    }
+  };
+
+  const createStageAction = async (stage: PipelineStage) => {
+    const stageRows = openPipelineRecords.filter((entry) => entry.stage === stage);
+    const kam = pipelineKamFilter === 'all' ? 'Heriberto' : pipelineKamFilter;
+    const region = pipelineRegionFilter === 'all' ? 'Mexico' : pipelineRegionFilter;
+    const stageLabel = PIPELINE_STAGE_LABELS[stage];
+    const isContactStage = stage === 'contact' || stage === 'qualification';
+    const title = isContactStage ? 'Validar listas de contactos segmentados' : `Impulsar pipeline ${stageLabel} — ${kam} / ${region}`;
+    const recommendation = stageAiRecommendations[stage] || `Revisar ${stageRows.length} registros de ${stageLabel} en ${region}, confirmar datos y responsables, y ejecutar los siguientes hitos priorizados.`;
+    const evidence = stageRows.slice(0, 20).map((entry) => `${entry.customer_name} · ${entry.title} · ${entry.status}`).join('\n');
+    const task: MonitoringTask = {
+      id: crypto.randomUUID(),
+      title,
+      description: `Acción derivada del drilldown de pipeline. KAM: ${kam}. Región: ${region}. Etapa: ${stageLabel}. Registros: ${stageRows.length}. Valor: EUR ${Math.round(stageRows.reduce((sum, entry) => sum + entry.contract_value, 0))}.`,
+      pillar: 'p2',
+      status: 'todo',
+      priority: stageRows.length === 0 || isContactStage ? 'high' : 'medium',
+      category: isContactStage ? 'analysis' : 'follow_up',
+      assignee: kam,
+      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+      createdAt: new Date().toISOString(),
+      notes: [`Region: ${region}`, `Pipeline stage: ${stageLabel}`, `Evidence count: ${stageRows.length}`, `Records: ${evidence || 'No matching active pipeline records.'}`],
+      actionContent: {
+        goal: recommendation,
+        callScript: `KAM: ${kam}. Región: ${region}. Etapa: ${stageLabel}.\n\nValidar primero la fuente, identidad, cuenta asociada y vigencia de cada contacto antes de iniciar cualquier contacto comercial.`,
+        emailTemplate: '',
+        presentationNotes: `Base del análisis: ${stageRows.length} elementos; EUR ${Math.round(stageRows.reduce((sum, entry) => sum + entry.contract_value, 0)).toLocaleString()}.\n${evidence || 'Sin elementos en esta etapa con los filtros globales actuales.'}\n\nRecomendación generada: ${stageAiRecommendations[stage] ? 'IA' : 'reglas locales'}; revisar y validar antes de ejecutar.`,
+        attachments: [],
+      },
+    };
+    await addTask(task);
+    toast({ title: 'Acción creada en Seguimiento', description: `${title} · ${kam} · ${region}` });
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -629,7 +816,7 @@ const CommercialActionsRepositoryPage = () => {
 
     return {
       kam: valueSet(pipelineRecords.map((entry) => entry.kam), [...REQUIRED_KAMS]),
-      region: valueSet(pipelineRecords.map((entry) => entry.region)),
+      region: valueSet(pipelineRecords.map((entry) => entry.region), ['Mexico']),
       sector: valueSet(pipelineRecords.map((entry) => entry.sector)),
       family: valueSet(pipelineRecords.map((entry) => entry.product_family)),
       status: valueSet(pipelineRecords.map((entry) => entry.status)),
@@ -794,9 +981,16 @@ const CommercialActionsRepositoryPage = () => {
     return normalizeText(`${entry.customer_name} ${entry.title} ${entry.product_name} ${entry.offer_number}`).includes(normalizedSearch);
   };
 
+  const pipelineRecordsMatchingGlobalFilters = useMemo(
+    () => pipelineRecords.filter((entry) => recordMatchesFilters(entry, false) && entry.bucket !== 'draft'),
+    [pipelineRecords, pipelineKamFilter, pipelineRegionFilter, pipelineSectorFilter, pipelineProductTypeFilter, pipelineFamilyFilter, pipelineStatusFilter, pipelineSourceFilter, pipelineSearch],
+  );
+
   const filteredPipelineRecords = useMemo(
-    () => pipelineRecords.filter((entry) => recordMatchesFilters(entry, true) && entry.bucket !== 'draft'),
-    [pipelineRecords, selectedPipelineStage, pipelineKamFilter, pipelineRegionFilter, pipelineSectorFilter, pipelineProductTypeFilter, pipelineFamilyFilter, pipelineStatusFilter, pipelineSourceFilter, pipelineSearch],
+    () => selectedPipelineStage === 'all'
+      ? pipelineRecordsMatchingGlobalFilters
+      : pipelineRecordsMatchingGlobalFilters.filter((entry) => entry.stage === selectedPipelineStage),
+    [pipelineRecordsMatchingGlobalFilters, selectedPipelineStage],
   );
 
   const filteredOfferRecords = useMemo(() => {
@@ -824,9 +1018,13 @@ const CommercialActionsRepositoryPage = () => {
   }, [offerPipeline, selectedPipelineStage, pipelineKamFilter, pipelineRegionFilter, pipelineSectorFilter, pipelineProductTypeFilter, pipelineFamilyFilter, pipelineStatusFilter, pipelineSourceFilter, pipelineSearch, offerSortField, offerSortDirection, offerAlertFilter, openOffersOnly]);
 
   const openPipelineRecords = useMemo(
-    () => filteredPipelineRecords.filter((entry) => entry.bucket === 'live'),
-    [filteredPipelineRecords],
+    () => pipelineRecordsMatchingGlobalFilters.filter((entry) => entry.bucket === 'live'),
+    [pipelineRecordsMatchingGlobalFilters],
   );
+
+  const pipelineStageDetailRecords = selectedPipelineStage === 'all'
+    ? filteredPipelineRecords
+    : openPipelineRecords.filter((entry) => entry.stage === selectedPipelineStage);
 
   const pipelineStageSummary = useMemo(() => {
     return PIPELINE_STAGES.map((stage) => {
@@ -1724,6 +1922,7 @@ const CommercialActionsRepositoryPage = () => {
                       <button
                         key={summary.stage}
                         type="button"
+                        aria-pressed={selectedPipelineStage === summary.stage}
                         className={`w-full border rounded-md p-3 text-left transition ${selectedPipelineStage === summary.stage ? 'border-primary bg-primary/5' : 'hover:border-primary/40'}`}
                         onClick={() => setSelectedPipelineStage((previous) => previous === summary.stage ? 'all' : summary.stage)}
                       >
@@ -1743,9 +1942,9 @@ const CommercialActionsRepositoryPage = () => {
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-base">Stage detail panel</CardTitle></CardHeader>
                 <CardContent className="space-y-2 max-h-[520px] overflow-auto">
-                  {filteredPipelineRecords.length === 0 ? (
+                  {pipelineStageDetailRecords.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No records for current filters.</p>
-                  ) : filteredPipelineRecords.map((entry) => (
+                  ) : pipelineStageDetailRecords.map((entry) => (
                     <div key={entry.id} className="border rounded-md p-3 space-y-2">
                       <div className="flex items-start justify-between gap-2">
                         <div>
@@ -1771,6 +1970,55 @@ const CommercialActionsRepositoryPage = () => {
               </Card>
             </div>
           )}
+
+          {selectedPipelineStage !== 'all' && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" />Recomendación y acción — {PIPELINE_STAGE_LABELS[selectedPipelineStage]}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  {stageAiRecommendations[selectedPipelineStage] || (selectedPipelineStage === 'contact' || selectedPipelineStage === 'qualification'
+                    ? `La etapa muestra ${openPipelineRecords.filter((entry) => entry.stage === selectedPipelineStage).length} registros activos. Para ${pipelineKamFilter === 'all' ? 'Heriberto' : pipelineKamFilter} / ${pipelineRegionFilter === 'all' ? 'México' : pipelineRegionFilter}, priorizar la verificación geográfica y la calidad de contacto; separar registros sin email/teléfono y asociarlos a cuentas antes de iniciar prospección.`
+                    : `Revisar los registros de esta etapa, validar el próximo hito y priorizar por valor, probabilidad y seguimiento pendiente.`)}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => void generateStageRecommendation(selectedPipelineStage)} disabled={generatingStageAction !== null}>
+                    <Sparkles className="mr-1 h-3.5 w-3.5" />{generatingStageAction === selectedPipelineStage ? 'Generando…' : 'Generar recomendación IA'}
+                  </Button>
+                  <Button size="sm" onClick={() => void createStageAction(selectedPipelineStage)}>
+                    <Plus className="mr-1 h-3.5 w-3.5" />Crear acción en Seguimiento
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2"><Target className="h-4 w-4 text-primary" />Validar contactos — Heriberto / México</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">Acción inicial creada en Seguimiento. Añade datos y motivo para abrir una tarea de validación individual y vincularla a la cuenta correcta.</p>
+              {validationAction ? (
+                <div className="rounded-md border bg-muted/30 p-3 text-xs">
+                  <p className="font-medium">{validationAction.title}</p>
+                  <p className="mt-1 text-muted-foreground">Responsable: {validationAction.assignee} · Región: México · Estado: {validationAction.status}</p>
+                  <Label htmlFor="mexico-validation-workbook" className="mt-3 flex items-center gap-1"><Paperclip className="h-3.5 w-3.5" />Adjuntar Excel segmentado (máx. 2 MB)</Label>
+                  <input id="mexico-validation-workbook" type="file" accept=".xlsx,.xls,.csv" className="mt-2 block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:bg-background file:px-3 file:py-2" onChange={(event) => { void attachValidationWorkbook(event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} />
+                  {(validationAction.actionContent.attachments || []).map((attachment) => <p key={attachment.id} className="mt-1 text-xs text-muted-foreground">Adjunto: {attachment.name}</p>)}
+                </div>
+              ) : (
+                <p className="rounded-md border p-3 text-sm text-muted-foreground">Selecciona la compañía activa para guardar esta acción en Seguimiento.</p>
+              )}
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1"><Label htmlFor="validation-account">Cuenta asociada</Label><Input id="validation-account" value={validationAccount} onChange={(event) => setValidationAccount(event.target.value)} list="mexico-account-suggestions" placeholder="Nombre de la cuenta en México" /><datalist id="mexico-account-suggestions">{Array.from(new Set([...data.contacts.map((contact) => contact.companyName), ...data.leads.map((lead) => lead.companyName), ...data.opportunities.map((opportunity) => opportunity.customerName)].filter(Boolean))).sort().map((account) => <option key={account} value={account} />)}</datalist></div>
+                <div className="space-y-1"><Label htmlFor="validation-rationale">Motivo / argumento de validación</Label><Textarea id="validation-rationale" rows={3} value={validationRationale} onChange={(event) => setValidationRationale(event.target.value)} placeholder="Qué dato validar, por qué y qué evidencia confirmar" /></div>
+              </div>
+              <div className="space-y-1"><Label htmlFor="validation-contact-details">Datos del contacto a validar</Label><Textarea id="validation-contact-details" rows={4} value={validationContactDetails} onChange={(event) => setValidationContactDetails(event.target.value)} placeholder="Nombre, cargo, email, teléfono, empresa, ubicación y fuente. Incluye solo los datos necesarios para la validación." /></div>
+              <div className="flex justify-end"><Button size="sm" onClick={() => void createContactValidationTask()} disabled={!validationAction}><Plus className="mr-1 h-3.5 w-3.5" />Crear validación de contacto</Button></div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="offers" className="space-y-4">

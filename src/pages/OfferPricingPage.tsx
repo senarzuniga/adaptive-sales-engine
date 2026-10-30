@@ -655,9 +655,11 @@ export default function OfferPricingPage() {
   const recalculateCostLine = (line: CostLine): CostLine => {
     const next = { ...line };
     if (next.category === 'engineering') {
-      next.totalCost = lineTotal(next.hours * next.hourlyRate, 0, next.structurePct);
+      const base = next.hours === 0 && next.hourlyRate === 0 ? next.quantity * next.unitCost : next.hours * next.hourlyRate;
+      next.totalCost = lineTotal(base, 0, next.structurePct);
     } else if (next.category === 'installation') {
-      next.totalCost = lineTotal(next.days * next.resources * next.unitCost, next.surchargePct, next.structurePct);
+      const base = next.installation ? computeInstallationCost(next.installation, pricingPolicy).labor : next.days * next.resources * next.unitCost;
+      next.totalCost = lineTotal(base, next.surchargePct, next.structurePct);
     } else {
       next.totalCost = lineTotal(next.quantity * next.unitCost, next.surchargePct, next.structurePct);
     }
@@ -758,7 +760,7 @@ export default function OfferPricingPage() {
     const days = Number(line.days || 0);
     const resources = Number(line.resources || 0);
     const baseTotal = category === 'engineering'
-      ? hours * hourlyRate
+      ? (hours === 0 && hourlyRate === 0 ? quantity * unitCost : hours * hourlyRate)
       : category === 'installation'
         ? days * resources * unitCost
         : quantity * unitCost;
@@ -924,7 +926,8 @@ export default function OfferPricingPage() {
             const labor = computeInstallationCost(updated.installation, pricingPolicy).labor;
             updated.totalCost = lineTotal(labor, 0, updated.structurePct);
           } else if (updated.category === 'engineering') {
-            updated.totalCost = lineTotal(updated.hours * updated.hourlyRate, 0, updated.structurePct);
+            const base = updated.hours === 0 && updated.hourlyRate === 0 ? updated.quantity * updated.unitCost : updated.hours * updated.hourlyRate;
+            updated.totalCost = lineTotal(base, 0, updated.structurePct);
           } else if (updated.category === 'installation') {
             updated.totalCost = lineTotal(updated.days * updated.resources * updated.unitCost, updated.surchargePct, updated.structurePct);
           } else {

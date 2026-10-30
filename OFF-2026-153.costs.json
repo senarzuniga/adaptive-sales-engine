@@ -1,0 +1,66 @@
+{
+  "revision": "OFF-2026-153-SR1400-104M-2026-10-30-v1",
+  "companyName": "Ingecart 2018 SL",
+  "offerNumber": "OFF-2026-153",
+  "currency": "EUR",
+  "sellingPrice": 165708,
+  "product": {
+    "name": "SR1400 104 METROS",
+    "lengthM": 104,
+    "quantity": 1,
+    "materials": [
+      ["CADENA", 208, 163.45],
+      ["UNIÓN CADENA", 5, 44.95],
+      ["PIÑÓN", 1, 595.25],
+      ["BOMBA DE ENGRASE", 1, 800],
+      ["CHAPAS", 83.2, 75],
+      ["BRAZOS LARGO", 104, 5.35],
+      ["BRAZOS CORTOS", 104, 2.12],
+      ["SOMBRERO", 41.6, 12],
+      ["DESLIDUR LARGO", 208, 9],
+      ["DESLIDUR CORTO", 624, 6.5],
+      ["CILINDRO", 1, 300],
+      ["CEPILLO", 1, 200],
+      ["CHARNELA HEMBRA", 1, 35],
+      ["CHARNELA MACHO", 1, 46],
+      ["CONTRACHARNELA", 1, 40],
+      ["PERNO CHARNELA", null, null],
+      ["CODO", 1, 7],
+      ["MANÓMETRO", null, null],
+      ["VÁLVULA", 1, 51],
+      ["SILENCIADOR", 1, 3],
+      ["MATERIAL FERRETERÍA 1 KW", 1, 500],
+      ["TACOS", 10, 1],
+      ["MOTOR 5 KW", 1, 363.6],
+      ["REDUCTOR PG503PC SIST RETAL SALIDA 65MM", 1, 1677.9],
+      ["MOTOR REDUCTOR DEL CEPILLO", 1, 255],
+      ["ELECTROVÁLVULA", 1, 50],
+      ["RODAMIENTO 6308 2RS", 2, 8.5],
+      ["GRUPILLAS", 2, 0.4],
+      ["SELFOIL", 2, 1.5],
+      ["MATERIAL ELÉCTRICO", 1, 2500],
+      ["GRUPO MANTENIMIENTO NEUMÁTICO", 1, 150]
+    ],
+    "processes": [
+      { "name": "INSTALACIÓN ELÉCTRICA", "category": "subcontracting", "quantity": 1, "unitCost": 2000 },
+      { "name": "MECANIZACIÓN TALLER PUNTAS", "category": "subcontracting", "quantity": 1, "unitCost": 3500 },
+      { "name": "INGENIERÍA", "category": "engineering", "quantity": 1, "unitCost": 2500 },
+      { "name": "MONTAJE EN TALLER - horas", "category": "subcontracting", "quantity": 65, "unitCost": 50 }
+    ]
+  },
+  "ramp": { "name": "RAMPA", "category": "materials", "quantity": 1, "unitCost": 17400 },
+  "installation": {
+    "name": "INSTALACIÓN TODO INCLUIDO",
+    "quantity": 1,
+    "unitCost": 25100,
+    "includes": ["Instalación", "Viajes", "Hotel", "Dietas y demás gastos asociados"],
+    "note": "Importe cerrado de 25.100 EUR. No añadir de nuevo viajes/hotel/transporte. No se han facilitado días, personas ni tarifa diaria."
+  },
+  "expected": { "materialsProduct": 55270.98, "subcontracting": 8750, "engineering": 2500, "productCost": 66520.98, "rampCost": 17400, "installationCost": 25100, "directCost": 109020.98, "contributionBeforePolicy": 56687.02 },
+  "notes": [
+    "Fuente: instrucciones expresas del usuario de 30/10/2026; no son precios de proveedor auditados.",
+    "PERNO CHARNELA y MANÓMETRO: cantidad y precio no facilitados; conservar líneas pendientes a coste cero, no inventar cantidades.",
+    "Los 2.000 EUR de instalación eléctrica pertenecen a los procesos del producto y se mantienen además de los 25.100 EUR de instalación global, conforme al desglose solicitado.",
+    "Conservar las condiciones comerciales, cliente, estado, KAM y política de recargos existentes. El precio final de venta queda fijado en 165.708 EUR; el coste directo no incluye recargos de política ASE."
+  ]
+}

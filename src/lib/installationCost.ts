@@ -8,6 +8,8 @@ export type InstallationDestination = 'spain' | 'europe' | 'usa' | 'internationa
  * Every rate is optional: when omitted the company cost policy value is applied.
  */
 export interface InstallationPlan {
+  /** Approved all-inclusive lump sum; do not infer duration/headcount or add travel twice. */
+  fixedTotalCost?: number;
   days: number;
   resources: number;
   hoursPerDay?: number;
@@ -72,6 +74,16 @@ export const resolveFlightCost = (plan: InstallationPlan, policy: OfferCostPolic
   plan.flightCost !== undefined ? num(plan.flightCost) : plan.destination === 'usa' || plan.destination === 'international' ? policy.flightUsa : policy.flightEurope;
 
 export function computeInstallationCost(plan: InstallationPlan, policy: OfferCostPolicy = DEFAULT_INGECART_POLICY): InstallationCostResult {
+  if (plan.fixedTotalCost !== undefined) {
+    const total = Math.max(0, num(plan.fixedTotalCost));
+    return {
+      labor: total,
+      travel: 0,
+      total,
+      laborPerResourceDay: 0,
+      breakdown: [{ key: 'all-inclusive', label: 'Installation including travel, hotel and expenses', formula: 'Approved lump sum', amount: total, group: 'labor' }],
+    };
+  }
   const days = Math.max(0, num(plan.days));
   const resources = Math.max(0, num(plan.resources));
   const hoursPerDay = plan.hoursPerDay !== undefined ? num(plan.hoursPerDay) : policy.workingHoursPerDay;
@@ -133,6 +145,7 @@ export function computeInstallationCost(plan: InstallationPlan, policy: OfferCos
 }
 
 export const describeInstallationPlan = (plan: InstallationPlan, result: InstallationCostResult) => {
+  if (plan.fixedTotalCost !== undefined) return `All-inclusive installation: ${result.total.toFixed(2)} EUR; travel, hotel and expenses included. Duration and headcount not specified.`;
   const travel = plan.travelMode === 'car'
     ? `car ${num(plan.distanceKm)} km`
     : plan.travelMode === 'plane'

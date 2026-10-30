@@ -54,4 +54,5 @@ src/utils/supabase/
 cache/
 uploads/
 data/web_scraped/
+outputs/private/
 
