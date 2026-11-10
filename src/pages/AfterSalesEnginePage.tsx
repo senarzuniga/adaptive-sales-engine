@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useWorkspaceRevision } from '@/hooks/useWorkspaceRevision';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useData } from '@/store/DataStore';
@@ -148,7 +149,8 @@ export default function AfterSalesEnginePage() {
     }
   }, [activeCompanyId]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  const workspaceRevision = useWorkspaceRevision(activeCompanyId);
+  useEffect(() => { loadData(); }, [loadData, workspaceRevision]);
 
   // --- Existing save functions ---
   const saveAsset = async () => {

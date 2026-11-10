@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useWorkspaceRevision } from '@/hooks/useWorkspaceRevision';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -118,6 +119,7 @@ const DashboardPage = () => {
   const { language } = useLanguage();
   const isEs = language === 'es';
   const { data, hasData, activeCompanyId, companies, commercialSnapshot, aiActionQueue } = useData();
+  const workspaceRevision = useWorkspaceRevision(activeCompanyId);
   const [workspaceSnapshot, setWorkspaceSnapshot] = useState<WorkspaceSnapshot>(EMPTY_SNAPSHOT);
   const [offerStatusFilter, setOfferStatusFilter] = useState<OfferStatusFilter>('all');
   const [forecastHypothesisText, setForecastHypothesisText] = useState('');
@@ -186,7 +188,7 @@ const DashboardPage = () => {
     return () => {
       mounted = false;
     };
-  }, [activeCompany.company_name, activeCompanyId]);
+  }, [activeCompany.company_name, activeCompanyId, workspaceRevision]);
 
   const derivedOffers = useMemo<WorkspaceOfferRow[]>(() => mergeUniqueRows<WorkspaceOfferRow>([
     ...data.orders.map((order) => ({ offer_number: order.oppNumber, title: `${order.customerName} - ${order.productFamily}`, customer_name: order.customerName, contract_value: order.sellingPrice, probability: 100, status: 'won', region: order.region, country: order.country, kam: order.kam, decision_date: order.poDate, submitted_at: order.firstOfferDate, next_action: 'Move the sold opportunity into project execution governance.', context: 'Derived from confirmed sales data.', document_paths: [] })),

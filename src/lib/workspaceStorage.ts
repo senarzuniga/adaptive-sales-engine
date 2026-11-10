@@ -33,6 +33,42 @@ export const isWorkspaceSupabaseConfigured =
 export const getWorkspaceStorageKey = (table: WorkspaceTableName, companyId: string) =>
   `acs_workspace_${table}_${companyId}`;
 
+export const WORKSPACE_CHANGED_EVENT = 'ase-workspace-changed';
+
+export function publishWorkspaceChange(key: string) {
+  window.dispatchEvent(new CustomEvent(WORKSPACE_CHANGED_EVENT, { detail: { key } }));
+}
+
+/** Same-tab writes, other tabs and returning to the app share one refresh contract. */
+export function subscribeCompanyStorage(companyId: string, refresh: () => void): () => void {
+  let queued = false;
+  let disposed = false;
+  const schedule = () => {
+    if (queued || disposed) return;
+    queued = true;
+    queueMicrotask(() => { queued = false; if (!disposed) refresh(); });
+  };
+  const changed = (event: Event) => {
+    const key = event instanceof StorageEvent ? event.key : (event as CustomEvent<{ key: string }>).detail?.key;
+    if (!key || key === 'acs_companies' || key.endsWith(`_${companyId}`)) schedule();
+  };
+  const visible = () => { if (document.visibilityState === 'visible') schedule(); };
+  window.addEventListener(WORKSPACE_CHANGED_EVENT, changed);
+  window.addEventListener('storage', changed);
+  window.addEventListener('focus', schedule);
+  document.addEventListener('visibilitychange', visible);
+  // Remote mode also reconciles external database edits while the panel stays open.
+  const reconciliation = isWorkspaceSupabaseConfigured ? window.setInterval(visible, 30000) : undefined;
+  return () => {
+    disposed = true;
+    window.removeEventListener(WORKSPACE_CHANGED_EVENT, changed);
+    window.removeEventListener('storage', changed);
+    window.removeEventListener('focus', schedule);
+    document.removeEventListener('visibilitychange', visible);
+    if (reconciliation !== undefined) window.clearInterval(reconciliation);
+  };
+}
+
 export function readWorkspaceRows<T = any>(table: WorkspaceTableName, companyId: string | null | undefined): T[] {
   if (!companyId) return [];
   try {
@@ -45,9 +81,13 @@ export function readWorkspaceRows<T = any>(table: WorkspaceTableName, companyId:
 
 export function writeWorkspaceRows<T = any>(table: WorkspaceTableName, companyId: string | null | undefined, rows: T[]): void {
   if (!companyId) return;
+  const key = getWorkspaceStorageKey(table, companyId);
+  const value = rows.length ? JSON.stringify(rows) : null;
+  if (localStorage.getItem(key) === value) return;
   if (rows.length === 0) {
-    localStorage.removeItem(getWorkspaceStorageKey(table, companyId));
-    return;
+    localStorage.removeItem(key);
+  } else {
+    localStorage.setItem(key, value!);
   }
-  localStorage.setItem(getWorkspaceStorageKey(table, companyId), JSON.stringify(rows));
+  publishWorkspaceChange(key);
 }

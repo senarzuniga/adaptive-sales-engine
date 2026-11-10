@@ -156,13 +156,14 @@ export const hydrateCommercialTerms = (row: any): OfferCommercialTerms => {
   if (!row) return defaults;
   const rawMilestones = Array.isArray(row.payment_milestones) ? row.payment_milestones : row.paymentMilestones;
   return {
-    equipmentIncoterm: String(row.equipment_incoterm || row.equipmentIncoterm || defaults.equipmentIncoterm),
-    incotermLocation: String(row.incoterm_location || row.incotermLocation || defaults.incotermLocation),
-    deliveryMonths: Number(row.delivery_months || row.deliveryMonths || defaults.deliveryMonths),
-    deliveryNotes: String(row.delivery_notes || row.deliveryNotes || defaults.deliveryNotes),
-    validityDays: Number(row.validity_days || row.validityDays || defaults.validityDays),
-    warrantyMonths: Number(row.warranty_months || row.warrantyMonths || defaults.warrantyMonths),
-    paymentMilestones: Array.isArray(rawMilestones) && rawMilestones.length > 0
+    // Explicit blanks/zero/[] mean unspecified, not permission to invent default terms.
+    equipmentIncoterm: String(row.equipment_incoterm ?? row.equipmentIncoterm ?? defaults.equipmentIncoterm),
+    incotermLocation: String(row.incoterm_location ?? row.incotermLocation ?? defaults.incotermLocation),
+    deliveryMonths: Number(row.delivery_months ?? row.deliveryMonths ?? defaults.deliveryMonths),
+    deliveryNotes: String(row.delivery_notes ?? row.deliveryNotes ?? defaults.deliveryNotes),
+    validityDays: Number(row.validity_days ?? row.validityDays ?? defaults.validityDays),
+    warrantyMonths: Number(row.warranty_months ?? row.warrantyMonths ?? defaults.warrantyMonths),
+    paymentMilestones: Array.isArray(rawMilestones)
       ? rawMilestones.map((milestone) => createPaymentMilestone(milestone))
       : defaults.paymentMilestones,
   };

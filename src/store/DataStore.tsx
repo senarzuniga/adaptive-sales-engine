@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { buildCommercialIntelligence, harmonizeCommercialRecords } from '@/lib/commercialIntelligence';
@@ -9,6 +9,8 @@ import type { EnrichedCompanyProfile } from '@/agents/customerEnrichmentAgent';
 import { buildSeedProductCatalog } from '@/lib/productKnowledge';
 import { inferKamOwner } from '@/lib/kamNormalization';
 import { applyOffer153LocalConfiguration } from '@/lib/offer153CostConfiguration';
+import { recoverMissingIngecartData } from '@/lib/ingecartWorkspaceRecovery';
+import { publishWorkspaceChange, subscribeCompanyStorage } from '@/lib/workspaceStorage';
 
 // Offline / localStorage mode when Supabase is not configured
 export const isSupabaseConfigured =
@@ -20,9 +22,18 @@ const LS = {
     try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
   },
   set: <T,>(key: string, val: T) => {
-    try { localStorage.setItem(key, JSON.stringify(val)); } catch { /* storage full */ }
+    try {
+      const value = JSON.stringify(val);
+      if (localStorage.getItem(key) === value) return;
+      localStorage.setItem(key, value);
+      publishWorkspaceChange(key);
+    } catch { /* storage full */ }
   },
-  del: (key: string) => localStorage.removeItem(key),
+  del: (key: string) => {
+    if (localStorage.getItem(key) === null) return;
+    localStorage.removeItem(key);
+    publishWorkspaceChange(key);
+  },
 };
 
 type WorkspaceTableName =
@@ -36,6 +47,8 @@ type WorkspaceTableName =
   | 'cost_breakdowns'
   | 'offer_scenarios'
   | 'offer_scores'
+  | 'offer_packages'
+  | 'offer_commercial_terms'
   | 'installed_base_assets'
   | 'service_contracts'
   | 'service_interventions'
@@ -64,6 +77,8 @@ const WORKSPACE_TABLES: WorkspaceTableName[] = [
   'cost_breakdowns',
   'offer_scenarios',
   'offer_scores',
+  'offer_packages',
+  'offer_commercial_terms',
   'installed_base_assets',
   'service_contracts',
   'service_interventions',
@@ -668,6 +683,9 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
+// Shared across StrictMode effects and concurrent providers; never used in remote mode.
+let localBootstrap: Promise<void> | null = null;
+
 export function DataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<DataState>({
     orders: [],
@@ -690,6 +708,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   // Company whose dataset finished loading; lets panels distinguish "not loaded yet" from "empty".
   const [loadedCompanyId, setLoadedCompanyId] = useState<string | null>(null);
+  const loadRequest = useRef(0);
 
   const commercialSnapshot = useMemo(() => buildCommercialIntelligence({
     company: data.companyProfile,
@@ -734,17 +753,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // Load company data
   const loadCompanyData = useCallback(async (companyId: string) => {
+    const request = ++loadRequest.current;
     setLoading(true);
     try {
       if (!isSupabaseConfigured) {
         const companies = LS.get<CompanyProfile[]>('acs_companies', []);
         const profile = companies.find(c => c.id === companyId) || emptyProfile;
         try {
+          await recoverMissingIngecartData(companyId, profile.company_name);
+        } catch (error) {
+          toast({ title: 'Snapshot Ingecart no disponible', description: String(error), variant: 'destructive' });
+        }
+        if (request !== loadRequest.current) return;
+        try {
           const configurationStatus = applyOffer153LocalConfiguration(companyId, profile.company_name);
           if (configurationStatus === 'applied') {
             toast({ title: 'OFF-2026-153 actualizada', description: 'SR1400 104 METROS, rampa e instalación incluidos. Precio final: 165.708 EUR. Copia de seguridad local conservada.' });
           } else if (configurationStatus === 'not-found') {
-            toast({ title: 'OFF-2026-153 pendiente de aplicar', description: 'No se encontró una única oferta OFF-2026-153 en esta compañía y origen del navegador. La configuración está preparada; no se ha creado una oferta ni un cliente ficticios.' });
+            toast({ title: 'OFF-2026-153 requiere revisión', description: 'Hay registros duplicados o una compañía incompatible. No se han sobrescrito datos ambiguos.' });
           }
         } catch (error) {
           console.error('Could not persist OFF-2026-153 cost configuration:', error);
@@ -776,6 +802,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         supabase.from('companies').select('*').eq('id', companyId).single(),
       ]);
 
+      if (request !== loadRequest.current) return;
       setData({
         orders: dedupeOrders((ordersRes.data || []).map(dbToOrder)),
         opportunities: dedupeOpportunities((oppsRes.data || []).map(dbToOpportunity)),
@@ -809,13 +836,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
         } : emptyProfile,
       });
     } finally {
-      setLoading(false);
-      setLoadedCompanyId(companyId);
+      if (request === loadRequest.current) {
+        setLoading(false);
+        setLoadedCompanyId(companyId);
+      }
     }
   }, []);
 
+  useEffect(() => {
+    if (!activeCompanyId) return;
+    return subscribeCompanyStorage(activeCompanyId, () => { void loadCompanyData(activeCompanyId); });
+  }, [activeCompanyId, loadCompanyData]);
+
   // Set active company
   const setActiveCompany = useCallback((id: string | null) => {
+    ++loadRequest.current;
     setActiveCompanyIdState(id);
     if (id) {
       localStorage.setItem('acs_active_company', id);
@@ -942,7 +977,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (pack.entityRegistries) LS.set(`acs_registries_${id}`, pack.entityRegistries);
       if (pack.qualityReports?.length) LS.set(`acs_quality_${id}`, pack.qualityReports);
       if (pack.enrichedProfiles?.length) LS.set(`acs_enriched_${id}`, pack.enrichedProfiles);
-      writeLocalWorkspacePack(id, workspace);
+      writeLocalWorkspacePack(id, Object.fromEntries(Object.entries(workspace).map(([table, rows]) => [
+        table, rows.map(row => ({ ...row, ...(row.company_id ? { company_id: id } : {}) })),
+      ])));
       // Reload companies list so the full merged profile appears in the UI
       await loadCompanies();
       setActiveCompany(id);
@@ -1428,7 +1465,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       leads: `acs_leads_${activeCompanyId}`,
       contacts: `acs_contacts_${activeCompanyId}`,
     };
-    LS.del(localKeys[key]);
+    // An intentional clear is an explicit empty dataset, not missing recoverable data.
+    LS.set(localKeys[key], []);
     if (!isSupabaseConfigured) {
       setData(prev => ({ ...prev, [key]: [] }));
       return;
@@ -1441,6 +1479,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const clearAll = useCallback(async () => {
     if (!activeCompanyId) return;
+    localStorage.setItem(`acs_ingecart_recovery_disabled_${activeCompanyId}`, 'true');
     getLocalCompanyDataKeys(activeCompanyId).forEach((storageKey) => LS.del(storageKey));
     writeLocalWorkspacePack(activeCompanyId, {});
     if (!isSupabaseConfigured) {
@@ -1498,11 +1537,39 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // Initial load
   useEffect(() => {
-    loadCompanies().then(() => {
+    let cancelled = false;
+    const initialize = async () => {
+      try {
+        if (!isSupabaseConfigured && (localBootstrap || localStorage.getItem('acs_companies') === null)) {
+          if (!localBootstrap) {
+            localBootstrap = (async () => {
+              const response = await fetch('/company-packs/Ingecart/ingecart_pack.json', { cache: 'no-cache' });
+              if (!response.ok) throw new Error(`No se pudo cargar el pack Ingecart: HTTP ${response.status}`);
+              const pack = await response.json();
+              if (pack?.companyProfile?.company_name !== 'Ingecart 2018 SL' || !Array.isArray(pack?.workspace?.offers)) {
+                throw new Error('El snapshot no corresponde a Ingecart 2018 SL.');
+              }
+              // An explicit [] (including deletion) or a company created while fetching wins.
+              if (localStorage.getItem('acs_companies') !== null) return;
+              await importCompanyPack(JSON.stringify(pack));
+            })().finally(() => { localBootstrap = null; });
+          }
+          await localBootstrap;
+        }
+      } catch (error) {
+        if (!cancelled) toast({ title: 'Snapshot Ingecart no disponible', description: String(error), variant: 'destructive' });
+      }
+      if (cancelled) return;
+      await loadCompanies();
+      if (cancelled) return;
       const saved = localStorage.getItem('acs_active_company');
-      if (saved) loadCompanyData(saved);
-    });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+      const stored = !isSupabaseConfigured ? LS.get<CompanyProfile[]>('acs_companies', []) : [];
+      const selected = saved || (stored.length === 1 ? stored[0].id : null);
+      if (selected) setActiveCompany(selected);
+    };
+    void initialize();
+    return () => { cancelled = true; };
+  }, [importCompanyPack, loadCompanies, setActiveCompany]);
 
   const hasData =
     data.orders.length > 0 ||

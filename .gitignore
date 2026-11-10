@@ -55,4 +55,8 @@ cache/
 uploads/
 data/web_scraped/
 outputs/private/
+public/ase-instance.json
+ASE_Lovable.exe
+# Microsoft Office lock files are session artefacts, not deliverables.
+~$*
 

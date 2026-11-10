@@ -22,6 +22,7 @@ import {
 import { buildFallbackIntelligenceReport } from '@/lib/businessIntelligenceFallback';
 import { buildProductIntelligence, buildSeedProductCatalog } from '@/lib/productKnowledge';
 import { isWorkspaceSupabaseConfigured, readWorkspaceRows, writeWorkspaceRows } from '@/lib/workspaceStorage';
+import { useWorkspaceRevision } from '@/hooks/useWorkspaceRevision';
 import { EXTERNAL_KNOWLEDGE_LIBRARY } from '@/lib/externalKnowledgeLibrary';
 
 type Report = {
@@ -68,6 +69,7 @@ const SectionCard = ({ icon: Icon, title, children, className = '' }: any) => (
 
 export default function BusinessIntelligencePage() {
   const { activeCompanyId: selectedCompanyId, data: workspaceData } = useData();
+  const workspaceRevision = useWorkspaceRevision(selectedCompanyId);
   const { language } = useLanguage();
   const queryClient = useQueryClient();
 
@@ -92,7 +94,7 @@ export default function BusinessIntelligencePage() {
 
   const externalMarketReferences = useMemo(() => EXTERNAL_KNOWLEDGE_LIBRARY.filter((entry) => entry.area === 'market-intelligence').slice(0, 14), []);
   const { data: reports = [], isLoading } = useQuery({
-    queryKey: ['bi-reports', selectedCompanyId],
+    queryKey: ['bi-reports', selectedCompanyId, workspaceRevision],
     queryFn: async () => {
       if (!selectedCompanyId) return [];
 

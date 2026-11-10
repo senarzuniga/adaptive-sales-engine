@@ -2,6 +2,7 @@ import rawSpecification from '../../OFF-2026-153.costs.json?raw';
 import type { ProductRecord } from '@/store/DataStore';
 import { DEFAULT_INGECART_POLICY } from '@/lib/utils';
 import { summarizePackageCostWithPolicy } from '@/lib/offerPackages';
+import { publishWorkspaceChange } from '@/lib/workspaceStorage';
 
 type Row = Record<string, any>;
 interface Specification {
@@ -87,18 +88,32 @@ export function buildOffer153Configuration(offer: Row, now = new Date().toISOStr
   };
 }
 
-/** One-time local data correction. Never create an invented offer/customer or overwrite another company. */
-export function applyOffer153LocalConfiguration(companyId: string, companyName: string): 'applied' | 'already-applied' | 'not-found' | 'other-company' {
+/** Load the user-authorized offer if missing; never invent its customer or overwrite another company. */
+export function applyOffer153LocalConfiguration(companyId: string, companyName: string): 'applied' | 'already-applied' | 'not-found' | 'other-company' | 'cleared' {
   const spec = offer153Specification;
   if (normalize(companyName) !== normalize(spec.companyName)) return 'other-company';
+  if (localStorage.getItem(`acs_ingecart_recovery_disabled_${companyId}`) === 'true') return 'cleared';
   const marker = `acs_cost_configuration_${companyId}_${spec.revision}`;
-  if (localStorage.getItem(marker)) return 'already-applied';
   const key = (table: string) => `acs_workspace_${table}_${companyId}`;
   const read = (storageKey: string): Row[] => JSON.parse(localStorage.getItem(storageKey) || '[]');
   const offers = read(key('offers'));
   const targets = offers.filter((offer) => String(offer.offer_number || '').trim().toUpperCase() === spec.offerNumber && (!offer.company_id || offer.company_id === companyId));
-  if (targets.length !== 1) return 'not-found';
-  const offer = targets[0];
+  if (targets.length > 1 || offers.some((row) => String(row.offer_number || '').trim().toUpperCase() === spec.offerNumber && row.company_id && row.company_id !== companyId)) return 'not-found';
+  if (targets.length === 1 && localStorage.getItem(marker)) return 'already-applied';
+  let previousOfferId: string | undefined;
+  try { previousOfferId = JSON.parse(localStorage.getItem(marker) || 'null')?.offerId; } catch { /* Invalid old receipt is not a valid offer. */ }
+  const now = new Date().toISOString();
+  const offer = targets[0] || {
+    id: previousOfferId || crypto.randomUUID(), company_id: companyId, offer_number: spec.offerNumber,
+    title: 'SR1400 104 METROS + RAMPA + INSTALACIÓN',
+    customer_name: '', company_name: spec.companyName,
+    project_description: 'Sistema retal SR1400 de 104 m, rampa y servicio de instalación con viajes, hotel y demás gastos incluidos. Cliente pendiente de confirmar: no facilitado en la solicitud.',
+    status: 'draft', currency: spec.currency, document_language: 'es',
+    probability: 0, target_margin: 20,
+    context: 'Oferta cargada por solicitud expresa del usuario. Cliente pendiente de identificar; no emitir sin validar cliente, condiciones y partidas pendientes.',
+    next_action: 'Confirmar cliente, condiciones comerciales, perno charnela y manómetro antes de emitir la oferta.',
+    created_at: now, updated_at: now, source: 'OFF-2026-153.costs.json', storage: 'local',
+  };
   const result = buildOffer153Configuration(offer);
   const oldItems = read(key('offer_items'));
   const oldItemIds = new Set(oldItems.filter((item) => item.offer_id === offer.id).map((item) => item.id));
@@ -107,7 +122,7 @@ export function applyOffer153LocalConfiguration(companyId: string, companyName: 
   const oldProduct = products.find((entry) => normalize(entry.name) === normalize(spec.product.name));
   const updatedProducts = [...products.filter((entry) => normalize(entry.name) !== normalize(spec.product.name)), { ...oldProduct, ...result.product, averageValue: oldProduct?.averageValue ?? 0 }];
   const updates: Record<string, string | null> = {
-    [key('offers')]: JSON.stringify(offers.map((entry) => entry.id === offer.id ? result.offer : entry)),
+    [key('offers')]: JSON.stringify([result.offer, ...offers.filter((entry) => entry.id !== offer.id)]),
     [key('offer_items')]: JSON.stringify([...oldItems.filter((item) => item.offer_id !== offer.id), ...result.items]),
     [key('cost_breakdowns')]: JSON.stringify([...read(key('cost_breakdowns')).filter((row) => !oldItemIds.has(row.offer_item_id)), ...result.costRows]),
     [key('offer_packages')]: JSON.stringify([...read(key('offer_packages')).filter((row) => row.offer_id !== offer.id), ...result.packages]),
@@ -136,5 +151,6 @@ export function applyOffer153LocalConfiguration(companyId: string, companyName: 
     }
     throw error;
   }
+  publishWorkspaceChange(key('offers'));
   return 'applied';
 }

@@ -1,5 +1,20 @@
 # 🚀 App Launcher
 
+## ASE Lovable — Windows (reparación 2026-10-30)
+
+El lanzador de Lovable/React es [ASE_Lovable.cmd](../ASE_Lovable.cmd), en la raíz. El ejecutable local ASE_Lovable.exe usa exactamente el mismo arranque mediante [AseLovableLauncher.cs](AseLovableLauncher.cs); no contiene otra implementación del servidor. Se reconstruye con [scripts/build_ase_launcher.ps1](../scripts/build_ase_launcher.ps1).
+
+- [scripts/launch_ase.cjs](../scripts/launch_ase.cjs) localiza el Vite del repositorio, elige un puerto libre entre 8080 y 8090 y espera la respuesta real de la aplicación antes de abrir Chrome.
+- Comprueba identidad del repositorio, HTML de React y módulo de entrada. Un servidor con listado de archivos no se acepta aunque devuelva HTTP 200.
+- No depende de npm en PATH ni de PowerShell anidado. Node.js 20+ y las dependencias del proyecto deben estar instalados.
+- Desde la corrección de perfil nuevo del 10/11/2026, usa siempre `http://127.0.0.1:puerto/`, también al reutilizar un estado de arranque antiguo con localhost. Coincide con el host IPv4 del servidor y el origen de la oferta compartida. No migra ni fusiona almacenamiento entre hosts, puertos o perfiles de Chrome.
+- El arranque abre la raíz de la aplicación; no fija una oferta global. Para revisar S138, navegar manualmente a `/offer-pricing?offer=OFF-2026-S138` en el mismo origen verificado.
+- La huella local de instancia y el EXE compilado se excluyen de Git; el código fuente sí se conserva.
+- Registro de arranque: `%TEMP%/adaptive-sales-engine-vite.log`. URL/estado verificado: `%TEMP%/adaptive-sales-engine-launch.json`.
+- Evidencia histórica (30/10): arranque sin servidor ASE previo, reutilización desde CMD y EXE y apertura de Chrome comprobados en localhost:8081. La corrección del 10/11 añade pruebas de origen IPv4, normalización del estado previo y navegación genérica a las cuatro pruebas de identidad/puertos de [scripts/launch_ase.test.cjs](../scripts/launch_ase.test.cjs).
+
+El launcher Python genérico descrito a continuación es independiente; no sustituye al frontend Lovable.
+
 A zero-dependency, Python-based desktop launcher that lets you start, stop, and monitor any local project from a single window.
 
 ---

@@ -16,12 +16,12 @@ const seed = () => {
   localStorage.setItem(`acs_opps_${companyId}`, JSON.stringify([{ oppNumber: 'OFF-2026-137', customerName: 'Saica', status: 'open', estRevenue: 50000, contractProb: 40 }]));
 };
 
-const renderPage = () => render(
+const renderPage = (route = '/offer-pricing') => render(
   <QueryClientProvider client={new QueryClient()}>
     <LanguageProvider>
       <DataProvider>
         <TooltipProvider>
-          <MemoryRouter initialEntries={['/offer-pricing']}>
+          <MemoryRouter initialEntries={[route]}>
             <OfferPricingPage />
           </MemoryRouter>
         </TooltipProvider>
@@ -116,6 +116,29 @@ describe('Offer pricing save flow without Supabase', () => {
     fireEvent.change(screen.getByLabelText('Search offers'), { target: { value: 'sigmaq guatemala' } });
     expect(screen.getByText('OFF-2026-138')).toBeTruthy();
     expect(screen.getByText('Sigmaq Guatemala FFG MID LINE PALLETIZER')).toBeTruthy();
+  }, 30000);
+
+  it('loads OFF-2026-153 into the real Ingecart history from an empty offers list and retains it after reload', async () => {
+    localStorage.clear();
+    const ingecartId = 'ingecart-2018-sl';
+    localStorage.setItem('acs_companies', JSON.stringify([{ id: ingecartId, company_name: 'Ingecart 2018 SL', enrichment_status: 'validated' }]));
+    localStorage.setItem('acs_active_company', ingecartId);
+    const first = renderPage('/offer-pricing?offer=OFF-2026-153');
+    await waitFor(() => expect(screen.getByText('OFF-2026-153')).toBeTruthy());
+    expect((screen.getByLabelText('Search offers') as HTMLInputElement).value).toBe('OFF-2026-153');
+    fireEvent.change(screen.getByLabelText('Search offers'), { target: { value: 'OFF-2026-153' } });
+    expect(screen.getByText('SR1400 104 METROS + RAMPA + INSTALACIÓN')).toBeTruthy();
+    const saved = JSON.parse(localStorage.getItem(`acs_workspace_offers_${ingecartId}`)!);
+    expect(saved.find((row: any) => row.offer_number === 'OFF-2026-153')).toMatchObject({ contract_value: 165708, customer_name: '', status: 'draft' });
+    const product = JSON.parse(localStorage.getItem(`acs_products_${ingecartId}`)!).find((row: any) => row.name === 'SR1400 104 METROS');
+    expect(product.estimatedCost).toBe(66520.98);
+    first.unmount();
+    renderPage();
+    const reloadedHistory = await screen.findByRole('tab', { name: /history/i });
+    fireEvent.mouseDown(reloadedHistory, { button: 0 });
+    fireEvent.click(reloadedHistory);
+    await waitFor(() => expect(screen.getByText('OFF-2026-153')).toBeTruthy());
+    expect(JSON.parse(localStorage.getItem(`acs_workspace_offers_${ingecartId}`)!).filter((row: any) => row.offer_number === 'OFF-2026-153')).toHaveLength(1);
   }, 30000);
 
   it('duplicates a cost block with reductions and stores it in repository', async () => {

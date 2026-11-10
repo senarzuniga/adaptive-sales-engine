@@ -1,0 +1,68 @@
+{
+  "offer": {
+    "id": "draft-off-2026-s138-saica-recetas",
+    "offer_number": "OFF-2026-S138",
+    "offer_kind": "service",
+    "title": "SAICA - Estación de gestión de recetas y acceso remoto",
+    "customer_name": "Saica",
+    "company_name": "INGECART Engineering & Auditing",
+    "currency": "EUR",
+    "status": "draft",
+    "storage": "staging-json-not-yet-persisted-to-ase-workspace",
+    "contract_value": 20853.45,
+    "total_cost": 15447,
+    "target_margin": 35,
+    "target_margin_interpretation": "ASE service reference markup over estimated direct cost; not the post-tax margin target and not an approved Saica price.",
+    "document_language": "es",
+    "project_description": "Suministro, configuración y puesta en marcha de estación industrial de recetas para proceso de 3 canales P/F/E, PLC Siemens S7-1200, separación de redes OT/IT y acceso remoto controlado. Oferta presupuestaria preliminar basada en Propuesta_PC_Recetas_Saica.pdf v1.0; requiere decisiones de Saica, cotización de proveedor y aprobación comercial INGECART.",
+    "source_pdf": "C:\\Users\\isena\\Documents\\INGECART\\POSTVENTA\\SAICA\\Propuesta_PC_Recetas_Saica.pdf",
+    "source_pages": "1-11",
+    "price_basis": "206 h × 62 EUR/h midpoint + hardware base midpoints 2,675 EUR (PC, conditional OS license, UPS/protection and mounting materials) = 15,447 EUR direct-cost midpoint. ASE service reference markup 35% => 20,853.45 EUR one-time draft estimate. Optional local monitor: 500 EUR direct midpoint / 675 EUR at same markup. Annual license midpoint: 1,080 EUR cost / 1,458 EUR annual price at same markup, billed separately.",
+    "price_approval": "PENDING: commercial owner to approve hourly rate, markup/target margin, hardware quote, recurring license tier, tax, travel/freight, payment, validity, warranty and acceptance terms.",
+    "sequence_status": "Proposed next service number after known ASE annual service references OFF-2026-S133 through S137. Check actual ASE workspace and global offer register before final issue; numbering is not reserved by this staging file.",
+    "created_at": "2026-11-05",
+    "probability": 0,
+    "context": "No customer contact, publication, remote persistence or email performed. Local staging package only; ASE browser instance has no active company workspace selected and Supabase environment is not configured.",
+    "next_action": "Open in the intended ASE Lovable company workspace, confirm no OFF-2026-S138 collision, create/save as local draft, and confirm pricing/terms before issuing."
+  },
+  "items": [
+    {
+      "id": "draft-off-2026-s138-item-recipe-station",
+      "offer_id": "draft-off-2026-s138-saica-recetas",
+      "item_name": "Estación industrial de recetas y soporte remoto controlado",
+      "item_type": "service",
+      "quantity": 1,
+      "description": "Configuración y suministro de PC industrial con 2 NIC, gestión/versionado/transferencia de recetas, integración S7-1200 por S7/PUT-GET sujeto a validación, hardening, pruebas simuladas y reales, documentación, formación (12 h) y puesta en marcha (16 h). Estimación de ingeniería total 206 h, rango razonable 175–235 h. Monitor local excluido del precio base; licencias anuales separadas.",
+      "cost_lines": [
+        {"id":"s138-cost-pc","category":"materials","line_item":"PC industrial fanless, 16 GB RAM, SSD y 2 NIC Gigabit independientes","quantity":1,"unit_cost":1900,"total_cost":1900,"notes":"Estimación fuente 1.400–2.400 EUR; midpoint draft. Cotización de proveedor pendiente.","source_page":8},
+        {"id":"s138-cost-os","category":"materials","line_item":"Windows 11 IoT Enterprise LTSC (si no viene incluido)","quantity":1,"unit_cost":200,"total_cost":200,"notes":"Estimación 150–250 EUR; validar bundle de fabricante y licencia Saica.","source_page":8},
+        {"id":"s138-cost-ups","category":"materials","line_item":"SAI/UPS y protección eléctrica","quantity":1,"unit_cost":325,"total_cost":325,"notes":"Estimación 200–450 EUR; validar dimensionamiento.","source_page":8},
+        {"id":"s138-cost-mount","category":"materials","line_item":"Material de montaje, latiguillos y pequeños componentes","quantity":1,"unit_cost":250,"total_cost":250,"notes":"Estimación 150–350 EUR.","source_page":8},
+        {"id":"s138-cost-engineering","category":"engineering","line_item":"Ingeniería, desarrollo, pruebas, puesta en marcha y formación","quantity":206,"unit_cost":62,"total_cost":12772,"hours":206,"hourly_rate":62,"notes":"206 h fuente; rango 175–235 h. Tarifa de referencia 55–70 EUR/h; 62 EUR/h solo midpoint provisional, por aprobar. Desglose detallado en dossier y DOCX.","source_page":7}
+      ]
+    }
+  ],
+  "optional_items": [
+    {"item_name":"Puesto local de operación: monitor, teclado y ratón industriales","quantity":1,"estimated_direct_cost_eur_range":[300,700],"draft_cost_midpoint_eur":500,"draft_price_at_35_percent_markup_eur":675,"included_in_base":false,"source_page":8},
+    {"item_name":"Licencias anuales de acceso remoto y antivirus/control de aplicaciones","estimated_direct_cost_eur_range_per_year":[610,1550],"draft_midpoint_cost_eur_per_year":1080,"draft_midpoint_price_at_35_percent_markup_eur_per_year":1458,"draft_customer_price_range_at_35_percent_markup_eur_per_year":[823.5,2092.5],"recurring":true,"source_page":9}
+  ],
+  "optional_standard_service_contracts_not_in_core_total": [
+    {"service":"Mantenimiento preventivo anual","scope":"3 visitas presenciales/año × 4 días/visita","price":"To be quoted separately; excluded from recipe-station package"},
+    {"service":"Informes de ingeniería","scope":"12 reports/year based on available equipment data/monitoring","price":"To be quoted separately; excluded from recipe-station package"},
+    {"service":"TPM preventive-maintenance sheets","scope":"Official INGECART TPM sheets for agreed equipment","price":"To be quoted separately; excluded from recipe-station package"},
+    {"service":"Remote/field technical support","scope":"Up to 165 remote-support hours/year; remote initial response target 4h after complete notification/access; on-site mobilization target 48h when confirmed necessary; not repair-completion guarantees; separate annex required","price":"To be quoted separately; excluded from recipe-station package"}
+  ],
+  "package": {
+    "id":"draft-off-2026-s138-core",
+    "package_name":"Suministro e implantación estación de recetas (sin monitor opcional ni licencias recurrentes)",
+    "package_type":"core",
+    "item_ids":["draft-off-2026-s138-item-recipe-station"],
+    "commercial_price":20853.45,
+    "executive_summary":"Precio de planificación calculado con midpoints y markup de referencia ASE; sujeto a revisión comercial y cotización de hardware. No emitir como oferta firme."
+  },
+  "annual_cost_lines_not_in_one_time_contract": [
+    {"category":"indirect","line_item":"Acceso remoto (TeamViewer o solución industrial aprobada por Saica IT)","cost_range_eur_per_year":[550,1400],"source_page":9},
+    {"category":"indirect","line_item":"Antivirus o application control (o solución corporativa Saica)","cost_range_eur_per_year":[60,150],"source_page":9}
+  ],
+  "unresolved_terms": ["IVA/impuestos","viaje, alojamiento, transporte, flete","validez de oferta","garantía","hitos y plazo de pago","criterios de aceptación","modelo/quote final de hardware","nivel y licencias de acceso remoto","coexistencia o sustitución de recetas SCADA","receta/campos y nivel de trazabilidad"]
+}

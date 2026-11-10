@@ -1,0 +1,53 @@
+{
+  "offer": {
+    "offer_number": "OFF-2026-R120",
+    "revision": "Rev.3 (draft revision of existing R120; existing Rev.2 must be preserved)",
+    "offer_kind": "standard",
+    "title": "IP Waterloo - Critical Spare Parts Package for SR1400 System",
+    "document_file": "INGECART_IP_Waterloo_Critical_Spare_Parts_OFF-2026-R120_Rev3_DRAFT.docx",
+    "customer_name": "International Paper (IP) Waterloo",
+    "site": "IP Waterloo Facility (USA)",
+    "currency": "EUR",
+    "status": "draft",
+    "storage": "staging-json-not-saved-to-ase-workspace",
+    "issue_date": "2026-11-06",
+    "estimated_delivery": "8 weeks ready for shipment upon PO; timing to be confirmed",
+    "delivery_basis": "FCA Barcelona OR EXW workshop — customer to confirm one Incoterm and named place before issue",
+    "contract_value_line_sum_eur": 17489.06,
+    "customer_supplied_total_eur": 23336.14,
+    "reconciliation_status": "HOLD_NOT_FOR_ISSUE: the 10 supplied line extensions sum to EUR 17,489.06, not the stated EUR 23,336.14; unexplained difference EUR 5,847.08. Stated quantity totals 38 but line quantities sum to 28. Obtain corrected approved BOM/prices/total before final issue.",
+    "source_existing_reference": "OFF-2026-R120 existing offer; repository review found the saved R120 package has another stated total (EUR 17,286.03) and Rev.2. This draft must be reconciled against the authoritative original and should not overwrite it.",
+    "source_rules": "Customer-facing selling prices only. No internal cost, markup, margin, supplier quote or hourly cost disclosed.",
+    "payment_terms": "Not approved/provided for this revision; the existing artifact contains the unclear phrase 'F000 DEMAND PAYMENT'. Replace with approved terms before issue.",
+    "created_by": "INGECART Proposal Coordinator — draft staging",
+    "next_action": "Reconcile R120 existing Rev.2, correct line sum/quantity and approve Incoterm, payment, warranty/validity and total; then create/export Rev.3 in the intended ASE company workspace."
+  },
+  "items": [
+    {"item_name":"CHAIN WITH WELDED LUGS (SR1400 Main Track)","category":"spare parts","criticality":"B","quantity":10,"unit_price_eur":567.00,"line_total_eur":5670.00},
+    {"item_name":"DRIVE GEARBOX ASSEMBLY","category":"spare parts","criticality":"A","quantity":1,"unit_price_eur":3964.05,"line_total_eur":3964.05},
+    {"item_name":"DRIVE MOTOR HIGH-TORQUE","category":"spare parts","criticality":"A","quantity":1,"unit_price_eur":981.72,"line_total_eur":981.72},
+    {"item_name":"SPROCKET HEAVY DUTY","category":"spare parts","criticality":"B","quantity":1,"unit_price_eur":1705.05,"line_total_eur":1705.05},
+    {"item_name":"SINAMICS G120C FREQUENCY INVERTER","category":"spare parts","criticality":"C","quantity":1,"unit_price_eur":1515.43,"line_total_eur":1515.43},
+    {"item_name":"RETURN PULLEY ASSEMBLY","category":"spare parts","criticality":"B","quantity":1,"unit_price_eur":1520.00,"line_total_eur":1520.00},
+    {"item_name":"PNEUMATIC ACTUATION CYLINDER","category":"spare parts","criticality":"B","quantity":1,"unit_price_eur":648.54,"line_total_eur":648.54},
+    {"item_name":"SIEMENS SITOP PSU300S 24VDC/10A","category":"spare parts","criticality":"A","quantity":1,"unit_price_eur":467.99,"line_total_eur":467.99},
+    {"item_name":"SAFETY RELAY 3NO+1NC","category":"spare parts","criticality":"A","quantity":1,"unit_price_eur":404.68,"line_total_eur":404.68},
+    {"item_name":"LONG SCRAPER ARM (Set of 10)","category":"spare parts","criticality":"B","quantity":10,"unit_price_eur":61.16,"line_total_eur":611.60}
+  ],
+  "criticality_logic": {
+    "A":"Critical production components; one unit on site recommended by source offer, subject to engineering approval.",
+    "B":"Wear/routine maintenance parts; stock according to approved PM schedule.",
+    "C":"Strategic/long-lead component; pre-emptive plant stock recommended, validate lead-time and compatibility."
+  },
+  "commercial_sections": {
+    "core_scope":"Critical spare parts package for SR1400 only.",
+    "optional_standard_service":"Annual maintenance, field support and lifecycle service are not included in this spare-parts total; quote separately if requested.",
+    "exclusions":"Installation, commissioning, travel, duties/taxes, payment, warranty, offer validity and returns are unconfirmed and must be approved before issue."
+  },
+  "optional_annual_services_not_in_spares_total": [
+    {"service":"Preventive maintenance programme","scope":"3 on-site visits/year × up to 4 working days/visit","price":"Separate quotation required"},
+    {"service":"Critical spare-parts lifecycle management","scope":"Criticality review, stock/reorder points and lifecycle/obsolescence tracking","price":"Separate quotation required"},
+    {"service":"Service reporting and TPM","scope":"Visit report after each visit, up to 12 engineering reports/year and official TPM sheets for agreed equipment","price":"Separate quotation required"},
+    {"service":"Remote/field technical support","scope":"Up to 165 h/year; remote initial response target 4 h after complete notification/access; on-site mobilization target 48 h when confirmed necessary; not repair-completion guarantees; Annex 1 required","price":"Separate quotation required"}
+  ]
+}

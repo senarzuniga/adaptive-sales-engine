@@ -21,6 +21,7 @@ import { CommercialIntelligencePanel } from '@/components/analysis360/Commercial
 import { ForecastDashboard } from '@/components/analysis360/ForecastDashboard';
 import { buildPipelineMetrics, getProbabilityGuidance, isNeglectedStatus, isOpenOpportunityStatus, normalizeOpportunityStatus } from '@/lib/salesData';
 import { readWorkspaceRows, isWorkspaceSupabaseConfigured } from '@/lib/workspaceStorage';
+import { useWorkspaceRevision } from '@/hooks/useWorkspaceRevision';
 import { supabase } from '@/integrations/supabase/client';
 
 interface WorkspaceOfferRecord extends Record<string, any> {
@@ -138,6 +139,7 @@ const summarizeReport = (report: WorkspaceReportRecord) => {
 const Analysis360Page = () => {
   const { t } = useLanguage();
   const { data, activeCompanyId } = useData();
+  const workspaceRevision = useWorkspaceRevision(activeCompanyId);
   const navigate = useNavigate();
   const [periodFilter, setPeriodFilter] = useState<string>('all');
   const [workspaceSnapshot, setWorkspaceSnapshot] = useState<WorkspaceSnapshot>({ offers: [], projects: [], reports: [] });
@@ -198,7 +200,7 @@ const Analysis360Page = () => {
     return () => {
       isMounted = false;
     };
-  }, [activeCompanyId, company.company_name]);
+  }, [activeCompanyId, company.company_name, workspaceRevision]);
 
   const soldOfferIndex = useMemo(() => {
     const map = new Map<string, WorkspaceOfferRecord>();

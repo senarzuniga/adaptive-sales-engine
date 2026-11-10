@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useWorkspaceRevision } from '@/hooks/useWorkspaceRevision';
 import { supabase } from '@/integrations/supabase/client';
 import { type ActionAttachment, type ContactRecord, type LeadRecord, type MonitoringTask, type OpportunityRecord, useData } from '@/store/DataStore';
 import { Badge } from '@/components/ui/badge';
@@ -34,7 +35,7 @@ import {
   validateRepository,
 } from '@/lib/commercialActionsRepository';
 import { Layers, Play, Plus, Rocket, Save, Target, Timer, Wand2, Sparkles, Paperclip } from 'lucide-react';
-import { isWorkspaceSupabaseConfigured, readWorkspaceRows, writeWorkspaceRows } from '@/lib/workspaceStorage';
+import { isWorkspaceSupabaseConfigured, readWorkspaceRows, writeWorkspaceRows, publishWorkspaceChange } from '@/lib/workspaceStorage';
 import { canonicalizeKamOwner, inferKamOwner } from '@/lib/kamNormalization';
 
 const getPathLabel = (value: string) => value.split(/[\\/]/).pop() || value;
@@ -349,7 +350,7 @@ const normalizeOfferPipelineEntry = (offer: Record<string, any>): OfferPipelineE
   const productType = inferProductType(`${title} ${contextText}`);
   const kam = inferKam(customerName, String(offer.kam || ''), String(offer.country || ''), region);
   const stage = offer.stage ? String(offer.stage) as PipelineStage : normalizePipelineStage(status, bucket);
-  const successProbabilityRaw = Number(offer.probability ?? offer.contract_prob ?? offer.score ?? (bucket === 'sold' ? 100 : bucket === 'draft' ? 0 : 50));
+  const successProbabilityRaw = Number(offer.probability ?? offer.success_probability ?? offer.contract_prob ?? offer.score ?? (bucket === 'sold' ? 100 : bucket === 'draft' ? 0 : 50));
   const successProbability = Number.isFinite(successProbabilityRaw) ? Math.max(0, Math.min(100, successProbabilityRaw)) : 0;
   const nextFollowUp = String(offer.next_follow_up || offer.next_followup || offer.follow_up_date || '');
   const recordType = String(offer.record_type || '').toLowerCase();
@@ -456,6 +457,9 @@ const loadBundledCompanyOffers = async (companyName: string) => {
 
 const CommercialActionsRepositoryPage = () => {
   const { addTask, updateTask, activeCompanyId, data, setContacts, setLeads, setOpportunities, loading: dataLoading, loadedCompanyId } = useData();
+  const workspaceRevision = useWorkspaceRevision(activeCompanyId);
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const [lastRefresh, setLastRefresh] = useState('');
   const [repository, setRepository] = useState<ActionsRepository>(() => loadRepositoryFromStorage());
   const [selectedStage, setSelectedStage] = useState(repository.lifecycle_stages[0]?.stage || 'PIPELINE_EXECUTION');
   const [activeMainTab, setActiveMainTab] = useState('management');
@@ -472,8 +476,8 @@ const CommercialActionsRepositoryPage = () => {
   const [offerPipeline, setOfferPipeline] = useState<OfferPipelineEntry[]>([]);
   const [offerPipelineLoading, setOfferPipelineLoading] = useState(true);
   const [selectedPipelineStage, setSelectedPipelineStage] = useState<PipelineStage | 'all'>('all');
-  const [pipelineKamFilter, setPipelineKamFilter] = useState('Heriberto');
-  const [pipelineRegionFilter, setPipelineRegionFilter] = useState('Mexico');
+  const [pipelineKamFilter, setPipelineKamFilter] = useState('all');
+  const [pipelineRegionFilter, setPipelineRegionFilter] = useState('all');
   const [pipelineSectorFilter, setPipelineSectorFilter] = useState('all');
   const [pipelineProductTypeFilter, setPipelineProductTypeFilter] = useState<'all' | 'service' | 'equipment'>('all');
   const [pipelineFamilyFilter, setPipelineFamilyFilter] = useState('all');
@@ -614,8 +618,8 @@ const CommercialActionsRepositoryPage = () => {
   const generateStageRecommendation = async (stage: PipelineStage) => {
     const stageRows = openPipelineRecords.filter((entry) => entry.stage === stage);
     const stageLabel = PIPELINE_STAGE_LABELS[stage];
-    const kam = pipelineKamFilter === 'all' ? 'Heriberto' : pipelineKamFilter;
-    const region = pipelineRegionFilter === 'all' ? 'Mexico' : pipelineRegionFilter;
+    const kam = pipelineKamFilter === 'all' ? 'Sin asignar' : pipelineKamFilter;
+    const region = pipelineRegionFilter === 'all' ? 'Todas las regiones' : pipelineRegionFilter;
     const actionTitle = stage === 'contact' || stage === 'qualification'
       ? 'Validar listas de contactos segmentados'
       : `Impulsar pipeline ${stageLabel} — ${kam} / ${region}`;
@@ -645,7 +649,7 @@ const CommercialActionsRepositoryPage = () => {
       toast({ title: 'Recomendación IA generada', description: `${stageLabel} · ${kam} · ${region}` });
     } catch (error) {
       const fallback = stage === 'contact' || stage === 'qualification'
-        ? `El pipeline muestra ${stageRows.length} registros en ${stageLabel}. Analizar los contactos existentes con país/estado verificable, deduplicar por email y cuenta, separar registros con datos incompletos y comenzar la validación con Heriberto en México. No asumir que una empresa o un teléfono implica ubicación mexicana.`
+        ? `El pipeline muestra ${stageRows.length} registros en ${stageLabel}. Analizar los contactos existentes con país/estado verificable, deduplicar por email y cuenta, separar registros con datos incompletos y confirmar responsable y territorio antes de validar. Contexto: ${kam} / ${region}. No inferir ubicación por nombre o teléfono.`
         : `Revisar los ${stageRows.length} registros de ${stageLabel}, confirmar responsable y siguiente hito comercial y priorizar los casos con mayor valor y seguimiento vencido. Evidencia: ${recordsEvidence || 'sin registros con filtros actuales'}.`;
       setStageAiRecommendations((previous) => ({ ...previous, [stage]: fallback }));
       toast({ title: 'Recomendación local generada', description: 'El servicio IA no está disponible; se muestra una propuesta basada en los datos del pipeline.' });
@@ -657,8 +661,8 @@ const CommercialActionsRepositoryPage = () => {
 
   const createStageAction = async (stage: PipelineStage) => {
     const stageRows = openPipelineRecords.filter((entry) => entry.stage === stage);
-    const kam = pipelineKamFilter === 'all' ? 'Heriberto' : pipelineKamFilter;
-    const region = pipelineRegionFilter === 'all' ? 'Mexico' : pipelineRegionFilter;
+    const kam = pipelineKamFilter === 'all' ? 'Sin asignar' : pipelineKamFilter;
+    const region = pipelineRegionFilter === 'all' ? 'Todas las regiones' : pipelineRegionFilter;
     const stageLabel = PIPELINE_STAGE_LABELS[stage];
     const isContactStage = stage === 'contact' || stage === 'qualification';
     const title = isContactStage ? 'Validar listas de contactos segmentados' : `Impulsar pipeline ${stageLabel} — ${kam} / ${region}`;
@@ -719,7 +723,7 @@ const CommercialActionsRepositoryPage = () => {
         }
 
         if (isMounted) {
-          setOfferPipeline(sortOfferPipelineEntries(mergeOfferSources(remoteOffers || [], localOffers, bundledOffers)));
+          setOfferPipeline(sortOfferPipelineEntries(mergeOfferSources(localOffers, remoteOffers || [], bundledOffers)));
         }
       } catch {
         const localOffers = readWorkspaceRows<Record<string, any>>('offers', activeCompanyId);
@@ -730,6 +734,7 @@ const CommercialActionsRepositoryPage = () => {
       } finally {
         if (isMounted) {
           setOfferPipelineLoading(false);
+          setLastRefresh(new Date().toLocaleTimeString());
         }
       }
     };
@@ -738,7 +743,7 @@ const CommercialActionsRepositoryPage = () => {
     return () => {
       isMounted = false;
     };
-  }, [activeCompanyId, data.companyProfile.company_name]);
+  }, [activeCompanyId, data.companyProfile.company_name, workspaceRevision, refreshVersion]);
 
   const pipelineRecords = useMemo(() => {
     const fromOffers = offerPipeline;
@@ -750,7 +755,7 @@ const CommercialActionsRepositoryPage = () => {
       const customerName = String((opportunity.customer_name || opportunity.customerName) || 'Customer pending');
       const sourceText = `${title} ${(opportunity.product_family || opportunity.productFamily) || ''}`;
       return normalizeOfferPipelineEntry({
-        id: `opp-${opportunity.id}`,
+        id: `opp-${opportunity.id || opportunity.oppNumber || opportunity.opp_number || `${customerName}|${title}`}`,
         offer_number: (opportunity.opp_number || opportunity.oppNumber) || opportunity.id,
         title,
         customer_name: customerName,
@@ -761,7 +766,8 @@ const CommercialActionsRepositoryPage = () => {
         region: String(opportunity.region || ''),
         sector: String((opportunity.segment || opportunity.sector) || 'Corrugated Packaging'),
         kam: String(opportunity.kam || ''),
-        contract_value: Number((opportunity.est_revenue || opportunity.estRevenue) || 0),
+        contract_value: Number(opportunity.est_revenue ?? opportunity.estRevenue ?? 0),
+        success_probability: Number(opportunity.contract_prob ?? opportunity.contractProb ?? 0),
         score: Number((opportunity.contract_prob || opportunity.contractProb) || 0),
         source: 'Opportunities',
         record_type: 'opportunity',
@@ -776,7 +782,7 @@ const CommercialActionsRepositoryPage = () => {
       const status = String(lead.status || 'new');
       const stage = status === 'qualified' ? 'qualification' : 'contact';
       return normalizeOfferPipelineEntry({
-        id: `lead-${lead.id}`,
+        id: `lead-${lead.id || `${lead.company_name || lead.companyName}|${lead.leadName || lead.email || ''}`}`,
         offer_number: lead.id,
         title: String(lead.source || 'Lead qualification'),
         customer_name: String((lead.company_name || lead.companyName) || 'Prospect'),
@@ -800,8 +806,11 @@ const CommercialActionsRepositoryPage = () => {
     const combined = [...fromOffers, ...fromOpportunities, ...fromLeads];
     const deduped = new Map<string, OfferPipelineEntry>();
     combined.forEach((entry) => {
-      const key = `${normalizeText(entry.customer_name)}|${normalizeText(entry.title)}|${entry.stage}`;
-      if (!deduped.has(key) || (deduped.get(key)?.score || 0) < entry.score) {
+      const key = entry.record_type === 'lead'
+        ? entry.id
+        : normalizeText(entry.offer_number || `${entry.customer_name}|${entry.title}`);
+      // Saved offers precede opportunities: one business reference must not be counted twice.
+      if (!deduped.has(key)) {
         deduped.set(key, entry);
       }
     });
@@ -1595,6 +1604,43 @@ const CommercialActionsRepositoryPage = () => {
         <Card><CardContent className="pt-4 pb-3"><p className="text-xs text-muted-foreground">Execution Rule</p><p className="text-sm font-semibold">No partial execution</p></CardContent></Card>
       </div>
 
+      <Card>
+        <CardContent className="pt-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm">
+              <p className="font-medium">Datos de {data.companyProfile.company_name || 'la compañía seleccionada'}</p>
+              <p className="text-xs text-muted-foreground">Ofertas: {offerPipeline.length} · Oportunidades: {data.opportunities.length} · Leads: {data.leads.length} · Contactos: {data.contacts.length} · Acciones del plan: {data.tasks.length} · {offerPipelineLoading || dataLoading ? 'Actualizando…' : `Última lectura: ${lastRefresh || 'pendiente'}`}</p>
+              <p className="text-xs text-muted-foreground">{isWorkspaceSupabaseConfigured ? 'Supabase + caché local + snapshot; reconciliación visible cada 30 s.' : 'Datos locales + snapshot de referencia. Se actualizan al guardar y al volver a la aplicación; no es una consulta en tiempo real a sistemas externos.'}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => {
+                setRefreshVersion((value) => value + 1);
+                if (activeCompanyId) publishWorkspaceChange(`acs_workspace_offers_${activeCompanyId}`);
+              }}>Actualizar datos</Button>
+              <Button size="sm" variant="outline" onClick={() => {
+                setSelectedPipelineStage('all'); setPipelineKamFilter('all'); setPipelineRegionFilter('all');
+                setPipelineSectorFilter('all'); setPipelineProductTypeFilter('all'); setPipelineFamilyFilter('all');
+                setPipelineStatusFilter('all'); setPipelineSourceFilter('all'); setPipelineSearch(''); setOfferAlertFilter('all'); setOpenOffersOnly(false);
+              }}>Quitar filtros</Button>
+            </div>
+          </div>
+          {pipelineRecordsMatchingGlobalFilters.length === 0 && offerPipeline.length > 0 && <p className="text-sm text-amber-700">Hay ofertas cargadas, pero los filtros o el estado borrador las excluyen del pipeline. Revisa Ofertas o pulsa Quitar filtros; los borradores no se contabilizan como negocio activo.</p>}
+          <p className="text-xs text-muted-foreground">Total Actions y Next Best Action corresponden a la biblioteca de acciones modelo; no sustituyen al plan ejecutable de {data.tasks.length} acciones guardadas en Seguimiento.</p>
+          <details className="rounded-md border p-3">
+            <summary className="cursor-pointer text-sm font-medium">Plan de acciones guardadas ({data.tasks.length})</summary>
+            <div className="mt-3 max-h-80 space-y-2 overflow-auto">
+              {data.tasks.length === 0 ? <p className="text-sm text-muted-foreground">No hay acciones guardadas para esta compañía.</p> : data.tasks.map((task) => (
+                <div key={task.id} className="rounded-md border p-2 text-sm">
+                  <p className="font-medium">{task.title}</p>
+                  <p className="text-xs text-muted-foreground">{task.assignee || 'Sin responsable'} · {task.status} · {task.priority} · {task.dueDate ? task.dueDate.slice(0, 10) : 'Sin fecha'}</p>
+                </div>
+              ))}
+            </div>
+            <Button asChild size="sm" variant="outline" className="mt-3"><a href="/monitoring">Abrir Seguimiento de acciones</a></Button>
+          </details>
+        </CardContent>
+      </Card>
+
       <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="space-y-4">
         <TabsList className="flex flex-wrap h-auto">
           <TabsTrigger value="management">Gestión Comercial</TabsTrigger>
@@ -1843,13 +1889,13 @@ const CommercialActionsRepositoryPage = () => {
         <TabsContent value="pipeline" className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="text-sm text-muted-foreground">Common pipeline view: Contact - Qualification - Meeting - Proposal - Negotiation - Closing - Retention.</div>
-            <Button variant="outline" size="sm" onClick={seedPipelineBaseline}>Load KAM baseline</Button>
+            <Button variant="outline" size="sm" onClick={seedPipelineBaseline}>Cargar ejemplo KAM (datos sintéticos)</Button>
           </div>
 
           <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Total pipeline items</CardTitle></CardHeader>
-              <CardContent><p className="text-2xl font-semibold">{filteredPipelineRecords.length}</p></CardContent>
+              <CardContent><p data-testid="pipeline-total-count" className="text-2xl font-semibold">{filteredPipelineRecords.length}</p></CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Proposal + negotiation</CardTitle></CardHeader>
@@ -1979,7 +2025,7 @@ const CommercialActionsRepositoryPage = () => {
               <CardContent className="space-y-3">
                 <p className="text-sm text-muted-foreground">
                   {stageAiRecommendations[selectedPipelineStage] || (selectedPipelineStage === 'contact' || selectedPipelineStage === 'qualification'
-                    ? `La etapa muestra ${openPipelineRecords.filter((entry) => entry.stage === selectedPipelineStage).length} registros activos. Para ${pipelineKamFilter === 'all' ? 'Heriberto' : pipelineKamFilter} / ${pipelineRegionFilter === 'all' ? 'México' : pipelineRegionFilter}, priorizar la verificación geográfica y la calidad de contacto; separar registros sin email/teléfono y asociarlos a cuentas antes de iniciar prospección.`
+                    ? `La etapa muestra ${openPipelineRecords.filter((entry) => entry.stage === selectedPipelineStage).length} registros activos. Para ${pipelineKamFilter === 'all' ? 'todos los KAM' : pipelineKamFilter} / ${pipelineRegionFilter === 'all' ? 'todas las regiones' : pipelineRegionFilter}, priorizar la verificación geográfica y la calidad de contacto; separar registros sin email/teléfono y asociarlos a cuentas antes de iniciar prospección.`
                     : `Revisar los registros de esta etapa, validar el próximo hito y priorizar por valor, probabilidad y seguimiento pendiente.`)}
                 </p>
                 <div className="flex flex-wrap gap-2">

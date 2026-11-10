@@ -11801,6 +11801,52 @@
     }
   },
   "workspace": {
+    "offer_packages": [
+      {
+        "id": "recovered-off-2026-s138-saica-package",
+        "offer_id": "recovered-off-2026-s138-saica-rev3",
+        "package_name": "Reposición PC Industrial SAICA · Rev. 3",
+        "package_type": "core",
+        "item_ids": ["recovered-off-2026-s138-saica-item"],
+        "commercial_price": 5450,
+        "executive_summary": "Venta sin IVA: suministro 2.176,44 EUR + ingeniería/restauración 3.273,56 EUR. Intervención puntual, no mantenimiento anual.",
+        "sort_order": 1,
+        "created_at": "2026-11-10T00:00:00.000Z"
+      }
+    ],
+    "offer_scenarios": [
+      {
+        "id": "recovered-off-2026-s138-saica-base",
+        "offer_id": "recovered-off-2026-s138-saica-rev3",
+        "scenario_type": "base",
+        "total_cost": 4776.44,
+        "selling_price": 5450,
+        "margin_amount": 673.56,
+        "margin_pct": 12.358899082568807,
+        "ai_analysis": {
+          "source": "Rev. 3 suministrada por el usuario",
+          "cost_status": "PROVISIONAL: 40 h de ingeniería eléctrica a 65 EUR/h, tarifa interna NO APROBADA",
+          "components_selling_price": 2176.44,
+          "engineering_package_selling_price": 3273.56,
+          "direct_cost": 4776.44
+        },
+        "created_at": "2026-11-10T00:00:00.000Z"
+      }
+    ],
+    "offer_commercial_terms": [
+      {
+        "id": "recovered-off-2026-s138-saica-terms",
+        "offer_id": "recovered-off-2026-s138-saica-rev3",
+        "equipment_incoterm": "",
+        "incoterm_location": "",
+        "delivery_months": 0,
+        "delivery_notes": "2 a 3 semanas desde la recepción del pedido, sujeto a disponibilidad de hardware. Precios sin IVA. Pago, Incoterm, garantía y validez: no especificados en la fuente; pendientes de acordar.",
+        "validity_days": 0,
+        "warranty_months": 0,
+        "payment_milestones": [],
+        "created_at": "2026-11-10T00:00:00.000Z"
+      }
+    ],
     "social_media_accounts": [
       {
         "id": "e128ee64-e3ad-5890-b13f-46d4e3c7d77f",
@@ -12443,6 +12489,33 @@
       }
     ],
     "offers": [
+      {
+        "id": "recovered-off-2026-s138-saica-rev3",
+        "company_id": "ingecart-pack",
+        "offer_number": "OFF-2026-S138",
+        "offer_kind": "service",
+        "title": "SAICA · Reposición de PC Industrial · Rev. 3",
+        "customer_name": "SAICA",
+        "company_name": "Ingecart 2018 SL",
+        "project_description": "Suministro de PC Industrial MRMICRO i5-12400 / 16 GB / SSD 500 GB, WinCC Runtime Advanced V17 (512 PowerTags), Windows 11 Pro + instalación SAT, NIC PCI-E Gigabit, monitor LG 21,5 pulgadas y teclado/ratón Logitech MK120. Restauración de la copia de seguridad existente del sistema de recetas, comunicaciones PLC S7, conexión al servidor IT de backup de SAICA y acceso remoto según seguridad SAICA IT; pruebas finales en planta. Intervención puntual: no incluye mantenimiento anual. Plazo: 2 a 3 semanas desde el pedido, sujeto a disponibilidad de hardware. SAICA facilitará backup válido, parámetros y permisos de red y ventana de intervención. Excluidos nuevo desarrollo o cambios de recetas fuera del backup, cableado externo, licencias anuales de acceso remoto y reparación de PLC ajena al PC.",
+        "currency": "EUR",
+        "status": "draft",
+        "document_language": "es",
+        "contract_value": 5450,
+        "offer_total_price": 5450,
+        "offer_total_price_override": 5450,
+        "principal_package_price": 5450,
+        "principal_package_price_override": 5450,
+        "total_cost": 4776.44,
+        "cost_policy": { "warrantyPct": 0, "materialStructurePct": 0, "financialPct": 0, "commercialMgmtPct": 0 },
+        "context": "Rev. 3 suministrada por el usuario el 10/11/2026. Venta sin IVA: equipos/licencias 2.176,44 EUR + paquete de ingeniería 3.273,56 EUR = 5.450 EUR. Coste directo estimado: 2.176,44 + 40 h × 65 EUR/h = 4.776,44 EUR. Tarifa interna de ingeniería eléctrica PROVISIONAL, NO APROBADA; no confundir con precio de venta del paquete. Sin condiciones de pago, Incoterm, garantía ni validez inventadas.",
+        "next_action": "Validar y aprobar la tarifa interna provisional de 65 EUR/h y confirmar disponibilidad de hardware antes de emitir.",
+        "source": "propuesta_t_cnica_y_econ_mica_reposici_n_pc_industrial_saica.md · Rev. 3 del usuario",
+        "document_paths": ["/offer-documents/OFF-2026-S138_SAICA_Reposicion_PC_Industrial_Rev3.docx"],
+        "created_at": "2026-11-10T00:00:00.000Z",
+        "updated_at": "2026-11-10T00:00:00.000Z",
+        "storage": "local"
+      },
       {
         "id": "36366c72-f48a-56ba-bfe1-f2b45f0b8afc",
         "offer_number": "IC-DR-12.25",
@@ -20445,6 +20518,15 @@
     ],
     "offer_items": [
       {
+        "id": "recovered-off-2026-s138-saica-item",
+        "offer_id": "recovered-off-2026-s138-saica-rev3",
+        "item_name": "PC Industrial, licencias y restauración del backup existente",
+        "item_type": "service",
+        "quantity": 1,
+        "description": "Equipos/licencias: venta 2.176,44 EUR. Ingeniería/restauración y puesta en marcha: venta por paquete 3.273,56 EUR, distinta del coste interno provisional de 40 h × 65 EUR/h. Servicio puntual, sin mantenimiento anual.",
+        "created_at": "2026-11-10T00:00:00.000Z"
+      },
+      {
         "id": "7cb93d80-deb9-5a3d-bcad-9a38a5956e5f",
         "offer_id": "36366c72-f48a-56ba-bfe1-f2b45f0b8afc",
         "item_name": "Cascades - v3",
@@ -21036,6 +21118,34 @@
       }
     ],
     "cost_breakdowns": [
+      {
+        "id": "recovered-off-2026-s138-saica-materials",
+        "offer_item_id": "recovered-off-2026-s138-saica-item",
+        "category": "materials",
+        "line_item": "PC MRMICRO + WinCC V17 + Windows 11 Pro/SAT + NIC + monitor LG + teclado/ratón",
+        "quantity": 1,
+        "unit_cost": 2176.44,
+        "total_cost": 2176.44,
+        "hours": 0,
+        "hourly_rate": 0,
+        "surcharge_pct": 0,
+        "notes": "Coste neto de componentes y licencias: 2.176,44 EUR. Venta del suministro en la Rev. 3: 2.176,44 EUR sin IVA.",
+        "created_at": "2026-11-10T00:00:00.000Z"
+      },
+      {
+        "id": "recovered-off-2026-s138-saica-engineering",
+        "offer_item_id": "recovered-off-2026-s138-saica-item",
+        "category": "engineering",
+        "line_item": "Ingeniería eléctrica · restauración, PLC, backup IT y conectividad remota",
+        "quantity": 1,
+        "unit_cost": 0,
+        "hours": 40,
+        "hourly_rate": 65,
+        "total_cost": 2600,
+        "surcharge_pct": 0,
+        "notes": "PROVISIONAL — tarifa interna 65 EUR/h NO APROBADA. Estimación de 40 horas = coste 2.600 EUR. El paquete de ingeniería se vende a 3.273,56 EUR; no es el coste interno. Restaurar backup existente, sin nuevo desarrollo ni mantenimiento anual.",
+        "created_at": "2026-11-10T00:00:00.000Z"
+      },
       {
         "id": "e99d2228-c509-5bc6-92e4-014e07bac2e8",
         "offer_item_id": "7cb93d80-deb9-5a3d-bcad-9a38a5956e5f",

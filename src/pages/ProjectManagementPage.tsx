@@ -3,6 +3,7 @@ import { useData } from '@/store/DataStore';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { isWorkspaceSupabaseConfigured, readWorkspaceRows, writeWorkspaceRows } from '@/lib/workspaceStorage';
+import { useWorkspaceRevision } from '@/hooks/useWorkspaceRevision';
 import { getIngecartBundledProjectWorkspace } from '@/lib/ingecartProjectSeed';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -189,19 +190,20 @@ export default function ProjectManagementPage() {
     const incomingProjects = bundled.projects || [];
     if (incomingProjects.length === 0) return;
     const currentProjects = readWorkspaceRows<any>('projects', companyId);
-    const incomingIds = new Set(incomingProjects.map((project) => project.id));
-    const incomingNumbers = new Set(incomingProjects.map((project) => project.project_number));
+    const currentIds = new Set(currentProjects.map((project) => project.id));
+    const currentNumbers = new Set(currentProjects.map((project) => project.project_number));
     const mergedProjects = [
-      ...currentProjects.filter((project) => !incomingIds.has(project.id) && !incomingNumbers.has(project.project_number)),
-      ...incomingProjects,
+      ...currentProjects,
+      ...incomingProjects.filter((project) => !currentIds.has(project.id) && !currentNumbers.has(project.project_number)),
     ].sort((left, right) => String(left.project_number || '').localeCompare(String(right.project_number || '')));
     writeWorkspaceRows('projects', companyId, mergedProjects);
     (['project_phases', 'project_milestones', 'project_risks', 'project_gates', 'project_costs', 'change_orders'] as const).forEach((table) => {
       const currentRows = readWorkspaceRows<any>(table, companyId);
       const incomingRows = bundled[table] || [];
+      const currentRowIds = new Set(currentRows.map((row) => row.id));
       writeWorkspaceRows(table, companyId, [
-        ...currentRows.filter((row) => !incomingIds.has(row.project_id)),
-        ...incomingRows,
+        ...currentRows,
+        ...incomingRows.filter((row) => !currentRowIds.has(row.id) && !currentIds.has(row.project_id)),
       ]);
     });
   }, [data.companyProfile.company_name]);
@@ -273,11 +275,12 @@ export default function ProjectManagementPage() {
     }
   }, [activeCompanyId, selectedProjectId, syncBundledProjectSeed]);
 
+  const workspaceRevision = useWorkspaceRevision(activeCompanyId);
   useEffect(() => {
     if (activeCompanyId) {
       loadProjectData();
     }
-  }, [activeCompanyId, loadProjectData]);
+  }, [activeCompanyId, loadProjectData, workspaceRevision]);
 
   useEffect(() => {
     if (!selectedProjectId && projects.length > 0) {

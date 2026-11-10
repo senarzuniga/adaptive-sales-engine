@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { getProbabilityGuidance, isOpenOpportunityStatus } from '@/lib/salesData';
 import { isWorkspaceSupabaseConfigured, readWorkspaceRows } from '@/lib/workspaceStorage';
+import { useWorkspaceRevision } from '@/hooks/useWorkspaceRevision';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 interface GapItem {
@@ -34,6 +35,7 @@ const COLORS = ['hsl(var(--primary))', 'hsl(var(--destructive))', 'hsl(220, 70%,
 export default function BudgetCommandCenterPage() {
   const { t } = useLanguage();
   const { activeCompanyId, data } = useData();
+  const workspaceRevision = useWorkspaceRevision(activeCompanyId);
   const selectedCompanyId = activeCompanyId;
   const [loading, setLoading] = useState(true);
   const [salesData, setSalesData] = useState<{ orders: any[]; opportunities: any[] }>({ orders: [], opportunities: [] });
@@ -43,7 +45,7 @@ export default function BudgetCommandCenterPage() {
   useEffect(() => {
     if (!selectedCompanyId) return;
     loadAllData();
-  }, [selectedCompanyId, data.orders, data.opportunities]);
+  }, [selectedCompanyId, data.orders, data.opportunities, workspaceRevision]);
 
   const loadAllData = async () => {
     if (!selectedCompanyId) return;

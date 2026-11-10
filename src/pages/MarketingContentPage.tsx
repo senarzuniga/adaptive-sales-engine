@@ -23,6 +23,7 @@ import { toast } from '@/hooks/use-toast';
 import { isOpenOpportunityStatus } from '@/lib/salesData';
 import { buildFallbackMarketingContent } from '@/lib/marketingContentFallback';
 import { isWorkspaceSupabaseConfigured, readWorkspaceRows, writeWorkspaceRows } from '@/lib/workspaceStorage';
+import { useWorkspaceRevision } from '@/hooks/useWorkspaceRevision';
 import { EXTERNAL_KNOWLEDGE_LIBRARY } from '@/lib/externalKnowledgeLibrary';
 
 interface ContentResponse {
@@ -138,7 +139,8 @@ const MarketingContentPage = () => {
     setIsLoadingSaved(false);
   }, [activeCompanyId]);
 
-  useEffect(() => { loadSocialAccounts(); loadSavedContent(); }, [loadSocialAccounts, loadSavedContent]);
+  const workspaceRevision = useWorkspaceRevision(activeCompanyId);
+  useEffect(() => { loadSocialAccounts(); loadSavedContent(); }, [loadSocialAccounts, loadSavedContent, workspaceRevision]);
 
   const addUrl = () => {
     if (newUrl.trim() && referenceUrls.length < 10) {

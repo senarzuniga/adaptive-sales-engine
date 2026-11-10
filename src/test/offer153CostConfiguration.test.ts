@@ -91,10 +91,25 @@ describe('OFF-2026-153 authorized cost configuration', () => {
     expect(localStorage.getItem(storageKey('cost_breakdowns'))).toBe(before);
   });
 
-  it('never applies to another company or fabricates a missing offer', () => {
+  it('loads the authorized missing offer for Ingecart without fabricating a customer', () => {
     expect(applyOffer153LocalConfiguration(companyId, 'Other Company')).toBe('other-company');
-    expect(applyOffer153LocalConfiguration(companyId, 'Ingecart 2018 SL')).toBe('not-found');
     expect(read('offers')).toHaveLength(0);
+    expect(applyOffer153LocalConfiguration(companyId, 'Ingecart 2018 SL')).toBe('applied');
+    expect(read('offers')).toHaveLength(1);
+    expect(read('offers')[0]).toMatchObject({ company_id: companyId, offer_number: 'OFF-2026-153', status: 'draft', customer_name: '', contract_value: 165708, currency: 'EUR' });
+    expect(read('offers')[0].project_description).toContain('Cliente pendiente');
+    expect(read('offer_items')).toHaveLength(3);
+    expect(read('cost_breakdowns')).toHaveLength(37);
+    expect(read('offer_scenarios')[0].selling_price).toBe(165708);
+    expect(applyOffer153LocalConfiguration(companyId, 'Ingecart 2018 SL')).toBe('already-applied');
+    expect(read('offers')).toHaveLength(1);
+  });
+
+  it('recovers the offer if its header was lost after a previous receipt', () => {
+    expect(applyOffer153LocalConfiguration(companyId, 'Ingecart 2018 SL')).toBe('applied');
+    localStorage.removeItem(storageKey('offers'));
+    expect(applyOffer153LocalConfiguration(companyId, 'Ingecart 2018 SL')).toBe('applied');
+    expect(read('offers')[0].offer_number).toBe('OFF-2026-153');
   });
 
   it('refuses ambiguous offer duplicates and a conflicting company id', () => {

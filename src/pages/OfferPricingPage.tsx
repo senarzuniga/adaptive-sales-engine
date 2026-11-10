@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useWorkspaceRevision } from '@/hooks/useWorkspaceRevision';
+import { applyOffer153LocalConfiguration } from '@/lib/offer153CostConfiguration';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useData } from '@/store/DataStore';
@@ -267,8 +269,10 @@ const isMissingRelationError = (error: any) => {
 export default function OfferPricingPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const requestedOffer = new URLSearchParams(location.search).get('offer')?.trim() || '';
   const { language } = useLanguage();
   const { activeCompanyId: selectedCompanyId, data, setContacts } = useData();
+  const workspaceRevision = useWorkspaceRevision(selectedCompanyId);
   const isEs = language === 'es';
   const isIngecartWorkspace = /ingecart/i.test([selectedCompanyId, data.companyProfile.company_name].join(' '));
 
@@ -305,11 +309,11 @@ export default function OfferPricingPage() {
   const [editingOfferId, setEditingOfferId] = useState<string | null>(null);
   const [exportingOfferId, setExportingOfferId] = useState<string | null>(null);
   const [savedOffers, setSavedOffers] = useState<any[]>([]);
-  const [historySearch, setHistorySearch] = useState('');
+  const [historySearch, setHistorySearch] = useState(requestedOffer);
   const [historyStatusFilter, setHistoryStatusFilter] = useState('all');
   const [historySortKey, setHistorySortKey] = useState<OfferHistorySortKey>('updated_at');
   const [historySortDirection, setHistorySortDirection] = useState<'asc' | 'desc'>('desc');
-  const [activeTab, setActiveTab] = useState('builder');
+  const [activeTab, setActiveTab] = useState(requestedOffer ? 'history' : 'builder');
   const [companyRates, setCompanyRates] = useState<any[]>([]);
   const [catalogSelection, setCatalogSelection] = useState('');
   const [catalogLengthM, setCatalogLengthM] = useState(80);
@@ -329,7 +333,7 @@ export default function OfferPricingPage() {
     } else {
       setBlockRepository([]);
     }
-  }, [selectedCompanyId]);
+  }, [selectedCompanyId, data.companyProfile.company_name, workspaceRevision]);
 
   const loadRates = async () => {
     if (!selectedCompanyId) return;
@@ -435,6 +439,13 @@ export default function OfferPricingPage() {
 
   const loadOffers = async () => {
     if (!selectedCompanyId) return;
+    // History must ensure the authorized offer is present even in a fresh browser
+    // or when a company pack was imported after the initial company load.
+    try {
+      applyOffer153LocalConfiguration(selectedCompanyId, data.companyProfile.company_name);
+    } catch (error) {
+      toast({ title: 'No se pudo cargar OFF-2026-153', description: String(error), variant: 'destructive' });
+    }
     const ensureRecoveredSigmaqOffer = () => {
       const localOffers = readWorkspaceRows<any>('offers', selectedCompanyId);
       const alreadyPresent = localOffers.some((row) => String(row.offer_number || '').toUpperCase() === 'OFF-2026-138');
@@ -3158,6 +3169,14 @@ export default function OfferPricingPage() {
                         <TableCell className="text-sm text-muted-foreground">{new Date(o.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
+                          {isIngecartWorkspace && String(o.offer_number || '').trim().toUpperCase() === 'OFF-2026-S138' && (
+                            <Button size="sm" variant="outline" asChild>
+                              <a href="/offer-documents/OFF-2026-S138_SAICA_Reposicion_PC_Industrial_Rev3.docx" download="OFF-2026-S138_SAICA_Reposicion_PC_Industrial_Rev3.docx" aria-label="Download supplied OFF-2026-S138 Rev3 DOCX">
+                                <FileText className="h-3 w-3 mr-1" />
+                                DOCX Rev.3 · 5.450 EUR
+                              </a>
+                            </Button>
+                          )}
                           <Button size="sm" variant="outline" onClick={() => setCopyRequest({ source: 'saved', offer: o })} aria-label={`Copy offer ${o.offer_number || o.id}`}>
                             <Copy className="h-3 w-3 mr-1" />
                             {isEs ? 'Copiar' : 'Copy'}

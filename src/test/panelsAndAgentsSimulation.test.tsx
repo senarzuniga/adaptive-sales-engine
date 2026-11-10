@@ -30,16 +30,20 @@ import CostRatesPage from '@/pages/CostRatesPage';
 import BusinessIntelligencePage from '@/pages/BusinessIntelligencePage';
 import CommercialActionsRepositoryPage from '@/pages/CommercialActionsRepositoryPage';
 import SavedCompaniesPage from '@/pages/SavedCompaniesPage';
+import ProjectManagementPage from '@/pages/ProjectManagementPage';
+import AIAssistantPage from '@/pages/AIAssistantPage';
+import rawIngecartPack from '../../public/company-packs/Ingecart/ingecart_pack.json?raw';
 import { runDataManagementAgent } from '@/agents/dataManagementAgent';
 import { runCustomerEnrichmentAgent } from '@/agents/customerEnrichmentAgent';
 import { runProductAnalysisAgent, runProductSearchAgent } from '@/agents/productCatalogAgents';
 
-const renderPanel = (path: string, panel: JSX.Element) => {
+const renderPanel = (path: string, panel: JSX.Element, probe = false) => {
   const queryClient = new QueryClient();
   return render(
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
         <DataProvider>
+          {probe && <Probe />}
           <TooltipProvider>
             <MemoryRouter initialEntries={[path]}>
               <AppLayout>{panel}</AppLayout>
@@ -76,6 +80,8 @@ const panels: Array<[string, JSX.Element]> = [
   ['/business-intelligence', <BusinessIntelligencePage />],
   ['/commercial-actions-repository', <CommercialActionsRepositoryPage />],
   ['/companies', <SavedCompaniesPage />],
+  ['/projects', <ProjectManagementPage />],
+  ['/ai-assistant', <AIAssistantPage />],
 ];
 
 const Probe = () => {
@@ -104,6 +110,7 @@ describe('Loaded data simulation, panel smoke simulation, and agent simulation',
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
     cleanup();
     localStorage.clear();
@@ -150,7 +157,33 @@ describe('Loaded data simulation, panel smoke simulation, and agent simulation',
       expect(container.querySelector('main')).not.toBeNull();
       unmount();
     });
-  });
+  }, 30000);
+
+  it('renders every panel with the full Ingecart snapshot loaded, not just an empty demo', async () => {
+    const pack = JSON.parse(rawIngecartPack);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => pack }));
+    for (const [path, panel] of panels) {
+      localStorage.clear();
+      const id = 'ingecart-loaded-panels';
+      localStorage.setItem('acs_companies', JSON.stringify([{ ...pack.companyProfile, id }]));
+      localStorage.setItem('acs_active_company', id);
+      for (const [field, suffix] of Object.entries({ orders: 'orders', opportunities: 'opps', products: 'products', strategy: 'strategy', leads: 'leads', contacts: 'contacts', tasks: 'tasks' })) {
+        localStorage.setItem(`acs_${suffix}_${id}`, JSON.stringify(pack[field]));
+      }
+      for (const [table, rows] of Object.entries(pack.workspace)) localStorage.setItem(`acs_workspace_${table}_${id}`, JSON.stringify(rows));
+      const view = renderPanel(path, panel, true);
+      await waitFor(() => {
+        const snapshot = JSON.parse(screen.getByTestId('loaded-snapshot').textContent || '{}');
+        expect(snapshot.companyName).toBe('Ingecart 2018 SL');
+        expect(snapshot.orders).toBe(7);
+        expect(snapshot.opportunities).toBe(40);
+        expect(snapshot.leads).toBe(310);
+        expect(snapshot.contacts).toBe(437);
+      });
+      expect(view.container.querySelector('main')).not.toBeNull();
+      view.unmount();
+    }
+  }, 60000);
 
   it('shows bundled company-pack quick loaders in Saved Companies', () => {
     renderPanel('/companies', <SavedCompaniesPage />);

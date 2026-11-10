@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { readWorkspaceRows, writeWorkspaceRows } from '@/lib/workspaceStorage';
+import { useWorkspaceRevision } from '@/hooks/useWorkspaceRevision';
 import { EXTERNAL_KNOWLEDGE_LIBRARY } from '@/lib/externalKnowledgeLibrary';
 import { type AssistantHistoryEntry, type AssistantRequestType, buildAssistantBridgePrompt, buildAssistantLeadAndContact, buildAssistantOfferDraft, buildAssistantTask, buildBilingualIngecartHtmlReport, getAssistantHistoryStorageKey, inferAssistantDestination, inferAssistantRequestType, parseAssistantFields } from '@/lib/aiAssistantWorkspace';
 
@@ -38,13 +39,14 @@ export default function AIAssistantPage() {
     try { const raw = localStorage.getItem(getAssistantHistoryStorageKey(activeCompanyId)); setHistory(raw ? JSON.parse(raw) : []); } catch { setHistory([]); }
   }, [activeCompanyId]);
 
+  const workspaceRevision = useWorkspaceRevision(activeCompanyId);
   const knownAccounts = useMemo(() => Array.from(new Set([
     ...data.orders.map((row) => row.customerName),
     ...data.opportunities.map((row) => row.customerName),
     ...data.contacts.map((row) => row.companyName),
     ...data.leads.map((row) => row.companyName),
     ...readWorkspaceRows<any>('offers', activeCompanyId).map((row) => row.customer_name),
-  ].filter(Boolean))).sort((a, b) => a.localeCompare(b)), [activeCompanyId, data.contacts, data.leads, data.opportunities, data.orders]);
+  ].filter(Boolean))).sort((a, b) => a.localeCompare(b)), [activeCompanyId, data.contacts, data.leads, data.opportunities, data.orders, workspaceRevision]);
 
   const externalKnowledge = useMemo(() => EXTERNAL_KNOWLEDGE_LIBRARY.filter((entry) => {
     const companyName = String(data.companyProfile.company_name || '').toLowerCase();
@@ -54,7 +56,7 @@ export default function AIAssistantPage() {
   const assetSummary = useMemo(() => {
     if (!activeCompanyId) return { contacts: 0, tasks: 0, offers: 0, content: 0, reports: 0 };
     return { contacts: data.contacts.length, tasks: data.tasks.length, offers: readWorkspaceRows<any>('offers', activeCompanyId).length, content: readWorkspaceRows<any>('marketing_content', activeCompanyId).length, reports: readWorkspaceRows<any>('business_intelligence_reports', activeCompanyId).length };
-  }, [activeCompanyId, data.contacts.length, data.tasks.length]);
+  }, [activeCompanyId, data.contacts.length, data.tasks.length, workspaceRevision]);
 
   const filteredHistory = useMemo(() => {
     const needle = search.trim().toLowerCase();
